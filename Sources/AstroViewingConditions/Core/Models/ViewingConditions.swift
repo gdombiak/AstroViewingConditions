@@ -6,8 +6,8 @@ public struct ViewingConditions: Sendable {
     public let fetchedAt: Date
     public let location: SavedLocation
     public let hourlyForecasts: [HourlyForecast]
-    public let sunEvents: SunEvents
-    public let moonInfo: MoonInfo
+    public let dailySunEvents: [SunEvents]
+    public let dailyMoonInfo: [MoonInfo]
     public let issPasses: [ISSPass]
     public let fogScore: FogScore
     
@@ -15,16 +15,16 @@ public struct ViewingConditions: Sendable {
         fetchedAt: Date,
         location: SavedLocation,
         hourlyForecasts: [HourlyForecast],
-        sunEvents: SunEvents,
-        moonInfo: MoonInfo,
+        dailySunEvents: [SunEvents],
+        dailyMoonInfo: [MoonInfo],
         issPasses: [ISSPass],
         fogScore: FogScore
     ) {
         self.fetchedAt = fetchedAt
         self.location = location
         self.hourlyForecasts = hourlyForecasts
-        self.sunEvents = sunEvents
-        self.moonInfo = moonInfo
+        self.dailySunEvents = dailySunEvents
+        self.dailyMoonInfo = dailyMoonInfo
         self.issPasses = issPasses
         self.fogScore = fogScore
     }

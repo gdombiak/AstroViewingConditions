@@ -44,7 +44,7 @@ struct SunMoonCard: View {
                                 .font(.caption)
                         }
                         Spacer()
-                        Text(formatDuration(sunEvents.astronomicalNightDuration(on: Date())))
+                        Text(formatDuration(sunEvents.astronomicalNightDuration(on: sunEvents.sunrise)))
                             .font(.subheadline)
                             .fontWeight(.semibold)
                             .foregroundStyle(.indigo)

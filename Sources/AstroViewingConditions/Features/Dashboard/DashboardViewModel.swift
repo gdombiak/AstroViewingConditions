@@ -70,11 +70,17 @@ public class DashboardViewModel {
     }
     
     public var currentSunEvents: SunEvents? {
-        viewingConditions?.sunEvents
+        guard let conditions = viewingConditions else { return nil }
+        let index = selectedDay.rawValue
+        guard index < conditions.dailySunEvents.count else { return nil }
+        return conditions.dailySunEvents[index]
     }
     
     public var currentMoonInfo: MoonInfo? {
-        viewingConditions?.moonInfo
+        guard let conditions = viewingConditions else { return nil }
+        let index = selectedDay.rawValue
+        guard index < conditions.dailyMoonInfo.count else { return nil }
+        return conditions.dailyMoonInfo[index]
     }
     
     public var currentISSPasses: [ISSPass] {
@@ -104,15 +110,25 @@ public class DashboardViewModel {
                 days: 3
             )
             
-            // Calculate astronomical data
-            let sunEvents = await astronomyService.calculateSunEvents(
-                for: location,
-                on: Date()
-            )
-            let moonInfo = await astronomyService.calculateMoonInfo(
-                for: location,
-                on: Date()
-            )
+            let calendar = Calendar.current
+            let startOfToday = calendar.startOfDay(for: Date())
+            
+            var dailySunEvents: [SunEvents] = []
+            var dailyMoonInfo: [MoonInfo] = []
+            
+            for dayOffset in 0..<3 {
+                let date = calendar.date(byAdding: .day, value: dayOffset, to: startOfToday)!
+                let sunEvents = await astronomyService.calculateSunEvents(
+                    for: location,
+                    on: date
+                )
+                let moonInfo = await astronomyService.calculateMoonInfo(
+                    for: location,
+                    on: date
+                )
+                dailySunEvents.append(sunEvents)
+                dailyMoonInfo.append(moonInfo)
+            }
             
             // Fetch ISS passes (only if API key is configured)
             let issPasses: [ISSPass]
@@ -131,8 +147,8 @@ public class DashboardViewModel {
                 fetchedAt: Date(),
                 location: location,
                 hourlyForecasts: forecasts,
-                sunEvents: sunEvents,
-                moonInfo: moonInfo,
+                dailySunEvents: dailySunEvents,
+                dailyMoonInfo: dailyMoonInfo,
                 issPasses: issPasses,
                 fogScore: fogScore
             )
