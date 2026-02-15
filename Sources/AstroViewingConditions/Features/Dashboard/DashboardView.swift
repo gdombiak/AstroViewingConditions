@@ -4,14 +4,28 @@ import SwiftData
 public struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
+    @AppStorage("selectedLocationID") private var selectedLocationID: String = "current"
+    @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
     @State private var viewModel: DashboardViewModel
     @State private var locationManager = LocationManager()
     
     // Current location (not persisted)
     @State private var currentLocation: SavedLocation?
+    @State private var showingLocationPicker = false
     
     private var unitConverter: UnitConverter {
         UnitConverter(unitSystem: UserDefaults.standard.selectedUnitSystem)
+    }
+    
+    private var selectedLocation: SavedLocation? {
+        if selectedLocationID == "current" {
+            return currentLocation
+        }
+        return savedLocations.first { $0.id.uuidString == selectedLocationID }
+    }
+    
+    private var selectedLocationName: String {
+        selectedLocation?.name ?? "Astro Conditions"
     }
     
     public init() {
@@ -32,41 +46,80 @@ public struct DashboardView: View {
                     initialView
                 }
             }
-            .navigationTitle(currentLocation?.name ?? "Astro Conditions")
+            .navigationTitle(selectedLocationName)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: { showingLocationPicker = true }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "location.circle")
+                            Text("Location")
+                                .font(.caption)
+                        }
+                    }
+                }
+                
                 ToolbarItem(placement: toolbarPlacement) {
                     if viewModel.isLoading {
                         ProgressView()
                     } else {
                         Button(action: {
                             Task {
-                                if let location = currentLocation {
+                                if let location = selectedLocation {
                                     await viewModel.refresh(for: location)
                                 }
                             }
                         }) {
                             Image(systemName: "arrow.clockwise")
                         }
-                        .disabled(currentLocation == nil)
+                        .disabled(selectedLocation == nil)
                     }
                 }
+            }
+            .sheet(isPresented: $showingLocationPicker) {
+                LocationPickerView(
+                    selectedLocationID: $selectedLocationID,
+                    currentLocation: currentLocation,
+                    savedLocations: savedLocations
+                )
             }
         }
         .task {
             // Update view model with API key from storage
             viewModel = DashboardViewModel(apiKey: n2yoApiKey)
             await loadCurrentLocation()
+            // After loading current location, check if we should load a saved location
+            if selectedLocationID != "current" {
+                if let location = selectedLocation {
+                    await viewModel.loadConditions(for: location)
+                }
+            } else if let location = currentLocation {
+                await viewModel.loadConditions(for: location)
+            }
         }
         .onChange(of: locationManager.authorizationStatus) { _, _ in
             Task {
                 await loadCurrentLocation()
+                if selectedLocationID != "current" {
+                    if let location = selectedLocation {
+                        await viewModel.loadConditions(for: location)
+                    }
+                } else if let location = currentLocation {
+                    await viewModel.loadConditions(for: location)
+                }
             }
         }
         .onChange(of: n2yoApiKey) { _, newKey in
             viewModel = DashboardViewModel(apiKey: newKey)
             Task {
-                if let location = currentLocation {
+                if let location = selectedLocation {
                     await viewModel.refresh(for: location)
+                }
+            }
+        }
+        .onChange(of: selectedLocationID) { _, _ in
+            Task {
+                if let location = selectedLocation {
+                    await viewModel.loadConditions(for: location)
                 }
             }
         }
@@ -133,7 +186,7 @@ public struct DashboardView: View {
             .padding()
         }
         .refreshable {
-            if let location = currentLocation {
+            if let location = selectedLocation {
                 await viewModel.refresh(for: location)
             }
         }
@@ -253,6 +306,106 @@ public struct DashboardView: View {
             }
         } catch {
             viewModel.error = error
+        }
+    }
+}
+
+// MARK: - Location Picker View
+
+struct LocationPickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var selectedLocationID: String
+    let currentLocation: SavedLocation?
+    let savedLocations: [SavedLocation]
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                // Current Location Section
+                Section("Current Location") {
+                    Button(action: {
+                        selectedLocationID = "current"
+                        dismiss()
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("My Current Location")
+                                    .font(.headline)
+                                
+                                if let location = currentLocation {
+                                    Text(CoordinateFormatters.format(location.coordinate))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Using device location")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            if selectedLocationID == "current" {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.blue)
+                            }
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                }
+                
+                // Saved Locations Section
+                if !savedLocations.isEmpty {
+                    Section("Saved Locations") {
+                        ForEach(savedLocations) { location in
+                            Button(action: {
+                                selectedLocationID = location.id.uuidString
+                                dismiss()
+                            }) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(location.name)
+                                            .font(.headline)
+                                        
+                                        Text(CoordinateFormatters.format(location.coordinate))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                        
+                                        if let elevation = location.elevation {
+                                            Text("Elevation: \(Int(elevation))m")
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    if location.id.uuidString == selectedLocationID {
+                                        Image(systemName: "checkmark")
+                                            .foregroundStyle(.blue)
+                                    }
+                                    
+                                    if location.isFavorite {
+                                        Image(systemName: "star.fill")
+                                            .foregroundStyle(.yellow)
+                                            .font(.caption)
+                                    }
+                                }
+                            }
+                            .foregroundStyle(.primary)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Select Location")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
         }
     }
 }
