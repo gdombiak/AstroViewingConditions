@@ -45,6 +45,7 @@ public actor WeatherService {
         }
         
         let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .formatted(DateFormatter.apiDateFormatter)
         let weatherResponse = try decoder.decode(OpenMeteoResponse.self, from: data)
         
         return parseHourlyForecasts(from: weatherResponse)
@@ -178,5 +179,14 @@ extension JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
+    }()
+}
+
+extension DateFormatter {
+    static let apiDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter
     }()
 }

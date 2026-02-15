@@ -2,7 +2,7 @@ import Foundation
 import CoreLocation
 
 public actor ISSService {
-    private let baseURL = "http://api.open-notify.org/iss-pass.json"
+    private let baseURL = "https://api.open-notify.org/iss-pass.json"
     
     public init() {}
     
