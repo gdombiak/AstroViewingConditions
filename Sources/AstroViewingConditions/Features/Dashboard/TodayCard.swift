@@ -52,17 +52,31 @@ struct CurrentConditionsCard: View {
                     )
                 }
                 
-                // Visibility
-                if let visibility = forecast.visibility {
-                    HStack {
-                        Image(systemName: "eye")
-                            .foregroundStyle(.secondary)
-                        Text("Visibility: \(unitConverter.formatVisibility(visibility))")
-                            .font(.subheadline)
-                        Spacer()
+                // Visibility & Fog
+                HStack(spacing: 20) {
+                    if let visibility = forecast.visibility {
+                        HStack {
+                            Image(systemName: "eye")
+                                .foregroundStyle(.secondary)
+                            Text("Visibility: \(unitConverter.formatVisibility(visibility))")
+                                .font(.subheadline)
+                        }
                     }
-                    .padding(.top, 4)
+                    
+                    let fogScore = FogCalculator.calculate(from: forecast)
+                    if fogScore.percentage > 0 {
+                        HStack {
+                            Image(systemName: "cloud.fog.fill")
+                                .foregroundStyle(fogColor(for: fogScore.percentage))
+                            Text("Fog: \(fogScore.percentage)%")
+                                .font(.subheadline)
+                                .foregroundStyle(fogColor(for: fogScore.percentage))
+                        }
+                    }
+                    
+                    Spacer()
                 }
+                .padding(.top, 4)
             } else {
                 Text("No data available")
                     .foregroundStyle(.secondary)
@@ -90,6 +104,19 @@ struct CurrentConditionsCard: View {
         case 20..<50:
             return .yellow
         case 50..<80:
+            return .orange
+        default:
+            return .red
+        }
+    }
+    
+    private func fogColor(for percentage: Int) -> Color {
+        switch percentage {
+        case 0..<30:
+            return .green
+        case 30..<60:
+            return .yellow
+        case 60..<80:
             return .orange
         default:
             return .red

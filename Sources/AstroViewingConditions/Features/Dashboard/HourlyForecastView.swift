@@ -9,7 +9,6 @@ struct HourlyForecastView: View {
         let calendar = Calendar.current
         
         return forecasts.filter { forecast in
-            // Get the start of the hour for both times
             guard let forecastHour = calendar.dateInterval(of: .hour, for: forecast.time)?.start,
                   let currentHour = calendar.dateInterval(of: .hour, for: now)?.start else {
                 return false
@@ -29,14 +28,35 @@ struct HourlyForecastView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding()
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(upcomingForecasts.prefix(24)) { forecast in
-                            HourlyCell(forecast: forecast, unitConverter: unitConverter)
+                // Header row with times
+                HStack(spacing: 0) {
+                    // Fixed labels column (spacer)
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("")
+                            .frame(height: 28)
+                        MetricLabel(icon: "cloud.fill", label: "Cloud", color: .blue)
+                        MetricLabel(icon: "thermometer", label: "Temp", color: .orange)
+                        MetricLabel(icon: "humidity.fill", label: "Humidity", color: .cyan)
+                        MetricLabel(icon: "wind", label: "Wind", color: .gray)
+                        MetricLabel(icon: "arrow.up", label: "Dir", color: .gray)
+                        MetricLabel(icon: "cloud.fog.fill", label: "Fog", color: .gray)
+                    }
+                    .frame(width: 70)
+                    
+                    // Scrollable data
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 0) {
+                            ForEach(upcomingForecasts.prefix(24)) { forecast in
+                                HourlyColumn(
+                                    forecast: forecast,
+                                    unitConverter: unitConverter,
+                                    isNow: isCurrentHour(forecast.time)
+                                )
+                            }
                         }
                     }
-                    .padding(.horizontal, 4)
                 }
+                .padding(.vertical, 8)
             }
         }
         .padding()
@@ -51,58 +71,131 @@ struct HourlyForecastView: View {
         return Color.gray.opacity(0.1)
         #endif
     }
+    
+    private func isCurrentHour(_ date: Date) -> Bool {
+        Calendar.current.isDateInToday(date) &&
+        Calendar.current.component(.hour, from: date) == Calendar.current.component(.hour, from: Date())
+    }
 }
 
-struct HourlyCell: View {
+struct MetricLabel: View {
+    let icon: String
+    let label: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundStyle(color)
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.primary)
+        }
+        .frame(height: 20)
+    }
+}
+
+struct HourlyColumn: View {
     let forecast: HourlyForecast
     let unitConverter: UnitConverter
+    let isNow: Bool
     
-    private var isNow: Bool {
-        Calendar.current.isDateInToday(forecast.time) &&
-        Calendar.current.component(.hour, from: forecast.time) == Calendar.current.component(.hour, from: Date())
+    private var fogScore: FogScore {
+        FogCalculator.calculate(from: forecast)
     }
     
     var body: some View {
-        VStack(spacing: 8) {
-            // Time
+        VStack(spacing: 16) {
+            // Time header
             Text(DateFormatters.formatTime(forecast.time))
-                .font(.caption)
-                .fontWeight(isNow ? .bold : .regular)
+                .font(.system(size: 12, weight: isNow ? .bold : .medium))
+                .foregroundStyle(isNow ? Color.accentColor : .primary)
+                .frame(height: 28)
             
-            // Cloud cover bar
-            ZStack(alignment: .bottom) {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.gray.opacity(0.15))
-                    .frame(width: 30, height: 60)
-                
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(cloudColor)
-                    .frame(width: 30, height: CGFloat(forecast.cloudCover) * 0.6)
-            }
-            
-            // Cloud percentage
+            // Cloud cover with astronomy-friendly coloring
             Text("\(forecast.cloudCover)%")
-                .font(.caption2)
-                .fontWeight(.semibold)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(cloudTextColor)
+                .frame(height: 20)
+                .frame(maxWidth: .infinity)
+                .background(cloudBackgroundColor)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
             
             // Temperature
             Text(unitConverter.formatTemperature(forecast.temperature))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.primary)
+                .frame(height: 20)
+            
+            // Humidity
+            Text("\(forecast.humidity)%")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.primary)
+                .frame(height: 20)
+            
+            // Wind speed
+            Text(unitConverter.formatWindSpeed(forecast.windSpeed))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.primary)
+                .frame(height: 20)
+            
+            // Wind direction
+            HStack(spacing: 2) {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 10))
+                    .rotationEffect(.degrees(Double(forecast.windDirection)))
+                Text("\(forecast.windDirection)")
+                    .font(.system(size: 11))
+            }
+            .foregroundStyle(.secondary)
+            .frame(height: 20)
+            
+            // Fog risk
+            if fogScore.percentage > 0 {
+                Text("\(fogScore.percentage)%")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(height: 20)
+                    .frame(maxWidth: .infinity)
+                    .background(fogColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            } else {
+                Text("—")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .frame(height: 20)
+            }
         }
-        .padding(.vertical, 8)
+        .frame(width: 60)
         .padding(.horizontal, 4)
-        .background(isNow ? Color.accentColor.opacity(0.1) : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .background(isNow ? Color.accentColor.opacity(0.08) : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
     
-    private var cloudColor: Color {
-        switch forecast.cloudCover {
-        case 0..<20:
+    // Astronomy-friendly: Dark blue = good (clear), lighter = bad (cloudy)
+    private var cloudBackgroundColor: Color {
+        let coverage = Double(forecast.cloudCover) / 100.0
+        // Interpolate from dark blue (0%) to light gray/white (100%)
+        let red = 20 + (220 * coverage)
+        let green = 40 + (200 * coverage)
+        let blue = 80 + (140 * coverage)
+        return Color(red: red/255, green: green/255, blue: blue/255)
+    }
+    
+    // Text color that contrasts with the background
+    private var cloudTextColor: Color {
+        forecast.cloudCover > 60 ? .black : .white
+    }
+    
+    // Fog color: green (low) to red (high)
+    private var fogColor: Color {
+        switch fogScore.percentage {
+        case 0..<30:
             return .green
-        case 20..<50:
+        case 30..<60:
             return .yellow
-        case 50..<80:
+        case 60..<80:
             return .orange
         default:
             return .red
@@ -115,9 +208,9 @@ struct HourlyCell: View {
         HourlyForecast(
             time: Calendar.current.date(byAdding: .hour, value: hour, to: Date())!,
             cloudCover: Int.random(in: 0...100),
-            humidity: 65,
-            windSpeed: Double.random(in: 5...20),
-            windDirection: 180,
+            humidity: Int.random(in: 40...90),
+            windSpeed: Double.random(in: 5...25),
+            windDirection: Int.random(in: 0...360),
             temperature: Double.random(in: 10...20),
             dewPoint: 10.0,
             visibility: 10000,

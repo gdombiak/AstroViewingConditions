@@ -169,11 +169,6 @@ public struct DashboardView: View {
                     )
                 }
                 
-                // Fog score
-                if let fogScore = viewModel.fogScore, fogScore.percentage > 0 {
-                    FogScoreView(fogScore: fogScore)
-                }
-                
                 // ISS passes (only show if API key is configured)
                 if viewModel.hasISSConfigured && !viewModel.currentISSPasses.isEmpty {
                     ISSCard(passes: viewModel.currentISSPasses)
