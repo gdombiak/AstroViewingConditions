@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 import SwiftData
 
 public struct LocationsView: View {
@@ -8,6 +9,8 @@ public struct LocationsView: View {
     @State private var showingAddLocation = false
     @State private var locationToDelete: SavedLocation?
     @State private var showingDeleteConfirmation = false
+    @State private var selectedLocation: SavedLocation?
+    @State private var showingLocationMap = false
     
     public init() {}
     
@@ -28,6 +31,11 @@ public struct LocationsView: View {
                     } else {
                         ForEach(savedLocations) { location in
                             LocationRow(location: location)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedLocation = location
+                                    showingLocationMap = true
+                                }
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
                                         locationToDelete = location
@@ -50,6 +58,9 @@ public struct LocationsView: View {
             }
             .sheet(isPresented: $showingAddLocation) {
                 LocationSearchView()
+            }
+            .sheet(item: $selectedLocation) { location in
+                LocationMapView(location: location)
             }
             .alert("Delete Location?", isPresented: $showingDeleteConfirmation, presenting: locationToDelete) { location in
                 Button("Cancel", role: .cancel) {}
@@ -103,6 +114,55 @@ struct LocationRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+struct LocationMapView: View {
+    @Environment(\.dismiss) private var dismiss
+    let location: SavedLocation
+    
+    @State private var position: MapCameraPosition
+    
+    init(location: SavedLocation) {
+        self.location = location
+        let coordinate = CLLocationCoordinate2D(
+            latitude: location.latitude,
+            longitude: location.longitude
+        )
+        _position = State(initialValue: .region(MKCoordinateRegion(
+            center: coordinate,
+            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+        )))
+    }
+    
+    private var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Map(position: $position) {
+                Marker(location.name, coordinate: coordinate)
+                UserAnnotation()
+            }
+            .mapStyle(.standard)
+            .mapControls {
+                MapCompass()
+                MapScaleView()
+                MapUserLocationButton()
+            }
+            .navigationTitle(location.name)
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 
