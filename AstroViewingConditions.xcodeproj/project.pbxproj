@@ -21,7 +21,6 @@
 		760CB543529248465AAC1704 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D62CAF22CD36ECE061871AE1 /* DashboardView.swift */; };
 		839CA2493F19FADEEC16E63F /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7652EAC812CC0AAB2F653140 /* Formatters.swift */; };
 		884C0136EA79386173E6D7EA /* ISSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C80FE005982B8A23A5C4F8 /* ISSService.swift */; };
-		9D2783609CC000EC4C3C5E2D /* FogScoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC1828DA0E16C401F2724417 /* FogScoreView.swift */; };
 		9F81B6B294E7541856CB9789 /* AstronomyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0CECDC09712607CFA0A4163 /* AstronomyService.swift */; };
 		A86F34AFE24D6A37D840B8E7 /* AstroViewingConditionsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F506B31B8F7FB91A3F0C9B /* AstroViewingConditionsApp.swift */; };
 		C5C2CF786CBF268D9D4867C6 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577996EF999715ACED41993F /* WeatherService.swift */; };
@@ -50,7 +49,6 @@
 		9B8AA84FAC9861F13DA752E1 /* MapPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapPickerView.swift; sourceTree = "<group>"; };
 		9ECD54B2FD405293C86CB350 /* SavedLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocation.swift; sourceTree = "<group>"; };
 		A66F62B89E77C6E6B225D507 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
-		AC1828DA0E16C401F2724417 /* FogScoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogScoreView.swift; sourceTree = "<group>"; };
 		B54B0BFCDF40C399EA4824A6 /* LocationSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSearchView.swift; sourceTree = "<group>"; };
 		B71EA0245C32D0AA9918A074 /* SunMoonCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunMoonCard.swift; sourceTree = "<group>"; };
 		BC522BA09BF9FC4E4BB1FB46 /* AstroViewingConditions.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AstroViewingConditions.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -198,7 +196,6 @@
 			children = (
 				D62CAF22CD36ECE061871AE1 /* DashboardView.swift */,
 				5044EFABED3171D24C921DE7 /* DashboardViewModel.swift */,
-				AC1828DA0E16C401F2724417 /* FogScoreView.swift */,
 				D31C1D0B71D80A12EF7E16F2 /* HourlyForecastView.swift */,
 				D7A884A58E8A4F9AAE74714D /* ISSCard.swift */,
 				B71EA0245C32D0AA9918A074 /* SunMoonCard.swift */,
@@ -291,7 +288,6 @@
 				760CB543529248465AAC1704 /* DashboardView.swift in Sources */,
 				D7533D39FBBCD71940705306 /* DashboardViewModel.swift in Sources */,
 				DEB630F899EAD1D376D37DCD /* FogCalculator.swift in Sources */,
-				9D2783609CC000EC4C3C5E2D /* FogScoreView.swift in Sources */,
 				839CA2493F19FADEEC16E63F /* Formatters.swift in Sources */,
 				01F7002DD301F4F9238EB530 /* HourlyForecastView.swift in Sources */,
 				4E93D9147A5BD27BCEE82C79 /* ISSCard.swift in Sources */,
