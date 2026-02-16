@@ -102,8 +102,8 @@ public struct LocationSearchView: View {
                 }
             }
             .sheet(isPresented: $showingMapPicker) {
-                MapPickerView { coordinate in
-                    saveLocation(from: coordinate)
+                MapPickerView { name, coordinate in
+                    saveLocation(name: name, from: coordinate)
                 }
             }
         }
@@ -139,9 +139,9 @@ public struct LocationSearchView: View {
         dismiss()
     }
     
-    private func saveLocation(from coordinate: CLLocationCoordinate2D) {
+    private func saveLocation(name: String, from coordinate: CLLocationCoordinate2D) {
         let location = SavedLocation(
-            name: "Custom Location",
+            name: name,
             latitude: coordinate.latitude,
             longitude: coordinate.longitude
         )

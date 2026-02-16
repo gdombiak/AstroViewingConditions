@@ -4,56 +4,73 @@ import MapKit
 struct MapPickerView: View {
     @Environment(\.dismiss) private var dismiss
     
-    let onSelect: (CLLocationCoordinate2D) -> Void
+    let onSelect: (String, CLLocationCoordinate2D) -> Void
     
     @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var selectedCoordinate: CLLocationCoordinate2D?
+    @State private var locationName = ""
     @State private var locationManager = LocationManager()
     
     var body: some View {
         NavigationStack {
-            Map(position: $position, interactionModes: .all) {
-                if let coordinate = selectedCoordinate {
-                    Marker("Selected", coordinate: coordinate)
-                }
-                
-                UserAnnotation()
-            }
-            .mapStyle(.standard)
-            .mapControls {
-                MapCompass()
-                MapScaleView()
-            }
-            .navigationTitle("Select Location")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
+            VStack(spacing: 0) {
+                MapReader { reader in
+                    Map(position: $position, interactionModes: .all) {
+                        if let coordinate = selectedCoordinate {
+                            Marker("Selected", coordinate: coordinate)
+                        }
+                        
+                        UserAnnotation()
+                    }
+                    .mapStyle(.standard)
+                    .mapControls {
+                        MapCompass()
+                        MapScaleView()
+                    }
+                    .onTapGesture { location in
+                        if let coordinate = reader.convert(location, from: .local) {
+                            selectedCoordinate = coordinate
+                        }
                     }
                 }
                 
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Select") {
-                        if let coordinate = selectedCoordinate {
-                            onSelect(coordinate)
+                VStack(spacing: 12) {
+                    TextField("Location name", text: $locationName)
+                        .textFieldStyle(.roundedBorder)
+                    
+                    HStack {
+                        Button("Cancel") {
                             dismiss()
                         }
-                    }
-                    .disabled(selectedCoordinate == nil)
-                }
-                
-                ToolbarItem(placement: .bottomBar) {
-                    HStack {
+                        .buttonStyle(.bordered)
+                        
                         Spacer()
+                        
                         Button(action: centerOnUserLocation) {
                             Image(systemName: "location.fill")
-                                .font(.title2)
                         }
+                        .buttonStyle(.bordered)
+                        
                         Spacer()
+                        
+                        Button("Select") {
+                            if let coordinate = selectedCoordinate {
+                                let name = locationName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                onSelect(name.isEmpty ? "Custom Location" : name, coordinate)
+                                dismiss()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(selectedCoordinate == nil)
                     }
                 }
+                .padding()
+                .background(.ultraThinMaterial)
             }
+            .navigationTitle("Select Location")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
         }
     }
     
@@ -80,7 +97,7 @@ struct MapPickerView: View {
 }
 
 #Preview {
-    MapPickerView { coordinate in
-        print("Selected: \(coordinate)")
+    MapPickerView { name, coordinate in
+        print("Selected: \(name) at \(coordinate)")
     }
 }
