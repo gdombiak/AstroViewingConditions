@@ -114,47 +114,51 @@ public actor AstronomyService {
     
     private func getMoonPhaseName(phase: Double) -> String {
         // Phase is in degrees (-180 to 180)
+        // -180° → 0°: Waxing (New Moon → Full Moon)
+        // 0° → 180°: Waning (Full Moon → New Moon)
         switch phase {
         case -10...10:
-            return "New Moon"
-        case 10..<80:
-            return "Waxing Crescent"
-        case 80...100:
-            return "First Quarter"
-        case 100..<170:
-            return "Waxing Gibbous"
-        case ...(-170), 170...:
             return "Full Moon"
-        case -170..<(-100):
+        case 10..<80:
             return "Waning Gibbous"
-        case -100...(-80):
+        case 80...100:
             return "Last Quarter"
-        case -80..<(-10):
+        case 100..<170:
             return "Waning Crescent"
+        case ...(-170), 170...:
+            return "New Moon"
+        case -170..<(-100):
+            return "Waxing Crescent"
+        case -100...(-80):
+            return "First Quarter"
+        case -80..<(-10):
+            return "Waxing Gibbous"
         default:
             return "Unknown"
         }
     }
-    
+
     private func getMoonEmoji(phase: Double) -> String {
         // Phase is in degrees (-180 to 180)
+        // -180° → 0°: Waxing (New Moon → Full Moon)
+        // 0° → 180°: Waning (Full Moon → New Moon)
         switch phase {
         case -10...10:
-            return "🌑"
-        case 10..<80:
-            return "🌒"
-        case 80...100:
-            return "🌓"
-        case 100..<170:
-            return "🌔"
-        case ...(-170), 170...:
             return "🌕"
-        case -170..<(-100):
+        case 10..<80:
             return "🌖"
-        case -100...(-80):
+        case 80...100:
             return "🌗"
-        case -80..<(-10):
+        case 100..<170:
             return "🌘"
+        case ...(-170), 170...:
+            return "🌑"
+        case -170..<(-100):
+            return "🌒"
+        case -100...(-80):
+            return "🌓"
+        case -80..<(-10):
+            return "🌔"
         default:
             return "🌙"
         }
