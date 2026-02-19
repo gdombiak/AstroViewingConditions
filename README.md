@@ -37,7 +37,12 @@ An open-source iOS app for astronomy enthusiasts to check viewing conditions for
 
 2. Open in Xcode:
    ```bash
-   open Package.swift
+   open AstroViewingConditions.xcodeproj
+   ```
+   
+   Or use the provided script:
+   ```bash
+   ./open_in_xcode.sh
    ```
 
 3. Build and run on your iOS device or simulator.
