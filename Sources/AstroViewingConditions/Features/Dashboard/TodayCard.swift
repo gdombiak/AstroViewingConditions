@@ -56,11 +56,14 @@ struct CurrentConditionsCard: View {
                 // Visibility & Fog
                 HStack(spacing: 20) {
                     if let visibility = forecast.visibility {
-                        HStack {
+                        HStack(spacing: 4) {
                             Image(systemName: "eye")
                                 .foregroundStyle(.secondary)
-                            Text("Visibility: \(unitConverter.formatVisibility(visibility))")
+                            Text("Visibility:")
                                 .font(.subheadline)
+                            Text(unitConverter.formatVisibility(visibility))
+                                .font(.subheadline)
+                                .foregroundStyle(visibilityColor(for: visibility))
                         }
                     }
                     
@@ -140,6 +143,20 @@ struct CurrentConditionsCard: View {
     
     private func fogTextColor(for percentage: Int) -> Color {
         percentage > 60 ? .black : .white
+    }
+
+    // Visibility color: green for good (>10km), yellow for moderate (5-10km), orange/red for poor
+    private func visibilityColor(for meters: Double) -> Color {
+        switch meters {
+        case 0..<1000:
+            return .red
+        case 1000..<5000:
+            return .orange
+        case 5000..<10000:
+            return .yellow
+        default:
+            return .green
+        }
     }
 }
 
