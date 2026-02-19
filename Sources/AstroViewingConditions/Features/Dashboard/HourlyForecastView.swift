@@ -57,6 +57,7 @@ struct HourlyForecastView: View {
                         MetricLabel(icon: "wind", label: "Wind", color: .gray, fontScale: fontScale)
                         MetricLabel(icon: "arrow.up", label: "Dir", color: .gray, fontScale: fontScale)
                         MetricLabel(icon: "cloud.fog.fill", label: "Fog", color: .gray, fontScale: fontScale)
+                        MetricLabel(icon: "eye", label: "Visibility", color: .gray, fontScale: fontScale)
                     }
                     .frame(width: labelColumnWidth)
                     
@@ -176,7 +177,7 @@ struct HourlyColumn: View {
             // Fog risk
             if fogScore.percentage > 0 {
                 Text("\(fogScore.percentage)%")
-                    .font(.system(size: 11 * fontScale, weight: .semibold))
+                    .font(.system(size: 13 * fontScale, weight: .semibold))
                     .foregroundStyle(fogColor)
                     .frame(height: 20 * fontScale)
                     .frame(maxWidth: .infinity)
@@ -184,7 +185,20 @@ struct HourlyColumn: View {
                     .clipShape(RoundedRectangle(cornerRadius: 4))
             } else {
                 Text("—")
-                    .font(.system(size: 11 * fontScale))
+                    .font(.system(size: 13 * fontScale))
+                    .foregroundStyle(.secondary)
+                    .frame(height: 20 * fontScale)
+            }
+
+            // Visibility
+            if let visibility = forecast.visibility {
+                Text(unitConverter.formatShortVisibility(visibility))
+                    .font(.system(size: 13 * fontScale, weight: .medium))
+                    .foregroundStyle(visibilityColor(for: visibility))
+                    .frame(height: 20 * fontScale)
+            } else {
+                Text("—")
+                    .font(.system(size: 13 * fontScale))
                     .foregroundStyle(.secondary)
                     .frame(height: 20 * fontScale)
             }
@@ -236,6 +250,20 @@ struct HourlyColumn: View {
             return .orange
         default:
             return .red
+        }
+    }
+    
+    // Visibility color: green for good (>10km), yellow for moderate (5-10km), orange/red for poor
+    private func visibilityColor(for meters: Double) -> Color {
+        switch meters {
+        case 0..<1000:
+            return .red
+        case 1000..<5000:
+            return .orange
+        case 5000..<10000:
+            return .yellow
+        default:
+            return .green
         }
     }
 }
