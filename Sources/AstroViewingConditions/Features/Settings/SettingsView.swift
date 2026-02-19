@@ -73,9 +73,16 @@ public struct SettingsView: View {
                         TextField("N2YO API Key", text: $n2yoApiKey)
                         
                         if n2yoApiKey.isEmpty {
-                            Text("Enter your N2YO API key to enable ISS pass predictions. Get a free key at n2yo.com")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Enter your N2YO API key to enable ISS pass predictions.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                
+                                Link(destination: URL(string: "https://www.n2yo.com/")!) {
+                                    Label("Get a free API key at n2yo.com", systemImage: "arrow.up.right.square")
+                                        .font(.caption)
+                                }
+                            }
                         } else {
                             Text("ISS tracking is enabled")
                                 .font(.caption)
