@@ -31,7 +31,7 @@ An open-source iOS app for astronomy enthusiasts to check viewing conditions for
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/AstroViewingConditions.git
+   git clone https://github.com/gdombiak/AstroViewingConditions.git
    cd AstroViewingConditions
    ```
 
