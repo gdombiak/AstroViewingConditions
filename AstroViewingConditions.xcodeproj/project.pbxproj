@@ -24,20 +24,34 @@
 		9F81B6B294E7541856CB9789 /* AstronomyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0CECDC09712607CFA0A4163 /* AstronomyService.swift */; };
 		A86F34AFE24D6A37D840B8E7 /* AstroViewingConditionsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F506B31B8F7FB91A3F0C9B /* AstroViewingConditionsApp.swift */; };
 		C5C2CF786CBF268D9D4867C6 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 577996EF999715ACED41993F /* WeatherService.swift */; };
+		CA42D02056497D47F6D25C5B /* AdaptiveFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25139DF34D82E18FF0CCCCA2 /* AdaptiveFont.swift */; };
 		D2C75351C291220E072DB80E /* TodayCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D792C454E107ED699385F5D /* TodayCard.swift */; };
 		D7533D39FBBCD71940705306 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5044EFABED3171D24C921DE7 /* DashboardViewModel.swift */; };
 		DB3AA456B38B3B96977F386B /* LocationSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B54B0BFCDF40C399EA4824A6 /* LocationSearchView.swift */; };
 		DEB630F899EAD1D376D37DCD /* FogCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3248700EC9858D76C238BF8E /* FogCalculator.swift */; };
 		E3533711DF43E0610773DC5E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 078C87DAF5B0087DCFABCCE9 /* Assets.xcassets */; };
+		E85FB6F41303AC7AE4B46F60 /* HourlyForecastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E60051D87F4042845731A75 /* HourlyForecastTests.swift */; };
 		EDE97CF450FFFBAD6D9491D7 /* SavedLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ECD54B2FD405293C86CB350 /* SavedLocation.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4C6F626361229F1577F5FF0A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B5DF5D202A7D2D72E4754E80 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 48CAAE275E28D8807F2716D3;
+			remoteInfo = AstroViewingConditions;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		03443CEECBDFE531EBA49F66 /* ViewingConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewingConditions.swift; sourceTree = "<group>"; };
 		078C87DAF5B0087DCFABCCE9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		12C80FE005982B8A23A5C4F8 /* ISSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISSService.swift; sourceTree = "<group>"; };
+		25139DF34D82E18FF0CCCCA2 /* AdaptiveFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveFont.swift; sourceTree = "<group>"; };
 		3248700EC9858D76C238BF8E /* FogCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogCalculator.swift; sourceTree = "<group>"; };
 		327636F4ECBD05E4499DD4EA /* UnitConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitConverter.swift; sourceTree = "<group>"; };
+		38D499FDBC2B800314836987 /* AstroViewingConditionsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AstroViewingConditionsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		47BA55BB89035E34DFFE9AD4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		4A558454C94B954F4876DF01 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		4D792C454E107ED699385F5D /* TodayCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayCard.swift; sourceTree = "<group>"; };
@@ -46,6 +60,7 @@
 		65F506B31B8F7FB91A3F0C9B /* AstroViewingConditionsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstroViewingConditionsApp.swift; sourceTree = "<group>"; };
 		7652EAC812CC0AAB2F653140 /* Formatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formatters.swift; sourceTree = "<group>"; };
 		8C30589DD7FDE58AE115B767 /* LocationsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationsListView.swift; sourceTree = "<group>"; };
+		8E60051D87F4042845731A75 /* HourlyForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HourlyForecastTests.swift; sourceTree = "<group>"; };
 		9B8AA84FAC9861F13DA752E1 /* MapPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapPickerView.swift; sourceTree = "<group>"; };
 		9ECD54B2FD405293C86CB350 /* SavedLocation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocation.swift; sourceTree = "<group>"; };
 		A66F62B89E77C6E6B225D507 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
@@ -71,6 +86,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		00E85CE01035AF1A65B4204C /* AstroViewingConditionsTests */ = {
+			isa = PBXGroup;
+			children = (
+				8E60051D87F4042845731A75 /* HourlyForecastTests.swift */,
+			);
+			name = AstroViewingConditionsTests;
+			path = Tests/AstroViewingConditionsTests;
+			sourceTree = "<group>";
+		};
 		0DAC647FF8978FD00D131609 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
@@ -141,6 +165,7 @@
 		86296E79392C4972D7B6FBAD /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				25139DF34D82E18FF0CCCCA2 /* AdaptiveFont.swift */,
 				3248700EC9858D76C238BF8E /* FogCalculator.swift */,
 				7652EAC812CC0AAB2F653140 /* Formatters.swift */,
 				327636F4ECBD05E4499DD4EA /* UnitConverter.swift */,
@@ -152,6 +177,7 @@
 			isa = PBXGroup;
 			children = (
 				BC522BA09BF9FC4E4BB1FB46 /* AstroViewingConditions.app */,
+				38D499FDBC2B800314836987 /* AstroViewingConditionsTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -186,6 +212,7 @@
 		B25B46BB9A13BE9670FCF19D = {
 			isa = PBXGroup;
 			children = (
+				00E85CE01035AF1A65B4204C /* AstroViewingConditionsTests */,
 				F94A1AE00A09340AB20EEA77 /* Sources */,
 				9443180C2B6E5E1820B00E64 /* Products */,
 			);
@@ -236,6 +263,24 @@
 			productReference = BC522BA09BF9FC4E4BB1FB46 /* AstroViewingConditions.app */;
 			productType = "com.apple.product-type.application";
 		};
+		C0224F630745B51A904EF4EA /* AstroViewingConditionsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BD7EAFC664C43B87CEE1CDFC /* Build configuration list for PBXNativeTarget "AstroViewingConditionsTests" */;
+			buildPhases = (
+				B6C6AB5B03B7694E6D767DBE /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5EACBC421EDACABAFE06E9DD /* PBXTargetDependency */,
+			);
+			name = AstroViewingConditionsTests;
+			packageProductDependencies = (
+			);
+			productName = AstroViewingConditionsTests;
+			productReference = 38D499FDBC2B800314836987 /* AstroViewingConditionsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -262,6 +307,7 @@
 			projectRoot = "";
 			targets = (
 				48CAAE275E28D8807F2716D3 /* AstroViewingConditions */,
+				C0224F630745B51A904EF4EA /* AstroViewingConditionsTests */,
 			);
 		};
 /* End PBXProject section */
@@ -282,6 +328,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CA42D02056497D47F6D25C5B /* AdaptiveFont.swift in Sources */,
 				A86F34AFE24D6A37D840B8E7 /* AstroViewingConditionsApp.swift in Sources */,
 				9F81B6B294E7541856CB9789 /* AstronomyService.swift in Sources */,
 				0B74B28941A1E48995DA32A8 /* ContentView.swift in Sources */,
@@ -306,7 +353,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B6C6AB5B03B7694E6D767DBE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E85FB6F41303AC7AE4B46F60 /* HourlyForecastTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		5EACBC421EDACABAFE06E9DD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 48CAAE275E28D8807F2716D3 /* AstroViewingConditions */;
+			targetProxy = 4C6F626361229F1577F5FF0A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		09033CA1F1F2DC691154E4B3 /* Release */ = {
@@ -314,23 +377,37 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/App/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.astroviewing.conditions;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		0EE057AF760ABAC45B0629D3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.astroviewing.AstroViewingConditionsTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AstroViewingConditions.app/AstroViewingConditions";
+			};
+			name = Debug;
 		};
 		2AB79B6656225A4DFB5EA116 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -367,7 +444,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = ALV53VY374;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -398,19 +474,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/App/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.astroviewing.conditions;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -451,7 +524,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = ALV53VY374;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -484,9 +556,35 @@
 			};
 			name = Debug;
 		};
+		F50779129BD0FB51C850B7D1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.astroviewing.AstroViewingConditionsTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AstroViewingConditions.app/AstroViewingConditions";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		BD7EAFC664C43B87CEE1CDFC /* Build configuration list for PBXNativeTarget "AstroViewingConditionsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0EE057AF760ABAC45B0629D3 /* Debug */,
+				F50779129BD0FB51C850B7D1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		D25ACBF3C93B33BADCD31C51 /* Build configuration list for PBXProject "AstroViewingConditions" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

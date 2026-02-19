@@ -37,6 +37,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "C0224F630745B51A904EF4EA"
+               BuildableName = "AstroViewingConditionsTests.xctest"
+               BlueprintName = "AstroViewingConditionsTests"
+               ReferencedContainer = "container:AstroViewingConditions.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

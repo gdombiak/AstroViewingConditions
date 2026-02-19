@@ -79,11 +79,20 @@ public actor WeatherService {
     
     private func parseHourlyForecasts(from response: OpenMeteoResponse) -> [HourlyForecast] {
         let hourly = response.hourly
+        let utcOffsetSeconds = response.utcOffsetSeconds
         var forecasts: [HourlyForecast] = []
         
         for index in hourly.time.indices {
+            // The API returns times without timezone info, but they represent local time
+            // The DateFormatter parses them as UTC, so we need to apply the NEGATIVE offset
+            // to shift from UTC back to the correct local time
+            // Example: "2026-02-19T00:00" parsed as UTC is midnight UTC (8am LA time)
+            // With offset -28800 (-8h), we subtract (-8h) = add 8h to get to midnight LA time
+            let utcDate = hourly.time[index]
+            let localDate = utcDate.addingTimeInterval(TimeInterval(-utcOffsetSeconds))
+            
             let forecast = HourlyForecast(
-                time: hourly.time[index],
+                time: localDate,
                 cloudCover: hourly.cloudcover[safe: index] ?? 0,
                 humidity: hourly.relativehumidity2M[safe: index] ?? 0,
                 windSpeed: hourly.windspeed10M[safe: index] ?? 0,
@@ -111,7 +120,13 @@ public enum WeatherError: Error {
 // MARK: - Open-Meteo Response Models
 
 struct OpenMeteoResponse: Codable {
+    let utcOffsetSeconds: Int
     let hourly: HourlyData
+    
+    enum CodingKeys: String, CodingKey {
+        case utcOffsetSeconds = "utc_offset_seconds"
+        case hourly
+    }
 }
 
 struct HourlyData: Codable {

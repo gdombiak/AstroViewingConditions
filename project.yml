@@ -36,6 +36,17 @@ targets:
     dependencies:
       - package: SunCalc
 
+  AstroViewingConditionsTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/AstroViewingConditionsTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: AstroViewingConditions
+
 schemes:
   AstroViewingConditions:
     build:
@@ -45,6 +56,8 @@ schemes:
       config: Debug
     test:
       config: Debug
+      targets:
+        - AstroViewingConditionsTests
     profile:
       config: Release
     analyze:
