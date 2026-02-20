@@ -272,7 +272,7 @@ final class HourlyForecastTests: XCTestCase {
             dailySunEvents: [],
             dailyMoonInfo: [],
             issPasses: [],
-            fogScore: FogScore(percentage: 0, factors: [])
+            fogScore: FogScore(score: 0, factors: [])
         )
         
         // Inject the mock data

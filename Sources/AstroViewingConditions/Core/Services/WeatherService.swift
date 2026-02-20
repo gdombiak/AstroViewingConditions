@@ -77,7 +77,7 @@ public actor WeatherService {
         return searchResponse.results ?? []
     }
     
-    private func parseHourlyForecasts(from response: OpenMeteoResponse) -> [HourlyForecast] {
+    public nonisolated func parseHourlyForecasts(from response: OpenMeteoResponse) -> [HourlyForecast] {
         let hourly = response.hourly
         let utcOffsetSeconds = response.utcOffsetSeconds
         var forecasts: [HourlyForecast] = []
@@ -119,29 +119,34 @@ public enum WeatherError: Error {
 
 // MARK: - Open-Meteo Response Models
 
-struct OpenMeteoResponse: Codable {
-    let utcOffsetSeconds: Int
-    let hourly: HourlyData
+public struct OpenMeteoResponse: Codable {
+    public let utcOffsetSeconds: Int
+    public let hourly: HourlyData
     
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case utcOffsetSeconds = "utc_offset_seconds"
         case hourly
     }
+    
+    public init(utcOffsetSeconds: Int, hourly: HourlyData) {
+        self.utcOffsetSeconds = utcOffsetSeconds
+        self.hourly = hourly
+    }
 }
 
-struct HourlyData: Codable {
-    let time: [Date]
-    let cloudcover: [Int]
-    let cloudcoverLow: [Int]?
-    let relativehumidity2M: [Int]
-    let windspeed10M: [Double]
-    let winddirection10M: [Int]
-    let temperature2M: [Double]
-    let dewpoint2M: [Double]?
-    let precipitation: [Double]
-    let visibility: [Double]?
+public struct HourlyData: Codable {
+    public let time: [Date]
+    public let cloudcover: [Int]
+    public let cloudcoverLow: [Int]?
+    public let relativehumidity2M: [Int]
+    public let windspeed10M: [Double]
+    public let winddirection10M: [Int]
+    public let temperature2M: [Double]
+    public let dewpoint2M: [Double]?
+    public let precipitation: [Double]?
+    public let visibility: [Double]?
     
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case time
         case cloudcover
         case cloudcoverLow = "cloudcover_low"
@@ -153,10 +158,34 @@ struct HourlyData: Codable {
         case precipitation
         case visibility
     }
+    
+    public init(
+        time: [Date],
+        cloudcover: [Int],
+        cloudcoverLow: [Int]?,
+        relativehumidity2M: [Int],
+        windspeed10M: [Double],
+        winddirection10M: [Int],
+        temperature2M: [Double],
+        dewpoint2M: [Double]?,
+        precipitation: [Double]?,
+        visibility: [Double]?
+    ) {
+        self.time = time
+        self.cloudcover = cloudcover
+        self.cloudcoverLow = cloudcoverLow
+        self.relativehumidity2M = relativehumidity2M
+        self.windspeed10M = windspeed10M
+        self.winddirection10M = winddirection10M
+        self.temperature2M = temperature2M
+        self.dewpoint2M = dewpoint2M
+        self.precipitation = precipitation
+        self.visibility = visibility
+    }
 }
 
-struct GeocodingResponse: Codable {
-    let results: [GeocodingResult]?
+public struct GeocodingResponse: Codable {
+    public let results: [GeocodingResult]?
 }
 
 public struct GeocodingResult: Codable, Identifiable, Sendable {
