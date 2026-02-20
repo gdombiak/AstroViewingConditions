@@ -175,8 +175,8 @@ struct HourlyColumn: View {
             .frame(height: 20 * fontScale)
             
             // Fog risk
-            if fogScore.percentage > 0 {
-                Text("\(fogScore.percentage)%")
+            if fogScore.score > 0 {
+                Text("\(fogScore.score)%")
                     .font(.system(size: 13 * fontScale, weight: .semibold))
                     .foregroundStyle(fogColor)
                     .frame(height: 20 * fontScale)
@@ -226,7 +226,7 @@ struct HourlyColumn: View {
     
     // Fog background: similar gradient to clouds (dark = low fog risk, light = high fog risk)
     private var fogBackgroundColor: Color {
-        let percentage = Double(fogScore.percentage) / 100.0
+        let percentage = Double(fogScore.score) / 100.0
         // Interpolate from dark blue (0%) to light gray/white (100%)
         let red = 10 + (230 * percentage)
         let green = 20 + (220 * percentage)
@@ -234,14 +234,14 @@ struct HourlyColumn: View {
         return Color(red: red/255, green: green/255, blue: blue/255)
     }
     
-    // Fog color: for text contrast (dark background → white, light background → black)
+    // Fog color: for text contrast (dark background -> white, light background -> black)
     private var fogColor: Color {
-        fogScore.percentage > 60 ? .black : .white
+        fogScore.score > 60 ? .black : .white
     }
     
     // Legacy fog color for compatibility
     private var fogLevelColor: Color {
-        switch fogScore.percentage {
+        switch fogScore.score {
         case 0..<30:
             return .green
         case 30..<60:

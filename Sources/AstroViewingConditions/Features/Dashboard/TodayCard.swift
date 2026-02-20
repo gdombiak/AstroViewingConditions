@@ -68,17 +68,17 @@ struct CurrentConditionsCard: View {
                     }
                     
                     let fogScore = FogCalculator.calculate(from: forecast)
-                    if fogScore.percentage > 0 {
+                    if fogScore.score > 0 {
                         HStack(spacing: 4) {
                             Image(systemName: "cloud.fog.fill")
                                 .font(.system(size: 14))
-                                .foregroundStyle(fogTextColor(for: fogScore.percentage))
-                            Text("\(fogScore.percentage)%")
+                                .foregroundStyle(fogTextColor(for: fogScore.score))
+                            Text("\(fogScore.score)%")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(fogTextColor(for: fogScore.percentage))
+                                .foregroundStyle(fogTextColor(for: fogScore.score))
                         }
                         .frame(width: 60, height: 28)
-                        .background(fogBackgroundColor(for: fogScore.percentage))
+                        .background(fogBackgroundColor(for: fogScore.score))
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                     
