@@ -5,7 +5,7 @@ import Foundation
 @MainActor
 final class AstronomyServiceTests: XCTestCase {
     
-    var astronomyService: AstronomyService!
+    nonisolated(unsafe) var astronomyService: AstronomyService!
     
     override func setUp() async throws {
         try await super.setUp()
