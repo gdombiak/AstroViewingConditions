@@ -3,6 +3,10 @@ import SwiftData
 
 @main
 struct AstroViewingConditionsApp: App {
+    init() {
+        UserDefaults.standard.initializeUnitSystemIfNeeded()
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()

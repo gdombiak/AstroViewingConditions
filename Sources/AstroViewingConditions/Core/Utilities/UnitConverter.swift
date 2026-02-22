@@ -103,14 +103,30 @@ private let unitSystemKey = "selectedUnitSystem"
 public extension UserDefaults {
     var selectedUnitSystem: UnitSystem {
         get {
-            guard let rawValue = string(forKey: unitSystemKey),
-                  let system = UnitSystem(rawValue: rawValue) else {
-                return .metric
+            if let rawValue = string(forKey: unitSystemKey) {
+                if let system = UnitSystem(rawValue: rawValue) {
+                    return system
+                } else {
+                    print("Invalid UnitSystem value stored: '\(rawValue)', falling back to metric")
+                }
             }
-            return system
+            return .metric
         }
         set {
             set(newValue.rawValue, forKey: unitSystemKey)
         }
+    }
+    
+    func initializeUnitSystemIfNeeded() {
+        guard string(forKey: unitSystemKey) == nil else { return }
+        
+        let defaultSystem: UnitSystem = if #available(iOS 16, *) {
+            Locale.current.measurementSystem == .metric ? .metric : .imperial
+        } else {
+            Locale.current.usesMetricSystem ? .metric : .imperial
+        }
+        
+        print("Initializing unit system from locale: \(defaultSystem.rawValue)")
+        set(defaultSystem.rawValue, forKey: unitSystemKey)
     }
 }

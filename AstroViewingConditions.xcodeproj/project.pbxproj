@@ -40,6 +40,7 @@
 		E3533711DF43E0610773DC5E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 078C87DAF5B0087DCFABCCE9 /* Assets.xcassets */; };
 		E85FB6F41303AC7AE4B46F60 /* HourlyForecastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E60051D87F4042845731A75 /* HourlyForecastTests.swift */; };
 		EDE97CF450FFFBAD6D9491D7 /* SavedLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ECD54B2FD405293C86CB350 /* SavedLocation.swift */; };
+		U7N1T2S3T4E5S6T7N8I9T0S1 /* UnitSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1L2E3R4E5F6E7R8E9N0C1E2 /* UnitSystemTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -88,6 +89,7 @@
 		ED98556427C84CC4F6481E34 /* ISSServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISSServiceTests.swift; sourceTree = "<group>"; };
 		F302F40B584E071A2408D6CC /* AstronomyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstronomyServiceTests.swift; sourceTree = "<group>"; };
 		FA85D29ADCA14F29A247CFA9 /* FogCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogCalculatorTests.swift; sourceTree = "<group>"; };
+		F1L2E3R4E5F6E7R8E9N0C1E2 /* UnitSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitSystemTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -112,8 +114,9 @@
 				8E60051D87F4042845731A75 /* HourlyForecastTests.swift */,
 				ED98556427C84CC4F6481E34 /* ISSServiceTests.swift */,
 				33A932544EBED47D8B540A33 /* NetworkErrorTests.swift */,
-				E1B9C8B5B17ED18A6A87CE28 /* ViewingConditionsModelTests.swift */,
-				81B52C3C0FB94395C6A64BAF /* WeatherServiceTests.swift */,
+			E1B9C8B5B17ED18A6A87CE28 /* ViewingConditionsModelTests.swift */,
+			81B52C3C0FB94395C6A64BAF /* WeatherServiceTests.swift */,
+			F1L2E3R4E5F6E7R8E9N0C1E2 /* UnitSystemTests.swift */,
 			);
 			name = AstroViewingConditionsTests;
 			path = Tests/AstroViewingConditionsTests;
@@ -388,8 +391,9 @@
 				E85FB6F41303AC7AE4B46F60 /* HourlyForecastTests.swift in Sources */,
 				058D8220DE082064C83E7D76 /* ISSServiceTests.swift in Sources */,
 				30BE2C52DF90E7EE61729347 /* NetworkErrorTests.swift in Sources */,
-				87DA88BB93B0934648A061AF /* ViewingConditionsModelTests.swift in Sources */,
-				03C85DB587BEACC839C4FE44 /* WeatherServiceTests.swift in Sources */,
+			87DA88BB93B0934648A061AF /* ViewingConditionsModelTests.swift in Sources */,
+			03C85DB587BEACC839C4FE44 /* WeatherServiceTests.swift in Sources */,
+			U7N1T2S3T4E5S6T7N8I9T0S1 /* UnitSystemTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
