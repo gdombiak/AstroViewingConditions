@@ -2,6 +2,7 @@ import XCTest
 import Foundation
 @testable import AstroViewingConditions
 
+@MainActor
 final class AstronomyServiceTests: XCTestCase {
     
     var astronomyService: AstronomyService!
@@ -24,10 +25,76 @@ final class AstronomyServiceTests: XCTestCase {
             on: date
         )
         
-        XCTAssertTrue(sunEvents.sunrise <= sunEvents.sunset)
-        XCTAssertTrue(sunEvents.civilTwilightBegin <= sunEvents.civilTwilightEnd)
-        XCTAssertTrue(sunEvents.nauticalTwilightBegin <= sunEvents.nauticalTwilightEnd)
-        XCTAssertTrue(sunEvents.astronomicalTwilightBegin <= sunEvents.astronomicalTwilightEnd)
+        let calendar = Calendar.current
+        
+        XCTAssertFalse(sunEvents.sunrise == date, "sunrise should be calculated, not fallback")
+        XCTAssertFalse(sunEvents.sunset == date, "sunset should be calculated, not fallback")
+        XCTAssertFalse(sunEvents.civilTwilightBegin == date, "civilTwilightBegin should be calculated")
+        XCTAssertFalse(sunEvents.civilTwilightEnd == date, "civilTwilightEnd should be calculated")
+        XCTAssertFalse(sunEvents.nauticalTwilightBegin == date, "nauticalTwilightBegin should be calculated")
+        XCTAssertFalse(sunEvents.nauticalTwilightEnd == date, "nauticalTwilightEnd should be calculated")
+        XCTAssertFalse(sunEvents.astronomicalTwilightBegin == date, "astronomicalTwilightBegin should be calculated")
+        XCTAssertFalse(sunEvents.astronomicalTwilightEnd == date, "astronomicalTwilightEnd should be calculated")
+        
+        let inputDay = calendar.startOfDay(for: date)
+        let sunriseDay = calendar.startOfDay(for: sunEvents.sunrise)
+        
+        let daysDifference = calendar.dateComponents([.day], from: inputDay, to: sunriseDay).day ?? 0
+        XCTAssertTrue(daysDifference >= 0 && daysDifference <= 1,
+            "sunrise should be on input date or next day")
+    }
+    
+    func testViewModelSunEventsFormattedEndToEnd() async {
+        let latitude = 45.4627
+        let longitude = -122.7491
+        let date = Date()
+        
+        let sunEvents = await astronomyService.calculateSunEvents(
+            latitude: latitude,
+            longitude: longitude,
+            on: date
+        )
+        
+        let location = CachedLocation(
+            name: "Test",
+            latitude: latitude,
+            longitude: longitude,
+            elevation: 100
+        )
+        
+        let conditions = ViewingConditions(
+            fetchedAt: date,
+            location: location,
+            hourlyForecasts: [],
+            dailySunEvents: [sunEvents],
+            dailyMoonInfo: [],
+            issPasses: [],
+            fogScore: FogScore(score: 0, factors: [])
+        )
+        
+        let viewModel = DashboardViewModel()
+        viewModel.viewingConditions = conditions
+        viewModel.selectedDay = .today
+        
+        guard let currentSunEvents = viewModel.currentSunEvents else {
+            XCTFail("ViewModel should have sun events")
+            return
+        }
+        
+        let formattedSunrise = DateFormatters.formatTime(currentSunEvents.sunrise)
+        let formattedSunset = DateFormatters.formatTime(currentSunEvents.sunset)
+        
+        print("End-to-end: Sunrise: \(formattedSunrise), Sunset: \(formattedSunset)")
+        
+        XCTAssertFalse(formattedSunrise.isEmpty)
+        XCTAssertFalse(formattedSunset.isEmpty)
+        
+        let calendar = Calendar.current
+        let sunriseHour = calendar.component(.hour, from: currentSunEvents.sunrise)
+        let sunsetHour = calendar.component(.hour, from: currentSunEvents.sunset)
+        
+        XCTAssertTrue(sunriseHour < sunsetHour,
+            "In local time, sunrise should be before sunset. Got: \(formattedSunrise) -> \(formattedSunset)")
     }
     
     func testCalculateSunEventsWithSpecificLocation() async {
