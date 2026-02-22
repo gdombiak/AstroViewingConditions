@@ -2,7 +2,6 @@ import XCTest
 import Foundation
 @testable import AstroViewingConditions
 
-@MainActor
 final class AstronomyServiceTests: XCTestCase {
     
     nonisolated(unsafe) var astronomyService: AstronomyService!
@@ -44,6 +43,7 @@ final class AstronomyServiceTests: XCTestCase {
             "sunrise should be on input date or next day")
     }
     
+    @MainActor
     func testViewModelSunEventsFormattedEndToEnd() async {
         let latitude = 45.4627
         let longitude = -122.7491
