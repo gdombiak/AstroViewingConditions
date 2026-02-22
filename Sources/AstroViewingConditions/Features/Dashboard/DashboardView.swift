@@ -277,7 +277,7 @@ public struct DashboardView: View {
     private var daySelector: some View {
         Picker("Day", selection: $viewModel.selectedDay) {
             ForEach(DashboardViewModel.DaySelection.allCases, id: \.self) { day in
-                Text(day.title).tag(day)
+                Text(viewModel.titleForSelectedDay(day)).tag(day)
             }
         }
         .pickerStyle(.segmented)

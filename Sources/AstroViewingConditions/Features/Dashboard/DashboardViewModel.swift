@@ -42,9 +42,28 @@ public class DashboardViewModel {
             case .tomorrow:
                 return "Tomorrow"
             case .dayAfter:
-                return DateFormatters.shortDateFormatter.string(from: Date().addingTimeInterval(2 * 24 * 60 * 60))
+                return "Day After"
             }
         }
+        
+        public static func title(for selection: DaySelection, referenceDate: Date) -> String {
+            switch selection {
+            case .today:
+                return "Today"
+            case .tomorrow:
+                return "Tomorrow"
+            case .dayAfter:
+                return DateFormatters.shortDateFormatter.string(from: referenceDate.addingTimeInterval(2 * 24 * 60 * 60))
+            }
+        }
+    }
+    
+    public func titleForSelectedDay(_ selection: DaySelection) -> String {
+        guard let conditions = viewingConditions else {
+            return selection.title
+        }
+        let referenceDate = conditions.fetchedAt
+        return DaySelection.title(for: selection, referenceDate: referenceDate)
     }
     
     public var isDataStale: Bool {
@@ -60,7 +79,8 @@ public class DashboardViewModel {
         guard let conditions = viewingConditions else { return [] }
         
         let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: Date())
+        let fetchDate = conditions.fetchedAt
+        let startOfToday = calendar.startOfDay(for: fetchDate)
         let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfToday)!
         let endOfSelectedDay = calendar.date(byAdding: .day, value: 1, to: startOfSelectedDay)!
         

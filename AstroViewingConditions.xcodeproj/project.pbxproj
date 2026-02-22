@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -24,6 +24,7 @@
 		63313F314A466E95DADDDB4D /* SunCalc in Frameworks */ = {isa = PBXBuildFile; productRef = A5FE6A6682A3B14B6895DDDE /* SunCalc */; };
 		66B63F1AEE21AEB113A91A4B /* SunMoonCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71EA0245C32D0AA9918A074 /* SunMoonCard.swift */; };
 		760CB543529248465AAC1704 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D62CAF22CD36ECE061871AE1 /* DashboardView.swift */; };
+		770B62581A70CA86852780FA /* DashboardViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A755C891187E6768F11D9E /* DashboardViewModelTests.swift */; };
 		839CA2493F19FADEEC16E63F /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7652EAC812CC0AAB2F653140 /* Formatters.swift */; };
 		87DA88BB93B0934648A061AF /* ViewingConditionsModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1B9C8B5B17ED18A6A87CE28 /* ViewingConditionsModelTests.swift */; };
 		884C0136EA79386173E6D7EA /* ISSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12C80FE005982B8A23A5C4F8 /* ISSService.swift */; };
@@ -76,13 +77,14 @@
 		B54B0BFCDF40C399EA4824A6 /* LocationSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSearchView.swift; sourceTree = "<group>"; };
 		B71EA0245C32D0AA9918A074 /* SunMoonCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunMoonCard.swift; sourceTree = "<group>"; };
 		BB77EA28A0FC77907CD95AD2 /* FormattersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattersTests.swift; sourceTree = "<group>"; };
-		BC522BA09BF9FC4E4BB1FB46 /* AstroViewingConditions.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AstroViewingConditions.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BC522BA09BF9FC4E4BB1FB46 /* AstroViewingConditions.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AstroViewingConditions.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0CECDC09712607CFA0A4163 /* AstronomyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstronomyService.swift; sourceTree = "<group>"; };
 		D31C1D0B71D80A12EF7E16F2 /* HourlyForecastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HourlyForecastView.swift; sourceTree = "<group>"; };
 		D62CAF22CD36ECE061871AE1 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		D7A884A58E8A4F9AAE74714D /* ISSCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISSCard.swift; sourceTree = "<group>"; };
 		E1B9C8B5B17ED18A6A87CE28 /* ViewingConditionsModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewingConditionsModelTests.swift; sourceTree = "<group>"; };
 		E31E8CCBE9B3C62C4E9CAD17 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E6A755C891187E6768F11D9E /* DashboardViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModelTests.swift; sourceTree = "<group>"; };
 		ED98556427C84CC4F6481E34 /* ISSServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISSServiceTests.swift; sourceTree = "<group>"; };
 		F302F40B584E071A2408D6CC /* AstronomyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstronomyServiceTests.swift; sourceTree = "<group>"; };
 		FA85D29ADCA14F29A247CFA9 /* FogCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogCalculatorTests.swift; sourceTree = "<group>"; };
@@ -104,6 +106,7 @@
 			isa = PBXGroup;
 			children = (
 				F302F40B584E071A2408D6CC /* AstronomyServiceTests.swift */,
+				E6A755C891187E6768F11D9E /* DashboardViewModelTests.swift */,
 				FA85D29ADCA14F29A247CFA9 /* FogCalculatorTests.swift */,
 				BB77EA28A0FC77907CD95AD2 /* FormattersTests.swift */,
 				8E60051D87F4042845731A75 /* HourlyForecastTests.swift */,
@@ -324,6 +327,7 @@
 			packageReferences = (
 				5E22E280A3E78D8A7D7622DE /* XCRemoteSwiftPackageReference "SunCalc" */,
 			);
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -379,6 +383,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				939005FFFC1C2ADC4EEB6E11 /* AstronomyServiceTests.swift in Sources */,
+				770B62581A70CA86852780FA /* DashboardViewModelTests.swift in Sources */,
 				35BF70F67EF6B95A22A3C9E8 /* FogCalculatorTests.swift in Sources */,
 				28A3AB377682C6B0EE289262 /* FormattersTests.swift in Sources */,
 				E85FB6F41303AC7AE4B46F60 /* HourlyForecastTests.swift in Sources */,
@@ -407,11 +412,8 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = ALV53VY374;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Astro Conditions";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -505,11 +507,8 @@
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = ALV53VY374;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Astro Conditions";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
