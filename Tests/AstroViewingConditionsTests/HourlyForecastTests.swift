@@ -163,7 +163,7 @@ final class HourlyForecastTests: XCTestCase {
         
         // Debug: Print what we got
         print("Tomorrow (2026-02-19) forecasts count: \(tomorrowForecasts.count)")
-        for (index, forecast) in tomorrowForecasts.enumerated() {
+        for (_, forecast) in tomorrowForecasts.enumerated() {
             let hour = calendar.component(.hour, from: forecast.time)
             print("Hour \(hour): \(forecast.cloudCover)%")
         }
@@ -223,7 +223,7 @@ final class HourlyForecastTests: XCTestCase {
         let utcOffsetSeconds = -28800 // GMT-8 (local = UTC + offset, so local is 8h behind UTC)
         
         // When - Parse as UTC first (this is how the API data comes in)
-        var formatter = DateFormatter()
+        let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
         formatter.timeZone = TimeZone(identifier: "UTC")
         let utcDate = formatter.date(from: dateString)!
@@ -285,7 +285,7 @@ final class HourlyForecastTests: XCTestCase {
         let tomorrowForecasts = viewModel.currentHourlyForecasts
         
         print("DashboardViewModel tomorrow forecasts count: \(tomorrowForecasts.count)")
-        for (index, forecast) in tomorrowForecasts.enumerated() {
+        for (_, forecast) in tomorrowForecasts.enumerated() {
             let calendar = Calendar.current
             let hour = calendar.component(.hour, from: forecast.time)
             print("Hour \(hour): \(forecast.cloudCover)%")

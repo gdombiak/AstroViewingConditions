@@ -110,7 +110,7 @@ final class DashboardViewModelTests: XCTestCase {
         tuesday1AM.day = 23
         tuesday1AM.hour = 1
         tuesday1AM.minute = 0
-        let currentDate = calendar.date(from: tuesday1AM)!
+        _ = calendar.date(from: tuesday1AM)!
         
         let location = CachedLocation(
             name: "Test",
