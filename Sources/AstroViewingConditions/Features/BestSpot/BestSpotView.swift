@@ -12,6 +12,12 @@ struct BestSpotView: View {
     @State private var mapPosition: MapCameraPosition
     @State private var showingSettings = false
     
+    // Track settings to detect changes
+    @AppStorage(BestSpotSettings.searchRadiusKey) private var searchRadius: Double = BestSpotSettings.defaultSearchRadius
+    @AppStorage(BestSpotSettings.gridSpacingKey) private var gridSpacing: Double = BestSpotSettings.defaultGridSpacing
+    @State private var previousSearchRadius: Double = BestSpotSettings.defaultSearchRadius
+    @State private var previousGridSpacing: Double = BestSpotSettings.defaultGridSpacing
+    
     init(centerLocation: SavedLocation, searchDate: Date, fogScoreCalculator: @escaping (HourlyForecast) -> FogScore) {
         self.centerLocation = centerLocation
         self.searchDate = searchDate
@@ -51,12 +57,24 @@ struct BestSpotView: View {
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: { showingSettings = true }) {
+                    Button(action: {
+                        // Capture current settings before opening
+                        previousSearchRadius = searchRadius
+                        previousGridSpacing = gridSpacing
+                        showingSettings = true
+                    }) {
                         Image(systemName: "gear")
                     }
                 }
             }
-            .sheet(isPresented: $showingSettings) {
+            .sheet(isPresented: $showingSettings, onDismiss: {
+                // Only refresh if settings actually changed
+                if searchRadius != previousSearchRadius || gridSpacing != previousGridSpacing {
+                    Task {
+                        await viewModel.search(around: centerLocation, for: searchDate, topN: 5)
+                    }
+                }
+            }) {
                 BestSpotSettingsView()
             }
         }
