@@ -158,6 +158,13 @@ public struct DashboardView: View {
                 // Day selector
                 daySelector
                 
+                // Night quality assessment
+                if let nightQuality = viewModel.currentNightQuality {
+                    NightQualityCard(
+                        assessment: nightQuality
+                    )
+                }
+                
                 // Current conditions summary (only for today)
                 if viewModel.selectedDay == .today {
                     CurrentConditionsCard(

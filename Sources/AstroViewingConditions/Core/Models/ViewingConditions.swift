@@ -192,6 +192,129 @@ public struct MoonInfo: Sendable, Codable {
     }
 }
 
+// MARK: - Night Quality Assessment
+
+public struct NightQualityAssessment: Sendable, Codable {
+    public let rating: Rating
+    public let summary: String
+    public let details: Details
+    public let bestWindow: TimeWindow?
+    public let hourlyRatings: [HourlyRating]
+    public let nightStart: Date
+    public let nightEnd: Date
+    
+    public init(
+        rating: Rating,
+        summary: String,
+        details: Details,
+        bestWindow: TimeWindow?,
+        hourlyRatings: [HourlyRating],
+        nightStart: Date,
+        nightEnd: Date
+    ) {
+        self.rating = rating
+        self.summary = summary
+        self.details = details
+        self.bestWindow = bestWindow
+        self.hourlyRatings = hourlyRatings
+        self.nightStart = nightStart
+        self.nightEnd = nightEnd
+    }
+    
+    public enum Rating: String, Sendable, Codable {
+        case excellent
+        case good
+        case fair
+        case poor
+        
+        public var emoji: String {
+            switch self {
+            case .excellent: return "🥉"
+            case .good: return "🏅"
+            case .fair: return "⚠️"
+            case .poor: return "❌"
+            }
+        }
+        
+        public var colorName: String {
+            switch self {
+            case .excellent: return "green"
+            case .good: return "blue"
+            case .fair: return "orange"
+            case .poor: return "red"
+            }
+        }
+    }
+    
+    public struct Details: Sendable, Codable {
+        public let cloudCoverScore: Double
+        public let fogScoreAvg: Double
+        public let moonIlluminationAvg: Int
+        public let windSpeedAvg: Double
+        
+        public init(
+            cloudCoverScore: Double,
+            fogScoreAvg: Double,
+            moonIlluminationAvg: Int,
+            windSpeedAvg: Double
+        ) {
+            self.cloudCoverScore = cloudCoverScore
+            self.fogScoreAvg = fogScoreAvg
+            self.moonIlluminationAvg = moonIlluminationAvg
+            self.windSpeedAvg = windSpeedAvg
+        }
+    }
+    
+    public struct HourlyRating: Identifiable, Sendable, Codable {
+        public let id: UUID
+        public let time: Date
+        public let score: Double
+        public let cloudCover: Int
+        public let fogScore: Int
+        public let moonIllumination: Int
+        public let windSpeed: Double
+        
+        public init(
+            id: UUID = UUID(),
+            time: Date,
+            score: Double,
+            cloudCover: Int,
+            fogScore: Int,
+            moonIllumination: Int,
+            windSpeed: Double
+        ) {
+            self.id = id
+            self.time = time
+            self.score = score
+            self.cloudCover = cloudCover
+            self.fogScore = fogScore
+            self.moonIllumination = moonIllumination
+            self.windSpeed = windSpeed
+        }
+        
+        public var rating: Rating {
+            if score < 0.5 { return .excellent }
+            else if score < 1.0 { return .good }
+            else if score < 2.0 { return .fair }
+            else { return .poor }
+        }
+    }
+    
+    public struct TimeWindow: Sendable, Codable {
+        public let start: Date
+        public let end: Date
+        
+        public init(start: Date, end: Date) {
+            self.start = start
+            self.end = end
+        }
+        
+        public var duration: TimeInterval {
+            end.timeIntervalSince(start)
+        }
+    }
+}
+
 // MARK: - ISS Pass
 
 public struct ISSPass: Identifiable, Sendable, Codable {

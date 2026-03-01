@@ -124,6 +124,44 @@ public class DashboardViewModel {
         viewingConditions?.fogScore
     }
     
+    public var currentNightQuality: NightQualityAssessment? {
+        guard let conditions = viewingConditions,
+              let sunEventsToday = currentSunEvents,
+              let moonInfo = currentMoonInfo else {
+            return nil
+        }
+        
+        let calendar = Calendar.current
+        let tomorrowIndex = selectedDay.rawValue + 1
+        let sunEventsTomorrow = tomorrowIndex < conditions.dailySunEvents.count ? conditions.dailySunEvents[tomorrowIndex] : nil
+        let referenceDate = conditions.fetchedAt
+        let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: referenceDate))!
+        
+        let nightForecasts = nightTimeForecasts
+        
+        return NightQualityAnalyzer.analyzeNight(
+            forecasts: nightForecasts,
+            sunEventsToday: sunEventsToday,
+            sunEventsTomorrow: sunEventsTomorrow,
+            moonInfo: moonInfo,
+            for: targetDate
+        )
+    }
+    
+    private var nightTimeForecasts: [HourlyForecast] {
+        guard let conditions = viewingConditions else { return [] }
+        
+        let calendar = Calendar.current
+        let fetchDate = conditions.fetchedAt
+        let startOfToday = calendar.startOfDay(for: fetchDate)
+        let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfToday)!
+        let endOfFollowingDay = calendar.date(byAdding: .day, value: 3, to: startOfSelectedDay)!
+        
+        return conditions.hourlyForecasts.filter { forecast in
+            forecast.time >= startOfSelectedDay && forecast.time < endOfFollowingDay
+        }
+    }
+    
     public init(apiKey: String = "") {
         self.apiKey = apiKey
         if !apiKey.isEmpty {
@@ -155,7 +193,7 @@ public class DashboardViewModel {
             let forecasts = try await weatherService.fetchForecast(
                 latitude: latitude,
                 longitude: longitude,
-                days: 3
+                days: 4
             )
             
             let calendar = Calendar.current
@@ -164,7 +202,7 @@ public class DashboardViewModel {
             var dailySunEvents: [SunEvents] = []
             var dailyMoonInfo: [MoonInfo] = []
             
-            for dayOffset in 0..<3 {
+            for dayOffset in 0..<4 {
                 let date = calendar.date(byAdding: .day, value: dayOffset, to: startOfToday)!
                 let sunEvents = await astronomyService.calculateSunEvents(
                     latitude: latitude,
