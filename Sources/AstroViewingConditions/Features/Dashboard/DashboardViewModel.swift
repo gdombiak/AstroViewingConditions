@@ -144,6 +144,8 @@ public class DashboardViewModel {
             sunEventsToday: sunEventsToday,
             sunEventsTomorrow: sunEventsTomorrow,
             moonInfo: moonInfo,
+            latitude: conditions.location.latitude,
+            longitude: conditions.location.longitude,
             for: targetDate
         )
     }

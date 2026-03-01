@@ -272,6 +272,7 @@ public struct NightQualityAssessment: Sendable, Codable {
         public let cloudCover: Int
         public let fogScore: Int
         public let moonIllumination: Int
+        public let moonAltitude: Double
         public let windSpeed: Double
         
         public init(
@@ -281,6 +282,7 @@ public struct NightQualityAssessment: Sendable, Codable {
             cloudCover: Int,
             fogScore: Int,
             moonIllumination: Int,
+            moonAltitude: Double,
             windSpeed: Double
         ) {
             self.id = id
@@ -289,6 +291,7 @@ public struct NightQualityAssessment: Sendable, Codable {
             self.cloudCover = cloudCover
             self.fogScore = fogScore
             self.moonIllumination = moonIllumination
+            self.moonAltitude = moonAltitude
             self.windSpeed = windSpeed
         }
         

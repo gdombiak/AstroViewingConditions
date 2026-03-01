@@ -1,4 +1,5 @@
 import Foundation
+import SunCalc
 
 public struct NightQualityAnalyzer {
     
@@ -32,6 +33,8 @@ public struct NightQualityAnalyzer {
         sunEventsToday: SunEvents,
         sunEventsTomorrow: SunEvents?,
         moonInfo: MoonInfo,
+        latitude: Double,
+        longitude: Double,
         for date: Date
     ) -> NightQualityAssessment {
         
@@ -51,11 +54,6 @@ public struct NightQualityAnalyzer {
             forecast.time >= nightStart && forecast.time < nightEnd
         }
         
-//         print("DEBUG: nightForecasts (being analyzed):")
-//         for f in nightForecasts {
-//             print("DEBUG:   \(calendar.component(.hour, from: f.time))h: clouds=\(f.cloudCover)%")
-//         }
-        
         guard !nightForecasts.isEmpty else {
             return createNoNighttimeDataAssessment(sunEvents: sunEventsToday, moonInfo: moonInfo)
         }
@@ -64,9 +62,12 @@ public struct NightQualityAnalyzer {
         var totalScore: Double = 0
         
         for forecast in nightForecasts {
+            // Calculate moon altitude for this specific hour
+            let moonAltitude = calculateMoonAltitude(latitude: latitude, longitude: longitude, at: forecast.time)
+            
             let fogScore = FogCalculator.calculate(from: forecast)
             let cloudScore = calculateCloudCoverScore(forecast.cloudCover)
-            let moonScore = calculateMoonScore(moonInfo.illumination)
+            let moonScore = calculateMoonScore(illumination: moonInfo.illumination, altitude: moonAltitude)
             let windScore = calculateWindScore(forecast.windSpeed)
             
             let weightedScore = (
@@ -82,6 +83,7 @@ public struct NightQualityAnalyzer {
                 cloudCover: forecast.cloudCover,
                 fogScore: fogScore.score,
                 moonIllumination: moonInfo.illumination,
+                moonAltitude: moonAltitude,
                 windSpeed: forecast.windSpeed
             )
             
@@ -142,13 +144,40 @@ public struct NightQualityAnalyzer {
         return 2.0
     }
     
-    private static func calculateMoonScore(_ illumination: Int) -> Double {
+    private static func calculateMoonScore(illumination: Int, altitude: Double) -> Double {
+        // If moon is below horizon (altitude <= 0), it's perfect for stargazing regardless of illumination
+        if altitude <= 0 {
+            return 0.0
+        }
+        
+        // For moon above horizon, score based on both illumination and altitude
+        // Higher altitude = more interference, higher illumination = more interference
+        var illuminationScore: Double = 2.0
         for threshold in Constants.moonIlluminationThresholds {
             if illumination <= threshold.max {
-                return threshold.score
+                illuminationScore = threshold.score
+                break
             }
         }
-        return 2.0
+        
+        // Altitude factor: moon at 90° is worst, at 0° is best (but still above horizon)
+        // Normalize altitude to 0-1 range (0° -> 0, 90° -> 1)
+        let altitudeFactor = min(max(altitude / 90.0, 0.0), 1.0)
+        
+        // Combine scores: high altitude makes moon interference worse
+        return illuminationScore * (0.5 + 0.5 * altitudeFactor)
+    }
+    
+    private static func calculateMoonAltitude(latitude: Double, longitude: Double, at time: Date) -> Double {
+        do {
+            let position = try MoonPosition.compute()
+                .at(latitude, longitude)
+                .on(time)
+                .execute()
+            return position.altitude
+        } catch {
+            return 0
+        }
     }
     
     private static func calculateWindScore(_ windSpeed: Double) -> Double {

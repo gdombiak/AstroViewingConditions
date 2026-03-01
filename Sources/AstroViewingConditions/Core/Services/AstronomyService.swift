@@ -104,6 +104,23 @@ public actor AstronomyService {
         }
     }
     
+    public func calculateMoonAltitude(
+        latitude: Double,
+        longitude: Double,
+        at time: Date
+    ) -> Double {
+        do {
+            let position = try MoonPosition.compute()
+                .at(latitude, longitude)
+                .on(time)
+                .execute()
+            return position.altitude
+        } catch {
+            print("Error calculating moon altitude: \(error)")
+            return 0
+        }
+    }
+    
     // MARK: - Helper Methods
     
     private func normalizePhase(_ phase: Double) -> Double {

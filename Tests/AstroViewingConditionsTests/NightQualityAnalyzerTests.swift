@@ -63,6 +63,8 @@ final class NightQualityAnalyzerTests: XCTestCase {
             sunEventsToday: sunEventsToday,
             sunEventsTomorrow: sunEventsTomorrow,
             moonInfo: moonInfo,
+            latitude: 40.7128,  // New York City coordinates for testing
+            longitude: -74.0060,
             for: createDate(hour: 12, dayOffset: dayOffset)
         )
     }
@@ -134,7 +136,9 @@ final class NightQualityAnalyzerTests: XCTestCase {
         
         XCTAssertFalse(resultNewMoon.hourlyRatings.isEmpty)
         XCTAssertFalse(resultFullMoon.hourlyRatings.isEmpty)
-        XCTAssertTrue(resultFullMoon.rating.rawValue > resultNewMoon.rating.rawValue)
+        // With hourly moon altitude, full moon should have equal or worse rating than new moon
+        // (equal when moon is below horizon, worse when above)
+        XCTAssertGreaterThanOrEqual(resultFullMoon.rating.rawValue, resultNewMoon.rating.rawValue)
     }
     
     // MARK: - Wind Tests
