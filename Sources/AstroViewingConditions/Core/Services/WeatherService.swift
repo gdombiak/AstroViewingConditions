@@ -77,8 +77,8 @@ public actor WeatherService {
         return searchResponse.results ?? []
     }
     
-    /// Fetches forecasts for multiple locations in a single API call
-    /// Uses comma-separated latitudes and longitudes as per Open-Meteo API
+    /// Fetches forecasts for multiple locations in batches
+    /// Open-Meteo API has a limit on the number of locations per request
     public func fetchForecastForMultipleLocations(
         coordinates: [Coordinate],
         days: Int = 3
@@ -87,6 +87,36 @@ public actor WeatherService {
             return [:]
         }
         
+        // Open-Meteo API has a limit of ~50 locations per request
+        let batchSize = 50
+        var allResults: [Coordinate: [HourlyForecast]] = [:]
+        
+        // Process coordinates in batches
+        for batchStart in stride(from: 0, to: coordinates.count, by: batchSize) {
+            let batchEnd = min(batchStart + batchSize, coordinates.count)
+            let batch = Array(coordinates[batchStart..<batchEnd])
+            
+            let batchResults = try await fetchForecastBatch(
+                coordinates: batch,
+                days: days
+            )
+            
+            allResults.merge(batchResults) { _, new in new }
+            
+            // Small delay between batches to avoid rate limiting
+            if batchEnd < coordinates.count {
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+            }
+        }
+        
+        return allResults
+    }
+    
+    /// Fetches forecasts for a single batch of locations
+    private func fetchForecastBatch(
+        coordinates: [Coordinate],
+        days: Int = 3
+    ) async throws -> [Coordinate: [HourlyForecast]] {
         var components = URLComponents(string: baseURL)!
         
         let hourlyParams = [
