@@ -157,8 +157,6 @@ public class BestSpotSearcher {
         moonInfo: MoonInfo,
         date: Date
     ) async -> LocationScore? {
-        let calendar = Calendar.current
-        
         // Calculate night quality using the existing analyzer
         let nightQuality = NightQualityAnalyzer.analyzeNight(
             forecasts: forecasts,
