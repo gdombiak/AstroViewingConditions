@@ -77,6 +77,75 @@ public actor WeatherService {
         return searchResponse.results ?? []
     }
     
+    /// Fetches forecasts for multiple locations in a single API call
+    /// Uses comma-separated latitudes and longitudes as per Open-Meteo API
+    public func fetchForecastForMultipleLocations(
+        coordinates: [Coordinate],
+        days: Int = 3
+    ) async throws -> [Coordinate: [HourlyForecast]] {
+        guard !coordinates.isEmpty else {
+            return [:]
+        }
+        
+        var components = URLComponents(string: baseURL)!
+        
+        let hourlyParams = [
+            "cloudcover",
+            "cloudcover_low",
+            "relativehumidity_2m",
+            "windspeed_10m",
+            "winddirection_10m",
+            "temperature_2m",
+            "dewpoint_2m",
+            "precipitation",
+            "visibility"
+        ].joined(separator: ",")
+        
+        let latitudes = coordinates.map { String($0.latitude) }.joined(separator: ",")
+        let longitudes = coordinates.map { String($0.longitude) }.joined(separator: ",")
+        
+        components.queryItems = [
+            URLQueryItem(name: "latitude", value: latitudes),
+            URLQueryItem(name: "longitude", value: longitudes),
+            URLQueryItem(name: "hourly", value: hourlyParams),
+            URLQueryItem(name: "timezone", value: "auto"),
+            URLQueryItem(name: "forecast_days", value: String(days))
+        ]
+        
+        guard let url = components.url else {
+            throw WeatherError.invalidURL
+        }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw WeatherError.invalidResponse
+        }
+        
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .formatted(DateFormatter.apiDateFormatter)
+        
+        // Handle both single and multiple location responses
+        if coordinates.count == 1 {
+            let weatherResponse = try decoder.decode(OpenMeteoResponse.self, from: data)
+            let forecasts = parseHourlyForecasts(from: weatherResponse)
+            return [coordinates[0]: forecasts]
+        } else {
+            let weatherResponses = try decoder.decode([OpenMeteoResponse].self, from: data)
+            var results: [Coordinate: [HourlyForecast]] = [:]
+            
+            for (index, response) in weatherResponses.enumerated() {
+                guard index < coordinates.count else { break }
+                let coordinate = coordinates[index]
+                let forecasts = parseHourlyForecasts(from: response)
+                results[coordinate] = forecasts
+            }
+            
+            return results
+        }
+    }
+    
     public nonisolated func parseHourlyForecasts(from response: OpenMeteoResponse) -> [HourlyForecast] {
         let hourly = response.hourly
         let utcOffsetSeconds = response.utcOffsetSeconds

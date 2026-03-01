@@ -13,6 +13,7 @@ public struct DashboardView: View {
     // Current location (not persisted)
     @State private var currentLocation: SavedLocation?
     @State private var showingLocationPicker = false
+    @State private var showingBestSpotSearch = false
     @State private var lastActiveCheck = Date()
     
     private var unitConverter: UnitConverter {
@@ -28,6 +29,13 @@ public struct DashboardView: View {
     
     private var selectedLocationName: String {
         selectedLocation?.name ?? "Astro Conditions"
+    }
+    
+    private var searchDate: Date {
+        guard let conditions = viewModel.viewingConditions else { return Date() }
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: conditions.fetchedAt)
+        return calendar.date(byAdding: .day, value: viewModel.selectedDay.rawValue, to: startOfToday) ?? Date()
     }
     
     public var body: some View {
@@ -56,6 +64,14 @@ public struct DashboardView: View {
                 }
                 
                 ToolbarItem(placement: toolbarPlacement) {
+                    if !viewModel.isLoading, selectedLocation != nil {
+                        Button(action: { showingBestSpotSearch = true }) {
+                            Image(systemName: "binoculars")
+                        }
+                    }
+                }
+                
+                ToolbarItem(placement: toolbarPlacement) {
                     if viewModel.isLoading {
                         ProgressView()
                     } else {
@@ -79,6 +95,15 @@ public struct DashboardView: View {
                     currentLocation: currentLocation,
                     savedLocations: savedLocations
                 )
+            }
+            .sheet(isPresented: $showingBestSpotSearch) {
+                if let location = selectedLocation {
+                    BestSpotView(
+                        centerLocation: location,
+                        searchDate: searchDate,
+                        fogScoreCalculator: FogCalculator.calculate
+                    )
+                }
             }
         }
         .task {

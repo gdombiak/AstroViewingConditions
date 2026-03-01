@@ -89,7 +89,7 @@ public struct HourlyForecast: Identifiable, Sendable, Codable {
 
 // MARK: - Fog Score
 
-public struct FogScore: Sendable, Codable {
+public struct FogScore: Sendable, Codable, Hashable {
     public let score: Int
     public let factors: [FogFactor]
     
@@ -194,7 +194,7 @@ public struct MoonInfo: Sendable, Codable {
 
 // MARK: - Night Quality Assessment
 
-public struct NightQualityAssessment: Sendable, Codable {
+public struct NightQualityAssessment: Sendable, Codable, Hashable {
     public let rating: Rating
     public let summary: String
     public let details: Details
@@ -246,7 +246,7 @@ public struct NightQualityAssessment: Sendable, Codable {
         }
     }
     
-    public struct Details: Sendable, Codable {
+    public struct Details: Sendable, Codable, Hashable {
         public let cloudCoverScore: Double
         public let fogScoreAvg: Double
         public let moonIlluminationAvg: Int
@@ -265,7 +265,7 @@ public struct NightQualityAssessment: Sendable, Codable {
         }
     }
     
-    public struct HourlyRating: Identifiable, Sendable, Codable {
+    public struct HourlyRating: Identifiable, Sendable, Codable, Hashable {
         public let id: UUID
         public let time: Date
         public let score: Double
@@ -303,7 +303,7 @@ public struct NightQualityAssessment: Sendable, Codable {
         }
     }
     
-    public struct TimeWindow: Sendable, Codable {
+    public struct TimeWindow: Sendable, Codable, Hashable {
         public let start: Date
         public let end: Date
         
