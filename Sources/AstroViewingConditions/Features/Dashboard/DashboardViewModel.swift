@@ -1,11 +1,5 @@
 import SwiftUI
 
-private enum StorageKeys {
-    static let cachedConditions = "cachedViewingConditions"
-    static let cachedLocationLat = "cachedLocationLatitude"
-    static let cachedLocationLon = "cachedLocationLongitude"
-}
-
 @MainActor
 @Observable
 public class DashboardViewModel {
@@ -13,6 +7,7 @@ public class DashboardViewModel {
     private let weatherService = WeatherService()
     private let astronomyService = AstronomyService()
     private var issService: ISSService?
+    private let cacheService: CacheService
     
     // State
     public var viewingConditions: ViewingConditions?
@@ -22,7 +17,6 @@ public class DashboardViewModel {
     public var lastSuccessfulFetch: Date?
     
     private var apiKey: String
-    private let userDefaults = UserDefaults.standard
     
     private static let staleThresholdSeconds: TimeInterval = 6 * 60 * 60 // 6 hours
     
@@ -164,8 +158,9 @@ public class DashboardViewModel {
         }
     }
     
-    public init(apiKey: String = "") {
+    public init(apiKey: String = "", cacheService: CacheService = CacheService()) {
         self.apiKey = apiKey
+        self.cacheService = cacheService
         if !apiKey.isEmpty {
             self.issService = ISSService(apiKey: apiKey)
         }
@@ -265,41 +260,25 @@ public class DashboardViewModel {
     
     public func saveToCache() {
         guard let conditions = viewingConditions else { return }
-        
-        do {
-            let encoder = JSONEncoder()
-            let data = try encoder.encode(conditions)
-            userDefaults.set(data, forKey: StorageKeys.cachedConditions)
-            userDefaults.set(conditions.location.latitude, forKey: StorageKeys.cachedLocationLat)
-            userDefaults.set(conditions.location.longitude, forKey: StorageKeys.cachedLocationLon)
-        } catch {
-            print("Failed to cache conditions: \(error)")
-        }
+        cacheService.save(conditions)
     }
     
     public func loadFromCache() -> Bool {
-        guard let data = userDefaults.data(forKey: StorageKeys.cachedConditions) else {
+        guard let conditions = cacheService.load() else {
             return false
         }
         
-        do {
-            let decoder = JSONDecoder()
-            let conditions = try decoder.decode(ViewingConditions.self, from: data)
-            
-            self.viewingConditions = conditions
-            self.lastSuccessfulFetch = conditions.fetchedAt
-            
-            return true
-        } catch {
-            return false
-        }
+        self.viewingConditions = conditions
+        self.lastSuccessfulFetch = conditions.fetchedAt
+        
+        return true
     }
     
     public func loadConditionsIfNeeded(for location: SavedLocation) async {
         let loadedFromCache = loadFromCache()
         
         // Check if cached location matches the requested location
-        let cachedLocationMatches = viewingConditions?.location.name == location.name
+        let cachedLocationMatches = cacheService.cachedLocationMatches(location)
         
         if shouldFetchFreshConditions || !cachedLocationMatches {
             await loadConditions(for: location)

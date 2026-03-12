@@ -1,4 +1,6 @@
 import SwiftUI
+import MapKit
+import CoreLocation
 
 @MainActor
 @Observable
@@ -95,6 +97,3 @@ public class BestSpotViewModel {
         }
     }
 }
-
-import MapKit
-import CoreLocation

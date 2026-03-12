@@ -172,7 +172,12 @@ public class BestSpotSearcher {
         let score = convertNightQualityToScore(nightQuality, elevation: gridPoint.elevation)
         
         // Calculate average metrics for the night
-        let nightForecasts = filterNightForecasts(forecasts, sunEventsToday: sunEventsToday, sunEventsTomorrow: sunEventsTomorrow, date: date)
+        let nightForecasts = NightForecastFilter.filterToNighttime(
+            forecasts: forecasts,
+            sunEventsToday: sunEventsToday,
+            sunEventsTomorrow: sunEventsTomorrow,
+            for: date
+        )
         
         guard !nightForecasts.isEmpty else { return nil }
         
@@ -224,31 +229,6 @@ public class BestSpotSearcher {
         
         let finalScore = baseScore + adjustment + elevationBonus
         return min(100, max(0, finalScore))
-    }
-    
-    /// Filters forecasts to only include nighttime hours (8 PM - 5 AM)
-    private func filterNightForecasts(
-        _ forecasts: [HourlyForecast],
-        sunEventsToday: SunEvents,
-        sunEventsTomorrow: SunEvents,
-        date: Date
-    ) -> [HourlyForecast] {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: date)
-        let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-        
-        // Use astronomical twilight times as bounds
-        let duskHour = calendar.component(.hour, from: sunEventsToday.astronomicalTwilightEnd)
-        let duskMinute = calendar.component(.minute, from: sunEventsToday.astronomicalTwilightEnd)
-        let nightStart = calendar.date(bySettingHour: duskHour, minute: duskMinute, second: 0, of: startOfDay)!
-        
-        let dawnHour = calendar.component(.hour, from: sunEventsTomorrow.astronomicalTwilightBegin)
-        let dawnMinute = calendar.component(.minute, from: sunEventsTomorrow.astronomicalTwilightBegin)
-        let nightEnd = calendar.date(bySettingHour: dawnHour, minute: dawnMinute, second: 0, of: nextDay)!
-        
-        return forecasts.filter { forecast in
-            forecast.time >= nightStart && forecast.time < nightEnd
-        }
     }
     
     /// Generates a human-readable summary of the conditions

@@ -39,15 +39,10 @@ public struct NightQualityAnalyzer {
     ) -> NightQualityAssessment {
         
         // Filter forecasts to nighttime hours only
-        // Use the same approach as astronomicalNightDuration - handle date rollover properly
-        let calendar = Calendar.current
-        
-        // Get night start/end times for the target date
-        let (nightStart, nightEnd) = calculateNightRange(
+        let (nightStart, nightEnd) = NightForecastFilter.calculateNightRange(
             sunEventsToday: sunEventsToday,
             sunEventsTomorrow: sunEventsTomorrow,
-            date: date,
-            calendar: calendar
+            for: date
         )
         
         let nightForecasts = forecasts.filter { forecast in
@@ -199,39 +194,6 @@ public struct NightQualityAnalyzer {
         } else {
             return .poor
         }
-    }
-    
-    private static func calculateNightRange(
-        sunEventsToday: SunEvents,
-        sunEventsTomorrow: SunEvents?,
-        date: Date,
-        calendar: Calendar
-    ) -> (start: Date, end: Date) {
-        
-        // Extract hour/minute from the sun events - dates are wrong but hours are correct
-        // For "night of target date":
-        // - Night starts at ~7-8 PM (hour from astronomicalTwilightEnd)
-        // - Night ends at ~5-6 AM next day (hour from tomorrow's astronomicalTwilightBegin)
-        
-        let startOfDay = calendar.startOfDay(for: date)
-        let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
-        
-        // Extract hour/minute from today's twilight end (dusk ~7-8 PM)
-        let duskHour = calendar.component(.hour, from: sunEventsToday.astronomicalTwilightEnd)
-        let duskMinute = calendar.component(.minute, from: sunEventsToday.astronomicalTwilightEnd)
-        
-        // Use target day's date for dusk time
-        let nightStart = calendar.date(bySettingHour: duskHour, minute: duskMinute, second: 0, of: startOfDay)!
-        
-        // Extract hour/minute from tomorrow's twilight begin (dawn ~5-6 AM)
-        let tomorrowSunEvents = sunEventsTomorrow ?? sunEventsToday
-        let dawnHour = calendar.component(.hour, from: tomorrowSunEvents.astronomicalTwilightBegin)
-        let dawnMinute = calendar.component(.minute, from: tomorrowSunEvents.astronomicalTwilightBegin)
-        
-        // Use next day's date for dawn time
-        let nightEnd = calendar.date(bySettingHour: dawnHour, minute: dawnMinute, second: 0, of: nextDay)!
-        
-        return (nightStart, nightEnd)
     }
     
     private static func generateSummary(rating: NightQualityAssessment.Rating, avgScore: Double) -> String {
