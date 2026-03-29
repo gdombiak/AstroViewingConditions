@@ -169,7 +169,7 @@ public class BestSpotSearcher {
         )
         
         // Convert night quality to 0-100 score
-        let score = convertNightQualityToScore(nightQuality, elevation: gridPoint.elevation)
+        let score = Self.calculateScore(nightQuality, elevation: gridPoint.elevation)
         
         // Calculate average metrics for the night
         let nightForecasts = NightForecastFilter.filterToNighttime(
@@ -203,7 +203,7 @@ public class BestSpotSearcher {
     
     /// Converts NightQualityAssessment to a 0-100 score
     /// Higher score = better viewing conditions
-    private func convertNightQualityToScore(_ assessment: NightQualityAssessment, elevation: Double?) -> Int {
+    nonisolated static func calculateScore(_ assessment: NightQualityAssessment, elevation: Double?) -> Int {
         // Base score from rating
         let baseScore: Int
         switch assessment.rating {
@@ -219,10 +219,12 @@ public class BestSpotSearcher {
         
         // Fine-tune based on actual average score within the rating band
         let hourlyScores = assessment.hourlyRatings.map { $0.score }
-        let avgScore = hourlyScores.reduce(0, +) / Double(hourlyScores.count)
-        
-        // Convert avgScore (0-2, lower is better) to adjustment (-10 to +10)
-        let adjustment = Int((1.0 - avgScore) * 10)
+        var adjustment = 0
+        if !hourlyScores.isEmpty {
+            let avgScore = hourlyScores.reduce(0, +) / Double(hourlyScores.count)
+            // Convert avgScore (0-2, lower is better) to adjustment (-10 to +10)
+            adjustment = Int((1.0 - avgScore) * 10)
+        }
         
         // Elevation bonus: +1 point per 100ft above sea level (max +10)
         let elevationBonus = min(Int((elevation ?? 0) / 100), 10)

@@ -14,9 +14,16 @@ struct NightQualityCard: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                 Spacer()
+                Text("\(assessment.calculatedScore)")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(scoreColor(for: assessment.calculatedScore))
+                Text("/100")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             
-            HStack(spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
                 Text(assessment.rating.emoji)
                     .font(.title2)
                 
@@ -25,6 +32,7 @@ struct NightQualityCard: View {
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundStyle(ratingColor)
+                        .fixedSize(horizontal: false, vertical: true)
                     
                     if showWindow {
                         if let window = assessment.bestWindow {
@@ -117,6 +125,15 @@ struct NightQualityCard: View {
             return .orange
         case .poor:
             return .red
+        }
+    }
+    
+    private func scoreColor(for score: Int) -> Color {
+        switch score {
+        case 80...100: return .green
+        case 60..<80: return .blue
+        case 40..<60: return .orange
+        default: return .red
         }
     }
 }

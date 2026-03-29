@@ -203,6 +203,10 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
     public let nightStart: Date
     public let nightEnd: Date
     
+    public var calculatedScore: Int {
+        BestSpotSearcher.calculateScore(self, elevation: nil)
+    }
+    
     public init(
         rating: Rating,
         summary: String,
