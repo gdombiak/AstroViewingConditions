@@ -57,12 +57,12 @@ public struct NightQualityAnalyzer {
         var totalScore: Double = 0
         
         for forecast in nightForecasts {
-            // Calculate moon altitude for this specific hour
             let moonAltitude = calculateMoonAltitude(latitude: latitude, longitude: longitude, at: forecast.time)
+            let moonIllumination = calculateMoonIllumination(at: forecast.time)
             
             let fogScore = FogCalculator.calculate(from: forecast)
             let cloudScore = calculateCloudCoverScore(forecast.cloudCover)
-            let moonScore = calculateMoonScore(illumination: moonInfo.illumination, altitude: moonAltitude)
+            let moonScore = calculateMoonScore(illumination: moonIllumination, altitude: moonAltitude)
             let windScore = calculateWindScore(forecast.windSpeed)
             
             let weightedScore = (
@@ -77,7 +77,7 @@ public struct NightQualityAnalyzer {
                 score: weightedScore,
                 cloudCover: forecast.cloudCover,
                 fogScore: fogScore.score,
-                moonIllumination: moonInfo.illumination,
+                moonIllumination: moonIllumination,
                 moonAltitude: moonAltitude,
                 windSpeed: forecast.windSpeed
             )
@@ -93,12 +93,13 @@ public struct NightQualityAnalyzer {
         
         let avgCloudCover = hourlyRatings.map { $0.cloudCover }.reduce(0, +) / hourlyRatings.count
         let avgFogScore = hourlyRatings.map { $0.fogScore }.reduce(0, +) / hourlyRatings.count
+        let avgMoonIllumination = hourlyRatings.map { $0.moonIllumination }.reduce(0, +) / hourlyRatings.count
         let avgWindSpeed = hourlyRatings.map { $0.windSpeed }.reduce(0, +) / Double(hourlyRatings.count)
         
         let details = NightQualityAssessment.Details(
             cloudCoverScore: Double(avgCloudCover),
             fogScoreAvg: Double(avgFogScore),
-            moonIlluminationAvg: moonInfo.illumination,
+            moonIlluminationAvg: avgMoonIllumination,
             windSpeedAvg: avgWindSpeed
         )
         
@@ -170,6 +171,17 @@ public struct NightQualityAnalyzer {
                 .on(time)
                 .execute()
             return position.altitude
+        } catch {
+            return 0
+        }
+    }
+    
+    private static func calculateMoonIllumination(at time: Date) -> Int {
+        do {
+            let illumination = try MoonIllumination.compute()
+                .on(time)
+                .execute()
+            return Int(illumination.fraction * 100)
         } catch {
             return 0
         }
