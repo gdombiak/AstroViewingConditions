@@ -231,6 +231,19 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
         case fair
         case poor
         
+        public enum Thresholds {
+            public static let excellentMax: Double = 0.3
+            public static let goodMax: Double = 0.7
+            public static let fairMax: Double = 1.0
+        }
+        
+        public static func from(score: Double) -> Self {
+            if score < Thresholds.excellentMax { return .excellent }
+            else if score < Thresholds.goodMax { return .good }
+            else if score < Thresholds.fairMax { return .fair }
+            else { return .poor }
+        }
+        
         public var emoji: String {
             switch self {
             case .excellent: return "🥉"
@@ -300,10 +313,7 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
         }
         
         public var rating: Rating {
-            if score < 0.5 { return .excellent }
-            else if score < 1.0 { return .good }
-            else if score < 2.0 { return .fair }
-            else { return .poor }
+            Rating.from(score: score)
         }
     }
     

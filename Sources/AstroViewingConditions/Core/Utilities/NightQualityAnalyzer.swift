@@ -185,15 +185,7 @@ public struct NightQualityAnalyzer {
     }
     
     private static func determineRating(_ avgScore: Double) -> NightQualityAssessment.Rating {
-        if avgScore < 0.3 {
-            return .excellent
-        } else if avgScore < 0.7 {
-            return .good
-        } else if avgScore < 1.0 {
-            return .fair
-        } else {
-            return .poor
-        }
+        NightQualityAssessment.Rating.from(score: avgScore)
     }
     
     private static func generateSummary(rating: NightQualityAssessment.Rating, avgScore: Double) -> String {
