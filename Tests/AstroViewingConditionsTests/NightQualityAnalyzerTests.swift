@@ -229,4 +229,153 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertEqual(result.hourlyRatings.count, 1)
         XCTAssertEqual(result.hourlyRatings.first?.cloudCover, 50)
     }
+    
+    // MARK: - Bimodal Night Tests
+    
+    private func createBimodalForecasts(cloudPattern: [(hour: Int, cloudCover: Int, humidity: Int, windSpeed: Double)], dayOffset: Int = 0) -> [HourlyForecast] {
+        cloudPattern.map {
+            HourlyForecast(
+                time: createDate(hour: $0.hour, dayOffset: dayOffset),
+                cloudCover: $0.cloudCover,
+                humidity: $0.humidity,
+                windSpeed: $0.windSpeed,
+                windDirection: 180,
+                temperature: 15.0,
+                dewPoint: 5.0,
+                visibility: 20000,
+                lowCloudCover: nil
+            )
+        }
+    }
+    
+    func testDegradingNight_ClearThenCloudy() {
+        // First half clear, second half overcast → trend should be degrading
+        let forecasts: [HourlyForecast] = [
+            HourlyForecast(time: createDate(hour: 20, dayOffset: 0), cloudCover: 0, humidity: 60, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 21, dayOffset: 0), cloudCover: 0, humidity: 60, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 22, dayOffset: 0), cloudCover: 0, humidity: 60, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 23, dayOffset: 0), cloudCover: 0, humidity: 60, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 0, dayOffset: 1), cloudCover: 100, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 1, dayOffset: 1), cloudCover: 100, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 2, dayOffset: 1), cloudCover: 100, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 3, dayOffset: 1), cloudCover: 100, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+        ]
+        
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        
+        XCTAssertEqual(result.trend, .degrading)
+        XCTAssertNotNil(result.firstHalfScore)
+        XCTAssertNotNil(result.secondHalfScore)
+        XCTAssertLessThan(result.firstHalfScore!, result.secondHalfScore!)
+        XCTAssertTrue(result.summary.contains("degrade") || result.summary.contains("degrading"), "Summary should mention degrading conditions: \(result.summary)")
+    }
+    
+    func testImprovingNight_CloudyThenClear() {
+        // First half overcast, second half clear → trend should be improving
+        let forecasts: [HourlyForecast] = [
+            HourlyForecast(time: createDate(hour: 20, dayOffset: 0), cloudCover: 100, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 21, dayOffset: 0), cloudCover: 100, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 22, dayOffset: 0), cloudCover: 100, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 23, dayOffset: 0), cloudCover: 100, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 0, dayOffset: 1), cloudCover: 0, humidity: 60, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 1, dayOffset: 1), cloudCover: 0, humidity: 60, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 2, dayOffset: 1), cloudCover: 0, humidity: 60, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 3, dayOffset: 1), cloudCover: 0, humidity: 60, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+        ]
+        
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        
+        XCTAssertEqual(result.trend, .improving)
+        XCTAssertNotNil(result.firstHalfScore)
+        XCTAssertNotNil(result.secondHalfScore)
+        XCTAssertGreaterThan(result.firstHalfScore!, result.secondHalfScore!)
+        XCTAssertTrue(result.summary.contains("improve") || result.summary.contains("improving"), "Summary should mention improving conditions: \(result.summary)")
+    }
+    
+    func testStableNight_AllClear() {
+        // All clear → trend should be stable
+        let forecasts = createForecasts(hours: [
+            (hour: 20, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+            (hour: 21, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+            (hour: 22, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+            (hour: 23, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+            (hour: 0, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+            (hour: 1, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+            (hour: 2, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+            (hour: 3, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+        ])
+        
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        
+        XCTAssertEqual(result.trend, .stable)
+    }
+    
+    func testStableNight_AllCloudy() {
+        // All cloudy → trend should be stable
+        let forecasts = createForecasts(hours: [
+            (hour: 20, cloudCover: 100, humidity: 70, windSpeed: 2.0),
+            (hour: 21, cloudCover: 100, humidity: 70, windSpeed: 2.0),
+            (hour: 22, cloudCover: 100, humidity: 70, windSpeed: 2.0),
+            (hour: 23, cloudCover: 100, humidity: 70, windSpeed: 2.0),
+            (hour: 0, cloudCover: 100, humidity: 70, windSpeed: 2.0),
+            (hour: 1, cloudCover: 100, humidity: 70, windSpeed: 2.0),
+            (hour: 2, cloudCover: 100, humidity: 70, windSpeed: 2.0),
+            (hour: 3, cloudCover: 100, humidity: 70, windSpeed: 2.0),
+        ])
+        
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        
+        XCTAssertEqual(result.trend, .stable)
+    }
+    
+    func testBimodalNight_FirstHalfBetterThanSecond() {
+        // Clear first, cloudy second → first half score should be lower (better) than second
+        let forecasts: [HourlyForecast] = [
+            HourlyForecast(time: createDate(hour: 20, dayOffset: 0), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 21, dayOffset: 0), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 22, dayOffset: 0), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 23, dayOffset: 0), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 0, dayOffset: 1), cloudCover: 80, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 1, dayOffset: 1), cloudCover: 80, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 2, dayOffset: 1), cloudCover: 80, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 3, dayOffset: 1), cloudCover: 80, humidity: 70, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+        ]
+        
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        
+        XCTAssertNotNil(result.firstHalfScore)
+        XCTAssertNotNil(result.secondHalfScore)
+        XCTAssertLessThan(result.firstHalfScore!, result.secondHalfScore!, "First half should be better (lower score) than second half")
+    }
+    
+    func testTrendThreshold_SimilarHalvesShouldBeStable() {
+        // Identical conditions in both halves → should be stable
+        let forecasts: [HourlyForecast] = [
+            HourlyForecast(time: createDate(hour: 20, dayOffset: 0), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 21, dayOffset: 0), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 22, dayOffset: 0), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 23, dayOffset: 0), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 0, dayOffset: 1), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 1, dayOffset: 1), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 2, dayOffset: 1), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+            HourlyForecast(time: createDate(hour: 3, dayOffset: 1), cloudCover: 0, humidity: 50, windSpeed: 2.0, windDirection: 180, temperature: 15.0, dewPoint: 5.0, visibility: 20000, lowCloudCover: nil),
+        ]
+        
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        
+        XCTAssertEqual(result.trend, .stable, "Identical conditions between halves should result in stable trend")
+    }
+    
+    func testFewHoursShouldDefaultToStable() {
+        // Fewer than 4 hours → should default to stable with nil scores
+        let forecasts = createForecasts(hours: [
+            (hour: 20, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+            (hour: 21, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+            (hour: 22, cloudCover: 0, humidity: 50, windSpeed: 2.0),
+        ])
+        
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        
+        XCTAssertEqual(result.trend, .stable)
+    }
 }

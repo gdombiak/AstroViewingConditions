@@ -202,6 +202,9 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
     public let hourlyRatings: [HourlyRating]
     public let nightStart: Date
     public let nightEnd: Date
+    public let trend: Trend
+    public let firstHalfScore: Double?
+    public let secondHalfScore: Double?
     
     public var calculatedScore: Int {
         BestSpotSearcher.calculateScore(self, elevation: nil)
@@ -214,7 +217,10 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
         bestWindow: TimeWindow?,
         hourlyRatings: [HourlyRating],
         nightStart: Date,
-        nightEnd: Date
+        nightEnd: Date,
+        trend: Trend = .stable,
+        firstHalfScore: Double? = nil,
+        secondHalfScore: Double? = nil
     ) {
         self.rating = rating
         self.summary = summary
@@ -223,6 +229,31 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
         self.hourlyRatings = hourlyRatings
         self.nightStart = nightStart
         self.nightEnd = nightEnd
+        self.trend = trend
+        self.firstHalfScore = firstHalfScore
+        self.secondHalfScore = secondHalfScore
+    }
+    
+    public enum Trend: String, Sendable, Codable {
+        case improving
+        case stable
+        case degrading
+        
+        public var icon: String {
+            switch self {
+            case .improving: return "↗"
+            case .stable: return "→"
+            case .degrading: return "↘"
+            }
+        }
+        
+        public var label: String {
+            switch self {
+            case .improving: return "Conditions improve after midnight"
+            case .stable: return "Conditions stable all night"
+            case .degrading: return "Conditions degrade after midnight"
+            }
+        }
     }
     
     public enum Rating: String, Sendable, Codable {

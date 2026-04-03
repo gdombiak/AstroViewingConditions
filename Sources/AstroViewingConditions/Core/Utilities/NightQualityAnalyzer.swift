@@ -89,8 +89,6 @@ public struct NightQualityAnalyzer {
         let avgScore = totalScore / Double(hourlyRatings.count)
         let rating = determineRating(avgScore)
         
-        // print("DEBUG: moonIllumination = \(moonInfo.illumination)%, avgScore = \(avgScore), rating = \(rating.rawValue)")
-        
         let avgCloudCover = hourlyRatings.map { $0.cloudCover }.reduce(0, +) / hourlyRatings.count
         let avgFogScore = hourlyRatings.map { $0.fogScore }.reduce(0, +) / hourlyRatings.count
         let avgMoonIllumination = hourlyRatings.map { $0.moonIllumination }.reduce(0, +) / hourlyRatings.count
@@ -103,9 +101,10 @@ public struct NightQualityAnalyzer {
             windSpeedAvg: avgWindSpeed
         )
         
-        let summary = generateSummary(rating: rating, avgScore: avgScore)
+        let (trend, firstHalf, secondHalf) = calculateTrend(hourlyRatings: hourlyRatings)
         
-        // Calculate best window using first/last forecast times
+        let summary = generateSummary(rating: rating, avgScore: avgScore, trend: trend)
+        
         let bestWindowStart = hourlyRatings.first?.time ?? date
         let bestWindowEnd = hourlyRatings.last?.time ?? date
         
@@ -118,7 +117,10 @@ public struct NightQualityAnalyzer {
             bestWindow: bestWindow,
             hourlyRatings: hourlyRatings,
             nightStart: bestWindowStart,
-            nightEnd: bestWindowEnd
+            nightEnd: bestWindowEnd,
+            trend: trend,
+            firstHalfScore: firstHalf,
+            secondHalfScore: secondHalf
         )
     }
     
@@ -200,21 +202,64 @@ public struct NightQualityAnalyzer {
         NightQualityAssessment.Rating.from(score: avgScore)
     }
     
-    private static func generateSummary(rating: NightQualityAssessment.Rating, avgScore: Double) -> String {
+    private static func generateSummary(rating: NightQualityAssessment.Rating, avgScore: Double, trend: NightQualityAssessment.Trend) -> String {
         switch rating {
         case .excellent:
-            return "Perfect conditions for stargazing this night!"
+            switch trend {
+            case .improving: return "Excellent conditions, improving through the night!"
+            case .stable: return "Perfect conditions for stargazing this night!"
+            case .degrading: return "Excellent early, degrading after midnight."
+            }
         case .good:
-            return "Good night for observing. Expect clear skies."
+            switch trend {
+            case .improving: return "Good conditions, improving through the night."
+            case .stable: return "Good night for observing. Expect clear skies."
+            case .degrading: return "Good early, conditions degrade after midnight."
+            }
         case .fair:
-            if avgScore < 1.5 {
-                return "Decent conditions, but some clouds may be present."
-            } else {
-                return "Fair conditions. Moon or clouds may interfere somewhat."
+            switch trend {
+            case .improving: return "Fair early, improving after midnight."
+            case .stable:
+                if avgScore < 1.5 {
+                    return "Decent conditions, but some clouds may be present."
+                } else {
+                    return "Fair conditions. Moon or clouds may interfere somewhat."
+                }
+            case .degrading: return "Fair early, degrading after midnight."
             }
         case .poor:
-            return "Not ideal for stargazing this night."
+            switch trend {
+            case .improving: return "Poor early, improving after midnight."
+            case .stable: return "Not ideal for stargazing this night."
+            case .degrading: return "Fair early, degrading after midnight."
+            }
         }
+    }
+    
+    private static func calculateTrend(
+        hourlyRatings: [NightQualityAssessment.HourlyRating]
+    ) -> (trend: NightQualityAssessment.Trend, firstHalf: Double, secondHalf: Double) {
+        guard hourlyRatings.count >= 4 else {
+            return (.stable, 0, 0)
+        }
+        
+        let midIndex = hourlyRatings.count / 2
+        let firstHalf = hourlyRatings[..<midIndex].map { $0.score }.reduce(0, +) / Double(midIndex)
+        let secondHalf = hourlyRatings[midIndex...].map { $0.score }.reduce(0, +) / Double(hourlyRatings.count - midIndex)
+        
+        let diff = secondHalf - firstHalf
+        
+        let threshold: Double = 0.3
+        let trend: NightQualityAssessment.Trend
+        if diff > threshold {
+            trend = .degrading
+        } else if diff < -threshold {
+            trend = .improving
+        } else {
+            trend = .stable
+        }
+        
+        return (trend, firstHalf, secondHalf)
     }
     
     private static func calculateBestWindow(
@@ -291,7 +336,10 @@ public struct NightQualityAnalyzer {
             bestWindow: nil,
             hourlyRatings: [],
             nightStart: sunEvents.astronomicalNightStart,
-            nightEnd: sunEvents.astronomicalNightEnd
+            nightEnd: sunEvents.astronomicalNightEnd,
+            trend: .stable,
+            firstHalfScore: nil,
+            secondHalfScore: nil
         )
     }
 }

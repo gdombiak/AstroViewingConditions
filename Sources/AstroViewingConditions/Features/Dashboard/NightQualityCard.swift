@@ -34,22 +34,26 @@ struct NightQualityCard: View {
                         .foregroundStyle(ratingColor)
                         .fixedSize(horizontal: false, vertical: true)
                     
-                    if showWindow {
-                        if let window = assessment.bestWindow {
-                            HStack(spacing: 4) {
-                                Image(systemName: "clock.fill")
-                                    .font(.caption2)
-                                if window.start == assessment.nightStart && window.end == assessment.nightEnd {
-                                    Text("All night")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                } else {
-                                    Text("\(DateFormatters.formatTime(window.start)) - \(DateFormatters.formatTime(window.end))")
-                                        .font(.caption)
-                                        .fontWeight(.medium)
-                                }
+                    if let firstHalf = assessment.firstHalfScore,
+                       let secondHalf = assessment.secondHalfScore {
+                        let firstRating = NightQualityAssessment.Rating.from(score: firstHalf)
+                        let secondRating = NightQualityAssessment.Rating.from(score: secondHalf)
+                        if firstRating != secondRating {
+                            HStack(spacing: 8) {
+                                HalfScorePill(
+                                    label: "Early",
+                                    score: firstHalf,
+                                    color: scoreToColor(firstHalf)
+                                )
+                                Text(assessment.trend.icon)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                HalfScorePill(
+                                    label: "Late",
+                                    score: secondHalf,
+                                    color: scoreToColor(secondHalf)
+                                )
                             }
-                            .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -57,7 +61,6 @@ struct NightQualityCard: View {
                 Spacer()
             }
             
-            // Factors breakdown
             HStack(spacing: 16) {
                 FactorPill(label: "Clouds", value: "\(Int(assessment.details.cloudCoverScore))%", color: cloudColor(assessment.details.cloudCoverScore))
                 FactorPill(label: "Moon", value: "\(assessment.details.moonIlluminationAvg)%", color: moonColor(assessment.details.moonIlluminationAvg))
@@ -67,6 +70,13 @@ struct NightQualityCard: View {
         .padding()
         .background(cardBackgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private func scoreToColor(_ score: Double) -> Color {
+        if score < 0.3 { return .green }
+        else if score < 0.7 { return .blue }
+        else if score < 1.0 { return .orange }
+        else { return .red }
     }
     
     private func cloudColor(_ coverage: Double) -> Color {
@@ -93,17 +103,6 @@ struct NightQualityCard: View {
         case 5..<10: return .blue
         case 10..<15: return .orange
         default: return .red
-        }
-    }
-    
-    private var showWindow: Bool {
-        switch assessment.rating {
-        case .excellent, .good:
-            return true
-        case .fair:
-            return assessment.bestWindow != nil
-        case .poor:
-            return false
         }
     }
     
@@ -138,6 +137,33 @@ struct NightQualityCard: View {
     }
 }
 
+struct HalfScorePill: View {
+    let label: String
+    let score: Double
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(scoreLabel(score))
+                .font(.caption)
+                .fontWeight(.medium)
+        }
+    }
+    
+    private func scoreLabel(_ score: Double) -> String {
+        if score < 0.3 { return "Excellent" }
+        else if score < 0.7 { return "Good" }
+        else if score < 1.0 { return "Fair" }
+        else { return "Poor" }
+    }
+}
+
 struct FactorPill: View {
     let label: String
     let value: String
@@ -162,7 +188,7 @@ struct FactorPill: View {
     NightQualityCard(
         assessment: NightQualityAssessment(
             rating: .good,
-            summary: "Good night for observing. Expect clear skies.",
+            summary: "Good early, conditions degrade after midnight.",
             details: NightQualityAssessment.Details(
                 cloudCoverScore: 25,
                 fogScoreAvg: 15,
@@ -175,7 +201,10 @@ struct FactorPill: View {
             ),
             hourlyRatings: [],
             nightStart: Date().addingTimeInterval(-3600 * 10),
-            nightEnd: Date().addingTimeInterval(-3600 * 2)
+            nightEnd: Date().addingTimeInterval(-3600 * 2),
+            trend: .degrading,
+            firstHalfScore: 0.15,
+            secondHalfScore: 1.4
         )
     )
     .padding()
