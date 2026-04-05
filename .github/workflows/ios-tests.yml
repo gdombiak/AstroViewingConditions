@@ -13,10 +13,10 @@ jobs:
     
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Set timezone
-        uses: szenius/set-timezone@v2.0
+        uses: szenius/set-timezone@v2.1
         with:
           timezoneMacos: America/Los_Angeles
       
@@ -41,7 +41,7 @@ jobs:
             test
       
       - name: Upload Test Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: test-results
