@@ -1,3 +1,4 @@
+import SharedCode
 import XCTest
 import Foundation
 @testable import AstroViewingConditions

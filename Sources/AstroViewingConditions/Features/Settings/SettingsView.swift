@@ -1,3 +1,4 @@
+import SharedCode
 import SwiftUI
 
 public struct SettingsView: View {

@@ -1,3 +1,4 @@
+import SharedCode
 import SwiftUI
 import MapKit
 
@@ -6,25 +7,12 @@ struct BestSpotView: View {
     let searchDate: Date
     let fogScoreCalculator: (HourlyForecast) -> FogScore
     
-    @State private var viewModel: BestSpotViewModel
-    @Environment(\.dismiss) private var dismiss
-    @State private var selectedLocation: LocationScore?
-    @State private var mapPosition: MapCameraPosition
-    @State private var showingSettings = false
-    
-    // Track settings to detect changes
-    @AppStorage(BestSpotSettings.searchRadiusKey) private var searchRadius: Double = BestSpotSettings.defaultSearchRadius
-    @AppStorage(BestSpotSettings.gridSpacingKey) private var gridSpacing: Double = BestSpotSettings.defaultGridSpacing
-    @State private var previousSearchRadius: Double = BestSpotSettings.defaultSearchRadius
-    @State private var previousGridSpacing: Double = BestSpotSettings.defaultGridSpacing
-    
-    init(centerLocation: SavedLocation, searchDate: Date, fogScoreCalculator: @escaping (HourlyForecast) -> FogScore) {
+    public init(centerLocation: SavedLocation, searchDate: Date, fogScoreCalculator: @escaping (HourlyForecast) -> FogScore = FogCalculator.calculate) {
         self.centerLocation = centerLocation
         self.searchDate = searchDate
         self.fogScoreCalculator = fogScoreCalculator
         _viewModel = State(initialValue: BestSpotViewModel(fogScoreCalculator: fogScoreCalculator))
         
-        // Initialize map region centered on the search location
         let coordinate = CLLocationCoordinate2D(
             latitude: centerLocation.latitude,
             longitude: centerLocation.longitude
@@ -32,6 +20,17 @@ struct BestSpotView: View {
         let span = MKCoordinateSpan(latitudeDelta: 1.0, longitudeDelta: 1.0)
         _mapPosition = State(initialValue: .region(MKCoordinateRegion(center: coordinate, span: span)))
     }
+    
+    @State private var viewModel: BestSpotViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedLocation: LocationScore?
+    @State private var mapPosition: MapCameraPosition
+    @State private var showingSettings = false
+    
+    @AppStorage(BestSpotSettings.searchRadiusKey) private var searchRadius: Double = BestSpotSettings.defaultSearchRadius
+    @AppStorage(BestSpotSettings.gridSpacingKey) private var gridSpacing: Double = BestSpotSettings.defaultGridSpacing
+    @State private var previousSearchRadius: Double = BestSpotSettings.defaultSearchRadius
+    @State private var previousGridSpacing: Double = BestSpotSettings.defaultGridSpacing
     
     var body: some View {
         NavigationStack {

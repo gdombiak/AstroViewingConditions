@@ -1,4 +1,7 @@
+import SharedCode
 import SwiftUI
+import WidgetKit
+import WidgetKit
 
 @MainActor
 @Observable
@@ -261,6 +264,14 @@ public class DashboardViewModel {
     public func saveToCache() {
         guard let conditions = viewingConditions else { return }
         cacheService.save(conditions)
+        let location = CachedLocation(
+            name: conditions.location.name,
+            latitude: conditions.location.latitude,
+            longitude: conditions.location.longitude,
+            elevation: conditions.location.elevation
+        )
+        WidgetLocationStore.save(location)
+        WidgetCenter.shared.reloadTimelines(ofKind: "NightConditionsWidget")
     }
     
     public func loadFromCache() -> Bool {
@@ -275,11 +286,18 @@ public class DashboardViewModel {
     }
     
     public func loadConditionsIfNeeded(for location: SavedLocation) async {
+        if let widgetConditions = WidgetCacheStore.load(),
+           widgetConditions.fetchedAt.timeIntervalSinceNow > -3600,
+           widgetConditions.location.latitude == location.latitude,
+           widgetConditions.location.longitude == location.longitude {
+            self.viewingConditions = widgetConditions
+            self.lastSuccessfulFetch = widgetConditions.fetchedAt
+            return
+        }
+
         let loadedFromCache = loadFromCache()
-        
-        // Check if cached location matches the requested location
         let cachedLocationMatches = cacheService.cachedLocationMatches(location)
-        
+
         if shouldFetchFreshConditions || !cachedLocationMatches {
             await loadConditions(for: location)
             saveToCache()

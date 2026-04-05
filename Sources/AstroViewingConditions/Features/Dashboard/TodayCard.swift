@@ -1,8 +1,9 @@
+import SharedCode
 import SwiftUI
 
 struct CurrentConditionsCard: View {
     let forecast: HourlyForecast?
-    let unitConverter: UnitConverter
+    let unitConverter: AstroUnitConverter
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
@@ -195,7 +196,7 @@ struct ConditionItem: View {
             visibility: 10000,
             lowCloudCover: 20
         ),
-        unitConverter: UnitConverter(unitSystem: .metric)
+        unitConverter: AstroUnitConverter(unitSystem: .metric)
     )
     .padding()
 }

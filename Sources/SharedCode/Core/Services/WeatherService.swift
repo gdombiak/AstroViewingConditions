@@ -326,7 +326,7 @@ extension JSONDecoder {
 }
 
 extension DateFormatter {
-    static let apiDateFormatter: DateFormatter = {
+    public static let apiDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
         formatter.timeZone = TimeZone(identifier: "UTC")

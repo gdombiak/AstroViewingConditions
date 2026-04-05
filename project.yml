@@ -19,11 +19,24 @@ packages:
     from: "1.0.0"
 
 targets:
+  SharedCode:
+    type: framework
+    platform: iOS
+    sources:
+      - Sources/SharedCode
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.astroviewing.conditions.SharedCode
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - package: SunCalc
+
   AstroViewingConditions:
     type: application
     platform: iOS
     sources:
-      - Sources
+      - Sources/AstroViewingConditions
+      - Sources/App
     resources:
       - Sources/AstroViewingConditions/Resources/Assets.xcassets
       - Sources/App/PrivacyInfo.xcprivacy
@@ -36,8 +49,28 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
+        CODE_SIGN_ENTITLEMENTS: Sources/App/AstroViewingConditions.entitlements
     dependencies:
-      - package: SunCalc
+      - target: SharedCode
+      - target: NightConditionsWidget
+        embed: true
+        codeSignOnCopy: true
+
+  NightConditionsWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Sources/Widgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.astroviewing.conditions.NightConditionsWidget
+        INFOPLIST_FILE: Sources/Widgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/Widgets/NightConditionsWidget.entitlements
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.1.0"
+        SWIFT_ENABLE_EXPLICIT_MODULES: NO
+    dependencies:
+      - target: SharedCode
 
   AstroViewingConditionsTests:
     type: bundle.unit-test

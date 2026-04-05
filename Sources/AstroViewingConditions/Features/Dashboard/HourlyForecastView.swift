@@ -1,8 +1,9 @@
+import SharedCode
 import SwiftUI
 
 struct HourlyForecastView: View {
     let forecasts: [HourlyForecast]
-    let unitConverter: UnitConverter
+    let unitConverter: AstroUnitConverter
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     private var isIPad: Bool {
@@ -119,7 +120,7 @@ struct MetricLabel: View {
 
 struct HourlyColumn: View {
     let forecast: HourlyForecast
-    let unitConverter: UnitConverter
+    let unitConverter: AstroUnitConverter
     let isNow: Bool
     var fontScale: CGFloat = 1.0
     var columnWidth: CGFloat = 60
@@ -285,7 +286,7 @@ struct HourlyColumn: View {
     
     HourlyForecastView(
         forecasts: sampleForecasts,
-        unitConverter: UnitConverter(unitSystem: .metric)
+        unitConverter: AstroUnitConverter(unitSystem: .metric)
     )
     .padding()
 }

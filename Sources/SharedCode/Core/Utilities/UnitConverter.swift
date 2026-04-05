@@ -7,7 +7,7 @@ public enum UnitSystem: String, CaseIterable, Identifiable {
     public var id: String { rawValue }
 }
 
-public struct UnitConverter {
+public struct AstroUnitConverter {
     private let unitSystem: UnitSystem
     
     public init(unitSystem: UnitSystem) {

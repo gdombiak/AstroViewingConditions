@@ -58,31 +58,31 @@ public enum ISSError: Error {
 
 // MARK: - N2YO Response Models
 
-struct N2YOResponse: Codable {
-    let info: N2YOInfo
-    let passes: [N2YOPass]?
+public struct N2YOResponse: Codable {
+    public let info: N2YOInfo
+    public let passes: [N2YOPass]?
 }
 
-struct N2YOInfo: Codable {
-    let satid: Int
-    let satname: String
-    let transactionscount: Int
-    let passescount: Int?
+public struct N2YOInfo: Codable {
+    public let satid: Int
+    public let satname: String
+    public let transactionscount: Int
+    public let passescount: Int?
 }
 
-struct N2YOPass: Codable {
-    let startAz: Double
-    let startAzCompass: String
-    let startEl: Double
-    let startUTC: Int
-    let maxAz: Double
-    let maxAzCompass: String
-    let maxEl: Double
-    let maxUTC: Int
-    let endAz: Double
-    let endAzCompass: String
-    let endEl: Double
-    let endUTC: Int
-    let mag: Double
-    let duration: Int
+public struct N2YOPass: Codable {
+    public let startAz: Double
+    public let startAzCompass: String
+    public let startEl: Double
+    public let startUTC: Int
+    public let maxAz: Double
+    public let maxAzCompass: String
+    public let maxEl: Double
+    public let maxUTC: Int
+    public let endAz: Double
+    public let endAzCompass: String
+    public let endEl: Double
+    public let endUTC: Int
+    public let mag: Double
+    public let duration: Int
 }

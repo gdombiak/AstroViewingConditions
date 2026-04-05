@@ -1,3 +1,4 @@
+import SharedCode
 import SwiftUI
 
 struct BestSpotResultCard: View {
@@ -6,8 +7,8 @@ struct BestSpotResultCard: View {
     let isSelected: Bool
     let onTap: () -> Void
     
-    private var unitConverter: UnitConverter {
-        UnitConverter(unitSystem: UserDefaults.standard.selectedUnitSystem)
+    private var unitConverter: AstroUnitConverter {
+        AstroUnitConverter(unitSystem: UserDefaults.standard.selectedUnitSystem)
     }
     
     var body: some View {

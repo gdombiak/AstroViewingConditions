@@ -1,3 +1,4 @@
+import SharedCode
 import SwiftUI
 import SwiftData
 
@@ -16,8 +17,8 @@ public struct DashboardView: View {
     @State private var showingBestSpotSearch = false
     @State private var lastActiveCheck = Date()
     
-    private var unitConverter: UnitConverter {
-        UnitConverter(unitSystem: UserDefaults.standard.selectedUnitSystem)
+    private var unitConverter: AstroUnitConverter {
+        AstroUnitConverter(unitSystem: UserDefaults.standard.selectedUnitSystem)
     }
     
     private var selectedLocation: SavedLocation? {

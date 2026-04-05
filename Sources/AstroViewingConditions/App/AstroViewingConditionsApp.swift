@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SharedCode
 
 @main
 struct AstroViewingConditionsApp: App {

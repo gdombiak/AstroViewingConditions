@@ -1,3 +1,4 @@
+import SharedCode
 import SwiftUI
 import SwiftData
 import MapKit

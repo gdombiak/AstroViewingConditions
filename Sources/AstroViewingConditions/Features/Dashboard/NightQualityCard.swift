@@ -1,10 +1,11 @@
+import SharedCode
 import SwiftUI
 
 struct NightQualityCard: View {
     let assessment: NightQualityAssessment
     
-    private var unitConverter: UnitConverter {
-        UnitConverter(unitSystem: UserDefaults.standard.selectedUnitSystem)
+    private var unitConverter: AstroUnitConverter {
+        AstroUnitConverter(unitSystem: UserDefaults.standard.selectedUnitSystem)
     }
     
     var body: some View {

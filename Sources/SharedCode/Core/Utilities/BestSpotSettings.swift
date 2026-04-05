@@ -28,7 +28,7 @@ public enum BestSpotSettings {
 // MARK: - AppStorage Extensions
 
 extension UserDefaults {
-    var bestSpotSearchRadius: Double {
+    public var bestSpotSearchRadius: Double {
         get {
             let value = double(forKey: BestSpotSettings.searchRadiusKey)
             return value > 0 ? BestSpotSettings.validateSearchRadius(value) : BestSpotSettings.defaultSearchRadius
@@ -38,7 +38,7 @@ extension UserDefaults {
         }
     }
     
-    var bestSpotGridSpacing: Double {
+    public var bestSpotGridSpacing: Double {
         get {
             let value = double(forKey: BestSpotSettings.gridSpacingKey)
             return value > 0 ? BestSpotSettings.validateGridSpacing(value) : BestSpotSettings.defaultGridSpacing
