@@ -1,9 +1,8 @@
 import SwiftUI
-import SwiftData
 import SharedCode
 
 @main
-struct AstroViewingConditionsApp: App {
+struct AstroViewingConditionsWatchApp: App {
     init() {
         UnitSystemStorage.initializeIfNeeded()
     }
@@ -12,6 +11,5 @@ struct AstroViewingConditionsApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: SavedLocation.self)
     }
 }

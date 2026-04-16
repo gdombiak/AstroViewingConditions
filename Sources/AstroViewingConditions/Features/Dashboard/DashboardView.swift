@@ -1,12 +1,13 @@
 import SharedCode
 import SwiftUI
 import SwiftData
+import WidgetKit
 
 public struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
-    @AppStorage("selectedLocationID") private var selectedLocationID: String = "current"
+    @AppStorage("selectedLocationID") private var selectedLocationID: String = ""
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
     @State private var viewModel = DashboardViewModel(apiKey: "")
     @State private var locationManager = LocationManager()
@@ -18,11 +19,11 @@ public struct DashboardView: View {
     @State private var lastActiveCheck = Date()
     
     private var unitConverter: AstroUnitConverter {
-        AstroUnitConverter(unitSystem: UserDefaults.standard.selectedUnitSystem)
+        AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
     }
     
     private var selectedLocation: SavedLocation? {
-        if selectedLocationID == "current" {
+        if selectedLocationID.isEmpty || selectedLocationID == "current" {
             return currentLocation
         }
         return savedLocations.first { $0.id.uuidString == selectedLocationID }
@@ -33,10 +34,11 @@ public struct DashboardView: View {
     }
     
     private var searchDate: Date {
-        guard let conditions = viewModel.viewingConditions else { return Date() }
+        guard let conditions = viewModel.viewingConditions,
+              let firstForecast = conditions.hourlyForecasts.first else { return Date() }
         let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: conditions.fetchedAt)
-        return calendar.date(byAdding: .day, value: viewModel.selectedDay.rawValue, to: startOfToday) ?? Date()
+        let startOfFirstDay = calendar.startOfDay(for: firstForecast.time)
+        return calendar.date(byAdding: .day, value: viewModel.selectedDay.rawValue, to: startOfFirstDay) ?? Date()
     }
     
     public var body: some View {
@@ -110,7 +112,7 @@ public struct DashboardView: View {
         .task {
             viewModel.updateAPIKey(n2yoApiKey)
             await loadCurrentLocation()
-            if selectedLocationID != "current" {
+            if !selectedLocationID.isEmpty && selectedLocationID != "current" {
                 if let location = selectedLocation {
                     await viewModel.loadConditionsIfNeeded(for: location)
                     viewModel.saveToCache()
@@ -123,7 +125,7 @@ public struct DashboardView: View {
         .onChange(of: locationManager.authorizationStatus) { _, _ in
             Task {
                 await loadCurrentLocation()
-                if selectedLocationID != "current" {
+                if !selectedLocationID.isEmpty && selectedLocationID != "current" {
                     if let location = selectedLocation {
                         await viewModel.loadConditionsIfNeeded(for: location)
                         viewModel.saveToCache()
@@ -150,6 +152,8 @@ public struct DashboardView: View {
                     viewModel.saveToCache()
                 }
             }
+            let locations = LocationSyncService.shared.publishLocationsToWatch(context: modelContext)
+            WatchConnectivityService.shared.sendLocationsToWatch(locations)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             lastActiveCheck = Date()
@@ -335,7 +339,7 @@ public struct DashboardView: View {
             // Try to get a readable name for the location
             let locationName: String
             if let placemark = try? await locationManager.reverseGeocode(coordinate: coordinate) {
-                locationName = placemark.formattedName
+                locationName = placemark.locality ?? placemark.administrativeArea ?? placemark.name ?? CoordinateFormatters.format(Coordinate(latitude: coordinate.latitude, longitude: coordinate.longitude))
             } else {
                 locationName = CoordinateFormatters.format(Coordinate(latitude: coordinate.latitude, longitude: coordinate.longitude))
             }

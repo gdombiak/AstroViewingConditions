@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Viewing Conditions
 
@@ -11,6 +12,7 @@ public struct ViewingConditions: Sendable, Codable {
     public let issPasses: [ISSPass]
     public let fogScore: FogScore
     
+#if os(iOS)
     public init(
         fetchedAt: Date,
         location: SavedLocation,
@@ -28,6 +30,7 @@ public struct ViewingConditions: Sendable, Codable {
         self.issPasses = issPasses
         self.fogScore = fogScore
     }
+#endif
     
     public init(
         fetchedAt: Date,
@@ -385,5 +388,87 @@ public struct ISSPass: Identifiable, Sendable, Codable {
     
     public var setTime: Date {
         riseTime.addingTimeInterval(duration)
+    }
+}
+
+// MARK: - Color Extensions
+
+extension NightQualityAssessment.Rating {
+    public var color: Color {
+        switch self {
+        case .excellent: return .green
+        case .good: return .blue
+        case .fair: return .orange
+        case .poor: return .red
+        }
+    }
+}
+
+extension NightQualityAssessment {
+    public func scoreColor(for score: Int) -> Color {
+        switch score {
+        case 80...100: return .green
+        case 60..<80: return .blue
+        case 40..<60: return .orange
+        default: return .red
+        }
+    }
+    
+    public var scoreColor: Color {
+        scoreColor(for: calculatedScore)
+    }
+    
+    public var ratingColor: Color {
+        rating.color
+    }
+    
+    public func scoreToColor(_ score: Double) -> Color {
+        if score < 0.3 { return .green }
+        else if score < 0.7 { return .blue }
+        else if score < 1.0 { return .orange }
+        else { return .red }
+    }
+    
+    public func scoreLabel(_ score: Double) -> String {
+        if score < 0.3 { return "Excellent" }
+        else if score < 0.7 { return "Good" }
+        else if score < 1.0 { return "Fair" }
+        else { return "Poor" }
+    }
+    
+    public func cloudColor(_ coverage: Double) -> Color {
+        switch Int(coverage) {
+        case 0..<20: return .green
+        case 20..<50: return .blue
+        case 50..<80: return .orange
+        default: return .red
+        }
+    }
+    
+    public func moonColor(_ illumination: Int) -> Color {
+        switch illumination {
+        case 0..<25: return .green
+        case 25..<50: return .blue
+        case 50..<75: return .orange
+        default: return .red
+        }
+    }
+    
+    public func windColor(_ speed: Double) -> Color {
+        switch speed {
+        case 0..<5: return .green
+        case 5..<10: return .blue
+        case 10..<15: return .orange
+        default: return .red
+        }
+    }
+    
+    public func fogColor(_ score: Int) -> Color {
+        switch score {
+        case 0..<25: return .green
+        case 25..<50: return .blue
+        case 50..<75: return .orange
+        default: return .red
+        }
     }
 }

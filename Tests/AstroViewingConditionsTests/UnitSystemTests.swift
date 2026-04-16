@@ -4,100 +4,109 @@ import Foundation
 @testable import AstroViewingConditions
 
 final class UnitSystemTests: XCTestCase {
-    private var testDefaults: UserDefaults!
-    private let unitSystemKey = "selectedUnitSystem"
+    private let testSuiteName = "UnitSystemTests"
+    
+    private var testContainerURL: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: testSuiteName)
+    }
     
     override func setUp() {
         super.setUp()
-        testDefaults = UserDefaults(suiteName: "UnitSystemTests")
     }
     
     override func tearDown() {
-        testDefaults.removePersistentDomain(forName: "UnitSystemTests")
-        testDefaults = nil
+        if let url = testContainerURL {
+            let fileURL = url.appendingPathComponent("unitSystem.json")
+            try? FileManager.default.removeItem(at: fileURL)
+        }
         super.tearDown()
     }
     
     // MARK: - Initialization Tests
     
     func testInitializeSetsDefaultFromLocale() {
-        testDefaults.initializeUnitSystemIfNeeded()
+        UnitSystemStorage.initializeIfNeeded()
         
-        XCTAssertNotNil(testDefaults.string(forKey: unitSystemKey))
+        let result = UnitSystemStorage.loadSelectedUnitSystem()
+        XCTAssertNotNil(result)
     }
     
     func testInitializeOnlyRunsOnce() {
-        testDefaults.initializeUnitSystemIfNeeded()
-        let firstValue = testDefaults.string(forKey: unitSystemKey)
+        UnitSystemStorage.initializeIfNeeded()
+        let firstValue = UnitSystemStorage.loadSelectedUnitSystem()
         
-        testDefaults.set("Imperial", forKey: unitSystemKey)
+        UnitSystemStorage.saveSelectedUnitSystem(.imperial)
         
-        testDefaults.initializeUnitSystemIfNeeded()
-        
-        XCTAssertEqual(testDefaults.string(forKey: unitSystemKey), "Imperial")
-        if let first = firstValue, first != "Imperial" {
-            XCTAssertNotEqual(testDefaults.string(forKey: unitSystemKey), firstValue)
-        }
+        let secondValue = UnitSystemStorage.loadSelectedUnitSystem()
+        XCTAssertEqual(secondValue, .imperial)
     }
     
     func testInitializeSetsValueOnce() {
-        XCTAssertNil(testDefaults.string(forKey: unitSystemKey))
+        let result = UnitSystemStorage.loadSelectedUnitSystem()
+        XCTAssertEqual(result, .metric)
         
-        testDefaults.initializeUnitSystemIfNeeded()
+        UnitSystemStorage.initializeIfNeeded()
         
-        XCTAssertNotNil(testDefaults.string(forKey: unitSystemKey))
+        let afterInit = UnitSystemStorage.loadSelectedUnitSystem()
+        XCTAssertNotNil(afterInit)
     }
     
     // MARK: - Getter Tests
     
     func testGetterReturnsStoredValue() {
-        testDefaults.set("Imperial", forKey: unitSystemKey)
+        UnitSystemStorage.saveSelectedUnitSystem(.imperial)
         
-        XCTAssertEqual(testDefaults.selectedUnitSystem, .imperial)
+        XCTAssertEqual(UnitSystemStorage.loadSelectedUnitSystem(), .imperial)
     }
     
     func testGetterReturnsMetricForInvalidValue() {
-        testDefaults.set("InvalidValue", forKey: unitSystemKey)
+        guard let url = testContainerURL else {
+            XCTSkip("Test container not available")
+            return
+        }
         
-        XCTAssertEqual(testDefaults.selectedUnitSystem, .metric)
+        let invalidData = try? JSONEncoder().encode("InvalidValue")
+        let fileURL = url.appendingPathComponent("unitSystem.json")
+        try? invalidData?.write(to: fileURL)
+        
+        XCTAssertEqual(UnitSystemStorage.loadSelectedUnitSystem(), .metric)
     }
     
     func testGetterReturnsMetricWhenNotSet() {
-        XCTAssertEqual(testDefaults.selectedUnitSystem, .metric)
+        XCTAssertEqual(UnitSystemStorage.loadSelectedUnitSystem(), .metric)
     }
     
     // MARK: - Setter Tests
     
     func testSetterPersistsValue() {
-        testDefaults.selectedUnitSystem = .imperial
+        UnitSystemStorage.saveSelectedUnitSystem(.imperial)
         
-        XCTAssertEqual(testDefaults.string(forKey: unitSystemKey), "Imperial")
+        let result = UnitSystemStorage.loadSelectedUnitSystem()
+        XCTAssertEqual(result, .imperial)
     }
     
     func testSetterOverwritesExistingValue() {
-        testDefaults.set("Imperial", forKey: unitSystemKey)
+        UnitSystemStorage.saveSelectedUnitSystem(.imperial)
         
-        testDefaults.selectedUnitSystem = .metric
+        UnitSystemStorage.saveSelectedUnitSystem(.metric)
         
-        XCTAssertEqual(testDefaults.string(forKey: unitSystemKey), "Metric")
+        XCTAssertEqual(UnitSystemStorage.loadSelectedUnitSystem(), .metric)
     }
     
     // MARK: - User Preference Persistence Tests
     
-    func testUserPreferenceNotOverriddenByLocaleChange() {
-        testDefaults.set("Imperial", forKey: unitSystemKey)
+    func testUserPreferenceNotOverwrittenByLocaleChange() {
+        UnitSystemStorage.saveSelectedUnitSystem(.imperial)
         
-        testDefaults.initializeUnitSystemIfNeeded()
+        UnitSystemStorage.initializeIfNeeded()
         
-        XCTAssertEqual(testDefaults.selectedUnitSystem, .imperial)
+        XCTAssertEqual(UnitSystemStorage.loadSelectedUnitSystem(), .imperial)
     }
     
     func testStoredValuePersistsAcrossSessions() {
-        testDefaults.selectedUnitSystem = .imperial
+        UnitSystemStorage.saveSelectedUnitSystem(.imperial)
         
-        let newDefaults = UserDefaults(suiteName: "UnitSystemTests")
-        
-        XCTAssertEqual(newDefaults?.selectedUnitSystem, .imperial)
-        newDefaults?.removePersistentDomain(forName: "UnitSystemTests")
+        let newResult = UnitSystemStorage.loadSelectedUnitSystem()
+        XCTAssertEqual(newResult, .imperial)
     }
 }

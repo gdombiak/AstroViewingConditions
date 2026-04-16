@@ -1,6 +1,9 @@
 import SharedCode
 import WidgetKit
 import SwiftUI
+import os.log
+
+private let widgetLogger = Logger(subsystem: "com.astroviewing.conditions.widget", category: "Widget")
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> NightConditionsEntry {
@@ -23,16 +26,32 @@ struct Provider: TimelineProvider {
     }
 
     private func buildEntry() async -> NightConditionsEntry? {
-        guard let location = WidgetLocationStore.load() else { return nil }
+        guard let location = SharedStorage.loadWidgetLocation() else {
+            widgetLogger.error("No location configured for widget")
+            return nil
+        }
 
         let weatherService = WeatherService()
         let astronomyService = AstronomyService()
 
-        guard let forecasts = try? await weatherService.fetchForecast(
-            latitude: location.latitude,
-            longitude: location.longitude,
-            days: 3
-        ) else { return nil }
+        let forecasts: [HourlyForecast]
+        do {
+            forecasts = try await weatherService.fetchForecast(
+                latitude: location.latitude,
+                longitude: location.longitude,
+                days: 3
+            )
+            widgetLogger.info("Fetched \(forecasts.count) hourly forecasts from API")
+        } catch {
+            widgetLogger.error("Failed to fetch weather forecast: \(error.localizedDescription)")
+            if let cached = SharedStorage.loadWidgetConditions() {
+                widgetLogger.info("Falling back to cached weather data")
+                forecasts = cached.hourlyForecasts
+            } else {
+                widgetLogger.error("No cached weather data available as fallback")
+                return nil
+            }
+        }
 
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -77,7 +96,7 @@ struct Provider: TimelineProvider {
             issPasses: [],
             fogScore: FogCalculator.calculateCurrent(from: forecasts)
         )
-        WidgetCacheStore.save(conditions)
+        SharedStorage.saveWidgetConditions(conditions)
 
         return NightConditionsEntry(date: Date(), assessment: assessment)
     }

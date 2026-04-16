@@ -1,4 +1,6 @@
 import Foundation
+
+#if os(iOS)
 import SwiftData
 
 @Model
@@ -32,6 +34,7 @@ extension SavedLocation {
         Coordinate(latitude: latitude, longitude: longitude)
     }
 }
+#endif
 
 public struct Coordinate: Sendable, Hashable, Codable {
     public let latitude: Double
@@ -56,12 +59,14 @@ public struct CachedLocation: Codable, Sendable {
         self.elevation = elevation
     }
     
+#if os(iOS)
     public init(from savedLocation: SavedLocation) {
         self.name = savedLocation.name
         self.latitude = savedLocation.latitude
         self.longitude = savedLocation.longitude
         self.elevation = savedLocation.elevation
     }
+#endif
     
     public var coordinate: Coordinate {
         Coordinate(latitude: latitude, longitude: longitude)

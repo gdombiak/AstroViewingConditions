@@ -2,6 +2,7 @@ import Foundation
 
 public final class CacheService: @unchecked Sendable {
     private let userDefaults: UserDefaults
+    private let locationTolerance = 0.0001
     
     private enum StorageKeys {
         static let cachedConditions = "cachedViewingConditions"
@@ -38,15 +39,26 @@ public final class CacheService: @unchecked Sendable {
         }
     }
     
+#if os(iOS)
     public func cachedLocationMatches(_ location: SavedLocation) -> Bool {
         let cachedLat = userDefaults.double(forKey: StorageKeys.cachedLocationLat)
         let cachedLon = userDefaults.double(forKey: StorageKeys.cachedLocationLon)
         
         guard cachedLat != 0, cachedLon != 0 else { return false }
         
-        let tolerance = 0.0001
-        return abs(cachedLat - location.latitude) < tolerance && 
-               abs(cachedLon - location.longitude) < tolerance
+        return abs(cachedLat - location.latitude) < locationTolerance && 
+               abs(cachedLon - location.longitude) < locationTolerance
+    }
+#endif
+
+    public func cachedLocationMatches(_ location: CachedLocation) -> Bool {
+        let cachedLat = userDefaults.double(forKey: StorageKeys.cachedLocationLat)
+        let cachedLon = userDefaults.double(forKey: StorageKeys.cachedLocationLon)
+        
+        guard cachedLat != 0, cachedLon != 0 else { return false }
+        
+        return abs(cachedLat - location.latitude) < locationTolerance &&
+               abs(cachedLon - location.longitude) < locationTolerance
     }
     
     public func clear() {

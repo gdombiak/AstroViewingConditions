@@ -56,10 +56,11 @@ public class DashboardViewModel {
     }
     
     public func titleForSelectedDay(_ selection: DaySelection) -> String {
-        guard let conditions = viewingConditions else {
+        guard let conditions = viewingConditions,
+              !conditions.hourlyForecasts.isEmpty else {
             return selection.title
         }
-        let referenceDate = conditions.fetchedAt
+        let referenceDate = conditions.hourlyForecasts.first!.time
         return DaySelection.title(for: selection, referenceDate: referenceDate)
     }
     
@@ -73,12 +74,13 @@ public class DashboardViewModel {
     }
     
     public var currentHourlyForecasts: [HourlyForecast] {
-        guard let conditions = viewingConditions else { return [] }
+        guard let conditions = viewingConditions,
+              !conditions.hourlyForecasts.isEmpty else { return [] }
         
         let calendar = Calendar.current
-        let fetchDate = conditions.fetchedAt
-        let startOfToday = calendar.startOfDay(for: fetchDate)
-        let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfToday)!
+        let firstForecastTime = conditions.hourlyForecasts.first!.time
+        let startOfFirstDay = calendar.startOfDay(for: firstForecastTime)
+        let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay)!
         let endOfSelectedDay = calendar.date(byAdding: .day, value: 1, to: startOfSelectedDay)!
         
         return conditions.hourlyForecasts.filter { forecast in
@@ -131,7 +133,7 @@ public class DashboardViewModel {
         let calendar = Calendar.current
         let tomorrowIndex = selectedDay.rawValue + 1
         let sunEventsTomorrow = tomorrowIndex < conditions.dailySunEvents.count ? conditions.dailySunEvents[tomorrowIndex] : nil
-        let referenceDate = conditions.fetchedAt
+        let referenceDate = conditions.hourlyForecasts.first?.time ?? conditions.fetchedAt
         let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: referenceDate))!
         
         let nightForecasts = nightTimeForecasts
@@ -148,12 +150,13 @@ public class DashboardViewModel {
     }
     
     private var nightTimeForecasts: [HourlyForecast] {
-        guard let conditions = viewingConditions else { return [] }
+        guard let conditions = viewingConditions,
+              !conditions.hourlyForecasts.isEmpty else { return [] }
         
         let calendar = Calendar.current
-        let fetchDate = conditions.fetchedAt
-        let startOfToday = calendar.startOfDay(for: fetchDate)
-        let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfToday)!
+        let firstForecastTime = conditions.hourlyForecasts.first!.time
+        let startOfFirstDay = calendar.startOfDay(for: firstForecastTime)
+        let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay)!
         let endOfFollowingDay = calendar.date(byAdding: .day, value: 3, to: startOfSelectedDay)!
         
         return conditions.hourlyForecasts.filter { forecast in
@@ -264,14 +267,19 @@ public class DashboardViewModel {
     public func saveToCache() {
         guard let conditions = viewingConditions else { return }
         cacheService.save(conditions)
+        SharedStorage.saveWidgetConditions(conditions)
         let location = CachedLocation(
             name: conditions.location.name,
             latitude: conditions.location.latitude,
             longitude: conditions.location.longitude,
             elevation: conditions.location.elevation
         )
-        WidgetLocationStore.save(location)
-        WidgetCenter.shared.reloadTimelines(ofKind: "NightConditionsWidget")
+        SharedStorage.saveWidgetLocation(location)
+        WatchConnectivityService.shared.sendCurrentLocationToWatch(location)
+        WatchConnectivityService.shared.sendConditionsToWatch(conditions)
+        WatchConnectivityService.shared.sendSelectedLocationToWatch(location)
+        
+        WidgetReloadService.shared.scheduleReload()
     }
     
     public func loadFromCache() -> Bool {
@@ -286,7 +294,7 @@ public class DashboardViewModel {
     }
     
     public func loadConditionsIfNeeded(for location: SavedLocation) async {
-        if let widgetConditions = WidgetCacheStore.load(),
+        if let widgetConditions = SharedStorage.loadWidgetConditions(),
            widgetConditions.fetchedAt.timeIntervalSinceNow > -3600,
            widgetConditions.location.latitude == location.latitude,
            widgetConditions.location.longitude == location.longitude {

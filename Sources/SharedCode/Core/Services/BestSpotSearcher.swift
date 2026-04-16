@@ -36,6 +36,7 @@ public class BestSpotSearcher {
         self.fogScoreCalculator = fogScoreCalculator
     }
     
+#if os(iOS)
     /// Finds the best viewing condition spots within a radius of a center location
     /// - Parameters:
     ///   - center: The center location to search around
@@ -47,6 +48,26 @@ public class BestSpotSearcher {
     /// - Returns: BestSpotResult containing scored locations sorted by score
     public func findBestSpots(
         around center: SavedLocation,
+        radiusMiles: Double = 30,
+        spacingMiles: Double = 5,
+        for date: Date,
+        topN: Int = 5,
+        progressHandler: ((Double) -> Void)? = nil
+    ) async throws -> BestSpotResult {
+        let cachedLocation = CachedLocation(from: center)
+        return try await findBestSpots(
+            around: cachedLocation,
+            radiusMiles: radiusMiles,
+            spacingMiles: spacingMiles,
+            for: date,
+            topN: topN,
+            progressHandler: progressHandler
+        )
+    }
+#endif
+
+    public func findBestSpots(
+        around center: CachedLocation,
         radiusMiles: Double = 30,
         spacingMiles: Double = 5,
         for date: Date,
@@ -138,7 +159,7 @@ public class BestSpotSearcher {
         let searchDuration = Date().timeIntervalSince(startTime)
         
         return BestSpotResult(
-            centerLocation: CachedLocation(from: center),
+            centerLocation: center,
             searchRadiusMiles: radiusMiles,
             gridSpacingMiles: spacingMiles,
             scoredLocations: topLocations,
