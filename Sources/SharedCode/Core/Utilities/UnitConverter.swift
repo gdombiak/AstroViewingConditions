@@ -2,8 +2,8 @@ import Foundation
 import os
 
 public enum UnitSystem: String, CaseIterable, Identifiable {
-    case metric = "Metric"
-    case imperial = "Imperial"
+    case metric = "metric"
+    case imperial = "imperial"
     
     public var id: String { rawValue }
 }

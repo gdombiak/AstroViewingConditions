@@ -56,7 +56,7 @@ struct WatchProvider: TimelineProvider {
     private func buildEntry() async -> NightConditionsEntry? {
         let location: (latitude: Double, longitude: Double, name: String)
         
-        if let saved = SharedStorage.loadWidgetLocation() {
+        if let saved = AppGroupStorage.loadWidgetLocation() {
             location = saved
         } else {
             widgetLogger.info("No saved location, requesting current GPS location")
@@ -67,7 +67,7 @@ struct WatchProvider: TimelineProvider {
                 let coord = try await locManager.getCurrentLocation()
                 location = (coord.latitude, coord.longitude, "Current Location")
 
-                SharedStorage.saveWidgetLocation(CachedLocation(
+                AppGroupStorage.saveWidgetLocation(CachedLocation(
                     name: location.name,
                     latitude: location.latitude,
                     longitude: location.longitude
@@ -89,7 +89,7 @@ struct WatchProvider: TimelineProvider {
             widgetLogger.info("Fetched \(forecasts.count) hourly forecasts from API")
         } catch {
             widgetLogger.error("Failed to fetch weather forecast: \(error.localizedDescription)")
-            if let cached = SharedStorage.loadWidgetConditions() {
+            if let cached = AppGroupStorage.loadWidgetConditions() {
                 widgetLogger.info("Falling back to cached weather data")
                 forecasts = cached.hourlyForecasts
             } else {
@@ -125,7 +125,7 @@ struct WatchProvider: TimelineProvider {
             issPasses: [],
             fogScore: FogCalculator.calculateCurrent(from: forecasts)
         )
-        SharedStorage.saveWidgetConditions(conditions)
+        AppGroupStorage.saveWidgetConditions(conditions)
 
         return NightConditionsEntry(date: Date(), assessment: assessment)
     }

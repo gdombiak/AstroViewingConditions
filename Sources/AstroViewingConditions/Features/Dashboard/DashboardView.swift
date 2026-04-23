@@ -7,7 +7,7 @@ public struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
-    @AppStorage("selectedLocationID") private var selectedLocationID: String = ""
+    @State private var selectedLocationID: String = ""
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
     @State private var viewModel = DashboardViewModel(apiKey: "")
     @State private var locationManager = LocationManager()
@@ -17,6 +17,10 @@ public struct DashboardView: View {
     @State private var showingLocationPicker = false
     @State private var showingBestSpotSearch = false
     @State private var lastActiveCheck = Date()
+    
+    public init() {
+        _selectedLocationID = State(initialValue: AppGroupStorage.loadSelectedLocationID() ?? "")
+    }
     
     private var unitConverter: AstroUnitConverter {
         AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
@@ -145,11 +149,13 @@ public struct DashboardView: View {
                 }
             }
         }
-        .onChange(of: selectedLocationID) { _, _ in
+        .onChange(of: selectedLocationID) { _, newValue in
+            AppGroupStorage.saveSelectedLocationID(newValue)
             Task {
                 if let location = selectedLocation {
                     await viewModel.loadConditionsIfNeeded(for: location)
                     viewModel.saveToCache()
+                    LocationSyncService.shared.publishSelectedLocationToWatch(location: CachedLocation(from: location))
                 }
             }
             let locations = LocationSyncService.shared.publishLocationsToWatch(context: modelContext)
@@ -163,6 +169,11 @@ public struct DashboardView: View {
                     await viewModel.refresh(for: location)
                     viewModel.saveToCache()
                 }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .watchLocationSelected)) { notification in
+            if let location = notification.object as? SavedLocation {
+                selectedLocationID = location.id.uuidString
             }
         }
     }

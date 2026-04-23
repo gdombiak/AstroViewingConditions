@@ -42,38 +42,85 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     
     func loadLocations() {
         print("WatchLocationManager: loadLocations called")
+        
+        // 1. Check iCloud first (source of truth) - fast since it's local cache
+        let cloudLocations = iCloudKeyValueStorage.shared.loadLocations()
+        let cloudSelected = iCloudKeyValueStorage.shared.loadSelectedLocation()
+        
+        // 2. Compare with App Group and update if different
+        var storedLocations = loadStoredLocations()
+        var locationsChanged = false
+        
+        if !cloudLocations.isEmpty {
+            let appGroupNames = storedLocations.map { $0.name }
+            let cloudNames = cloudLocations.map { $0.name }
+            if appGroupNames != cloudNames {
+                print("WatchLocationManager: Updating App Group with iCloud locations")
+                AppGroupStorage.saveSavedLocations(cloudLocations)
+                storedLocations = cloudLocations
+                locationsChanged = true
+            }
+        }
+        
+        var storedSelected = connectivityManager.loadSelectedLocationFromStorage()
+        
+        if let cloudSel = cloudSelected {
+            if let stored = storedSelected {
+                if stored.name != cloudSel.name || stored.latitude != cloudSel.latitude || stored.longitude != cloudSel.longitude {
+                    print("WatchLocationManager: Updating App Group with iCloud selected location")
+                    AppGroupStorage.saveSelectedLocation(cloudSel)
+                    storedSelected = cloudSel
+                }
+            } else {
+                AppGroupStorage.saveSelectedLocation(cloudSel)
+                storedSelected = cloudSel
+            }
+        }
+        
+        // 3. Build UI items
         var items: [WatchLocationItem] = [.currentLocation]
         
-        let receivedLocations = connectivityManager.receivedLocations
-        if !receivedLocations.isEmpty {
-            print("WatchLocationManager: Using \(receivedLocations.count) received locations")
-            items.append(contentsOf: receivedLocations.map { WatchLocationItem.from($0) })
+        if !storedLocations.isEmpty {
+            print("WatchLocationManager: Using \(storedLocations.count) stored locations")
+            items.append(contentsOf: storedLocations.map { WatchLocationItem.from($0) })
         } else {
-            let storedLocations = loadStoredLocations()
-            if !storedLocations.isEmpty {
-                print("WatchLocationManager: Using \(storedLocations.count) stored locations")
-                items.append(contentsOf: storedLocations.map { WatchLocationItem.from($0) })
+            let receivedLocations = connectivityManager.receivedLocations
+            if !receivedLocations.isEmpty {
+                print("WatchLocationManager: Using \(receivedLocations.count) received locations")
+                items.append(contentsOf: receivedLocations.map { WatchLocationItem.from($0) })
             } else {
                 print("WatchLocationManager: No locations, requesting from iOS")
                 connectivityManager.requestLocations()
             }
         }
         
-        if let currentLocation = connectivityManager.currentLocation ?? loadCurrentLocation() {
+        if let currentLocation = loadCurrentLocation() ?? connectivityManager.currentLocation {
             print("WatchLocationManager: Using current location: \(currentLocation.name)")
         }
         
+        // 4. Determine selected location
+        var newSelectedLocation: WatchLocationItem?
+        
+        if let selected = storedSelected {
+            newSelectedLocation = WatchLocationItem.from(selected)
+        } else if let selected = connectivityManager.selectedLocation {
+            newSelectedLocation = WatchLocationItem.from(selected)
+        }
+        
+        // 5. Update UI
         locations = items
         
-        if items.contains(where: { $0.name == selectedLocation.name }) {
-            // Keep the current selection
-        } else if let selected = connectivityManager.selectedLocation {
-            let watchItem = WatchLocationItem.from(selected)
-            selectedLocation = watchItem
-        } else if let storedSelected = connectivityManager.loadSelectedLocationFromStorage() {
-            selectedLocation = WatchLocationItem.from(storedSelected)
+        if let newSelected = newSelectedLocation {
+            if selectedLocation.name != newSelected.name {
+                selectedLocation = newSelected
+                loadConditionsIfNeeded()
+            } else if locationsChanged {
+                // Locations changed, might need to refresh conditions
+                loadConditionsIfNeeded()
+            }
         } else {
             selectedLocation = items.first ?? .currentLocation
+            loadConditionsIfNeeded()
         }
     }
     
@@ -100,7 +147,9 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
             longitude: location.coordinate?.longitude ?? 0,
             elevation: nil
         )
-        connectivityManager.sendSelectedLocationToWatch(cached)
+        iCloudKeyValueStorage.shared.saveSelectedLocation(cached)
+        AppGroupStorage.saveSelectedLocation(cached)
+        connectivityManager.sendSelectedLocationToiOS(cached)
     }
     
     var activeCoordinate: Coordinate? {
@@ -131,38 +180,26 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     }
     
     private func loadStoredLocations() -> [CachedLocation] {
-        let defaults = UserDefaults.standard
-        guard let data = defaults.data(forKey: "savedLocations"),
-              let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) else {
-            return []
-        }
-        return locations
+        AppGroupStorage.loadSavedLocations()
     }
     
     private func loadCurrentLocation() -> CachedLocation? {
-        let defaults = UserDefaults.standard
-        guard let data = defaults.data(forKey: "currentLocation"),
-              let location = try? JSONDecoder().decode(CachedLocation.self, from: data) else {
-            return nil
-        }
-        return location
+        AppGroupStorage.loadCurrentLocation()
     }
     
     func loadConditionsIfNeeded() {
-        if let receivedConditions = connectivityManager.conditions {
-            print("WatchLocationManager: Using received conditions")
-            conditions = receivedConditions
-            return
-        }
-        
+        // 1. Try App Group files first
         if let storedData = loadConditionsFromStorage() {
             if storedData.isStale {
-                print("WatchLocationManager: Conditions stale, requesting fresh from iOS")
+                print("WatchLocationManager: Stored conditions stale, requesting fresh from iOS")
                 connectivityManager.requestConditions()
             } else {
                 print("WatchLocationManager: Using stored conditions")
                 conditions = storedData.conditions
             }
+        } else if let receivedConditions = connectivityManager.conditions {
+            print("WatchLocationManager: Using received conditions")
+            conditions = receivedConditions
         } else {
             print("WatchLocationManager: No conditions, requesting from iOS")
             connectivityManager.requestConditions()
@@ -170,15 +207,10 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     }
     
     private func loadConditionsFromStorage() -> (conditions: ViewingConditions, isStale: Bool)? {
-        let defaults = UserDefaults.standard
-        guard let data = defaults.data(forKey: "conditions"),
-              let storedConditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) else {
+        guard let result = AppGroupStorage.loadConditionsWithTimestamp() else {
             return nil
         }
-        
-        let timestamp = defaults.object(forKey: "conditionsTimestamp") as? Date ?? Date.distantPast
-        let isStale = Date().timeIntervalSince(timestamp) > 3600
-        return (storedConditions, isStale)
+        return (conditions: result.conditions, isStale: result.isStale)
     }
     
     var hasConditions: Bool {

@@ -123,7 +123,13 @@ extension WatchConnectivityService: WCSessionDelegate {
                 if let data = message["selectedLocation"] as? Data,
                    let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
                     print("WatchConnectivityService: Received location selection from Watch: \(location.name)")
-                    SharedStorage.saveWidgetLocation(location)
+                    AppGroupStorage.saveWidgetLocation(location)
+                    refreshForLocation(location: location)
+                }
+            case "selectedLocationFromWatch":
+                if let data = message["selectedLocation"] as? Data,
+                   let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
+                    print("WatchConnectivityService: Selected location changed on Watch: \(location.name)")
                     refreshForLocation(location: location)
                 }
             default:
@@ -138,6 +144,9 @@ extension WatchConnectivityService: WCSessionDelegate {
             latitude: location.latitude,
             longitude: location.longitude
         )
+        AppGroupStorage.saveSelectedLocation(location)
+        iCloudKeyValueStorage.shared.saveSelectedLocation(location)
+        AppGroupStorage.saveSelectedLocationID(savedLocation.id.uuidString)
         NotificationCenter.default.post(
             name: .watchLocationSelected,
             object: savedLocation
@@ -150,7 +159,7 @@ extension WatchConnectivityService: WCSessionDelegate {
         
         let locations = LocationSyncService.shared.getSavedLocationsFromAppGroup()
         var selectedLoc: CachedLocation? = nil
-        if let widgetLoc = SharedStorage.loadWidgetLocation() {
+        if let widgetLoc = AppGroupStorage.loadWidgetLocation() {
             selectedLoc = CachedLocation(
                 name: widgetLoc.name,
                 latitude: widgetLoc.latitude,

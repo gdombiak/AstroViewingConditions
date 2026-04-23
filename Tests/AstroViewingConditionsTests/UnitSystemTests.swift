@@ -4,7 +4,7 @@ import Foundation
 @testable import AstroViewingConditions
 
 final class UnitSystemTests: XCTestCase {
-    private let testSuiteName = "UnitSystemTests"
+    private let testSuiteName = "group.com.astroviewing.conditions"
     
     private var testContainerURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: testSuiteName)
@@ -12,14 +12,19 @@ final class UnitSystemTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
+        cleanupUnitSystemFile()
     }
     
     override func tearDown() {
+        cleanupUnitSystemFile()
+        super.tearDown()
+    }
+    
+    private func cleanupUnitSystemFile() {
         if let url = testContainerURL {
             let fileURL = url.appendingPathComponent("unitSystem.json")
             try? FileManager.default.removeItem(at: fileURL)
         }
-        super.tearDown()
     }
     
     // MARK: - Initialization Tests
@@ -32,8 +37,7 @@ final class UnitSystemTests: XCTestCase {
     }
     
     func testInitializeOnlyRunsOnce() {
-        UnitSystemStorage.initializeIfNeeded()
-        let firstValue = UnitSystemStorage.loadSelectedUnitSystem()
+        _ = UnitSystemStorage.loadSelectedUnitSystem()
         
         UnitSystemStorage.saveSelectedUnitSystem(.imperial)
         
@@ -59,10 +63,9 @@ final class UnitSystemTests: XCTestCase {
         XCTAssertEqual(UnitSystemStorage.loadSelectedUnitSystem(), .imperial)
     }
     
-    func testGetterReturnsMetricForInvalidValue() {
+    func testGetterReturnsMetricForInvalidValue() throws {
         guard let url = testContainerURL else {
-            XCTSkip("Test container not available")
-            return
+            throw XCTSkip("Test container not available")
         }
         
         let invalidData = try? JSONEncoder().encode("InvalidValue")

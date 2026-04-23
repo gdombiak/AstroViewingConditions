@@ -26,7 +26,7 @@ struct Provider: TimelineProvider {
     }
 
     private func buildEntry() async -> NightConditionsEntry? {
-        guard let location = SharedStorage.loadWidgetLocation() else {
+        guard let location = AppGroupStorage.loadWidgetLocation() else {
             widgetLogger.error("No location configured for widget")
             return nil
         }
@@ -44,7 +44,7 @@ struct Provider: TimelineProvider {
             widgetLogger.info("Fetched \(forecasts.count) hourly forecasts from API")
         } catch {
             widgetLogger.error("Failed to fetch weather forecast: \(error.localizedDescription)")
-            if let cached = SharedStorage.loadWidgetConditions() {
+            if let cached = AppGroupStorage.loadWidgetConditions() {
                 widgetLogger.info("Falling back to cached weather data")
                 forecasts = cached.hourlyForecasts
             } else {
@@ -96,7 +96,7 @@ struct Provider: TimelineProvider {
             issPasses: [],
             fogScore: FogCalculator.calculateCurrent(from: forecasts)
         )
-        SharedStorage.saveWidgetConditions(conditions)
+        AppGroupStorage.saveWidgetConditions(conditions)
 
         return NightConditionsEntry(date: Date(), assessment: assessment)
     }

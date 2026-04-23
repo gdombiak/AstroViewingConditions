@@ -107,7 +107,7 @@ struct WatchDashboardView: View {
                 
                 let cachedLocation = try await reverseGeocode(latitude: latitude, longitude: longitude)
                 
-                SharedStorage.saveWidgetLocation(CachedLocation(
+                AppGroupStorage.saveWidgetLocation(CachedLocation(
                     name: cachedLocation.name,
                     latitude: latitude,
                     longitude: longitude

@@ -6,7 +6,5 @@
 	<array>
 		<string>group.com.astroviewing.conditions</string>
 	</array>
-	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
-	<string>$(TeamIdentifierPrefix)com.astroviewing.conditions</string>
 </dict>
 </plist>

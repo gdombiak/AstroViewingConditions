@@ -6,6 +6,7 @@ import SharedCode
 struct AstroViewingConditionsApp: App {
     init() {
         UnitSystemStorage.initializeIfNeeded()
+        MigrationHelper.migrateIfNeeded()
     }
     
     var body: some Scene {

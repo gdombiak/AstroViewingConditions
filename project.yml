@@ -90,6 +90,7 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: Tests/AstroViewingConditionsTests/AstroViewingConditionsTests.entitlements
     dependencies:
       - target: AstroViewingConditions
 

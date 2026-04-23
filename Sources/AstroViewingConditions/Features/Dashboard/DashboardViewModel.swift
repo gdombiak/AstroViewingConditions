@@ -267,14 +267,14 @@ public class DashboardViewModel {
     public func saveToCache() {
         guard let conditions = viewingConditions else { return }
         cacheService.save(conditions)
-        SharedStorage.saveWidgetConditions(conditions)
+        AppGroupStorage.saveWidgetConditions(conditions)
         let location = CachedLocation(
             name: conditions.location.name,
             latitude: conditions.location.latitude,
             longitude: conditions.location.longitude,
             elevation: conditions.location.elevation
         )
-        SharedStorage.saveWidgetLocation(location)
+        AppGroupStorage.saveWidgetLocation(location)
         WatchConnectivityService.shared.sendCurrentLocationToWatch(location)
         WatchConnectivityService.shared.sendConditionsToWatch(conditions)
         WatchConnectivityService.shared.sendSelectedLocationToWatch(location)
@@ -294,7 +294,7 @@ public class DashboardViewModel {
     }
     
     public func loadConditionsIfNeeded(for location: SavedLocation) async {
-        if let widgetConditions = SharedStorage.loadWidgetConditions(),
+        if let widgetConditions = AppGroupStorage.loadWidgetConditions(),
            widgetConditions.fetchedAt.timeIntervalSinceNow > -3600,
            widgetConditions.location.latitude == location.latitude,
            widgetConditions.location.longitude == location.longitude {
@@ -304,7 +304,8 @@ public class DashboardViewModel {
         }
 
         let loadedFromCache = loadFromCache()
-        let cachedLocationMatches = cacheService.cachedLocationMatches(location)
+        let cachedLocation = CachedLocation(from: location)
+        let cachedLocationMatches = cacheService.cachedLocationMatches(cachedLocation)
 
         if shouldFetchFreshConditions || !cachedLocationMatches {
             await loadConditions(for: location)

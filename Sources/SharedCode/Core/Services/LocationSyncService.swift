@@ -32,19 +32,28 @@ public final class LocationSyncService: @unchecked Sendable {
         }
     }
     
+    private func syncLocationsToCloud(_ locations: [CachedLocation]) {
+        AppGroupStorage.saveSavedLocations(locations)
+        iCloudKeyValueStorage.shared.saveLocations(locations)
+    }
+    
+    private func syncSelectedLocationToCloud(_ location: CachedLocation) {
+        AppGroupStorage.saveSelectedLocation(location)
+        iCloudKeyValueStorage.shared.saveSelectedLocation(location)
+    }
+    
     public func getSavedLocationsFromAppGroup() -> [CachedLocation] {
-        guard let baseURL = containerURL else { return [] }
-        
-        let fileURL = baseURL.appendingPathComponent("savedLocations.json")
-        guard let data = try? Data(contentsOf: fileURL),
-              let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) else {
-            return []
-        }
-        return locations
+        AppGroupStorage.loadSavedLocations()
     }
     
     public func publishLocationsToWatch(context: ModelContext) -> [CachedLocation] {
-        return getSavedLocations(context: context)
+        let locations = getSavedLocations(context: context)
+        syncLocationsToCloud(locations)
+        return locations
+    }
+    
+    public func publishSelectedLocationToWatch(location: CachedLocation) {
+        syncSelectedLocationToCloud(location)
     }
 }
 #else
@@ -57,54 +66,15 @@ public final class LocationSyncService: @unchecked Sendable {
         return []
     }
     
+    public func publishSelectedLocationToWatch(location: CachedLocation) {}
+    
     public func getSavedLocations(context: Any) -> [CachedLocation] {
         return []
     }
     
     public func getSavedLocationsFromAppGroup() -> [CachedLocation] {
-        guard let baseURL = containerURL else { return [] }
-        
-        let fileURL = baseURL.appendingPathComponent("savedLocations.json")
-        guard let data = try? Data(contentsOf: fileURL),
-              let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) else {
-            return []
-        }
-        return locations
+        AppGroupStorage.loadSavedLocations()
     }
 }
 #endif
 
-public struct SavedLocationStorage {
-    public static func saveLocations(_ locations: [CachedLocation]) {
-        guard let baseURL = containerURL else {
-            syncLogger.error("App Group container not available")
-            return
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("savedLocations.json")
-        
-        do {
-            let data = try JSONEncoder().encode(locations)
-            try data.write(to: fileURL)
-        } catch {
-            syncLogger.error("Failed to save locations: \(error.localizedDescription)")
-        }
-    }
-    
-    public static func loadLocations() -> [CachedLocation] {
-        guard let baseURL = containerURL else {
-            syncLogger.error("App Group container not available")
-            return []
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("savedLocations.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode([CachedLocation].self, from: data)
-        } catch {
-            syncLogger.warning("Failed to load locations: \(error.localizedDescription)")
-            return []
-        }
-    }
-}
