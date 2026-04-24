@@ -23,8 +23,9 @@ struct RectangularComplicationView: View {
                     .font(.system(size: 14))
                 
                 Text(assessment.summary)
-                    .font(.system(size: 13))
+                    .font(.system(size: 15))
                     .fontWeight(.medium)
+                    .minimumScaleFactor(0.75)
                     .foregroundStyle(assessment.ratingColor)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(2)
