@@ -57,3 +57,6 @@ playground.xcworkspace
 
 # SwiftUI Previews
 *.preview-thumbnails.*
+
+# Kilo
+.kilo/
