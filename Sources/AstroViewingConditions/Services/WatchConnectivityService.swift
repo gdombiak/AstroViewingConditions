@@ -34,12 +34,17 @@ public class WatchConnectivityService: NSObject, ObservableObject, @unchecked Se
         sendViaApplicationContext(type: "conditions", payload: ["conditions": data])
     }
     
-    public func sendSelectedLocationToWatch(_ location: CachedLocation) {
+    public func sendSelectedLocationToWatch(_ location: SelectedLocation) {
         guard let data = try? JSONEncoder().encode(location) else { return }
         sendViaApplicationContext(type: "selectedLocation", payload: ["selectedLocation": data])
     }
     
-    public func sendLocationSyncToWatch(locations: [CachedLocation], selectedLocation: CachedLocation?) {
+    public func sendUnitSystemToWatch(_ system: UnitSystem) {
+        guard let data = try? JSONEncoder().encode(system.rawValue) else { return }
+        sendViaApplicationContext(type: "unitSystem", payload: ["unitSystem": data])
+    }
+    
+    public func sendLocationSyncToWatch(locations: [CachedLocation], selectedLocation: SelectedLocation?) {
         guard let locationsData = try? JSONEncoder().encode(locations) else { return }
         var payload: [String: Any] = ["locations": locationsData]
         if let selectedLocation = selectedLocation, let data = try? JSONEncoder().encode(selectedLocation) {
@@ -119,17 +124,10 @@ extension WatchConnectivityService: WCSessionDelegate {
                 handleRequestLocations()
             case "requestConditions":
                 handleRequestConditions()
-            case "selectedLocation":
-                if let data = message["selectedLocation"] as? Data,
-                   let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
-                    print("WatchConnectivityService: Received location selection from Watch: \(location.name)")
-                    AppGroupStorage.saveWidgetLocation(location)
-                    refreshForLocation(location: location)
-                }
             case "selectedLocationFromWatch":
                 if let data = message["selectedLocation"] as? Data,
-                   let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
-                    print("WatchConnectivityService: Selected location changed on Watch: \(location.name)")
+                   let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) {
+                    print("WatchConnectivityService: Received location selection from Watch: \(location.name)")
                     refreshForLocation(location: location)
                 }
             default:
@@ -138,35 +136,22 @@ extension WatchConnectivityService: WCSessionDelegate {
         }
     }
     
-    private func refreshForLocation(location: CachedLocation) {
-        let savedLocation = SavedLocation(
-            name: location.name,
-            latitude: location.latitude,
-            longitude: location.longitude
-        )
-        AppGroupStorage.saveSelectedLocation(location)
-        iCloudKeyValueStorage.shared.saveSelectedLocation(location)
-        AppGroupStorage.saveSelectedLocationID(savedLocation.id.uuidString)
-        NotificationCenter.default.post(
-            name: .watchLocationSelected,
-            object: savedLocation
-        )
+    private func refreshForLocation(location: SelectedLocation) {
+        LocationStorageService.shared.saveSelectedLocation(location)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .watchLocationSelected,
+                object: location
+            )
+        }
     }
     
     private func handleRequestLocations() {
         print("WatchConnectivityService: Handling request for locations")
         guard let session = session, session.isReachable else { return }
         
-        let locations = LocationSyncService.shared.getSavedLocationsFromAppGroup()
-        var selectedLoc: CachedLocation? = nil
-        if let widgetLoc = AppGroupStorage.loadWidgetLocation() {
-            selectedLoc = CachedLocation(
-                name: widgetLoc.name,
-                latitude: widgetLoc.latitude,
-                longitude: widgetLoc.longitude,
-                elevation: nil
-            )
-        }
+        let locations = LocationStorageService.shared.loadSavedLocations()
+        let selectedLoc = LocationStorageService.shared.loadSelectedLocation()
         sendLocationSyncToWatch(locations: locations, selectedLocation: selectedLoc)
     }
     

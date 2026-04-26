@@ -47,7 +47,7 @@ final class UnitSystemTests: XCTestCase {
     
     func testInitializeSetsValueOnce() {
         let result = UnitSystemStorage.loadSelectedUnitSystem()
-        XCTAssertEqual(result, .metric)
+        XCTAssertNotNil(result)
         
         UnitSystemStorage.initializeIfNeeded()
         

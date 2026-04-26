@@ -12,7 +12,7 @@ final class WidgetReloadListener: ObservableObject, @unchecked Sendable {
     
     private func setupNotificationObservers() {
         NotificationCenter.default.addObserver(
-            forName: .widgetLocationDidChange,
+            forName: .selectedLocationDidChange,
             object: nil,
             queue: .main
         ) { [weak self] _ in

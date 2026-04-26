@@ -2,8 +2,8 @@ import Foundation
 import os
 
 public enum UnitSystem: String, CaseIterable, Identifiable {
-    case metric = "metric"
-    case imperial = "imperial"
+    case metric = "Metric"
+    case imperial = "Imperial"
     
     public var id: String { rawValue }
 }
@@ -98,25 +98,22 @@ private let unitLogger = Logger(subsystem: "com.astroviewing.conditions", catego
 
 public struct UnitSystemStorage {
     public static func loadSelectedUnitSystem() -> UnitSystem {
-        guard let baseURL = containerURL else {
-            unitLogger.error("App Group container not available")
-            return .metric
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("unitSystem.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            let rawValue = try JSONDecoder().decode(String.self, from: data)
-            guard let system = UnitSystem(rawValue: rawValue) else {
-                unitLogger.warning("Invalid unit system value, falling back to metric")
-                return .metric
-            }
+        if let system = loadFromAppGroup() { return system }
+        if let rawValue = iCloudKeyValueStorage.shared.loadUnitSystem(),
+           let system = UnitSystem(rawValue: rawValue) {
+            saveSelectedUnitSystem(system)
             return system
-        } catch {
-            unitLogger.warning("Failed to load unit system: \(error.localizedDescription), using metric")
-            return .metric
         }
+        return .metric
+    }
+    
+    private static func loadFromAppGroup() -> UnitSystem? {
+        guard let baseURL = containerURL else { return nil }
+        let fileURL = baseURL.appendingPathComponent("unitSystem.json")
+        let data = try? Data(contentsOf: fileURL)
+        guard let data, let rawValue = try? JSONDecoder().decode(String.self, from: data),
+              let system = UnitSystem(rawValue: rawValue) else { return nil }
+        return system
     }
     
     public static func saveSelectedUnitSystem(_ system: UnitSystem) {
@@ -130,6 +127,7 @@ public struct UnitSystemStorage {
         do {
             let data = try JSONEncoder().encode(system.rawValue)
             try data.write(to: fileURL)
+            iCloudKeyValueStorage.shared.saveUnitSystem(system.rawValue)
         } catch {
             unitLogger.error("Failed to save unit system: \(error.localizedDescription)")
         }
@@ -144,6 +142,12 @@ public struct UnitSystemStorage {
         let fileURL = baseURL.appendingPathComponent("unitSystem.json")
         
         if FileManager.default.fileExists(atPath: fileURL.path) { return }
+        
+        if let rawValue = iCloudKeyValueStorage.shared.loadUnitSystem(),
+           let system = UnitSystem(rawValue: rawValue) {
+            saveSelectedUnitSystem(system)
+            return
+        }
         
         let defaultSystem: UnitSystem = if #available(iOS 16, *) {
             Locale.current.measurementSystem == .metric ? .metric : .imperial

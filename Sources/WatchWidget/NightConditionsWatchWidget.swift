@@ -56,7 +56,7 @@ struct WatchProvider: TimelineProvider {
     private func buildEntry() async -> NightConditionsEntry? {
         let location: (latitude: Double, longitude: Double, name: String)
         
-        if let saved = AppGroupStorage.loadWidgetLocation() {
+        if let saved = AppGroupStorage.loadSelectedLocationForWidget() {
             location = saved
         } else {
             widgetLogger.info("No saved location, requesting current GPS location")
@@ -67,7 +67,8 @@ struct WatchProvider: TimelineProvider {
                 let coord = try await locManager.getCurrentLocation()
                 location = (coord.latitude, coord.longitude, "Current Location")
 
-                AppGroupStorage.saveWidgetLocation(CachedLocation(
+                LocationStorageService.shared.saveSelectedLocation(SelectedLocation(
+                    source: .currentGPS,
                     name: location.name,
                     latitude: location.latitude,
                     longitude: location.longitude

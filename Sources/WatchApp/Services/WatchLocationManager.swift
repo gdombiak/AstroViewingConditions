@@ -6,7 +6,7 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     static let shared = WatchLocationManager()
     
     @Published var locations: [WatchLocationItem] = [.currentLocation]
-    @Published var selectedLocation: WatchLocationItem = .currentLocation
+    @Published var selectedLocation: SelectedLocation?
     @Published var conditions: ViewingConditions?
     @Published var isLoading = false
     
@@ -28,56 +28,23 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
         self.conditions = conditions
     }
     
-    func connectivityManager(_ manager: WatchConnectivityManager, didUpdateSelectedLocation location: CachedLocation) {
+    func connectivityManager(_ manager: WatchConnectivityManager, didUpdateSelectedLocation location: SelectedLocation) {
         print("WatchLocationManager: Received didUpdateSelectedLocation delegate call for \(location.name)")
         handleSelectedLocationChanged(location)
     }
     
-    private func handleSelectedLocationChanged(_ location: CachedLocation) {
-        let watchItem = WatchLocationItem.from(location)
-        if locations.contains(where: { $0.name == location.name }) {
-            selectedLocation = watchItem
-        }
+    private func handleSelectedLocationChanged(_ location: SelectedLocation) {
+        selectedLocation = location
+        loadConditionsIfNeeded()
     }
     
     func loadLocations() {
         print("WatchLocationManager: loadLocations called")
         
-        // 1. Check iCloud first (source of truth) - fast since it's local cache
-        let cloudLocations = iCloudKeyValueStorage.shared.loadLocations()
-        let cloudSelected = iCloudKeyValueStorage.shared.loadSelectedLocation()
+        let storedLocations = loadStoredLocations()
+        let storedSelected = AppGroupStorage.loadSelectedLocation()
+            ?? iCloudKeyValueStorage.shared.loadSelectedLocation()
         
-        // 2. Compare with App Group and update if different
-        var storedLocations = loadStoredLocations()
-        var locationsChanged = false
-        
-        if !cloudLocations.isEmpty {
-            let appGroupNames = storedLocations.map { $0.name }
-            let cloudNames = cloudLocations.map { $0.name }
-            if appGroupNames != cloudNames {
-                print("WatchLocationManager: Updating App Group with iCloud locations")
-                AppGroupStorage.saveSavedLocations(cloudLocations)
-                storedLocations = cloudLocations
-                locationsChanged = true
-            }
-        }
-        
-        var storedSelected = connectivityManager.loadSelectedLocationFromStorage()
-        
-        if let cloudSel = cloudSelected {
-            if let stored = storedSelected {
-                if stored.name != cloudSel.name || stored.latitude != cloudSel.latitude || stored.longitude != cloudSel.longitude {
-                    print("WatchLocationManager: Updating App Group with iCloud selected location")
-                    AppGroupStorage.saveSelectedLocation(cloudSel)
-                    storedSelected = cloudSel
-                }
-            } else {
-                AppGroupStorage.saveSelectedLocation(cloudSel)
-                storedSelected = cloudSel
-            }
-        }
-        
-        // 3. Build UI items
         var items: [WatchLocationItem] = [.currentLocation]
         
         if !storedLocations.isEmpty {
@@ -94,32 +61,15 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
             }
         }
         
-        if let currentLocation = loadCurrentLocation() ?? connectivityManager.currentLocation {
-            print("WatchLocationManager: Using current location: \(currentLocation.name)")
-        }
-        
-        // 4. Determine selected location
-        var newSelectedLocation: WatchLocationItem?
-        
-        if let selected = storedSelected {
-            newSelectedLocation = WatchLocationItem.from(selected)
-        } else if let selected = connectivityManager.selectedLocation {
-            newSelectedLocation = WatchLocationItem.from(selected)
-        }
-        
-        // 5. Update UI
         locations = items
         
-        if let newSelected = newSelectedLocation {
-            if selectedLocation.name != newSelected.name {
-                selectedLocation = newSelected
-                loadConditionsIfNeeded()
-            } else if locationsChanged {
-                // Locations changed, might need to refresh conditions
+        if let selected = storedSelected {
+            if selectedLocation?.id != selected.id {
+                selectedLocation = selected
                 loadConditionsIfNeeded()
             }
-        } else {
-            selectedLocation = items.first ?? .currentLocation
+        } else if let selected = connectivityManager.selectedLocation {
+            selectedLocation = selected
             loadConditionsIfNeeded()
         }
     }
@@ -137,26 +87,37 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     }
     
     func select(_ location: WatchLocationItem) {
-        selectedLocation = location
+        guard location.name != "Current Location" else {
+            let selected = SelectedLocation(
+                source: .currentGPS,
+                name: location.name,
+                latitude: location.coordinate?.latitude ?? 0,
+                longitude: location.coordinate?.longitude ?? 0
+            )
+            selectedLocation = selected
+            LocationStorageService.shared.saveSelectedLocation(selected)
+            connectivityManager.sendSelectedLocationToiOS(selected)
+            return
+        }
         
-        guard location.name != "Current Location" else { return }
-        
-        let cached = CachedLocation(
+        let selected = SelectedLocation(
+            source: .saved,
+            id: location.id,
             name: location.name,
             latitude: location.coordinate?.latitude ?? 0,
-            longitude: location.coordinate?.longitude ?? 0,
-            elevation: nil
+            longitude: location.coordinate?.longitude ?? 0
         )
-        iCloudKeyValueStorage.shared.saveSelectedLocation(cached)
-        AppGroupStorage.saveSelectedLocation(cached)
-        connectivityManager.sendSelectedLocationToiOS(cached)
+        selectedLocation = selected
+        LocationStorageService.shared.saveSelectedLocation(selected)
+        connectivityManager.sendSelectedLocationToiOS(selected)
     }
     
     var activeCoordinate: Coordinate? {
-        if selectedLocation.name == "Current Location" {
+        guard let selected = selectedLocation else { return nil }
+        if selected.source == .currentGPS {
             return nil
         }
-        return selectedLocation.coordinate
+        return Coordinate(latitude: selected.latitude, longitude: selected.longitude)
     }
     
     func getCurrentCoordinate() async throws -> (latitude: Double, longitude: Double) {
@@ -183,12 +144,7 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
         AppGroupStorage.loadSavedLocations()
     }
     
-    private func loadCurrentLocation() -> CachedLocation? {
-        AppGroupStorage.loadCurrentLocation()
-    }
-    
     func loadConditionsIfNeeded() {
-        // 1. Try App Group files first
         if let storedData = loadConditionsFromStorage() {
             if storedData.isStale {
                 print("WatchLocationManager: Stored conditions stale, requesting fresh from iOS")

@@ -196,7 +196,7 @@ public struct LocationSearchView: View {
     }
     
     private func publishLocationsToWatch() {
-        let locations = LocationSyncService.shared.publishLocationsToWatch(context: modelContext)
+        let locations = LocationStorageService.shared.publishLocationsToWatch(context: modelContext)
         WatchConnectivityService.shared.sendLocationsToWatch(locations)
     }
     

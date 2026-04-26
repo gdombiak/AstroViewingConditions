@@ -5,7 +5,7 @@ private let logger = Logger(subsystem: "com.astroviewing.conditions", category: 
 
 extension Notification.Name {
     public static let watchLocationSelected = Notification.Name("watchLocationSelected")
-    public static let widgetLocationDidChange = Notification.Name("widgetLocationDidChange")
+    public static let selectedLocationDidChange = Notification.Name("selectedLocationDidChange")
     public static let widgetConditionsDidChange = Notification.Name("widgetConditionsDidChange")
 }
 
@@ -18,56 +18,35 @@ public struct AppGroupStorage: Sendable {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suiteName)
     }
     
-    // MARK: - Widget Location
+    // MARK: - Selected Location (unified)
     
-    public static func saveWidgetLocation(_ location: CachedLocation) {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return
-        }
-        
-        let data: [String: Any] = [
-            "latitude": location.latitude,
-            "longitude": location.longitude,
-            "name": location.name
-        ]
-        
+    public static func saveSelectedLocation(_ location: SelectedLocation) {
+        guard let baseURL = containerURL else { return }
         do {
-            let jsonData = try JSONSerialization.data(withJSONObject: data)
-            let fileURL = baseURL.appendingPathComponent("widgetLocation.json")
-            try jsonData.write(to: fileURL, options: .atomic)
-            
-            NotificationCenter.default.post(name: .widgetLocationDidChange, object: nil)
+            let data = try JSONEncoder().encode(location)
+            let fileURL = baseURL.appendingPathComponent("selectedLocation.json")
+            try data.write(to: fileURL, options: .atomic)
         } catch {
-            logger.error("Failed to save widget location: \(error.localizedDescription)")
+            logger.error("Failed to save selected location: \(error.localizedDescription)")
         }
     }
-
-    public static func loadWidgetLocation() -> (latitude: Double, longitude: Double, name: String)? {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return nil
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("widgetLocation.json")
-        
+    
+    public static func loadSelectedLocation() -> SelectedLocation? {
+        guard let baseURL = containerURL else { return nil }
+        let fileURL = baseURL.appendingPathComponent("selectedLocation.json")
         do {
             let data = try Data(contentsOf: fileURL)
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            guard let lat = json?["latitude"] as? Double,
-                  let lon = json?["longitude"] as? Double,
-                  let name = json?["name"] as? String else {
-                logger.warning("Widget location data is incomplete")
-                return nil
-            }
-            return (lat, lon, name)
+            return try JSONDecoder().decode(SelectedLocation.self, from: data)
         } catch {
-            logger.warning("Failed to load widget location: \(error.localizedDescription)")
+            logger.warning("Failed to load selected location: \(error.localizedDescription)")
             return nil
         }
     }
-
-    // MARK: - Widget Conditions
+    
+    public static func loadSelectedLocationForWidget() -> (latitude: Double, longitude: Double, name: String)? {
+        guard let selected = loadSelectedLocation() else { return nil }
+        return (selected.latitude, selected.longitude, selected.name)
+    }
     
     public static func saveWidgetConditions(_ conditions: ViewingConditions) {
         guard let baseURL = containerURL else {
@@ -134,74 +113,6 @@ public struct AppGroupStorage: Sendable {
         } catch {
             logger.warning("Failed to load locations: \(error.localizedDescription)")
             return []
-        }
-    }
-    
-    // MARK: - Selected Location
-    
-    public static func saveSelectedLocation(_ location: CachedLocation) {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return
-        }
-        
-        do {
-            let data = try JSONEncoder().encode(location)
-            let fileURL = baseURL.appendingPathComponent("selectedLocation.json")
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            logger.error("Failed to save selected location: \(error.localizedDescription)")
-        }
-    }
-    
-    public static func loadSelectedLocation() -> CachedLocation? {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return nil
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("selectedLocation.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode(CachedLocation.self, from: data)
-        } catch {
-            logger.warning("Failed to load selected location: \(error.localizedDescription)")
-            return nil
-        }
-    }
-    
-    // MARK: - Current Location
-    
-    public static func saveCurrentLocation(_ location: CachedLocation) {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return
-        }
-        
-        do {
-            let data = try JSONEncoder().encode(location)
-            let fileURL = baseURL.appendingPathComponent("currentLocation.json")
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            logger.error("Failed to save current location: \(error.localizedDescription)")
-        }
-    }
-    
-    public static func loadCurrentLocation() -> CachedLocation? {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return nil
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("currentLocation.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode(CachedLocation.self, from: data)
-        } catch {
-            logger.warning("Failed to load current location: \(error.localizedDescription)")
-            return nil
         }
     }
     
@@ -360,36 +271,4 @@ public struct AppGroupStorage: Sendable {
         }
     }
     
-    // MARK: - Selected Location ID
-    
-    public static func saveSelectedLocationID(_ id: String) {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return
-        }
-        
-        do {
-            let data = try JSONEncoder().encode(id)
-            let fileURL = baseURL.appendingPathComponent("selectedLocationID.json")
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            logger.error("Failed to save selected location ID: \(error.localizedDescription)")
-        }
-    }
-    
-    public static func loadSelectedLocationID() -> String? {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return nil
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("selectedLocationID.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode(String.self, from: data)
-        } catch {
-            return nil
-        }
-    }
 }

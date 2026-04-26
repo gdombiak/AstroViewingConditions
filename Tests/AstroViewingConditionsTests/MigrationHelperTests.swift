@@ -46,14 +46,16 @@ final class MigrationHelperTests: XCTestCase {
         
         XCTAssertNotNil(AppGroupStorage.loadBestSpotSettings())
         XCTAssertEqual(AppGroupStorage.loadUnitSystem(), "imperial")
-        XCTAssertEqual(AppGroupStorage.loadSelectedLocationID(), "current")
+        let selected = AppGroupStorage.loadSelectedLocation()
+        XCTAssertNotNil(selected)
+        XCTAssertEqual(selected?.source, .currentGPS)
     }
     
     private func cleanupAppGroupFiles() {
         guard let baseURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: testSuiteName) else { return }
         let files = ["savedLocations.json", "selectedLocation.json", "currentLocation.json",
                     "conditions.json", "bestSpotSettings.json", "unitSystem.json",
-                    "widgetLocation.json", "widgetConditions.json", "selectedLocationID.json"]
+                    "widgetLocation.json", "widgetConditions.json"]
         
         for file in files {
             try? FileManager.default.removeItem(at: baseURL.appendingPathComponent(file))

@@ -3,12 +3,12 @@ import SharedCode
 
 struct LocationSelectorView: View {
     let locations: [WatchLocationItem]
-    var selectedLocation: WatchLocationItem
+    var selectedLocation: SelectedLocation?
     let onSelectionChanged: (WatchLocationItem) -> Void
 
     var body: some View {
         NavigationLink(destination: LocationListView(locations: locations, selectedLocation: selectedLocation, onSelectionChanged: onSelectionChanged)) {
-            Label(selectedLocation.name, systemImage: "location.circle")
+            Label(selectedLocation?.name ?? "Current Location", systemImage: "location.circle")
                 .font(.headline)
         }
     }
@@ -16,7 +16,7 @@ struct LocationSelectorView: View {
 
 struct LocationListView: View {
     let locations: [WatchLocationItem]
-    var selectedLocation: WatchLocationItem
+    var selectedLocation: SelectedLocation?
     let onSelectionChanged: (WatchLocationItem) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -27,7 +27,7 @@ struct LocationListView: View {
                 dismiss()
             } label: {
                 HStack {
-                    if location.name == selectedLocation.name {
+                    if location.id != nil, location.id == selectedLocation?.id {
                         Image(systemName: "checkmark")
                             .foregroundStyle(.secondary)
                     }
@@ -37,11 +37,5 @@ struct LocationListView: View {
             }
         }
         .navigationTitle("Select Location")
-        .onAppear {
-            print("LocationListView: selectedLocation = \(selectedLocation.name) id = \(selectedLocation.id)")
-            for loc in locations {
-                print("  - \(loc.name) id = \(loc.id), match = \(loc.id == selectedLocation.id)")
-            }
-        }
     }
 }

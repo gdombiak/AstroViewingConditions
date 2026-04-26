@@ -21,7 +21,7 @@
 		143EBE16CD71B3766BE1DED2 /* BestSpotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99265B8958B03CCED578B749 /* BestSpotView.swift */; };
 		15B04B9244757303ED0C00B2 /* LocationsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC8772D9418812D0B637F247 /* LocationsListView.swift */; };
 		17266FA86858825588CA64C0 /* BestSpotResultCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B864D70EE1BB6EE975190E49 /* BestSpotResultCard.swift */; };
-		19D0DFD81B62A8AB1A947359 /* LocationSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F925F51969EA464D6D043B3D /* LocationSyncService.swift */; };
+		19D0DFD81B62A8AB1A947359 /* LocationStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F925F51969EA464D6D043B3D /* LocationStorageService.swift */; };
 		1AFF0706B12FCACB93ADF4D9 /* InlineComplicationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1027BF485935543CE3BE2BCC /* InlineComplicationView.swift */; };
 		1B1F6F42446EDB6AA6CFE981 /* ViewingConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E5D52C842A86937C4A75C /* ViewingConditions.swift */; };
 		1CD906D682144A82DD47BEE1 /* AstroViewingConditionsWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3BB3EAD2955ED1BBF9CAA1AB /* AstroViewingConditionsWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -45,7 +45,7 @@
 		3EA7E42450EFA33FED63C7F0 /* ISSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 418EB02DCD2775D61BB461FB /* ISSService.swift */; };
 		403B97365B269F2992BEC41D /* BestSpotSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1DA95CCE7AC3B2926F6F78 /* BestSpotSettings.swift */; };
 		409D3E765C72D7E3C28D6CED /* BestSpotSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E23D725B4DDE7B7B6C2D0E /* BestSpotSettingsTests.swift */; };
-		42599F6CAD104E258CF902CB /* LocationSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F925F51969EA464D6D043B3D /* LocationSyncService.swift */; };
+		42599F6CAD104E258CF902CB /* LocationStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F925F51969EA464D6D043B3D /* LocationStorageService.swift */; };
 		42AB8B646A078721CCC5A2BE /* NightForecastFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 493188511EC06FD962346099 /* NightForecastFilter.swift */; };
 		4523B6DA7D5729A92C3E4152 /* WidgetReloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D01B96156B6D29A0594559A /* WidgetReloadService.swift */; };
 		488129414A925BB7DD02F380 /* WatchSunMoonCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66DE73E6A3A75C891FDC995 /* WatchSunMoonCard.swift */; };
@@ -330,7 +330,7 @@
 		F31C5B412CF6A4B7681A599A /* UnitSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitSystemTests.swift; sourceTree = "<group>"; };
 		F41E5D52C842A86937C4A75C /* ViewingConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewingConditions.swift; sourceTree = "<group>"; };
 		F86AFD7B60FB033235F6C30A /* NightQualityAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightQualityAnalyzer.swift; sourceTree = "<group>"; };
-		F925F51969EA464D6D043B3D /* LocationSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSyncService.swift; sourceTree = "<group>"; };
+		F925F51969EA464D6D043B3D /* LocationStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationStorageService.swift; sourceTree = "<group>"; };
 		FA85D29ADCA14F29A247CFA9 /* FogCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FogCalculatorTests.swift; sourceTree = "<group>"; };
 		FAFB7767724742E57F6D26F8 /* iCloudKeyValueStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iCloudKeyValueStorage.swift; sourceTree = "<group>"; };
 		FEA6C745B6885645B03BDD4E /* NightConditionsWidgetMediumEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightConditionsWidgetMediumEntryView.swift; sourceTree = "<group>"; };
@@ -628,7 +628,7 @@
 				FAFB7767724742E57F6D26F8 /* iCloudKeyValueStorage.swift */,
 				418EB02DCD2775D61BB461FB /* ISSService.swift */,
 				2E157C75A873C7D62A822DC6 /* LocationManager.swift */,
-				F925F51969EA464D6D043B3D /* LocationSyncService.swift */,
+				F925F51969EA464D6D043B3D /* LocationStorageService.swift */,
 				EC8842E9A843939026144263 /* MigrationHelper.swift */,
 				68269A38CA6984DA843607EB /* WeatherService.swift */,
 				4D01B96156B6D29A0594559A /* WidgetReloadService.swift */,
@@ -991,7 +991,7 @@
 				E08BE12A1C02334A2DC3C58A /* ISSService.swift in Sources */,
 				C652045F0EA59FDB903B3AC1 /* LocationManager.swift in Sources */,
 				CE77F3D2918E88F3ACF346B6 /* LocationScore.swift in Sources */,
-				42599F6CAD104E258CF902CB /* LocationSyncService.swift in Sources */,
+				42599F6CAD104E258CF902CB /* LocationStorageService.swift in Sources */,
 				E40B39590187D93F423D6407 /* MigrationHelper.swift in Sources */,
 				5D0DCFCA0C0DF782D3DD6F19 /* NightForecastFilter.swift in Sources */,
 				F8A5FEB03B56A920C3E32C29 /* NightQualityAnalyzer.swift in Sources */,
@@ -1056,7 +1056,7 @@
 				3EA7E42450EFA33FED63C7F0 /* ISSService.swift in Sources */,
 				F8D0AF4B7232E5B0D4042C4E /* LocationManager.swift in Sources */,
 				3759BE9A7F328E34AB78AA2B /* LocationScore.swift in Sources */,
-				19D0DFD81B62A8AB1A947359 /* LocationSyncService.swift in Sources */,
+				19D0DFD81B62A8AB1A947359 /* LocationStorageService.swift in Sources */,
 				9B138EF62C9F0FEF6AE70CE1 /* MigrationHelper.swift in Sources */,
 				42AB8B646A078721CCC5A2BE /* NightForecastFilter.swift in Sources */,
 				A85EAC6FB81322708B4AECC1 /* NightQualityAnalyzer.swift in Sources */,

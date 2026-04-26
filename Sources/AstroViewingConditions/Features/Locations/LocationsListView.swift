@@ -86,7 +86,7 @@ public struct LocationsView: View {
         modelContext.delete(location)
         do {
             try modelContext.save()
-            let locations = LocationSyncService.shared.publishLocationsToWatch(context: modelContext)
+            let locations = LocationStorageService.shared.publishLocationsToWatch(context: modelContext)
             WatchConnectivityService.shared.sendLocationsToWatch(locations)
         } catch {
             print("Failed to save after deleting location: \(error)")

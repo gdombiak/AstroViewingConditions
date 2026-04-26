@@ -11,7 +11,7 @@ public struct MigrationHelper {
         
         guard lastVersion < currentMigrationVersion else { return }
         
-        logger.info("Starting migration from version \(lastVersion) to \(self.currentMigrationVersion)")
+        logger.info("Starting migration from version \(lastVersion) to \(Self.currentMigrationVersion)")
         
         let old = UserDefaults.standard
         
@@ -28,12 +28,8 @@ public struct MigrationHelper {
             
             if let unitRaw = old.string(forKey: "selectedUnitSystem") {
                 AppGroupStorage.saveUnitSystem(unitRaw)
+                iCloudKeyValueStorage.shared.saveUnitSystem(unitRaw)
                 logger.info("Migrated unit system: \(unitRaw)")
-            }
-            
-            if let selectedLocationID = old.string(forKey: "selectedLocationID"), !selectedLocationID.isEmpty {
-                AppGroupStorage.saveSelectedLocationID(selectedLocationID)
-                logger.info("Migrated selectedLocationID")
             }
             
             if let data = old.data(forKey: "savedLocations"),
@@ -43,27 +39,60 @@ public struct MigrationHelper {
                 logger.info("Migrated \(locations.count) saved locations")
             }
             
-            if let data = old.data(forKey: "currentLocation"),
-               let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
-                AppGroupStorage.saveCurrentLocation(location)
-                logger.info("Migrated current location")
-            }
-            
-            if let data = old.data(forKey: "selectedLocation"),
-               let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
-                AppGroupStorage.saveSelectedLocation(location)
-                iCloudKeyValueStorage.shared.saveSelectedLocation(location)
-                logger.info("Migrated selected location")
-            }
-            
             if let data = old.data(forKey: "conditions"),
                let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
                 AppGroupStorage.saveConditions(conditions)
                 logger.info("Migrated viewing conditions")
             }
+            
+            migrateSelectedLocationToUnifiedFormat(old: old)
         }
         
         UserDefaults.standard.set(currentMigrationVersion, forKey: migrationVersionKey)
-        logger.info("Migration complete. Set version to \(self.currentMigrationVersion)")
+        logger.info("Migration complete. Set version to \(Self.currentMigrationVersion)")
+    }
+    
+    private static func migrateSelectedLocationToUnifiedFormat(old: UserDefaults) {
+        if AppGroupStorage.loadSelectedLocation() != nil {
+            logger.info("Unified selected location already exists, skipping migration")
+            return
+        }
+        
+        let oldID = old.string(forKey: "selectedLocationID") ?? "current"
+        
+        if let uuid = UUID(uuidString: oldID) {
+            let location = SelectedLocation(
+                source: .saved,
+                id: uuid,
+                name: "",
+                latitude: 0,
+                longitude: 0
+            )
+            AppGroupStorage.saveSelectedLocation(location)
+            logger.info("Migrated selected location (UUID only, iOS will resolve on launch)")
+        } else {
+            let location = SelectedLocation(
+                source: .currentGPS,
+                id: nil,
+                name: "Current Location",
+                latitude: 0,
+                longitude: 0
+            )
+            AppGroupStorage.saveSelectedLocation(location)
+            iCloudKeyValueStorage.shared.saveSelectedLocation(location)
+            logger.info("Migrated selected location to unified format: \(location.source.rawValue)")
+        }
+        
+        deleteOldLocationFiles()
+    }
+    
+    private static func deleteOldLocationFiles() {
+        guard let baseURL = AppGroupStorage.containerURL else { return }
+        let filesToDelete = ["selectedLocationID.json", "currentLocation.json", "widgetLocation.json"]
+        for fileName in filesToDelete {
+            let fileURL = baseURL.appendingPathComponent(fileName)
+            try? FileManager.default.removeItem(at: fileURL)
+            logger.info("Deleted old file: \(fileName)")
+        }
     }
 }

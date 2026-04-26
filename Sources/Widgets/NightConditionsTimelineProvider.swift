@@ -26,7 +26,7 @@ struct Provider: TimelineProvider {
     }
 
     private func buildEntry() async -> NightConditionsEntry? {
-        guard let location = AppGroupStorage.loadWidgetLocation() else {
+        guard let location = AppGroupStorage.loadSelectedLocationForWidget() else {
             widgetLogger.error("No location configured for widget")
             return nil
         }

@@ -81,6 +81,10 @@ struct WatchDashboardView: View {
                     return
                 }
                 
+                var utc = Calendar(identifier: .gregorian)
+                utc.timeZone = TimeZone(identifier: "UTC")!
+                let today = utc.startOfDay(for: Date())
+                
                 let assessment = NightQualityAnalyzer.analyzeNight(
                     forecasts: conditions.hourlyForecasts,
                     sunEventsToday: sunEventsToday,
@@ -88,7 +92,7 @@ struct WatchDashboardView: View {
                     moonInfo: moonInfo,
                     latitude: conditions.location.latitude,
                     longitude: conditions.location.longitude,
-                    for: Calendar.current.startOfDay(for: Date())
+                    for: today
                 )
                 
                 self.nightQuality = assessment
@@ -106,19 +110,14 @@ struct WatchDashboardView: View {
                 let (latitude, longitude) = try await WatchLocationManager.shared.getCurrentCoordinate()
                 
                 let cachedLocation = try await reverseGeocode(latitude: latitude, longitude: longitude)
-                
-                AppGroupStorage.saveWidgetLocation(CachedLocation(
-                    name: cachedLocation.name,
-                    latitude: latitude,
-                    longitude: longitude
-                ))
-                WidgetReloadService.shared.scheduleReload()
 
                 let forecast = try await weatherService.fetchForecast(latitude: latitude, longitude: longitude, days: 3)
                 
-                let calendar = Calendar.current
-                let today = calendar.startOfDay(for: Date())
-                let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+                let calendar = Calendar(identifier: .gregorian)
+                var utc = calendar
+                utc.timeZone = TimeZone(identifier: "UTC")!
+                let today = utc.startOfDay(for: Date())
+                let tomorrow = utc.date(byAdding: .day, value: 1, to: today)!
                 
                 let sunEventsToday = await astronomyService.calculateSunEvents(latitude: latitude, longitude: longitude, on: today)
                 let sunEventsTomorrow = await astronomyService.calculateSunEvents(latitude: latitude, longitude: longitude, on: tomorrow)

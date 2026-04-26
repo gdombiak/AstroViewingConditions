@@ -41,15 +41,15 @@ public final class iCloudKeyValueStorage: @unchecked Sendable {
         return locations
     }
     
-    public func saveSelectedLocation(_ location: CachedLocation) {
+    public func saveSelectedLocation(_ location: SelectedLocation) {
         guard let data = try? JSONEncoder().encode(location) else { return }
         store.set(data, forKey: Keys.selectedLocation)
         logger.info("Saved selected location to iCloud")
     }
     
-    public func loadSelectedLocation() -> CachedLocation? {
+    public func loadSelectedLocation() -> SelectedLocation? {
         guard let data = store.data(forKey: Keys.selectedLocation),
-              let location = try? JSONDecoder().decode(CachedLocation.self, from: data) else {
+              let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) else {
             return nil
         }
         logger.info("Loaded selected location from iCloud")

@@ -12,7 +12,7 @@ extension Notification.Name {
 protocol WatchConnectivityManagerDelegate: AnyObject {
     func connectivityManager(_ manager: WatchConnectivityManager, didUpdateLocations locations: [CachedLocation])
     func connectivityManager(_ manager: WatchConnectivityManager, didUpdateConditions conditions: ViewingConditions)
-    func connectivityManager(_ manager: WatchConnectivityManager, didUpdateSelectedLocation location: CachedLocation)
+    func connectivityManager(_ manager: WatchConnectivityManager, didUpdateSelectedLocation location: SelectedLocation)
 }
 
 class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable {
@@ -21,8 +21,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
     weak var delegate: WatchConnectivityManagerDelegate?
     
     @Published var receivedLocations: [CachedLocation] = []
-    @Published var selectedLocation: CachedLocation?
-    @Published var currentLocation: CachedLocation?
+    @Published var selectedLocation: SelectedLocation?
     @Published var conditions: ViewingConditions?
     
     private override init() {
@@ -47,19 +46,25 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         })
     }
     
-    func sendSelectedLocationToiOS(_ location: CachedLocation) {
+    func sendSelectedLocationToiOS(_ location: SelectedLocation) {
         print("WatchConnectivityManager: Sending selected location to iOS: \(location.name)")
-        guard WCSession.default.isReachable else {
-            print("WatchConnectivityManager: Session not reachable, saved to iCloud only")
-            return
-        }
         
         guard let data = try? JSONEncoder().encode(location) else { return }
-        WCSession.default.sendMessage(
-            ["type": "selectedLocationFromWatch", "selectedLocation": data],
-            replyHandler: { _ in },
-            errorHandler: { _ in }
-        )
+        let message: [String: Any] = ["type": "selectedLocationFromWatch", "selectedLocation": data]
+        
+        if WCSession.default.isReachable {
+            WCSession.default.sendMessage(
+                message,
+                replyHandler: { _ in },
+                errorHandler: { error in
+                    print("WatchConnectivityManager: sendMessage failed: \(error.localizedDescription), falling back to transferUserInfo")
+                    WCSession.default.transferUserInfo(message)
+                }
+            )
+        } else {
+            print("WatchConnectivityManager: Session not reachable, using transferUserInfo")
+            WCSession.default.transferUserInfo(message)
+        }
     }
     
     func requestConditions() {
@@ -73,17 +78,6 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
             print("WatchConnectivityManager: Request conditions reply: \(reply)")
         }, errorHandler: { error in
             print("WatchConnectivityManager: Failed to request conditions: \(error)")
-        })
-    }
-    
-    func sendSelectedLocationToWatch(_ location: CachedLocation) {
-        print("WatchConnectivityManager: Sending selected location to iOS: \(location.name)")
-        guard let data = try? JSONEncoder().encode(location) else { return }
-        
-        WCSession.default.sendMessage(["type": "selectedLocation", "selectedLocation": data], replyHandler: { reply in
-            print("WatchConnectivityManager: Sent selected location, reply: \(reply)")
-        }, errorHandler: { error in
-            print("WatchConnectivityManager: Failed to send selected location: \(error)")
         })
     }
 }
@@ -105,9 +99,9 @@ extension WatchConnectivityManager: WCSessionDelegate {
         guard let type = applicationContext["type"] as? String else { return }
         
         let locationsData = applicationContext["locations"] as? Data
-        let locationData = applicationContext["location"] as? Data
         let conditionsData = applicationContext["conditions"] as? Data
         let selectedLocationData = applicationContext["selectedLocation"] as? Data
+        let unitSystemData = applicationContext["unitSystem"] as? Data
         
         DispatchQueue.main.async {
             switch type {
@@ -120,14 +114,6 @@ extension WatchConnectivityManager: WCSessionDelegate {
                     self.delegate?.connectivityManager(self, didUpdateLocations: locations)
                 }
                 
-            case "currentLocation":
-                if let data = locationData,
-                   let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
-                    print("WatchConnectivityManager: Received current location from app context: \(location.name)")
-                    self.currentLocation = location
-                    AppGroupStorage.saveCurrentLocation(location)
-                }
-                
             case "conditions":
                 if let data = conditionsData,
                    let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
@@ -138,7 +124,14 @@ extension WatchConnectivityManager: WCSessionDelegate {
                     self.delegate?.connectivityManager(self, didUpdateConditions: conditions)
                 }
                 
-            case "locationSync":
+            case "locationSync", "selectedLocation":
+                if let data = selectedLocationData,
+                   let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) {
+                    print("WatchConnectivityManager: Received selected location: \(location.name)")
+                    self.selectedLocation = location
+                    AppGroupStorage.saveSelectedLocation(location)
+                    self.delegate?.connectivityManager(self, didUpdateSelectedLocation: location)
+                }
                 if let data = locationsData,
                    let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
                     print("WatchConnectivityManager: Received location sync: \(locations.count) locations")
@@ -146,21 +139,12 @@ extension WatchConnectivityManager: WCSessionDelegate {
                     AppGroupStorage.saveSavedLocations(locations)
                     self.delegate?.connectivityManager(self, didUpdateLocations: locations)
                 }
-                if let data = selectedLocationData,
-                   let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
-                    print("WatchConnectivityManager: Received selected location: \(location.name)")
-                    self.selectedLocation = location
-                    AppGroupStorage.saveSelectedLocation(location)
-                    self.delegate?.connectivityManager(self, didUpdateSelectedLocation: location)
-                }
                 
-            case "selectedLocation":
-                if let data = selectedLocationData,
-                   let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
-                    print("WatchConnectivityManager: Received selected location: \(location.name)")
-                    self.selectedLocation = location
-                    AppGroupStorage.saveSelectedLocation(location)
-                    self.delegate?.connectivityManager(self, didUpdateSelectedLocation: location)
+            case "unitSystem":
+                if let data = unitSystemData,
+                   let unitSystem = try? JSONDecoder().decode(String.self, from: data) {
+                    print("WatchConnectivityManager: Received unit system: \(unitSystem)")
+                    AppGroupStorage.saveUnitSystem(unitSystem)
                 }
                 
             default:
@@ -175,9 +159,9 @@ extension WatchConnectivityManager: WCSessionDelegate {
         guard let type = message["type"] as? String else { return }
         
         let locationsData = message["locations"] as? Data
-        let locationData = message["location"] as? Data
         let conditionsData = message["conditions"] as? Data
         let selectedLocationData = message["selectedLocation"] as? Data
+        let unitSystemData = message["unitSystem"] as? Data
         
         DispatchQueue.main.async {
             switch type {
@@ -190,14 +174,6 @@ extension WatchConnectivityManager: WCSessionDelegate {
                     self.delegate?.connectivityManager(self, didUpdateLocations: locations)
                 }
                 
-            case "currentLocation":
-                if let data = locationData,
-                   let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
-                    print("WatchConnectivityManager: Received current location: \(location.name)")
-                    self.currentLocation = location
-                    AppGroupStorage.saveCurrentLocation(location)
-                }
-                
             case "conditions":
                 if let data = conditionsData,
                    let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
@@ -208,7 +184,14 @@ extension WatchConnectivityManager: WCSessionDelegate {
                     self.delegate?.connectivityManager(self, didUpdateConditions: conditions)
                 }
                 
-            case "locationSync":
+            case "locationSync", "selectedLocation":
+                if let data = selectedLocationData,
+                   let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) {
+                    print("WatchConnectivityManager: Received selected location: \(location.name)")
+                    self.selectedLocation = location
+                    AppGroupStorage.saveSelectedLocation(location)
+                    self.delegate?.connectivityManager(self, didUpdateSelectedLocation: location)
+                }
                 if let data = locationsData,
                    let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
                     print("WatchConnectivityManager: Received location sync: \(locations.count) locations")
@@ -216,21 +199,12 @@ extension WatchConnectivityManager: WCSessionDelegate {
                     AppGroupStorage.saveSavedLocations(locations)
                     self.delegate?.connectivityManager(self, didUpdateLocations: locations)
                 }
-                if let data = selectedLocationData,
-                   let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
-                    print("WatchConnectivityManager: Received selected location: \(location.name)")
-                    self.selectedLocation = location
-                    AppGroupStorage.saveSelectedLocation(location)
-                    self.delegate?.connectivityManager(self, didUpdateSelectedLocation: location)
-                }
                 
-            case "selectedLocation":
-                if let data = selectedLocationData,
-                   let location = try? JSONDecoder().decode(CachedLocation.self, from: data) {
-                    print("WatchConnectivityManager: Received selected location: \(location.name)")
-                    self.selectedLocation = location
-                    AppGroupStorage.saveSelectedLocation(location)
-                    self.delegate?.connectivityManager(self, didUpdateSelectedLocation: location)
+            case "unitSystem":
+                if let data = unitSystemData,
+                   let unitSystem = try? JSONDecoder().decode(String.self, from: data) {
+                    print("WatchConnectivityManager: Received unit system: \(unitSystem)")
+                    AppGroupStorage.saveUnitSystem(unitSystem)
                 }
                 
             default:
@@ -246,7 +220,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
         }
     }
     
-    func loadSelectedLocationFromStorage() -> CachedLocation? {
+    func loadSelectedLocationFromStorage() -> SelectedLocation? {
         return AppGroupStorage.loadSelectedLocation()
     }
     

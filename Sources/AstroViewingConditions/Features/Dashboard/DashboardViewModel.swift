@@ -44,24 +44,22 @@ public class DashboardViewModel {
         }
         
         public static func title(for selection: DaySelection, referenceDate: Date) -> String {
+            let calendar = Calendar.current
+            let startOfDay = calendar.startOfDay(for: referenceDate)
             switch selection {
             case .today:
                 return "Today"
             case .tomorrow:
                 return "Tomorrow"
             case .dayAfter:
-                return DateFormatters.shortDateFormatter.string(from: referenceDate.addingTimeInterval(2 * 24 * 60 * 60))
+                let dayAfter = calendar.date(byAdding: .day, value: 2, to: startOfDay)!
+                return DateFormatters.shortDateFormatter.string(from: dayAfter)
             }
         }
     }
     
     public func titleForSelectedDay(_ selection: DaySelection) -> String {
-        guard let conditions = viewingConditions,
-              !conditions.hourlyForecasts.isEmpty else {
-            return selection.title
-        }
-        let referenceDate = conditions.hourlyForecasts.first!.time
-        return DaySelection.title(for: selection, referenceDate: referenceDate)
+        return DaySelection.title(for: selection, referenceDate: Date())
     }
     
     public var isDataStale: Bool {
@@ -133,8 +131,7 @@ public class DashboardViewModel {
         let calendar = Calendar.current
         let tomorrowIndex = selectedDay.rawValue + 1
         let sunEventsTomorrow = tomorrowIndex < conditions.dailySunEvents.count ? conditions.dailySunEvents[tomorrowIndex] : nil
-        let referenceDate = conditions.hourlyForecasts.first?.time ?? conditions.fetchedAt
-        let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: referenceDate))!
+        let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: Date()))!
         
         let nightForecasts = nightTimeForecasts
         
@@ -268,16 +265,7 @@ public class DashboardViewModel {
         guard let conditions = viewingConditions else { return }
         cacheService.save(conditions)
         AppGroupStorage.saveWidgetConditions(conditions)
-        let location = CachedLocation(
-            name: conditions.location.name,
-            latitude: conditions.location.latitude,
-            longitude: conditions.location.longitude,
-            elevation: conditions.location.elevation
-        )
-        AppGroupStorage.saveWidgetLocation(location)
-        WatchConnectivityService.shared.sendCurrentLocationToWatch(location)
         WatchConnectivityService.shared.sendConditionsToWatch(conditions)
-        WatchConnectivityService.shared.sendSelectedLocationToWatch(location)
         
         WidgetReloadService.shared.scheduleReload()
     }
