@@ -64,7 +64,9 @@ public class DashboardViewModel {
     
     public var isDataStale: Bool {
         guard let lastFetch = lastSuccessfulFetch else { return true }
-        return Date().timeIntervalSince(lastFetch) > Self.staleThresholdSeconds
+        let timeStale = Date().timeIntervalSince(lastFetch) > Self.staleThresholdSeconds
+        let dayRolledOver = !Calendar.current.isDate(lastFetch, inSameDayAs: Date())
+        return timeStale || dayRolledOver
     }
     
     public var shouldFetchFreshConditions: Bool {

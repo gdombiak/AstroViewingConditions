@@ -111,7 +111,7 @@ struct WatchDashboardView: View {
                 
                 let cachedLocation = try await reverseGeocode(latitude: latitude, longitude: longitude)
 
-                let forecast = try await weatherService.fetchForecast(latitude: latitude, longitude: longitude, days: 3)
+                let forecast = try await weatherService.fetchForecast(latitude: latitude, longitude: longitude, days: 2)
                 
                 let calendar = Calendar(identifier: .gregorian)
                 var utc = calendar
