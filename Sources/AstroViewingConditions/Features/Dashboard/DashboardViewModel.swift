@@ -1,7 +1,6 @@
 import SharedCode
 import SwiftUI
 import WidgetKit
-import WidgetKit
 
 @MainActor
 @Observable
@@ -20,6 +19,7 @@ public class DashboardViewModel {
     public var lastSuccessfulFetch: Date?
     
     private var apiKey: String
+    private var locationTimeZone: TimeZone?
     
     private static let staleThresholdSeconds: TimeInterval = 6 * 60 * 60 // 6 hours
     
@@ -123,6 +123,13 @@ public class DashboardViewModel {
         viewingConditions?.fogScore
     }
     
+    private var locationCalendar: Calendar {
+        if let tz = locationTimeZone {
+            return LocationTimeZoneResolver.calendar(for: tz)
+        }
+        return Calendar.current
+    }
+    
     public var currentNightQuality: NightQualityAssessment? {
         guard let conditions = viewingConditions,
               let sunEventsToday = currentSunEvents,
@@ -130,7 +137,7 @@ public class DashboardViewModel {
             return nil
         }
         
-        let calendar = Calendar.current
+        let calendar = locationCalendar
         let tomorrowIndex = selectedDay.rawValue + 1
         let sunEventsTomorrow = tomorrowIndex < conditions.dailySunEvents.count ? conditions.dailySunEvents[tomorrowIndex] : nil
         let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: Date()))!
@@ -144,7 +151,8 @@ public class DashboardViewModel {
             moonInfo: moonInfo,
             latitude: conditions.location.latitude,
             longitude: conditions.location.longitude,
-            for: targetDate
+            for: targetDate,
+            calendar: calendar
         )
     }
     
@@ -152,7 +160,7 @@ public class DashboardViewModel {
         guard let conditions = viewingConditions,
               !conditions.hourlyForecasts.isEmpty else { return [] }
         
-        let calendar = Calendar.current
+        let calendar = locationCalendar
         let firstForecastTime = conditions.hourlyForecasts.first!.time
         let startOfFirstDay = calendar.startOfDay(for: firstForecastTime)
         let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay)!
@@ -191,6 +199,11 @@ public class DashboardViewModel {
         let locationElevation = location.elevation
         
         do {
+            // Resolve timezone for the location being viewed
+            let tz = await LocationTimeZoneResolver.resolve(latitude: latitude, longitude: longitude)
+            locationTimeZone = tz
+            let calendar = LocationTimeZoneResolver.calendar(for: tz)
+            
             // Fetch weather data
             let forecasts = try await weatherService.fetchForecast(
                 latitude: latitude,
@@ -198,14 +211,13 @@ public class DashboardViewModel {
                 days: 4
             )
             
-            let calendar = Calendar.current
             let startOfToday = calendar.startOfDay(for: Date())
             
             var dailySunEvents: [SunEvents] = []
             var dailyMoonInfo: [MoonInfo] = []
             
             for dayOffset in 0..<4 {
-                let date = calendar.date(byAdding: .day, value: dayOffset, to: startOfToday)!
+                let date = calendar.date(byAdding: Calendar.Component.day, value: dayOffset, to: startOfToday)!
                 let sunEvents = await astronomyService.calculateSunEvents(
                     latitude: latitude,
                     longitude: longitude,

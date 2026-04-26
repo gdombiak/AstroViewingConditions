@@ -42,6 +42,8 @@
 		3759BE9A7F328E34AB78AA2B /* LocationScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14AC762D96061EE240E1DE99 /* LocationScore.swift */; };
 		39FA41A81C51EA97FFFFFBEF /* GeographicGridGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6043EA39CFFA0CA706355DD1 /* GeographicGridGeneratorTests.swift */; };
 		3A07655F208963C766328F1F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 879F03F8C617DFEC39D869FB /* Assets.xcassets */; };
+		3CE8BA69B4B445E4AD219BB8 /* LocationTimeZoneResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBDD95FC8454A48A254836F /* LocationTimeZoneResolver.swift */; };
+		3D7DFD332498442CA86C945D /* LocationTimeZoneResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFBDD95FC8454A48A254836F /* LocationTimeZoneResolver.swift */; };
 		3EA7E42450EFA33FED63C7F0 /* ISSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 418EB02DCD2775D61BB461FB /* ISSService.swift */; };
 		403B97365B269F2992BEC41D /* BestSpotSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1DA95CCE7AC3B2926F6F78 /* BestSpotSettings.swift */; };
 		409D3E765C72D7E3C28D6CED /* BestSpotSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E23D725B4DDE7B7B6C2D0E /* BestSpotSettingsTests.swift */; };
@@ -244,7 +246,7 @@
 		05D5372F28293316B4B4958E /* CacheService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheService.swift; sourceTree = "<group>"; };
 		082A7D1648D48B54E85F0EF3 /* SunMoonCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunMoonCard.swift; sourceTree = "<group>"; };
 		097CB1A1C6A002382B8D37A6 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
-		0C37D1273CE53088D8939CC0 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		0C37D1273CE53088D8939CC0 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		0F51239F6D2F82D8F70B0996 /* WatchConnectivityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityService.swift; sourceTree = "<group>"; };
 		1027BF485935543CE3BE2BCC /* InlineComplicationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InlineComplicationView.swift; sourceTree = "<group>"; };
 		109A5FAD0DEA939E3DEA7DBB /* LocationSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSearchView.swift; sourceTree = "<group>"; };
@@ -262,7 +264,7 @@
 		30BE687AF9CFA3D567761843 /* NightConditionsEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightConditionsEntry.swift; sourceTree = "<group>"; };
 		33A932544EBED47D8B540A33 /* NetworkErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkErrorTests.swift; sourceTree = "<group>"; };
 		3705F74E4EEC82078143D834 /* BestSpotSearcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSearcher.swift; sourceTree = "<group>"; };
-		38D499FDBC2B800314836987 /* AstroViewingConditionsTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AstroViewingConditionsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		38D499FDBC2B800314836987 /* AstroViewingConditionsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AstroViewingConditionsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A206498C0EFB9959303437E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3A95FBB1581285D4D9D0F4E1 /* RectangularComplicationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RectangularComplicationView.swift; sourceTree = "<group>"; };
 		3BB3EAD2955ED1BBF9CAA1AB /* AstroViewingConditionsWatchWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AstroViewingConditionsWatchWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -287,7 +289,7 @@
 		68269A38CA6984DA843607EB /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
 		6DA60976B07F06290A162396 /* AstroViewingConditionsWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AstroViewingConditionsWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		70E23D725B4DDE7B7B6C2D0E /* BestSpotSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSettingsTests.swift; sourceTree = "<group>"; };
-		7549069C120C6495548EE838 /* NightConditionsWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = NightConditionsWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7549069C120C6495548EE838 /* NightConditionsWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NightConditionsWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		7DE13674996F9DC96D419E3F /* SharedCode.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = SharedCode.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		81725D08FFF40AF5BB964C7F /* WatchNightQualityCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchNightQualityCard.swift; sourceTree = "<group>"; };
 		81B52C3C0FB94395C6A64BAF /* WeatherServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherServiceTests.swift; sourceTree = "<group>"; };
@@ -305,7 +307,7 @@
 		BB682E80630FCFADCDA74759 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BB77EA28A0FC77907CD95AD2 /* FormattersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormattersTests.swift; sourceTree = "<group>"; };
 		BC1993647566ECC08937BF07 /* AdaptiveFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveFont.swift; sourceTree = "<group>"; };
-		BC522BA09BF9FC4E4BB1FB46 /* AstroViewingConditions.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AstroViewingConditions.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BC522BA09BF9FC4E4BB1FB46 /* AstroViewingConditions.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AstroViewingConditions.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C7F661FBADE218FC2C2B3DD3 /* AstroViewingConditionsWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstroViewingConditionsWatchApp.swift; sourceTree = "<group>"; };
 		CD148A5A482057F88BE13AF7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D610F1529AB262A03F49EB53 /* UnitConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitConverter.swift; sourceTree = "<group>"; };
@@ -324,6 +326,7 @@
 		EC8842E9A843939026144263 /* MigrationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationHelper.swift; sourceTree = "<group>"; };
 		ECAE2FB1C99BE13E2DAC757D /* AstroViewingConditionsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstroViewingConditionsApp.swift; sourceTree = "<group>"; };
 		ED98556427C84CC4F6481E34 /* ISSServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISSServiceTests.swift; sourceTree = "<group>"; };
+		EFBDD95FC8454A48A254836F /* LocationTimeZoneResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTimeZoneResolver.swift; sourceTree = "<group>"; };
 		F278F46B63CAE4FD9E8F5E5A /* SharedCode.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = SharedCode.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2BC41A1D1E06F5996890857 /* MapPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapPickerView.swift; sourceTree = "<group>"; };
 		F302F40B584E071A2408D6CC /* AstronomyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstronomyServiceTests.swift; sourceTree = "<group>"; };
@@ -527,6 +530,7 @@
 			children = (
 				BC1993647566ECC08937BF07 /* AdaptiveFont.swift */,
 				9B1DA95CCE7AC3B2926F6F78 /* BestSpotSettings.swift */,
+				EFBDD95FC8454A48A254836F /* LocationTimeZoneResolver.swift */,
 				EABB23E856EFE612481F9FE0 /* FogCalculator.swift */,
 				3BD83EFAF112F12D45763770 /* Formatters.swift */,
 				054461D2A435B336317EB4A1 /* GeographicGridGenerator.swift */,
@@ -848,7 +852,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					19D28B7D38EF09ED9C0A38D9 = {
 						DevelopmentTeam = ALV53VY374;
@@ -992,6 +996,7 @@
 				C652045F0EA59FDB903B3AC1 /* LocationManager.swift in Sources */,
 				CE77F3D2918E88F3ACF346B6 /* LocationScore.swift in Sources */,
 				42599F6CAD104E258CF902CB /* LocationStorageService.swift in Sources */,
+				3D7DFD332498442CA86C945D /* LocationTimeZoneResolver.swift in Sources */,
 				E40B39590187D93F423D6407 /* MigrationHelper.swift in Sources */,
 				5D0DCFCA0C0DF782D3DD6F19 /* NightForecastFilter.swift in Sources */,
 				F8A5FEB03B56A920C3E32C29 /* NightQualityAnalyzer.swift in Sources */,
@@ -1062,6 +1067,7 @@
 				A85EAC6FB81322708B4AECC1 /* NightQualityAnalyzer.swift in Sources */,
 				D0240EC80E56D7F92AFBD78C /* SavedLocation.swift in Sources */,
 				CD14E13AA38BBDBEBA4D83F8 /* UnitConverter.swift in Sources */,
+				3CE8BA69B4B445E4AD219BB8 /* LocationTimeZoneResolver.swift in Sources */,
 				1B1F6F42446EDB6AA6CFE981 /* ViewingConditions.swift in Sources */,
 				FFEFA6D7F0C1B8CE872FCD99 /* WeatherService.swift in Sources */,
 				98CE7F1AB9CAA356D6BA7B46 /* WidgetReloadService.swift in Sources */,
@@ -1159,14 +1165,16 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "";
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				PRODUCT_BUNDLE_IDENTIFIER = com.astroviewing.conditions.SharedCode;
 				PRODUCT_NAME = SharedCode;
 				SDKROOT = watchos;
@@ -1211,10 +1219,12 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = ALV53VY374;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -1227,6 +1237,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -1262,18 +1273,20 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "";
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				PRODUCT_BUNDLE_IDENTIFIER = com.astroviewing.conditions.SharedCode;
 				PRODUCT_NAME = SharedCode;
 				SDKROOT = iphoneos;
@@ -1309,18 +1322,20 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "";
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				PRODUCT_BUNDLE_IDENTIFIER = com.astroviewing.conditions.SharedCode;
 				PRODUCT_NAME = SharedCode;
 				SDKROOT = iphoneos;
@@ -1398,14 +1413,16 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = YES;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "";
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu11 gnu++14";
 				PRODUCT_BUNDLE_IDENTIFIER = com.astroviewing.conditions.SharedCode;
 				PRODUCT_NAME = SharedCode;
 				SDKROOT = watchos;
@@ -1470,10 +1487,12 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = ALV53VY374;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -1493,6 +1512,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";

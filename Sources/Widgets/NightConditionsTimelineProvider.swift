@@ -53,7 +53,8 @@ struct Provider: TimelineProvider {
             }
         }
 
-        let calendar = Calendar.current
+        let tz = await LocationTimeZoneResolver.resolve(latitude: location.latitude, longitude: location.longitude)
+        let calendar = LocationTimeZoneResolver.calendar(for: tz)
         let today = calendar.startOfDay(for: Date())
         let sunEventsToday = await astronomyService.calculateSunEvents(
             latitude: location.latitude,
@@ -79,7 +80,8 @@ struct Provider: TimelineProvider {
             moonInfo: moonInfo,
             latitude: location.latitude,
             longitude: location.longitude,
-            for: today
+            for: today,
+            calendar: calendar
         )
 
         let cachedLocation = CachedLocation(

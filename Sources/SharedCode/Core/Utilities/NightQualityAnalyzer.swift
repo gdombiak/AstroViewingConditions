@@ -35,14 +35,16 @@ public struct NightQualityAnalyzer {
         moonInfo: MoonInfo,
         latitude: Double,
         longitude: Double,
-        for date: Date
+        for date: Date,
+        calendar: Calendar
     ) -> NightQualityAssessment {
         
         // Filter forecasts to nighttime hours only
         let (nightStart, nightEnd) = NightForecastFilter.calculateNightRange(
             sunEventsToday: sunEventsToday,
             sunEventsTomorrow: sunEventsTomorrow,
-            for: date
+            for: date,
+            calendar: calendar
         )
         
         let nightForecasts = forecasts.filter { forecast in

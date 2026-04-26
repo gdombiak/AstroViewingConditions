@@ -73,29 +73,32 @@ struct WatchDashboardView: View {
             .onAppear {
                 refresh()
             }
-            .onChange(of: connectivityManager.conditions?.fetchedAt) { _, newFetchedAt in
-                guard let conditions = connectivityManager.conditions,
-                      let sunEventsToday = conditions.dailySunEvents.first,
-                      let sunEventsTomorrow = conditions.dailySunEvents.dropFirst().first,
-                      let moonInfo = conditions.dailyMoonInfo.first else {
-                    return
+            .onChange(of: connectivityManager.conditions?.fetchedAt) { _, _ in
+                Task {
+                    guard let conditions = connectivityManager.conditions,
+                          let sunEventsToday = conditions.dailySunEvents.first,
+                          let sunEventsTomorrow = conditions.dailySunEvents.dropFirst().first,
+                          let moonInfo = conditions.dailyMoonInfo.first else {
+                        return
+                    }
+                    
+                    let tz = await LocationTimeZoneResolver.resolve(latitude: conditions.location.latitude, longitude: conditions.location.longitude)
+                    let calendar = LocationTimeZoneResolver.calendar(for: tz)
+                    let today = calendar.startOfDay(for: Date())
+                    
+                    let assessment = NightQualityAnalyzer.analyzeNight(
+                        forecasts: conditions.hourlyForecasts,
+                        sunEventsToday: sunEventsToday,
+                        sunEventsTomorrow: sunEventsTomorrow,
+                        moonInfo: moonInfo,
+                        latitude: conditions.location.latitude,
+                        longitude: conditions.location.longitude,
+                        for: today,
+                        calendar: calendar
+                    )
+                    
+                    self.nightQuality = assessment
                 }
-                
-                var utc = Calendar(identifier: .gregorian)
-                utc.timeZone = TimeZone(identifier: "UTC")!
-                let today = utc.startOfDay(for: Date())
-                
-                let assessment = NightQualityAnalyzer.analyzeNight(
-                    forecasts: conditions.hourlyForecasts,
-                    sunEventsToday: sunEventsToday,
-                    sunEventsTomorrow: sunEventsTomorrow,
-                    moonInfo: moonInfo,
-                    latitude: conditions.location.latitude,
-                    longitude: conditions.location.longitude,
-                    for: today
-                )
-                
-                self.nightQuality = assessment
             }
         }
     }
@@ -113,11 +116,10 @@ struct WatchDashboardView: View {
 
                 let forecast = try await weatherService.fetchForecast(latitude: latitude, longitude: longitude, days: 2)
                 
-                let calendar = Calendar(identifier: .gregorian)
-                var utc = calendar
-                utc.timeZone = TimeZone(identifier: "UTC")!
-                let today = utc.startOfDay(for: Date())
-                let tomorrow = utc.date(byAdding: .day, value: 1, to: today)!
+                let tz = await LocationTimeZoneResolver.resolve(latitude: latitude, longitude: longitude)
+                let calendar = LocationTimeZoneResolver.calendar(for: tz)
+                let today = calendar.startOfDay(for: Date())
+                let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
                 
                 let sunEventsToday = await astronomyService.calculateSunEvents(latitude: latitude, longitude: longitude, on: today)
                 let sunEventsTomorrow = await astronomyService.calculateSunEvents(latitude: latitude, longitude: longitude, on: tomorrow)
@@ -130,7 +132,8 @@ struct WatchDashboardView: View {
                     moonInfo: moonInfo,
                     latitude: latitude,
                     longitude: longitude,
-                    for: today
+                    for: today,
+                    calendar: calendar
                 )
 
                 connectivityManager.conditions = ViewingConditions(

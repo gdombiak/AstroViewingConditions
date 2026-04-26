@@ -99,7 +99,8 @@ struct WatchProvider: TimelineProvider {
             }
         }
 
-        let calendar = Calendar.current
+        let tz = await LocationTimeZoneResolver.resolve(latitude: location.latitude, longitude: location.longitude)
+        let calendar = LocationTimeZoneResolver.calendar(for: tz)
         let today = calendar.startOfDay(for: Date())
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
 
@@ -114,7 +115,8 @@ struct WatchProvider: TimelineProvider {
             moonInfo: moonInfo,
             latitude: location.latitude,
             longitude: location.longitude,
-            for: today
+            for: today,
+            calendar: calendar
         )
 
         let conditions = ViewingConditions(
