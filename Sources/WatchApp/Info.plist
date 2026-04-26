@@ -6,10 +6,6 @@
 	<string>com.astroviewing.conditions</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Your location is used to show viewing conditions for your current position.</string>
-	<key>WKCompanionAppBundleIdentifier</key>
-	<string>com.astroviewing.conditions</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Your location is used to show viewing conditions for your current position.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleDisplayName</key>

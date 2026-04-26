@@ -50,7 +50,6 @@
 		42599F6CAD104E258CF902CB /* LocationStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F925F51969EA464D6D043B3D /* LocationStorageService.swift */; };
 		42AB8B646A078721CCC5A2BE /* NightForecastFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 493188511EC06FD962346099 /* NightForecastFilter.swift */; };
 		4523B6DA7D5729A92C3E4152 /* WidgetReloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D01B96156B6D29A0594559A /* WidgetReloadService.swift */; };
-		488129414A925BB7DD02F380 /* WatchSunMoonCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66DE73E6A3A75C891FDC995 /* WatchSunMoonCard.swift */; };
 		4C0596C56E1142BDD5D7D955 /* HourlyForecastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C311F73114D139D6EC3E022 /* HourlyForecastView.swift */; };
 		4C4D356E9DEB9AEF0CA9A3D2 /* CacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D5372F28293316B4B4958E /* CacheService.swift */; };
 		4E9BAF05442E452EE828A41B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B13AC1E745AF0480A32328 /* ContentView.swift */; };
@@ -311,7 +310,6 @@
 		C7F661FBADE218FC2C2B3DD3 /* AstroViewingConditionsWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstroViewingConditionsWatchApp.swift; sourceTree = "<group>"; };
 		CD148A5A482057F88BE13AF7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D610F1529AB262A03F49EB53 /* UnitConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitConverter.swift; sourceTree = "<group>"; };
-		D66DE73E6A3A75C891FDC995 /* WatchSunMoonCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSunMoonCard.swift; sourceTree = "<group>"; };
 		DF1ADDEE10299D675C007C41 /* BestSpotSearcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSearcherTests.swift; sourceTree = "<group>"; };
 		E091BB8BE5C0597F0ECD6457 /* AstronomyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstronomyService.swift; sourceTree = "<group>"; };
 		E1B9C8B5B17ED18A6A87CE28 /* ViewingConditionsModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewingConditionsModelTests.swift; sourceTree = "<group>"; };
@@ -424,7 +422,6 @@
 				1C99BA746974BABE200F7483 /* WatchCurrentConditionsCard.swift */,
 				52E6FDFDFD0F83CF07A6F8E0 /* WatchDashboardView.swift */,
 				81725D08FFF40AF5BB964C7F /* WatchNightQualityCard.swift */,
-				D66DE73E6A3A75C891FDC995 /* WatchSunMoonCard.swift */,
 			);
 			path = Dashboard;
 			sourceTree = "<group>";
@@ -975,7 +972,6 @@
 				24910EE1672EF7B13F23E650 /* WatchDashboardView.swift in Sources */,
 				7F283D19C8B4A4B68560DCCD /* WatchLocationManager.swift in Sources */,
 				782BE329FE4061D2F957A7C6 /* WatchNightQualityCard.swift in Sources */,
-				488129414A925BB7DD02F380 /* WatchSunMoonCard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
