@@ -141,7 +141,15 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     }
     
     private func loadStoredLocations() -> [CachedLocation] {
-        AppGroupStorage.loadSavedLocations()
+        let appGroupLocations = AppGroupStorage.loadSavedLocations()
+        if !appGroupLocations.isEmpty {
+            return appGroupLocations
+        }
+        let iCloudLocations = iCloudKeyValueStorage.shared.loadLocations()
+        if !iCloudLocations.isEmpty {
+            AppGroupStorage.saveSavedLocations(iCloudLocations)
+        }
+        return iCloudLocations
     }
     
     func loadConditionsIfNeeded() {
