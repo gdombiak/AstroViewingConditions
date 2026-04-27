@@ -4,7 +4,6 @@ import SharedCode
 struct WatchAstronomicalNightCard: View {
     let sunEvents: SunEvents
     let moonInfo: MoonInfo
-    private let today = Date()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -25,7 +24,7 @@ struct WatchAstronomicalNightCard: View {
                         .fontWeight(.medium)
                 }
 
-                let duration = sunEvents.astronomicalNightDuration(on: today)
+                let duration = sunEvents.astronomicalNightDuration
                 Text(formatDuration(duration))
                     .font(.caption2)
                     .foregroundStyle(.secondary)

@@ -150,24 +150,8 @@ public struct SunEvents: Sendable, Codable {
         astronomicalTwilightBegin
     }
     
-    public func astronomicalNightDuration(on date: Date) -> TimeInterval {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: date)
-        let nightStart = calendar.date(bySettingHour: calendar.component(.hour, from: astronomicalNightStart),
-                                       minute: calendar.component(.minute, from: astronomicalNightStart),
-                                       second: 0,
-                                       of: startOfDay) ?? startOfDay
-        
-        var nightEnd = calendar.date(bySettingHour: calendar.component(.hour, from: astronomicalNightEnd),
-                                     minute: calendar.component(.minute, from: astronomicalNightEnd),
-                                     second: 0,
-                                     of: startOfDay) ?? startOfDay
-        
-        if nightEnd < nightStart {
-            nightEnd = calendar.date(byAdding: .day, value: 1, to: nightEnd) ?? nightEnd
-        }
-        
-        return nightEnd.timeIntervalSince(nightStart)
+    public var astronomicalNightDuration: TimeInterval {
+        astronomicalNightEnd.timeIntervalSince(astronomicalNightStart)
     }
 }
 

@@ -5,7 +5,6 @@ struct WatchDashboardView: View {
     @State private var weatherService = WeatherService()
     @State private var astronomyService = AstronomyService()
     
-    @State private var nightQuality: NightQualityAssessment?
     @State private var error: String?
     @ObservedObject var locationManager = WatchLocationManager.shared
     
@@ -117,11 +116,4 @@ struct WatchDashboardView: View {
         await locationManager.refresh()
     }
 
-    private func reverseGeocode(latitude: Double, longitude: Double) async throws -> CachedLocation {
-        return CachedLocation(
-            name: String(format: "%.4f, %.4f", latitude, longitude),
-            latitude: latitude,
-            longitude: longitude
-        )
-    }
 }
