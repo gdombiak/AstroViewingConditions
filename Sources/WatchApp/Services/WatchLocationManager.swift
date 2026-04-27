@@ -2,110 +2,139 @@ import SwiftUI
 import Combine
 import SharedCode
 
+enum LocationError: Error, LocalizedError {
+    case notAuthorized
+    
+    var errorDescription: String? {
+        switch self {
+        case .notAuthorized: return "Location access not authorized"
+        }
+    }
+}
+
 class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnectivityManagerDelegate {
     static let shared = WatchLocationManager()
     
-    @Published var locations: [WatchLocationItem] = [.currentLocation]
+    @Published var locations: [CachedLocation] = []
     @Published var selectedLocation: SelectedLocation?
     @Published var conditions: ViewingConditions?
+    @Published var nightQuality: NightQualityAssessment?
+    @Published var unitSystem: UnitSystem = .metric
     @Published var isLoading = false
     
     private let connectivityManager = WatchConnectivityManager.shared
     
     private init() {
         connectivityManager.delegate = self
-        loadLocations()
-        loadConditionsIfNeeded()
+        loadInitialState()
     }
     
-    func connectivityManager(_ manager: WatchConnectivityManager, didUpdateLocations locations: [CachedLocation]) {
-        print("WatchLocationManager: Received didUpdateLocations delegate call")
-        loadLocations()
-    }
-    
-    func connectivityManager(_ manager: WatchConnectivityManager, didUpdateConditions conditions: ViewingConditions) {
-        print("WatchLocationManager: Received didUpdateConditions delegate call")
-        self.conditions = conditions
-    }
-    
-    func connectivityManager(_ manager: WatchConnectivityManager, didUpdateSelectedLocation location: SelectedLocation) {
-        print("WatchLocationManager: Received didUpdateSelectedLocation delegate call for \(location.name)")
-        handleSelectedLocationChanged(location)
-    }
-    
-    private func handleSelectedLocationChanged(_ location: SelectedLocation) {
-        selectedLocation = location
-        loadConditionsIfNeeded()
-    }
-    
-    func loadLocations() {
-        print("WatchLocationManager: loadLocations called")
-        
+    private func loadInitialState() {
         let storedLocations = loadStoredLocations()
         let storedSelected = AppGroupStorage.loadSelectedLocation()
             ?? iCloudKeyValueStorage.shared.loadSelectedLocation()
+        let storedConditions = AppGroupStorage.loadConditionsWithTimestamp()
+        let storedUnitSystem = AppGroupStorage.loadUnitSystem()
+            .flatMap { UnitSystem(rawValue: $0) }
+            ?? iCloudKeyValueStorage.shared.loadUnitSystem()
+            .flatMap { UnitSystem(rawValue: $0) }
+            ?? .metric
         
-        var items: [WatchLocationItem] = [.currentLocation]
-        
-        if !storedLocations.isEmpty {
-            print("WatchLocationManager: Using \(storedLocations.count) stored locations")
-            items.append(contentsOf: storedLocations.map { WatchLocationItem.from($0) })
-        } else {
-            let receivedLocations = connectivityManager.receivedLocations
-            if !receivedLocations.isEmpty {
-                print("WatchLocationManager: Using \(receivedLocations.count) received locations")
-                items.append(contentsOf: receivedLocations.map { WatchLocationItem.from($0) })
-            } else {
-                print("WatchLocationManager: No locations, requesting from iOS")
-                connectivityManager.requestLocations()
+        DispatchQueue.main.async {
+            self.locations = storedLocations
+            self.selectedLocation = storedSelected
+            self.unitSystem = storedUnitSystem
+            if let storedConditions = storedConditions, !storedConditions.isStale {
+                self.conditions = storedConditions.conditions
             }
-        }
-        
-        locations = items
-        
-        if let selected = storedSelected {
-            if selectedLocation?.id != selected.id {
-                selectedLocation = selected
-                loadConditionsIfNeeded()
-            }
-        } else if let selected = connectivityManager.selectedLocation {
-            selectedLocation = selected
-            loadConditionsIfNeeded()
         }
     }
     
-    func refresh() {
-        isLoading = true
-        connectivityManager.requestLocations()
-        connectivityManager.requestConditions()
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            self.loadLocations()
-            self.loadConditionsIfNeeded()
+    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveLocations locations: [CachedLocation], selectedLocation: SelectedLocation?) {
+        DispatchQueue.main.async {
+            self.locations = locations
+            if let selected = selectedLocation {
+                self.selectedLocation = selected
+            }
             self.isLoading = false
         }
     }
     
-    func select(_ location: WatchLocationItem) {
-        guard location.name != "Current Location" else {
-            let selected = SelectedLocation(
-                source: .currentGPS,
-                name: location.name,
-                latitude: location.coordinate?.latitude ?? 0,
-                longitude: location.coordinate?.longitude ?? 0
-            )
-            selectedLocation = selected
-            LocationStorageService.shared.saveSelectedLocation(selected)
-            connectivityManager.sendSelectedLocationToiOS(selected)
-            return
+    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveConditions conditions: ViewingConditions) {
+        DispatchQueue.main.async {
+            self.conditions = conditions
+            self.isLoading = false
         }
+    }
+    
+    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveSelectedLocation location: SelectedLocation) {
+        DispatchQueue.main.async {
+            self.selectedLocation = location
+        }
+    }
+    
+    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveUnitSystem unitSystem: UnitSystem) {
+        Task { @MainActor in
+            self.unitSystem = unitSystem
+        }
+    }
+    
+    func refresh() async {
+        await MainActor.run { isLoading = true }
         
+        async let locationsTask: Void = {
+            do {
+                let (locations, selected) = try await connectivityManager.requestLocations()
+                await MainActor.run {
+                    self.locations = locations
+                    if let selected = selected {
+                        self.selectedLocation = selected
+                    }
+                }
+                AppGroupStorage.saveSavedLocations(locations)
+                if let selected = selected {
+                    AppGroupStorage.saveSelectedLocation(selected)
+                }
+            } catch {
+                print("WatchLocationManager: Failed to refresh locations: \(error)")
+            }
+        }()
+        
+        async let conditionsTask: Void = {
+            do {
+                let conditions = try await connectivityManager.requestConditions()
+                await MainActor.run {
+                    self.conditions = conditions
+                }
+                AppGroupStorage.saveConditions(conditions)
+            } catch {
+                print("WatchLocationManager: Failed to refresh conditions: \(error)")
+            }
+        }()
+        
+        _ = await (locationsTask, conditionsTask)
+        await MainActor.run { isLoading = false }
+    }
+    
+    func select(_ location: CachedLocation) {
         let selected = SelectedLocation(
             source: .saved,
             id: location.id,
             name: location.name,
-            latitude: location.coordinate?.latitude ?? 0,
-            longitude: location.coordinate?.longitude ?? 0
+            latitude: location.latitude,
+            longitude: location.longitude
+        )
+        selectedLocation = selected
+        LocationStorageService.shared.saveSelectedLocation(selected)
+        connectivityManager.sendSelectedLocationToiOS(selected)
+    }
+    
+    func selectCurrentLocation() {
+        let selected = SelectedLocation(
+            source: .currentGPS,
+            name: "Current Location",
+            latitude: 0,
+            longitude: 0
         )
         selectedLocation = selected
         LocationStorageService.shared.saveSelectedLocation(selected)
@@ -150,34 +179,5 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
             AppGroupStorage.saveSavedLocations(iCloudLocations)
         }
         return iCloudLocations
-    }
-    
-    func loadConditionsIfNeeded() {
-        if let storedData = loadConditionsFromStorage() {
-            if storedData.isStale {
-                print("WatchLocationManager: Stored conditions stale, requesting fresh from iOS")
-                connectivityManager.requestConditions()
-            } else {
-                print("WatchLocationManager: Using stored conditions")
-                conditions = storedData.conditions
-            }
-        } else if let receivedConditions = connectivityManager.conditions {
-            print("WatchLocationManager: Using received conditions")
-            conditions = receivedConditions
-        } else {
-            print("WatchLocationManager: No conditions, requesting from iOS")
-            connectivityManager.requestConditions()
-        }
-    }
-    
-    private func loadConditionsFromStorage() -> (conditions: ViewingConditions, isStale: Bool)? {
-        guard let result = AppGroupStorage.loadConditionsWithTimestamp() else {
-            return nil
-        }
-        return (conditions: result.conditions, isStale: result.isStale)
-    }
-    
-    var hasConditions: Bool {
-        conditions != nil
     }
 }

@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-public enum UnitSystem: String, CaseIterable, Identifiable {
+public enum UnitSystem: String, CaseIterable, Identifiable, Sendable {
     case metric = "Metric"
     case imperial = "Imperial"
     

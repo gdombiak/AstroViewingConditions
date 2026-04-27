@@ -3,9 +3,10 @@ import SharedCode
 
 struct WatchCurrentConditionsCard: View {
     let forecast: HourlyForecast
+    let unitSystem: UnitSystem
 
     private var unitConverter: AstroUnitConverter {
-        AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
+        AstroUnitConverter(unitSystem: unitSystem)
     }
 
     var body: some View {

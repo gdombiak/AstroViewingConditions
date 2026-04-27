@@ -3,16 +3,25 @@ import WatchConnectivity
 import WidgetKit
 import SharedCode
 
-extension Notification.Name {
-    static let selectedLocationChanged = Notification.Name("selectedLocationChanged")
-    static let locationsUpdated = Notification.Name("locationsUpdated")
-    static let conditionsUpdated = Notification.Name("conditionsUpdated")
+enum WatchConnectivityError: Error, LocalizedError {
+    case sessionNotReachable
+    case requestFailed(String)
+    case decodeFailed(String)
+    
+    var errorDescription: String? {
+        switch self {
+        case .sessionNotReachable: return "Watch not connected to iPhone"
+        case .requestFailed(let msg): return msg
+        case .decodeFailed(let msg): return msg
+        }
+    }
 }
 
 protocol WatchConnectivityManagerDelegate: AnyObject {
-    func connectivityManager(_ manager: WatchConnectivityManager, didUpdateLocations locations: [CachedLocation])
-    func connectivityManager(_ manager: WatchConnectivityManager, didUpdateConditions conditions: ViewingConditions)
-    func connectivityManager(_ manager: WatchConnectivityManager, didUpdateSelectedLocation location: SelectedLocation)
+    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveLocations locations: [CachedLocation], selectedLocation: SelectedLocation?)
+    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveConditions conditions: ViewingConditions)
+    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveSelectedLocation location: SelectedLocation)
+    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveUnitSystem unitSystem: UnitSystem)
 }
 
 class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable {
@@ -20,9 +29,8 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
     
     weak var delegate: WatchConnectivityManagerDelegate?
     
-    @Published var receivedLocations: [CachedLocation] = []
-    @Published var selectedLocation: SelectedLocation?
-    @Published var conditions: ViewingConditions?
+    private var locationContinuations: [UUID: CheckedContinuation<([CachedLocation], SelectedLocation?), Error>] = [:]
+    private var conditionsContinuations: [UUID: CheckedContinuation<ViewingConditions, Error>] = [:]
     
     private override init() {
         super.init()
@@ -32,18 +40,54 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         }
     }
     
-    func requestLocations() {
-        print("WatchConnectivityManager: Requesting locations from iOS")
+    func requestLocations() async throws -> ([CachedLocation], SelectedLocation?) {
         guard WCSession.default.isReachable else {
-            print("WatchConnectivityManager: Session not reachable")
-            return
+            throw WatchConnectivityError.sessionNotReachable
         }
         
-        WCSession.default.sendMessage(["type": "requestLocations"], replyHandler: { reply in
-            print("WatchConnectivityManager: Request locations reply: \(reply)")
-        }, errorHandler: { error in
-            print("WatchConnectivityManager: Failed to request locations: \(error)")
-        })
+        return try await withCheckedThrowingContinuation { continuation in
+            let id = UUID()
+            locationContinuations[id] = continuation
+            
+            WCSession.default.sendMessage(
+                ["type": "requestLocations", "id": id.uuidString],
+                replyHandler: { [weak self] reply in
+                    self?.handleLocationReply(reply, id: id)
+                },
+                errorHandler: { [weak self] error in
+                    self?.locationContinuations.removeValue(forKey: id)?.resume(throwing: error)
+                }
+            )
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+                self?.locationContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.requestFailed("Request timed out"))
+            }
+        }
+    }
+    
+    func requestConditions() async throws -> ViewingConditions {
+        guard WCSession.default.isReachable else {
+            throw WatchConnectivityError.sessionNotReachable
+        }
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            let id = UUID()
+            conditionsContinuations[id] = continuation
+            
+            WCSession.default.sendMessage(
+                ["type": "requestConditions", "id": id.uuidString],
+                replyHandler: { [weak self] reply in
+                    self?.handleConditionsReply(reply, id: id)
+                },
+                errorHandler: { [weak self] error in
+                    self?.conditionsContinuations.removeValue(forKey: id)?.resume(throwing: error)
+                }
+            )
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+                self?.conditionsContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.requestFailed("Request timed out"))
+            }
+        }
     }
     
     func sendSelectedLocationToiOS(_ location: SelectedLocation) {
@@ -67,137 +111,104 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         }
     }
     
-    func requestConditions() {
-        print("WatchConnectivityManager: Requesting conditions from iOS")
-        guard WCSession.default.isReachable else {
-            print("WatchConnectivityManager: Session not reachable")
+    private func handleLocationReply(_ reply: [String: Any], id: UUID) {
+        guard let status = reply["status"] as? String, status == "ok" else {
+            let message = reply["message"] as? String ?? "Unknown error"
+            locationContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.requestFailed(message))
             return
         }
         
-        WCSession.default.sendMessage(["type": "requestConditions"], replyHandler: { reply in
-            print("WatchConnectivityManager: Request conditions reply: \(reply)")
-        }, errorHandler: { error in
-            print("WatchConnectivityManager: Failed to request conditions: \(error)")
-        })
+        var locations: [CachedLocation] = []
+        var selected: SelectedLocation?
+        
+        if let data = reply["locations"] as? Data,
+           let decoded = try? JSONDecoder().decode([CachedLocation].self, from: data) {
+            locations = decoded
+        }
+        
+        if let selectedData = reply["selectedLocation"] as? Data,
+           let decoded = try? JSONDecoder().decode(SelectedLocation.self, from: selectedData) {
+            selected = decoded
+        }
+        
+        locationContinuations.removeValue(forKey: id)?.resume(returning: (locations, selected))
+    }
+    
+    private func handleConditionsReply(_ reply: [String: Any], id: UUID) {
+        guard let status = reply["status"] as? String, status == "ok" else {
+            let message = reply["message"] as? String ?? "Unknown error"
+            conditionsContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.requestFailed(message))
+            return
+        }
+        
+        if let data = reply["conditions"] as? Data,
+           let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
+            conditionsContinuations.removeValue(forKey: id)?.resume(returning: conditions)
+        } else {
+            conditionsContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.decodeFailed("Failed to decode conditions"))
+        }
+    }
+    
+    private func reloadComplications() {
+        print("WatchConnectivityManager: Reloading complications")
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 
 extension WatchConnectivityManager: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         print("WatchConnectivityManager: Activation complete: \(activationState.rawValue)")
-        
-        if activationState == .activated {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                self.requestLocations()
-            }
-        }
     }
     
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         print("WatchConnectivityManager: Received application context: \(applicationContext)")
-        
-        guard let type = applicationContext["type"] as? String else { return }
-        
-        let locationsData = applicationContext["locations"] as? Data
-        let conditionsData = applicationContext["conditions"] as? Data
-        let selectedLocationData = applicationContext["selectedLocation"] as? Data
-        let unitSystemData = applicationContext["unitSystem"] as? Data
-        
-        DispatchQueue.main.async {
-            switch type {
-            case "savedLocations":
-                if let data = locationsData,
-                   let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
-                    print("WatchConnectivityManager: Received \(locations.count) locations from app context")
-                    self.receivedLocations = locations
-                    AppGroupStorage.saveSavedLocations(locations)
-                    self.delegate?.connectivityManager(self, didUpdateLocations: locations)
-                }
-                
-            case "conditions":
-                if let data = conditionsData,
-                   let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
-                    print("WatchConnectivityManager: Received conditions from app context")
-                    self.conditions = conditions
-                    AppGroupStorage.saveConditions(conditions)
-                    self.reloadComplications()
-                    self.delegate?.connectivityManager(self, didUpdateConditions: conditions)
-                }
-                
-            case "locationSync", "selectedLocation":
-                if let data = selectedLocationData,
-                   let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) {
-                    print("WatchConnectivityManager: Received selected location: \(location.name)")
-                    self.selectedLocation = location
-                    AppGroupStorage.saveSelectedLocation(location)
-                    self.delegate?.connectivityManager(self, didUpdateSelectedLocation: location)
-                }
-                if let data = locationsData,
-                   let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
-                    print("WatchConnectivityManager: Received location sync: \(locations.count) locations")
-                    self.receivedLocations = locations
-                    AppGroupStorage.saveSavedLocations(locations)
-                    self.delegate?.connectivityManager(self, didUpdateLocations: locations)
-                }
-                
-            case "unitSystem":
-                if let data = unitSystemData,
-                   let unitSystem = try? JSONDecoder().decode(String.self, from: data) {
-                    print("WatchConnectivityManager: Received unit system: \(unitSystem)")
-                    AppGroupStorage.saveUnitSystem(unitSystem)
-                }
-                
-            default:
-                print("WatchConnectivityManager: Unknown application context type: \(type)")
-            }
-        }
+        handleIncomingData(applicationContext, source: "app context")
     }
     
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         print("WatchConnectivityManager: Received message: \(message)")
+        handleIncomingData(message, source: "message")
+    }
+    
+    private func handleIncomingData(_ incomingData: [String: Any], source: String) {
+        guard let type = incomingData["type"] as? String else { return }
         
-        guard let type = message["type"] as? String else { return }
-        
-        let locationsData = message["locations"] as? Data
-        let conditionsData = message["conditions"] as? Data
-        let selectedLocationData = message["selectedLocation"] as? Data
-        let unitSystemData = message["unitSystem"] as? Data
+        let locationsData = incomingData["locations"] as? Data
+        let conditionsData = incomingData["conditions"] as? Data
+        let selectedLocationData = incomingData["selectedLocation"] as? Data
+        let unitSystemData = incomingData["unitSystem"] as? Data
         
         DispatchQueue.main.async {
             switch type {
             case "savedLocations":
                 if let data = locationsData,
                    let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
-                    print("WatchConnectivityManager: Received \(locations.count) locations")
-                    self.receivedLocations = locations
+                    print("WatchConnectivityManager: Received \(locations.count) locations from \(source)")
                     AppGroupStorage.saveSavedLocations(locations)
-                    self.delegate?.connectivityManager(self, didUpdateLocations: locations)
+                    self.delegate?.connectivityManager(self, didReceiveLocations: locations, selectedLocation: nil)
                 }
                 
             case "conditions":
                 if let data = conditionsData,
                    let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
-                    print("WatchConnectivityManager: Received conditions")
-                    self.conditions = conditions
+                    print("WatchConnectivityManager: Received conditions from \(source)")
                     AppGroupStorage.saveConditions(conditions)
                     self.reloadComplications()
-                    self.delegate?.connectivityManager(self, didUpdateConditions: conditions)
+                    self.delegate?.connectivityManager(self, didReceiveConditions: conditions)
                 }
                 
             case "locationSync", "selectedLocation":
                 if let data = selectedLocationData,
                    let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) {
-                    print("WatchConnectivityManager: Received selected location: \(location.name)")
-                    self.selectedLocation = location
+                    print("WatchConnectivityManager: Received selected location from \(source): \(location.name)")
                     AppGroupStorage.saveSelectedLocation(location)
-                    self.delegate?.connectivityManager(self, didUpdateSelectedLocation: location)
+                    self.delegate?.connectivityManager(self, didReceiveSelectedLocation: location)
                 }
                 if let data = locationsData,
                    let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
-                    print("WatchConnectivityManager: Received location sync: \(locations.count) locations")
-                    self.receivedLocations = locations
+                    print("WatchConnectivityManager: Received location sync from \(source): \(locations.count) locations")
                     AppGroupStorage.saveSavedLocations(locations)
-                    self.delegate?.connectivityManager(self, didUpdateLocations: locations)
+                    self.delegate?.connectivityManager(self, didReceiveLocations: locations, selectedLocation: nil)
                 }
                 
             case "unitSystem":
@@ -205,34 +216,18 @@ extension WatchConnectivityManager: WCSessionDelegate {
                    let unitSystem = try? JSONDecoder().decode(String.self, from: data) {
                     print("WatchConnectivityManager: Received unit system: \(unitSystem)")
                     AppGroupStorage.saveUnitSystem(unitSystem)
+                    if let system = UnitSystem(rawValue: unitSystem) {
+                        self.delegate?.connectivityManager(self, didReceiveUnitSystem: system)
+                    }
                 }
                 
             default:
-                print("WatchConnectivityManager: Unknown message type: \(type)")
+                print("WatchConnectivityManager: Unknown \(source) type: \(type)")
             }
         }
     }
     
     func sessionReachabilityDidChange(_ session: WCSession) {
         print("WatchConnectivityManager: Reachability changed: \(session.isReachable)")
-        if session.isReachable {
-            requestLocations()
-        }
-    }
-    
-    func loadSelectedLocationFromStorage() -> SelectedLocation? {
-        return AppGroupStorage.loadSelectedLocation()
-    }
-    
-    func loadConditionsFromStorage() -> (conditions: ViewingConditions, isStale: Bool)? {
-        guard let result = AppGroupStorage.loadConditionsWithTimestamp() else {
-            return nil
-        }
-        return (conditions: result.conditions, isStale: result.isStale)
-    }
-    
-    private func reloadComplications() {
-        print("WatchConnectivityManager: Reloading complications")
-        WidgetCenter.shared.reloadAllTimelines()
     }
 }

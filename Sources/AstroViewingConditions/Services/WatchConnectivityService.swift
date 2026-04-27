@@ -44,15 +44,6 @@ public class WatchConnectivityService: NSObject, ObservableObject, @unchecked Se
         sendViaApplicationContext(type: "unitSystem", payload: ["unitSystem": data])
     }
     
-    public func sendLocationSyncToWatch(locations: [CachedLocation], selectedLocation: SelectedLocation?) {
-        guard let locationsData = try? JSONEncoder().encode(locations) else { return }
-        var payload: [String: Any] = ["locations": locationsData]
-        if let selectedLocation = selectedLocation, let data = try? JSONEncoder().encode(selectedLocation) {
-            payload["selectedLocation"] = data
-        }
-        sendViaApplicationContext(type: "locationSync", payload: payload)
-    }
-    
     private func sendViaApplicationContext(type: String, payload: [String: Any]) {
         guard let session = session else { return }
         
@@ -107,9 +98,9 @@ extension WatchConnectivityService: WCSessionDelegate {
         }
     }
     
-    public func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+    public func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
         print("WatchConnectivityService: Received message: \(message)")
-        handleMessage(message)
+        handleMessage(message, replyHandler: replyHandler)
     }
     
     public func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
@@ -117,24 +108,25 @@ extension WatchConnectivityService: WCSessionDelegate {
         handleMessage(userInfo)
     }
     
-    private func handleMessage(_ message: [String: Any]) {
+    private func handleMessage(_ message: [String: Any], replyHandler: (([String: Any]) -> Void)? = nil) {
         if let type = message["type"] as? String {
             switch type {
             case "requestLocations":
-                handleRequestLocations()
+                handleRequestLocations(replyHandler: replyHandler)
             case "requestConditions":
-                handleRequestConditions()
+                handleRequestConditions(replyHandler: replyHandler)
             case "selectedLocationFromWatch":
                 if let data = message["selectedLocation"] as? Data,
                    let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) {
                     print("WatchConnectivityService: Received location selection from Watch: \(location.name)")
                     refreshForLocation(location: location)
                 }
+                replyHandler?(["status": "ok"])
             default:
                 print("WatchConnectivityService: Unknown message type: \(type)")
-            }
         }
     }
+}
     
     private func refreshForLocation(location: SelectedLocation) {
         LocationStorageService.shared.saveSelectedLocation(location)
@@ -146,22 +138,34 @@ extension WatchConnectivityService: WCSessionDelegate {
         }
     }
     
-    private func handleRequestLocations() {
+    private func handleRequestLocations(replyHandler: (([String: Any]) -> Void)?) {
         print("WatchConnectivityService: Handling request for locations")
-        guard let session = session, session.isReachable else { return }
         
         let locations = LocationStorageService.shared.loadSavedLocations()
         let selectedLoc = LocationStorageService.shared.loadSelectedLocation()
-        sendLocationSyncToWatch(locations: locations, selectedLocation: selectedLoc)
+        
+        var reply: [String: Any] = ["status": "ok"]
+        if let data = try? JSONEncoder().encode(locations) {
+            reply["locations"] = data
+        }
+        if let selectedLoc = selectedLoc, let data = try? JSONEncoder().encode(selectedLoc) {
+            reply["selectedLocation"] = data
+        }
+        replyHandler?(reply)
     }
     
-    private func handleRequestConditions() {
+    private func handleRequestConditions(replyHandler: (([String: Any]) -> Void)?) {
         print("WatchConnectivityService: Handling request for conditions")
-        guard let session = session, session.isReachable else { return }
         
         let cacheService = CacheService()
         if let conditions = cacheService.load() {
-            sendConditionsToWatch(conditions)
+            if let data = try? JSONEncoder().encode(conditions) {
+                replyHandler?(["status": "ok", "conditions": data])
+            } else {
+                replyHandler?(["status": "error", "message": "Failed to encode conditions"])
+            }
+        } else {
+            replyHandler?(["status": "error", "message": "No cached conditions"])
         }
     }
 }

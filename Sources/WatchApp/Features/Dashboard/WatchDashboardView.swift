@@ -6,23 +6,24 @@ struct WatchDashboardView: View {
     @State private var astronomyService = AstronomyService()
     
     @State private var nightQuality: NightQualityAssessment?
-    @State private var isLoading = false
     @State private var error: String?
-    @ObservedObject var connectivityManager = WatchConnectivityManager.shared
     @ObservedObject var locationManager = WatchLocationManager.shared
     
+    var locationOptions: [LocationOption] {
+        LocationOption.fromLocations(saved: locationManager.locations)
+    }
+    
     var body: some View {
-        
         return NavigationStack {
             ScrollView {
                 VStack(spacing: 12) {
                     LocationSelectorView(
-                        locations: locationManager.locations,
+                        locations: locationOptions,
                         selectedLocation: locationManager.selectedLocation,
-                        onSelectionChanged: { locationManager.select($0) }
+                        onSelectionChanged: { handleSelection($0) }
                     )
 
-                    if isLoading {
+                    if locationManager.isLoading {
                         ProgressView()
                             .padding()
                     }
@@ -34,11 +35,11 @@ struct WatchDashboardView: View {
                             .multilineTextAlignment(.center)
                     }
 
-                    if let assessment = nightQuality {
+                    if let assessment = locationManager.nightQuality {
                         WatchNightQualityCard(assessment: assessment)
                     }
 
-                    if let conditions = connectivityManager.conditions {
+                    if let conditions = locationManager.conditions {
                         let now = Date()
                         let calendar = Calendar.current
                         
@@ -51,16 +52,16 @@ struct WatchDashboardView: View {
                         } ?? todayForecasts.first
                         
                         if let forecast = currentHourForecast {
-                            WatchCurrentConditionsCard(forecast: forecast)
+                            WatchCurrentConditionsCard(forecast: forecast, unitSystem: locationManager.unitSystem)
                         }
                     }
 
-                    if let sunEvents = connectivityManager.conditions?.dailySunEvents.first,
-                       let moonInfo = connectivityManager.conditions?.dailyMoonInfo.first {
+                    if let sunEvents = locationManager.conditions?.dailySunEvents.first,
+                       let moonInfo = locationManager.conditions?.dailyMoonInfo.first {
                         WatchAstronomicalNightCard(sunEvents: sunEvents, moonInfo: moonInfo)
                     }
 
-                    Button(action: refresh) {
+                    Button(action: { Task { await refresh() } }) {
                         Label("Refresh", systemImage: "arrow.clockwise")
                     }
                     .buttonStyle(.bordered)
@@ -68,14 +69,11 @@ struct WatchDashboardView: View {
                 .padding()
             }
             .task {
-                WatchLocationManager.shared.refresh()
+                await refresh()
             }
-            .onAppear {
-                refresh()
-            }
-            .onChange(of: connectivityManager.conditions?.fetchedAt) { _, _ in
+            .onChange(of: locationManager.conditions?.fetchedAt) { _, _ in
                 Task {
-                    guard let conditions = connectivityManager.conditions,
+                    guard let conditions = locationManager.conditions,
                           let sunEventsToday = conditions.dailySunEvents.first,
                           let sunEventsTomorrow = conditions.dailySunEvents.dropFirst().first,
                           let moonInfo = conditions.dailyMoonInfo.first else {
@@ -97,60 +95,26 @@ struct WatchDashboardView: View {
                         calendar: calendar
                     )
                     
-                    self.nightQuality = assessment
+                    locationManager.nightQuality = assessment
                 }
             }
         }
     }
+    
+    private func handleSelection(_ option: LocationOption) {
+        switch option {
+        case .current:
+            locationManager.selectCurrentLocation()
+        case .saved(let location):
+            locationManager.select(location)
+        }
+    }
 
-    private func refresh() {
-        guard !isLoading else { return }
-        isLoading = true
+    @MainActor
+    private func refresh() async {
         error = nil
 
-        Task {
-            do {
-                let (latitude, longitude) = try await WatchLocationManager.shared.getCurrentCoordinate()
-                
-                let cachedLocation = try await reverseGeocode(latitude: latitude, longitude: longitude)
-
-                let forecast = try await weatherService.fetchForecast(latitude: latitude, longitude: longitude, days: 2)
-                
-                let tz = await LocationTimeZoneResolver.resolve(latitude: latitude, longitude: longitude)
-                let calendar = LocationTimeZoneResolver.calendar(for: tz)
-                let today = calendar.startOfDay(for: Date())
-                let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
-                
-                let sunEventsToday = await astronomyService.calculateSunEvents(latitude: latitude, longitude: longitude, on: today)
-                let sunEventsTomorrow = await astronomyService.calculateSunEvents(latitude: latitude, longitude: longitude, on: tomorrow)
-                let moonInfo = await astronomyService.calculateMoonInfo(latitude: latitude, longitude: longitude, on: today)
-
-                let assessment = NightQualityAnalyzer.analyzeNight(
-                    forecasts: forecast,
-                    sunEventsToday: sunEventsToday,
-                    sunEventsTomorrow: sunEventsTomorrow,
-                    moonInfo: moonInfo,
-                    latitude: latitude,
-                    longitude: longitude,
-                    for: today,
-                    calendar: calendar
-                )
-
-                connectivityManager.conditions = ViewingConditions(
-                    fetchedAt: Date(),
-                    location: cachedLocation,
-                    hourlyForecasts: forecast,
-                    dailySunEvents: [sunEventsToday, sunEventsTomorrow],
-                    dailyMoonInfo: [moonInfo],
-                    issPasses: [],
-                    fogScore: FogScore(score: 0, factors: [])
-                )
-                nightQuality = assessment
-            } catch {
-                self.error = error.localizedDescription
-            }
-            isLoading = false
-        }
+        await locationManager.refresh()
     }
 
     private func reverseGeocode(latitude: Double, longitude: Double) async throws -> CachedLocation {

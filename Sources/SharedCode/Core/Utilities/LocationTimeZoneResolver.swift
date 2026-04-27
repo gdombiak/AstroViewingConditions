@@ -16,7 +16,7 @@ public struct LocationTimeZoneResolver {
                 return timeZone
             }
         } catch {
-            print("LocationTimeZoneResolver: Failed to resolve timezone for (\(latitude), \(longitude)): \(error)")
+            // CLGeocoder commonly fails without network - fallback is expected
         }
         
         // Fallback: approximate timezone from longitude
