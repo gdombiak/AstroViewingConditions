@@ -124,9 +124,9 @@ extension WatchConnectivityService: WCSessionDelegate {
                 replyHandler?(["status": "ok"])
             default:
                 print("WatchConnectivityService: Unknown message type: \(type)")
+            }
         }
     }
-}
     
     private func refreshForLocation(location: SelectedLocation) {
         LocationStorageService.shared.saveSelectedLocation(location)
