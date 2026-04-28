@@ -30,7 +30,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
     weak var delegate: WatchConnectivityManagerDelegate?
     
     private var locationContinuations: [UUID: CheckedContinuation<([CachedLocation], SelectedLocation?), Error>] = [:]
-    private var conditionsContinuations: [UUID: CheckedContinuation<ViewingConditions, Error>] = [:]
+    private var conditionsContinuations: [UUID: CheckedContinuation<(ViewingConditions, SelectedLocation?), Error>] = [:]
     
     private override init() {
         super.init()
@@ -65,7 +65,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         }
     }
     
-    func requestConditions() async throws -> ViewingConditions {
+    func requestConditions() async throws -> (ViewingConditions, SelectedLocation?) {
         guard WCSession.default.isReachable else {
             throw WatchConnectivityError.sessionNotReachable
         }
@@ -143,7 +143,13 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         
         if let data = reply["conditions"] as? Data,
            let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
-            conditionsContinuations.removeValue(forKey: id)?.resume(returning: conditions)
+            var selectedLocation: SelectedLocation?
+            if let selectedData = reply["selectedLocation"] as? Data,
+               let location = try? JSONDecoder().decode(SelectedLocation.self, from: selectedData) {
+                print("WatchConnectivityManager: Received selected location with conditions: \(location.name)")
+                selectedLocation = location
+            }
+            conditionsContinuations.removeValue(forKey: id)?.resume(returning: (conditions, selectedLocation))
         } else {
             conditionsContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.decodeFailed("Failed to decode conditions"))
         }
@@ -184,7 +190,6 @@ extension WatchConnectivityManager: WCSessionDelegate {
                 if let data = locationsData,
                    let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
                     print("WatchConnectivityManager: Received \(locations.count) locations from \(source)")
-                    AppGroupStorage.saveSavedLocations(locations)
                     self.delegate?.connectivityManager(self, didReceiveLocations: locations, selectedLocation: nil)
                 }
                 
@@ -192,8 +197,6 @@ extension WatchConnectivityManager: WCSessionDelegate {
                 if let data = conditionsData,
                    let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
                     print("WatchConnectivityManager: Received conditions from \(source)")
-                    AppGroupStorage.saveConditions(conditions)
-                    self.reloadComplications()
                     self.delegate?.connectivityManager(self, didReceiveConditions: conditions)
                 }
                 
@@ -201,13 +204,11 @@ extension WatchConnectivityManager: WCSessionDelegate {
                 if let data = selectedLocationData,
                    let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) {
                     print("WatchConnectivityManager: Received selected location from \(source): \(location.name)")
-                    AppGroupStorage.saveSelectedLocation(location)
                     self.delegate?.connectivityManager(self, didReceiveSelectedLocation: location)
                 }
                 if let data = locationsData,
                    let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
                     print("WatchConnectivityManager: Received location sync from \(source): \(locations.count) locations")
-                    AppGroupStorage.saveSavedLocations(locations)
                     self.delegate?.connectivityManager(self, didReceiveLocations: locations, selectedLocation: nil)
                 }
                 
@@ -215,7 +216,6 @@ extension WatchConnectivityManager: WCSessionDelegate {
                 if let data = unitSystemData,
                    let unitSystem = try? JSONDecoder().decode(String.self, from: data) {
                     print("WatchConnectivityManager: Received unit system: \(unitSystem)")
-                    AppGroupStorage.saveUnitSystem(unitSystem)
                     if let system = UnitSystem(rawValue: unitSystem) {
                         self.delegate?.connectivityManager(self, didReceiveUnitSystem: system)
                     }

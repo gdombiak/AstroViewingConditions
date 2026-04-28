@@ -1,6 +1,7 @@
 import SwiftUI
 import Combine
 import SharedCode
+import WidgetKit
 
 enum LocationError: Error, LocalizedError {
     case notAuthorized
@@ -51,6 +52,7 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     }
     
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveLocations locations: [CachedLocation], selectedLocation: SelectedLocation?) {
+        AppGroupStorage.saveSavedLocations(locations)
         DispatchQueue.main.async {
             self.locations = locations
             if let selected = selectedLocation {
@@ -61,6 +63,8 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     }
     
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveConditions conditions: ViewingConditions) {
+        AppGroupStorage.saveConditions(conditions)
+        WidgetCenter.shared.reloadAllTimelines()
         DispatchQueue.main.async {
             self.conditions = conditions
             self.isLoading = false
@@ -68,12 +72,14 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     }
     
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveSelectedLocation location: SelectedLocation) {
+        AppGroupStorage.saveSelectedLocation(location)
         DispatchQueue.main.async {
             self.selectedLocation = location
         }
     }
     
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveUnitSystem unitSystem: UnitSystem) {
+        AppGroupStorage.saveUnitSystem(unitSystem.rawValue)
         Task { @MainActor in
             self.unitSystem = unitSystem
         }
@@ -102,11 +108,17 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
         
         async let conditionsTask: Void = {
             do {
-                let conditions = try await connectivityManager.requestConditions()
+                let (conditions, selectedLocation) = try await connectivityManager.requestConditions()
                 await MainActor.run {
                     self.conditions = conditions
+                    if let selected = selectedLocation {
+                        self.selectedLocation = selected
+                    }
                 }
                 AppGroupStorage.saveConditions(conditions)
+                if let selected = selectedLocation {
+                    AppGroupStorage.saveSelectedLocation(selected)
+                }
             } catch {
                 print("WatchLocationManager: Failed to refresh conditions: \(error)")
             }

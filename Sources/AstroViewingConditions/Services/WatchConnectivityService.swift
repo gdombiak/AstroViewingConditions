@@ -158,14 +158,25 @@ extension WatchConnectivityService: WCSessionDelegate {
         print("WatchConnectivityService: Handling request for conditions")
         
         let cacheService = CacheService()
+        var reply: [String: Any] = ["status": "ok"]
+        
         if let conditions = cacheService.load() {
             if let data = try? JSONEncoder().encode(conditions) {
-                replyHandler?(["status": "ok", "conditions": data])
+                reply["conditions"] = data
             } else {
                 replyHandler?(["status": "error", "message": "Failed to encode conditions"])
+                return
             }
         } else {
             replyHandler?(["status": "error", "message": "No cached conditions"])
+            return
         }
+        
+        if let selectedLoc = LocationStorageService.shared.loadSelectedLocation(),
+           let data = try? JSONEncoder().encode(selectedLoc) {
+            reply["selectedLocation"] = data
+        }
+        
+        replyHandler?(reply)
     }
 }
