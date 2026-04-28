@@ -276,6 +276,7 @@ final class ViewingConditionsModelTests: XCTestCase {
         components.month = 6
         components.day = 21
         let date = calendar.date(from: components)!
+        let nextDay = calendar.date(byAdding: .day, value: 1, to: date)!
         
         let sunEvents = SunEvents(
             sunrise: calendar.date(bySettingHour: 5, minute: 30, second: 0, of: date)!,
@@ -284,12 +285,12 @@ final class ViewingConditionsModelTests: XCTestCase {
             civilTwilightEnd: calendar.date(bySettingHour: 21, minute: 0, second: 0, of: date)!,
             nauticalTwilightBegin: calendar.date(bySettingHour: 4, minute: 15, second: 0, of: date)!,
             nauticalTwilightEnd: calendar.date(bySettingHour: 21, minute: 45, second: 0, of: date)!,
-            astronomicalTwilightBegin: calendar.date(bySettingHour: 3, minute: 30, second: 0, of: date)!,
+            astronomicalTwilightBegin: calendar.date(bySettingHour: 3, minute: 30, second: 0, of: nextDay)!,
             astronomicalTwilightEnd: calendar.date(bySettingHour: 22, minute: 30, second: 0, of: date)!
         )
         
-        let duration = sunEvents.astronomicalNightDuration(on: date)
+        let duration = sunEvents.astronomicalNightDuration
         
-        XCTAssertGreaterThan(duration, 0)
+        XCTAssertEqual(duration, 5 * 3600, accuracy: 1)
     }
 }

@@ -1,21 +1,17 @@
 import Foundation
 import SwiftUI
 
-/// AppStorage keys and defaults for Best Spot feature
 public enum BestSpotSettings {
-    // MARK: - Keys
     public static let searchRadiusKey = "bestSpotSearchRadius"
     public static let gridSpacingKey = "bestSpotGridSpacing"
     
-    // MARK: - Defaults
-    public static let defaultSearchRadius: Double = 30  // miles
-    public static let defaultGridSpacing: Double = 5    // miles
-    public static let minSearchRadius: Double = 10      // miles
-    public static let maxSearchRadius: Double = 50      // miles
-    public static let minGridSpacing: Double = 3        // miles
-    public static let maxGridSpacing: Double = 10       // miles
+    public static let defaultSearchRadius: Double = 30
+    public static let defaultGridSpacing: Double = 5
+    public static let minSearchRadius: Double = 10
+    public static let maxSearchRadius: Double = 50
+    public static let minGridSpacing: Double = 3
+    public static let maxGridSpacing: Double = 10
     
-    // MARK: - Validation
     public static func validateSearchRadius(_ radius: Double) -> Double {
         min(max(radius, minSearchRadius), maxSearchRadius)
     }
@@ -23,28 +19,28 @@ public enum BestSpotSettings {
     public static func validateGridSpacing(_ spacing: Double) -> Double {
         min(max(spacing, minGridSpacing), maxGridSpacing)
     }
-}
-
-// MARK: - AppStorage Extensions
-
-extension UserDefaults {
-    public var bestSpotSearchRadius: Double {
+    
+    public static var searchRadius: Double {
         get {
-            let value = double(forKey: BestSpotSettings.searchRadiusKey)
-            return value > 0 ? BestSpotSettings.validateSearchRadius(value) : BestSpotSettings.defaultSearchRadius
+            AppGroupStorage.loadBestSpotSettings()?.searchRadius ?? defaultSearchRadius
         }
         set {
-            set(BestSpotSettings.validateSearchRadius(newValue), forKey: BestSpotSettings.searchRadiusKey)
+            AppGroupStorage.saveBestSpotSettings(
+                searchRadius: validateSearchRadius(newValue),
+                gridSpacing: gridSpacing
+            )
         }
     }
     
-    public var bestSpotGridSpacing: Double {
+    public static var gridSpacing: Double {
         get {
-            let value = double(forKey: BestSpotSettings.gridSpacingKey)
-            return value > 0 ? BestSpotSettings.validateGridSpacing(value) : BestSpotSettings.defaultGridSpacing
+            AppGroupStorage.loadBestSpotSettings()?.gridSpacing ?? defaultGridSpacing
         }
         set {
-            set(BestSpotSettings.validateGridSpacing(newValue), forKey: BestSpotSettings.gridSpacingKey)
+            AppGroupStorage.saveBestSpotSettings(
+                searchRadius: searchRadius,
+                gridSpacing: validateGridSpacing(newValue)
+            )
         }
     }
 }

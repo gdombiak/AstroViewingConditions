@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct AdaptiveFontModifier: ViewModifier {
+#if os(watchOS)
+    func body(content: Content) -> some View {
+        content
+    }
+#else
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -18,6 +23,7 @@ struct AdaptiveFontModifier: ViewModifier {
             content
         }
     }
+#endif
 }
 
 extension View {

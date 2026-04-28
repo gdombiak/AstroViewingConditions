@@ -17,15 +17,14 @@ final class AstronomyServiceTests: XCTestCase {
     func testCalculateSunEventsReturnsValidDates() async {
         let latitude = 45.4627
         let longitude = -122.7491
-        let date = Date()
+        let calendar = Calendar.current
+        let date = calendar.startOfDay(for: Date())
         
         let sunEvents = await astronomyService.calculateSunEvents(
             latitude: latitude,
             longitude: longitude,
             on: date
         )
-        
-        let calendar = Calendar.current
         
         XCTAssertFalse(sunEvents.sunrise == date, "sunrise should be calculated, not fallback")
         XCTAssertFalse(sunEvents.sunset == date, "sunset should be calculated, not fallback")
@@ -48,7 +47,8 @@ final class AstronomyServiceTests: XCTestCase {
     func testViewModelSunEventsFormattedEndToEnd() async {
         let latitude = 45.4627
         let longitude = -122.7491
-        let date = Date()
+        let calendar = Calendar.current
+        let date = calendar.startOfDay(for: Date())
         
         let sunEvents = await astronomyService.calculateSunEvents(
             latitude: latitude,
@@ -90,7 +90,6 @@ final class AstronomyServiceTests: XCTestCase {
         XCTAssertFalse(formattedSunrise.isEmpty)
         XCTAssertFalse(formattedSunset.isEmpty)
         
-        let calendar = Calendar.current
         let sunriseHour = calendar.component(.hour, from: currentSunEvents.sunrise)
         let sunsetHour = calendar.component(.hour, from: currentSunEvents.sunset)
         
@@ -99,9 +98,10 @@ final class AstronomyServiceTests: XCTestCase {
     }
     
     func testCalculateSunEventsWithSpecificLocation() async {
-        let latitude = 40.7128  // New York
+        let latitude = 40.7128
         let longitude = -74.0060
-        let date = Date()
+        let calendar = Calendar.current
+        let date = calendar.startOfDay(for: Date())
         
         let sunEvents = await astronomyService.calculateSunEvents(
             latitude: latitude,
@@ -116,7 +116,8 @@ final class AstronomyServiceTests: XCTestCase {
     func testCalculateSunEventsTwilightOrder() async {
         let latitude = 45.4627
         let longitude = -122.7491
-        let date = Date()
+        let calendar = Calendar.current
+        let date = calendar.startOfDay(for: Date())
         
         let sunEvents = await astronomyService.calculateSunEvents(
             latitude: latitude,
@@ -201,7 +202,8 @@ final class AstronomyServiceTests: XCTestCase {
     func testCalculateSunEventsAtEquator() async {
         let latitude = 0.0
         let longitude = 0.0
-        let date = Date()
+        let calendar = Calendar.current
+        let date = calendar.startOfDay(for: Date())
         
         let sunEvents = await astronomyService.calculateSunEvents(
             latitude: latitude,
@@ -216,7 +218,8 @@ final class AstronomyServiceTests: XCTestCase {
     func testCalculateSunEventsAtNorthPole() async {
         let latitude = 89.0
         let longitude = 0.0
-        let date = Date()
+        let calendar = Calendar.current
+        let date = calendar.startOfDay(for: Date())
         
         let sunEvents = await astronomyService.calculateSunEvents(
             latitude: latitude,
@@ -253,13 +256,13 @@ final class AstronomyServiceTests: XCTestCase {
         var previousSunset: Date?
         
         for dayOffset in 0..<7 {
-            let date = calendar.date(byAdding: .day, value: dayOffset, to: Date())!
+            let date = calendar.date(byAdding: .day, value: dayOffset, to: calendar.startOfDay(for: Date()))!
             
             let sunEvents = await astronomyService.calculateSunEvents(
                 latitude: latitude,
                 longitude: longitude,
-                on: date
-            )
+            on: date
+        )
             
             XCTAssertNotNil(sunEvents.sunset)
             

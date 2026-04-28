@@ -63,7 +63,7 @@ struct SunMoonCard: View {
                             Text("Duration:")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            Text(formatDuration(sunEvents.astronomicalNightDuration(on: sunEvents.sunrise)))
+                            Text(formatDuration(sunEvents.astronomicalNightDuration))
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(.indigo)

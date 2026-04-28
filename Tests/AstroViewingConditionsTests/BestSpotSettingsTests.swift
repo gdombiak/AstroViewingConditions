@@ -4,18 +4,15 @@ import Foundation
 @testable import AstroViewingConditions
 
 final class BestSpotSettingsTests: XCTestCase {
-    
-    var userDefaults: UserDefaults!
+    private let testSuiteName = "group.com.astroviewing.conditions"
     
     override func setUp() {
         super.setUp()
-        userDefaults = UserDefaults(suiteName: "test.bestSpot.settings")
-        userDefaults.removePersistentDomain(forName: "test.bestSpot.settings")
+        cleanupTestFiles()
     }
     
     override func tearDown() {
-        userDefaults.removePersistentDomain(forName: "test.bestSpot.settings")
-        userDefaults = nil
+        cleanupTestFiles()
         super.tearDown()
     }
     
@@ -81,64 +78,58 @@ final class BestSpotSettingsTests: XCTestCase {
         XCTAssertEqual(BestSpotSettings.validateGridSpacing(20), 10)
     }
     
-    // MARK: - UserDefaults Extension Tests
+    // MARK: - AppGroupStorage Based Tests
     
-    func testUserDefaultsSearchRadiusDefaultValue() {
-        XCTAssertEqual(userDefaults.bestSpotSearchRadius, 30)
+    func testAppGroupStorageSearchRadiusDefaultValue() {
+        XCTAssertEqual(BestSpotSettings.searchRadius, 30)
     }
     
-    func testUserDefaultsSearchRadiusSettingValidValue() {
-        userDefaults.bestSpotSearchRadius = 25
-        XCTAssertEqual(userDefaults.bestSpotSearchRadius, 25)
+    func testAppGroupStorageSearchRadiusSettingValidValue() {
+        BestSpotSettings.searchRadius = 25
+        XCTAssertEqual(BestSpotSettings.searchRadius, 25)
     }
     
-    func testUserDefaultsSearchRadiusClampsBelowMin() {
-        userDefaults.bestSpotSearchRadius = 5
-        XCTAssertEqual(userDefaults.bestSpotSearchRadius, 10)
+    func testAppGroupStorageSearchRadiusClampsBelowMin() {
+        BestSpotSettings.searchRadius = 5
+        XCTAssertEqual(BestSpotSettings.searchRadius, 10)
     }
     
-    func testUserDefaultsSearchRadiusClampsAboveMax() {
-        userDefaults.bestSpotSearchRadius = 100
-        XCTAssertEqual(userDefaults.bestSpotSearchRadius, 50)
+    func testAppGroupStorageSearchRadiusClampsAboveMax() {
+        BestSpotSettings.searchRadius = 100
+        XCTAssertEqual(BestSpotSettings.searchRadius, 50)
     }
     
-    func testUserDefaultsGridSpacingDefaultValue() {
-        XCTAssertEqual(userDefaults.bestSpotGridSpacing, 5)
+    func testAppGroupStorageGridSpacingDefaultValue() {
+        XCTAssertEqual(BestSpotSettings.gridSpacing, 5)
     }
     
-    func testUserDefaultsGridSpacingSettingValidValue() {
-        userDefaults.bestSpotGridSpacing = 7
-        XCTAssertEqual(userDefaults.bestSpotGridSpacing, 7)
+    func testAppGroupStorageGridSpacingSettingValidValue() {
+        BestSpotSettings.gridSpacing = 7
+        XCTAssertEqual(BestSpotSettings.gridSpacing, 7)
     }
     
-    func testUserDefaultsGridSpacingClampsBelowMin() {
-        userDefaults.bestSpotGridSpacing = 1
-        XCTAssertEqual(userDefaults.bestSpotGridSpacing, 3)
+    func testAppGroupStorageGridSpacingClampsBelowMin() {
+        BestSpotSettings.gridSpacing = 1
+        XCTAssertEqual(BestSpotSettings.gridSpacing, 3)
     }
     
-    func testUserDefaultsGridSpacingClampsAboveMax() {
-        userDefaults.bestSpotGridSpacing = 20
-        XCTAssertEqual(userDefaults.bestSpotGridSpacing, 10)
+    func testAppGroupStorageGridSpacingClampsAboveMax() {
+        BestSpotSettings.gridSpacing = 20
+        XCTAssertEqual(BestSpotSettings.gridSpacing, 10)
     }
     
-    func testUserDefaultsPersistsValues() {
-        userDefaults.bestSpotSearchRadius = 40
-        userDefaults.bestSpotGridSpacing = 8
+    func testAppGroupStoragePersistsValues() {
+        BestSpotSettings.searchRadius = 40
+        BestSpotSettings.gridSpacing = 8
         
-        // Create new UserDefaults instance with same suite
-        let newDefaults = UserDefaults(suiteName: "test.bestSpot.settings")
-        XCTAssertEqual(newDefaults?.bestSpotSearchRadius, 40)
-        XCTAssertEqual(newDefaults?.bestSpotGridSpacing, 8)
+        let settings = AppGroupStorage.loadBestSpotSettings()
+        XCTAssertEqual(settings?.searchRadius, 40)
+        XCTAssertEqual(settings?.gridSpacing, 8)
     }
     
-    func testUserDefaultsResetToDefaults() {
-        userDefaults.bestSpotSearchRadius = 45
-        userDefaults.bestSpotGridSpacing = 9
-        
-        userDefaults.removeObject(forKey: BestSpotSettings.searchRadiusKey)
-        userDefaults.removeObject(forKey: BestSpotSettings.gridSpacingKey)
-        
-        XCTAssertEqual(userDefaults.bestSpotSearchRadius, 30)
-        XCTAssertEqual(userDefaults.bestSpotGridSpacing, 5)
+    private func cleanupTestFiles() {
+        guard let baseURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: testSuiteName) else { return }
+        let fileURL = baseURL.appendingPathComponent("bestSpotSettings.json")
+        try? FileManager.default.removeItem(at: fileURL)
     }
 }
