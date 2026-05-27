@@ -12,15 +12,41 @@ struct WatchDashboardView: View {
     var locationOptions: [LocationOption] {
         LocationOption.fromLocations(saved: locationManager.locations)
     }
+
+    private var currentHourForecast: HourlyForecast? {
+        guard let conditions = conditionsManager.conditions else { return nil }
+
+        let now = Date()
+        let calendar = conditionsManager.locationCalendar
+        let todayForecasts = conditions.hourlyForecasts.filter { forecast in
+            calendar.isDate(forecast.time, inSameDayAs: now)
+        }
+
+        return todayForecasts.first { forecast in
+            calendar.component(.hour, from: forecast.time) == calendar.component(.hour, from: now)
+        } ?? todayForecasts.first
+    }
     
     var body: some View {
-        return NavigationStack {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 12) {
                     LocationSelectorView(
                         locations: locationOptions,
                         selectedLocation: locationManager.selectedLocation,
-                        onSelectionChanged: { handleSelection($0) }
+                        isRefreshingLocations: locationManager.isLoading,
+                        isRefreshingConditions: conditionsManager.isLoading,
+                        onSelectionChanged: { handleSelection($0) },
+                        onRefreshLocations: {
+                            Task {
+                                await locationManager.refresh()
+                            }
+                        },
+                        onRefreshConditions: {
+                            Task {
+                                await refreshConditions()
+                            }
+                        }
                     )
 
                     if locationManager.isLoading || conditionsManager.isLoading {
@@ -39,21 +65,8 @@ struct WatchDashboardView: View {
                         WatchNightQualityCard(assessment: assessment)
                     }
 
-                    if let conditions = conditionsManager.conditions {
-                        let now = Date()
-                        let calendar = conditionsManager.locationCalendar
-                        
-                        let todayForecasts = conditions.hourlyForecasts.filter { forecast in
-                            calendar.isDate(forecast.time, inSameDayAs: now)
-                        }
-                        
-                        let currentHourForecast = todayForecasts.first { forecast in
-                            calendar.component(.hour, from: forecast.time) == calendar.component(.hour, from: now)
-                        } ?? todayForecasts.first
-                        
-                        if let forecast = currentHourForecast {
-                            WatchCurrentConditionsCard(forecast: forecast, unitSystem: locationManager.unitSystem)
-                        }
+                    if let currentHourForecast {
+                        WatchCurrentConditionsCard(forecast: currentHourForecast, unitSystem: locationManager.unitSystem)
                     }
 
                     if let sunEvents = conditionsManager.conditions?.dailySunEvents.first,
@@ -65,46 +78,21 @@ struct WatchDashboardView: View {
                             timeZone: conditionsManager.displayTimeZone
                         )
                     }
-
-                    Button(action: { Task { await refresh() } }) {
-                        Label("Refresh", systemImage: "arrow.clockwise")
-                    }
-                    .buttonStyle(.bordered)
                 }
                 .padding()
             }
-        .task {
-            if conditionsManager.shouldRefresh {
-                await refresh()
+            .task {
+                if locationManager.selectedLocation == nil {
+                    await locationManager.refresh()
+                }
+
+                if conditionsManager.shouldRefresh {
+                    await refreshConditions()
+                }
             }
-        }
             .onChange(of: conditionsManager.conditions?.fetchedAt) { _, _ in
                 Task {
-                    guard let conditions = conditionsManager.conditions,
-                          let sunEventsToday = conditions.dailySunEvents.first,
-                          let sunEventsTomorrow = conditions.dailySunEvents.dropFirst().first,
-                          let moonInfo = conditions.dailyMoonInfo.first else {
-                        return
-                    }
-                    
-                    let tz = await LocationTimeZoneResolver.resolve(latitude: conditions.location.latitude, longitude: conditions.location.longitude)
-                    let calendar = LocationTimeZoneResolver.calendar(for: tz)
-                    let today = calendar.startOfDay(for: Date())
-                    
-                    let assessment = NightQualityAnalyzer.analyzeNight(
-                        forecasts: conditions.hourlyForecasts,
-                        sunEventsToday: sunEventsToday,
-                        sunEventsTomorrow: sunEventsTomorrow,
-                        moonInfo: moonInfo,
-                        latitude: conditions.location.latitude,
-                        longitude: conditions.location.longitude,
-                        for: today,
-                        calendar: calendar
-                    )
-                    
-                    await MainActor.run {
-                        conditionsManager.nightQuality = assessment
-                    }
+                    await updateNightQuality()
                 }
             }
         }
@@ -117,14 +105,49 @@ struct WatchDashboardView: View {
         case .saved(let location):
             locationManager.select(location)
         }
+
+        Task {
+            await refreshConditions()
+        }
     }
 
     @MainActor
-    private func refresh() async {
-        error = nil
+    private func refreshConditions() async {
+        guard !conditionsManager.isLoading else { return }
 
-        await locationManager.refresh()
+        error = nil
         await conditionsManager.refresh()
+    }
+
+    private func updateNightQuality() async {
+        guard let conditions = conditionsManager.conditions,
+              let sunEventsToday = conditions.dailySunEvents.first,
+              let sunEventsTomorrow = conditions.dailySunEvents.dropFirst().first,
+              let moonInfo = conditions.dailyMoonInfo.first else {
+            return
+        }
+
+        let tz = await LocationTimeZoneResolver.resolve(
+            latitude: conditions.location.latitude,
+            longitude: conditions.location.longitude
+        )
+        let calendar = LocationTimeZoneResolver.calendar(for: tz)
+        let today = calendar.startOfDay(for: Date())
+
+        let assessment = NightQualityAnalyzer.analyzeNight(
+            forecasts: conditions.hourlyForecasts,
+            sunEventsToday: sunEventsToday,
+            sunEventsTomorrow: sunEventsTomorrow,
+            moonInfo: moonInfo,
+            latitude: conditions.location.latitude,
+            longitude: conditions.location.longitude,
+            for: today,
+            calendar: calendar
+        )
+
+        await MainActor.run {
+            conditionsManager.nightQuality = assessment
+        }
     }
 
 }

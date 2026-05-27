@@ -21,6 +21,8 @@ protocol WatchConditionsManagerDelegate: AnyObject {
 
 class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnectivityManagerDelegate {
     static let shared = WatchConditionsManager()
+    private static let freshConditionsInterval: TimeInterval = 3600
+    private static let locationMatchTolerance = 0.01
     
     weak var delegate: WatchConditionsManagerDelegate?
     
@@ -61,7 +63,8 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
 
     var shouldRefresh: Bool {
         guard let conditions else { return true }
-        return Date().timeIntervalSince(conditions.fetchedAt) > 3600
+        guard let selectedLocation = locationManager.selectedLocation else { return true }
+        return !Self.isFresh(conditions) || !Self.conditions(conditions, match: selectedLocation)
     }
 
     private func loadCachedConditions() {
@@ -124,20 +127,58 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             throw ConditionsError.noLocationSelected
         }
         
-        let coordinate = try await locationManager.getCurrentCoordinate()
-        let locationName = selectedLocation.name
-        
         do {
             let (conditions, _) = try await connectivityManager.requestConditions()
+            guard Self.isFresh(conditions) else {
+                throw ConditionsError.fetchFailed("iOS returned stale conditions")
+            }
+            guard Self.conditions(conditions, match: selectedLocation) else {
+                throw ConditionsError.fetchFailed("iOS returned conditions for a different location")
+            }
             return conditions
         } catch {
             print("WatchConditionsManager: Watch connectivity failed: \(error.localizedDescription), computing locally")
+            let coordinate = try await locationManager.getCurrentCoordinate()
             return try await computeConditionsLocally(
                 latitude: coordinate.latitude,
                 longitude: coordinate.longitude,
-                locationName: locationName
+                locationName: selectedLocation.name
             )
         }
+    }
+
+    private static func isFresh(_ conditions: ViewingConditions) -> Bool {
+        Date().timeIntervalSince(conditions.fetchedAt) <= freshConditionsInterval
+    }
+
+    private static func conditions(_ conditions: ViewingConditions, match selectedLocation: SelectedLocation) -> Bool {
+        if let selectedID = selectedLocation.id,
+           let conditionsID = conditions.location.id {
+            return selectedID == conditionsID
+        }
+
+        if selectedLocation.source == .currentGPS,
+           selectedLocation.latitude == 0,
+           selectedLocation.longitude == 0 {
+            return true
+        }
+
+        return coordinates(
+            latitude: conditions.location.latitude,
+            longitude: conditions.location.longitude,
+            matchLatitude: selectedLocation.latitude,
+            matchLongitude: selectedLocation.longitude
+        )
+    }
+
+    private static func coordinates(
+        latitude: Double,
+        longitude: Double,
+        matchLatitude: Double,
+        matchLongitude: Double
+    ) -> Bool {
+        abs(latitude - matchLatitude) <= locationMatchTolerance
+            && abs(longitude - matchLongitude) <= locationMatchTolerance
     }
     
     private func computeConditionsLocally(

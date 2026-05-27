@@ -42,20 +42,62 @@ enum LocationOption: Identifiable {
 struct LocationSelectorView: View {
     let locations: [LocationOption]
     var selectedLocation: SelectedLocation?
+    let isRefreshingLocations: Bool
+    let isRefreshingConditions: Bool
     let onSelectionChanged: (LocationOption) -> Void
+    let onRefreshLocations: () -> Void
+    let onRefreshConditions: () -> Void
 
     var body: some View {
-        NavigationLink(destination: LocationListView(locations: locations, selectedLocation: selectedLocation, onSelectionChanged: onSelectionChanged)) {
-            Label(selectedLocation?.name ?? "Current Location", systemImage: "location.circle")
-                .font(.headline)
+        HStack(spacing: 6) {
+            NavigationLink(
+                destination: LocationListView(
+                    locations: locations,
+                    selectedLocation: selectedLocation,
+                    isRefreshingLocations: isRefreshingLocations,
+                    onSelectionChanged: onSelectionChanged,
+                    onRefreshLocations: onRefreshLocations
+                )
+            ) {
+                HStack(spacing: 6) {
+                    Image(systemName: "location.circle")
+                        .font(.caption)
+                    Text(selectedLocation?.name ?? "Current Location")
+                        .font(.caption)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+            }
+            .buttonStyle(.plain)
+
+            Button(action: onRefreshConditions) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+            }
+            .frame(width: 28, height: 28)
+            .background(.regularMaterial)
+            .clipShape(Circle())
+            .opacity(isRefreshingConditions ? 0.35 : 1)
+            .disabled(isRefreshingConditions)
+            .buttonStyle(.plain)
         }
+        .background(.thinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
 struct LocationListView: View {
     let locations: [LocationOption]
     var selectedLocation: SelectedLocation?
+    let isRefreshingLocations: Bool
     let onSelectionChanged: (LocationOption) -> Void
+    let onRefreshLocations: () -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -79,5 +121,17 @@ struct LocationListView: View {
             }
         }
         .navigationTitle("Select Location")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: onRefreshLocations) {
+                    if isRefreshingLocations {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                }
+                .disabled(isRefreshingLocations)
+            }
+        }
     }
 }

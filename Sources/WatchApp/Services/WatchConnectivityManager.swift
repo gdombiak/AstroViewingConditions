@@ -28,6 +28,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
     static let shared = WatchConnectivityManager()
     
     private var delegateQueue: [WatchConnectivityManagerDelegate] = []
+    private let continuationQueue = DispatchQueue(label: "com.astroviewing.conditions.watchconnectivity.continuations")
     
     func addDelegate(_ delegate: WatchConnectivityManagerDelegate) {
         delegateQueue.append(delegate)
@@ -61,7 +62,9 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         
         return try await withCheckedThrowingContinuation { continuation in
             let id = UUID()
-            locationContinuations[id] = continuation
+            continuationQueue.sync {
+                locationContinuations[id] = continuation
+            }
             
             WCSession.default.sendMessage(
                 ["type": "requestLocations", "id": id.uuidString],
@@ -69,11 +72,11 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
                     self?.handleLocationReply(reply, id: id)
                 },
                 errorHandler: { [weak self] error in
-                    self?.locationContinuations.removeValue(forKey: id)?.resume(throwing: error)
+                    self?.resumeLocationRequest(id: id, with: .failure(error))
                 }
             )
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            continuationQueue.asyncAfter(deadline: .now() + 10) { [weak self] in
                 self?.locationContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.requestFailed("Request timed out"))
             }
         }
@@ -86,7 +89,9 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         
         return try await withCheckedThrowingContinuation { continuation in
             let id = UUID()
-            conditionsContinuations[id] = continuation
+            continuationQueue.sync {
+                conditionsContinuations[id] = continuation
+            }
             
             WCSession.default.sendMessage(
                 ["type": "requestConditions", "id": id.uuidString],
@@ -94,11 +99,11 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
                     self?.handleConditionsReply(reply, id: id)
                 },
                 errorHandler: { [weak self] error in
-                    self?.conditionsContinuations.removeValue(forKey: id)?.resume(throwing: error)
+                    self?.resumeConditionsRequest(id: id, with: .failure(error))
                 }
             )
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            continuationQueue.asyncAfter(deadline: .now() + 4) { [weak self] in
                 self?.conditionsContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.requestFailed("Request timed out"))
             }
         }
@@ -128,7 +133,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
     private func handleLocationReply(_ reply: [String: Any], id: UUID) {
         guard let status = reply["status"] as? String, status == "ok" else {
             let message = reply["message"] as? String ?? "Unknown error"
-            locationContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.requestFailed(message))
+            resumeLocationRequest(id: id, with: .failure(WatchConnectivityError.requestFailed(message)))
             return
         }
         
@@ -145,13 +150,13 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
             selected = decoded
         }
         
-        locationContinuations.removeValue(forKey: id)?.resume(returning: (locations, selected))
+        resumeLocationRequest(id: id, with: .success((locations, selected)))
     }
     
     private func handleConditionsReply(_ reply: [String: Any], id: UUID) {
         guard let status = reply["status"] as? String, status == "ok" else {
             let message = reply["message"] as? String ?? "Unknown error"
-            conditionsContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.requestFailed(message))
+            resumeConditionsRequest(id: id, with: .failure(WatchConnectivityError.requestFailed(message)))
             return
         }
         
@@ -166,9 +171,29 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
                     self.notifyDelegates { $0.connectivityManager(self, didReceiveSelectedLocation: location) }
                 }
             }
-            conditionsContinuations.removeValue(forKey: id)?.resume(returning: (conditions, selectedLocation))
+            resumeConditionsRequest(id: id, with: .success((conditions, selectedLocation)))
         } else {
-            conditionsContinuations.removeValue(forKey: id)?.resume(throwing: WatchConnectivityError.decodeFailed("Failed to decode conditions"))
+            resumeConditionsRequest(id: id, with: .failure(WatchConnectivityError.decodeFailed("Failed to decode conditions")))
+        }
+    }
+
+    private func resumeLocationRequest(
+        id: UUID,
+        with result: Result<([CachedLocation], SelectedLocation?), Error>
+    ) {
+        continuationQueue.async { [weak self] in
+            guard let continuation = self?.locationContinuations.removeValue(forKey: id) else { return }
+            continuation.resume(with: result)
+        }
+    }
+
+    private func resumeConditionsRequest(
+        id: UUID,
+        with result: Result<(ViewingConditions, SelectedLocation?), Error>
+    ) {
+        continuationQueue.async { [weak self] in
+            guard let continuation = self?.conditionsContinuations.removeValue(forKey: id) else { return }
+            continuation.resume(with: result)
         }
     }
     
