@@ -4,6 +4,10 @@ import SharedCode
 
 @main
 struct AstroViewingConditionsApp: App {
+    private static var isRunningUnitTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+    
     init() {
         UnitSystemStorage.initializeIfNeeded()
         MigrationHelper.migrateIfNeeded()
@@ -13,6 +17,6 @@ struct AstroViewingConditionsApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: SavedLocation.self)
+        .modelContainer(for: SavedLocation.self, inMemory: Self.isRunningUnitTests)
     }
 }
