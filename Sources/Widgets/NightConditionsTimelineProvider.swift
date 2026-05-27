@@ -96,7 +96,8 @@ struct Provider: TimelineProvider {
             dailySunEvents: [sunEventsToday, sunEventsTomorrow],
             dailyMoonInfo: [moonInfo],
             issPasses: [],
-            fogScore: FogCalculator.calculateCurrent(from: forecasts)
+            fogScore: FogCalculator.calculateCurrent(from: forecasts),
+            timeZoneIdentifier: tz.identifier
         )
         AppGroupStorage.saveWidgetConditions(conditions)
 

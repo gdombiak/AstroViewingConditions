@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SunMoonCard: View {
     let sunEvents: SunEvents
+    let tomorrowSunEvents: SunEvents?
     let moonInfo: MoonInfo
     let timeZone: TimeZone?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -57,7 +58,7 @@ struct SunMoonCard: View {
                             Text("to")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            Text(DateFormatters.formatTime(sunEvents.astronomicalNightEnd, in: timeZone))
+                            Text(DateFormatters.formatTime(sunEvents.astronomicalNightEnd(using: tomorrowSunEvents), in: timeZone))
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                         }
@@ -66,7 +67,7 @@ struct SunMoonCard: View {
                             Text("Duration:")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            Text(formatDuration(sunEvents.astronomicalNightDuration))
+                            Text(formatDuration(sunEvents.astronomicalNightDuration(using: tomorrowSunEvents)))
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                                 .foregroundStyle(.indigo)
@@ -173,6 +174,16 @@ struct SunEventItem: View {
             nauticalTwilightEnd: Date().addingTimeInterval(3600 * 9),
             astronomicalTwilightBegin: Date().addingTimeInterval(-3600 * 2.5),
             astronomicalTwilightEnd: Date().addingTimeInterval(3600 * 9.5)
+        ),
+        tomorrowSunEvents: SunEvents(
+            sunrise: Date().addingTimeInterval(3600 * 23),
+            sunset: Date().addingTimeInterval(3600 * 32),
+            civilTwilightBegin: Date().addingTimeInterval(3600 * 22.5),
+            civilTwilightEnd: Date().addingTimeInterval(3600 * 32.5),
+            nauticalTwilightBegin: Date().addingTimeInterval(3600 * 22),
+            nauticalTwilightEnd: Date().addingTimeInterval(3600 * 33),
+            astronomicalTwilightBegin: Date().addingTimeInterval(3600 * 21.5),
+            astronomicalTwilightEnd: Date().addingTimeInterval(3600 * 33.5)
         ),
         moonInfo: MoonInfo(
             phase: 0.25,

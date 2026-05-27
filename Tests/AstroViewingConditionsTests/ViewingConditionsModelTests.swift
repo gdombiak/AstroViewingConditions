@@ -65,7 +65,8 @@ final class ViewingConditionsModelTests: XCTestCase {
             dailySunEvents: [sunEvents],
             dailyMoonInfo: [moonInfo],
             issPasses: issPasses,
-            fogScore: fogScore
+            fogScore: fogScore,
+            timeZoneIdentifier: "America/New_York"
         )
         
         let encoder = JSONEncoder()
@@ -80,6 +81,7 @@ final class ViewingConditionsModelTests: XCTestCase {
         XCTAssertEqual(decoded.dailyMoonInfo.count, 1)
         XCTAssertEqual(decoded.issPasses.count, 1)
         XCTAssertEqual(decoded.fogScore.score, 25)
+        XCTAssertEqual(decoded.timeZoneIdentifier, "America/New_York")
     }
     
     // MARK: - CachedLocation Codable
@@ -293,4 +295,43 @@ final class ViewingConditionsModelTests: XCTestCase {
         
         XCTAssertEqual(duration, 5 * 3600, accuracy: 1)
     }
+    
+    func testAstronomicalNightDurationUsesTomorrowDawn() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        
+        var components = DateComponents()
+        components.timeZone = calendar.timeZone
+        components.year = 2026
+        components.month = 5
+        components.day = 26
+        let date = calendar.date(from: components)!
+        let nextDay = calendar.date(byAdding: .day, value: 1, to: date)!
+        
+        let today = SunEvents(
+            sunrise: calendar.date(bySettingHour: 6, minute: 30, second: 0, of: date)!,
+            sunset: calendar.date(bySettingHour: 20, minute: 0, second: 0, of: date)!,
+            civilTwilightBegin: calendar.date(bySettingHour: 6, minute: 0, second: 0, of: date)!,
+            civilTwilightEnd: calendar.date(bySettingHour: 20, minute: 30, second: 0, of: date)!,
+            nauticalTwilightBegin: calendar.date(bySettingHour: 5, minute: 30, second: 0, of: date)!,
+            nauticalTwilightEnd: calendar.date(bySettingHour: 21, minute: 0, second: 0, of: date)!,
+            astronomicalTwilightBegin: calendar.date(bySettingHour: 5, minute: 3, second: 0, of: date)!,
+            astronomicalTwilightEnd: calendar.date(bySettingHour: 21, minute: 33, second: 0, of: date)!
+        )
+        let tomorrow = SunEvents(
+            sunrise: calendar.date(bySettingHour: 6, minute: 30, second: 0, of: nextDay)!,
+            sunset: calendar.date(bySettingHour: 20, minute: 0, second: 0, of: nextDay)!,
+            civilTwilightBegin: calendar.date(bySettingHour: 6, minute: 0, second: 0, of: nextDay)!,
+            civilTwilightEnd: calendar.date(bySettingHour: 20, minute: 30, second: 0, of: nextDay)!,
+            nauticalTwilightBegin: calendar.date(bySettingHour: 5, minute: 30, second: 0, of: nextDay)!,
+            nauticalTwilightEnd: calendar.date(bySettingHour: 21, minute: 0, second: 0, of: nextDay)!,
+            astronomicalTwilightBegin: calendar.date(bySettingHour: 5, minute: 3, second: 0, of: nextDay)!,
+            astronomicalTwilightEnd: calendar.date(bySettingHour: 21, minute: 33, second: 0, of: nextDay)!
+        )
+        
+        XCTAssertLessThan(today.astronomicalNightDuration, 0)
+        XCTAssertEqual(today.astronomicalNightEnd(using: tomorrow), tomorrow.astronomicalTwilightBegin)
+        XCTAssertEqual(today.astronomicalNightDuration(using: tomorrow), 7.5 * 3600, accuracy: 1)
+    }
+    
 }

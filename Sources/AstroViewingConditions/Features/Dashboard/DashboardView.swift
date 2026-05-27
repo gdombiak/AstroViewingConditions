@@ -223,6 +223,7 @@ public struct DashboardView: View {
                    let moonInfo = viewModel.currentMoonInfo {
                     SunMoonCard(
                         sunEvents: sunEvents,
+                        tomorrowSunEvents: viewModel.nextSunEvents,
                         moonInfo: moonInfo,
                         timeZone: viewModel.displayTimeZone
                     )

@@ -4,7 +4,7 @@ import CoreLocation
 public struct LocationTimeZoneResolver {
     
     /// Resolves the timezone for a given latitude/longitude using CLGeocoder.
-    /// Falls back to UTC if resolution fails.
+    /// Falls back to a longitude-based fixed offset if resolution fails.
     public static func resolve(latitude: Double, longitude: Double) async -> TimeZone {
         let location = CLLocation(latitude: latitude, longitude: longitude)
         let geocoder = CLGeocoder()

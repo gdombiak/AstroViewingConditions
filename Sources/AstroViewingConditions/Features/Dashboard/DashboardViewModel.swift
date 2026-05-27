@@ -107,6 +107,13 @@ public class DashboardViewModel {
         return conditions.dailySunEvents[index]
     }
     
+    public var nextSunEvents: SunEvents? {
+        guard let conditions = viewingConditions else { return nil }
+        let index = selectedDay.rawValue + 1
+        guard index < conditions.dailySunEvents.count else { return nil }
+        return conditions.dailySunEvents[index]
+    }
+    
     public var currentMoonInfo: MoonInfo? {
         guard let conditions = viewingConditions else { return nil }
         let index = selectedDay.rawValue
@@ -132,6 +139,10 @@ public class DashboardViewModel {
     public var displayTimeZone: TimeZone? {
         if let locationTimeZone {
             return locationTimeZone
+        }
+        if let identifier = viewingConditions?.timeZoneIdentifier,
+           let timeZone = TimeZone(identifier: identifier) {
+            return timeZone
         }
         if let longitude = viewingConditions?.location.longitude {
             return LocationTimeZoneResolver.approximate(longitude: longitude)
@@ -268,7 +279,8 @@ public class DashboardViewModel {
                 dailySunEvents: dailySunEvents,
                 dailyMoonInfo: dailyMoonInfo,
                 issPasses: issPasses,
-                fogScore: fogScore
+                fogScore: fogScore,
+                timeZoneIdentifier: tz.identifier
             )
             viewingConditions = newConditions
             lastSuccessfulFetch = Date()

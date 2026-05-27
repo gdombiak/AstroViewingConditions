@@ -44,6 +44,10 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         if let locationTimeZone {
             return locationTimeZone
         }
+        if let identifier = conditions?.timeZoneIdentifier,
+           let timeZone = TimeZone(identifier: identifier) {
+            return timeZone
+        }
         if let longitude = conditions?.location.longitude {
             return LocationTimeZoneResolver.approximate(longitude: longitude)
         }
@@ -63,7 +67,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     private func loadCachedConditions() {
         guard let cached = AppGroupStorage.loadConditionsWithTimestamp() else { return }
         Task {
-            let timeZone = await Self.resolveTimeZone(for: cached.conditions.location)
+            let timeZone = await Self.resolveTimeZone(for: cached.conditions)
             await MainActor.run {
                 self.locationTimeZone = timeZone
                 self.conditions = cached.conditions
@@ -75,7 +79,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         AppGroupStorage.saveConditions(conditions)
         WidgetCenter.shared.reloadAllTimelines()
         Task {
-            let timeZone = await Self.resolveTimeZone(for: conditions.location)
+            let timeZone = await Self.resolveTimeZone(for: conditions)
             await MainActor.run {
                 self.locationTimeZone = timeZone
                 self.conditions = conditions
@@ -98,7 +102,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         
         do {
             let conditions = try await fetchConditions()
-            let timeZone = await Self.resolveTimeZone(for: conditions.location)
+            let timeZone = await Self.resolveTimeZone(for: conditions)
             await MainActor.run {
                 self.locationTimeZone = timeZone
                 self.conditions = conditions
@@ -189,8 +193,18 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             dailySunEvents: dailySunEvents,
             dailyMoonInfo: dailyMoonInfo,
             issPasses: [],
-            fogScore: fogScore
+            fogScore: fogScore,
+            timeZoneIdentifier: tz.identifier
         )
+    }
+    
+    private static func resolveTimeZone(for conditions: ViewingConditions) async -> TimeZone {
+        if let identifier = conditions.timeZoneIdentifier,
+           let timeZone = TimeZone(identifier: identifier) {
+            return timeZone
+        }
+        
+        return await resolveTimeZone(for: conditions.location)
     }
     
     private static func resolveTimeZone(for location: CachedLocation) async -> TimeZone {

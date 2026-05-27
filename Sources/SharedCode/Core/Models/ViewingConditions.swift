@@ -11,6 +11,7 @@ public struct ViewingConditions: Sendable, Codable {
     public let dailyMoonInfo: [MoonInfo]
     public let issPasses: [ISSPass]
     public let fogScore: FogScore
+    public let timeZoneIdentifier: String?
     
 #if os(iOS)
     public init(
@@ -20,7 +21,8 @@ public struct ViewingConditions: Sendable, Codable {
         dailySunEvents: [SunEvents],
         dailyMoonInfo: [MoonInfo],
         issPasses: [ISSPass],
-        fogScore: FogScore
+        fogScore: FogScore,
+        timeZoneIdentifier: String? = nil
     ) {
         self.fetchedAt = fetchedAt
         self.location = CachedLocation(from: location)
@@ -29,6 +31,7 @@ public struct ViewingConditions: Sendable, Codable {
         self.dailyMoonInfo = dailyMoonInfo
         self.issPasses = issPasses
         self.fogScore = fogScore
+        self.timeZoneIdentifier = timeZoneIdentifier
     }
 #endif
     
@@ -39,7 +42,8 @@ public struct ViewingConditions: Sendable, Codable {
         dailySunEvents: [SunEvents],
         dailyMoonInfo: [MoonInfo],
         issPasses: [ISSPass],
-        fogScore: FogScore
+        fogScore: FogScore,
+        timeZoneIdentifier: String? = nil
     ) {
         self.fetchedAt = fetchedAt
         self.location = location
@@ -48,6 +52,7 @@ public struct ViewingConditions: Sendable, Codable {
         self.dailyMoonInfo = dailyMoonInfo
         self.issPasses = issPasses
         self.fogScore = fogScore
+        self.timeZoneIdentifier = timeZoneIdentifier
     }
 }
 
@@ -152,6 +157,14 @@ public struct SunEvents: Sendable, Codable {
     
     public var astronomicalNightDuration: TimeInterval {
         astronomicalNightEnd.timeIntervalSince(astronomicalNightStart)
+    }
+    
+    public func astronomicalNightEnd(using tomorrowSunEvents: SunEvents?) -> Date {
+        tomorrowSunEvents?.astronomicalTwilightBegin ?? astronomicalNightEnd
+    }
+    
+    public func astronomicalNightDuration(using tomorrowSunEvents: SunEvents?) -> TimeInterval {
+        astronomicalNightEnd(using: tomorrowSunEvents).timeIntervalSince(astronomicalNightStart)
     }
 }
 

@@ -60,6 +60,7 @@ struct WatchDashboardView: View {
                        let moonInfo = conditionsManager.conditions?.dailyMoonInfo.first {
                         WatchAstronomicalNightCard(
                             sunEvents: sunEvents,
+                            tomorrowSunEvents: conditionsManager.conditions?.dailySunEvents.dropFirst().first,
                             moonInfo: moonInfo,
                             timeZone: conditionsManager.displayTimeZone
                         )
