@@ -5,7 +5,7 @@ struct NightQualityCard: View {
     let assessment: NightQualityAssessment
     
     private var unitConverter: AstroUnitConverter {
-        AstroUnitConverter(unitSystem: UserDefaults.standard.selectedUnitSystem)
+        AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
     }
     
     var body: some View {
@@ -44,7 +44,7 @@ struct NightQualityCard: View {
                                 HalfScorePill(
                                     label: "Early",
                                     score: firstHalf,
-                                    color: scoreToColor(firstHalf)
+                                    color: assessment.scoreToColor(firstHalf)
                                 )
                                 Text(assessment.trend.icon)
                                     .font(.caption)
@@ -52,7 +52,7 @@ struct NightQualityCard: View {
                                 HalfScorePill(
                                     label: "Late",
                                     score: secondHalf,
-                                    color: scoreToColor(secondHalf)
+                                    color: assessment.scoreToColor(secondHalf)
                                 )
                             }
                         }
@@ -63,48 +63,14 @@ struct NightQualityCard: View {
             }
             
             HStack(spacing: 16) {
-                FactorPill(label: "Clouds", value: "\(Int(assessment.details.cloudCoverScore))%", color: cloudColor(assessment.details.cloudCoverScore))
-                FactorPill(label: "Moon", value: "\(assessment.details.moonIlluminationAvg)%", color: moonColor(assessment.details.moonIlluminationAvg))
-                FactorPill(label: "Wind", value: unitConverter.formatWindSpeed(assessment.details.windSpeedAvg), color: windColor(assessment.details.windSpeedAvg))
+                FactorPill(label: "Clouds", value: "\(Int(assessment.details.cloudCoverScore))%", color: assessment.cloudColor(assessment.details.cloudCoverScore))
+                FactorPill(label: "Moon", value: "\(assessment.details.moonIlluminationAvg)%", color: assessment.moonColor(assessment.details.moonIlluminationAvg))
+                FactorPill(label: "Wind", value: unitConverter.formatWindSpeed(assessment.details.windSpeedAvg), color: assessment.windColor(assessment.details.windSpeedAvg))
             }
         }
         .padding()
         .background(cardBackgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-    
-    private func scoreToColor(_ score: Double) -> Color {
-        if score < 0.3 { return .green }
-        else if score < 0.7 { return .blue }
-        else if score < 1.0 { return .orange }
-        else { return .red }
-    }
-    
-    private func cloudColor(_ coverage: Double) -> Color {
-        switch Int(coverage) {
-        case 0..<20: return .green
-        case 20..<50: return .blue
-        case 50..<80: return .orange
-        default: return .red
-        }
-    }
-    
-    private func moonColor(_ illumination: Int) -> Color {
-        switch illumination {
-        case 0..<25: return .green
-        case 25..<50: return .blue
-        case 50..<75: return .orange
-        default: return .red
-        }
-    }
-    
-    private func windColor(_ speed: Double) -> Color {
-        switch speed {
-        case 0..<5: return .green
-        case 5..<10: return .blue
-        case 10..<15: return .orange
-        default: return .red
-        }
     }
     
     private var cardBackgroundColor: Color {

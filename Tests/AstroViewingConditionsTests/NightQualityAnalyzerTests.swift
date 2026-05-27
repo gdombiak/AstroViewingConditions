@@ -59,6 +59,9 @@ final class NightQualityAnalyzerTests: XCTestCase {
             emoji: moonIllumination < 25 ? "🌑" : (moonIllumination > 75 ? "🌕" : "🌓")
         )
         
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        
         return NightQualityAnalyzer.analyzeNight(
             forecasts: forecasts,
             sunEventsToday: sunEventsToday,
@@ -66,7 +69,8 @@ final class NightQualityAnalyzerTests: XCTestCase {
             moonInfo: moonInfo,
             latitude: 40.7128,  // New York City coordinates for testing
             longitude: -74.0060,
-            for: createDate(hour: 12, dayOffset: dayOffset)
+            for: createDate(hour: 12, dayOffset: dayOffset),
+            calendar: calendar
         )
     }
     

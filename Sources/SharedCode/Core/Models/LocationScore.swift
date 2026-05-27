@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Represents a scored location for viewing conditions
 public struct LocationScore: Sendable, Identifiable, Hashable {
@@ -57,6 +58,15 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
             return "orange"
         default:
             return "red"
+        }
+    }
+    
+    public var color: Color {
+        switch score {
+        case 80...100: return .green
+        case 60..<80: return .blue
+        case 40..<60: return .orange
+        default: return .red
         }
     }
 }

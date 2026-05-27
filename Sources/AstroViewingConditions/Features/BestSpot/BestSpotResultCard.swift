@@ -8,7 +8,7 @@ struct BestSpotResultCard: View {
     let onTap: () -> Void
     
     private var unitConverter: AstroUnitConverter {
-        AstroUnitConverter(unitSystem: UserDefaults.standard.selectedUnitSystem)
+        AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
     }
     
     var body: some View {
@@ -30,7 +30,7 @@ struct BestSpotResultCard: View {
                     Text("\(locationScore.score)")
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundStyle(scoreColor)
+                        .foregroundStyle(locationScore.color)
                     
                     Text("/100")
                         .font(.caption)
@@ -64,21 +64,21 @@ struct BestSpotResultCard: View {
                         icon: "cloud.fill",
                         label: "Clouds",
                         value: "\(Int(locationScore.avgCloudCover))%",
-                        color: cloudColor(locationScore.avgCloudCover)
+                        color: locationScore.nightQuality.cloudColor(locationScore.avgCloudCover)
                     )
                     
                     ConditionPill(
                         icon: "wind",
                         label: "Wind",
                         value: unitConverter.formatWindSpeed(locationScore.avgWindSpeed),
-                        color: windColor(locationScore.avgWindSpeed)
+                        color: locationScore.nightQuality.windColor(locationScore.avgWindSpeed)
                     )
                     
                     ConditionPill(
                         icon: "eye.fill",
                         label: "Fog",
                         value: "\(locationScore.fogScore.score)",
-                        color: fogColor(locationScore.fogScore.score)
+                        color: locationScore.nightQuality.fogColor(locationScore.fogScore.score)
                     )
                 }
             }
@@ -108,33 +108,6 @@ struct BestSpotResultCard: View {
         case 80...100: return .green
         case 60..<80: return .blue
         case 40..<60: return .orange
-        default: return .red
-        }
-    }
-    
-    private func cloudColor(_ coverage: Double) -> Color {
-        switch Int(coverage) {
-        case 0..<20: return .green
-        case 20..<50: return .blue
-        case 50..<80: return .orange
-        default: return .red
-        }
-    }
-    
-    private func windColor(_ speed: Double) -> Color {
-        switch speed {
-        case 0..<5: return .green
-        case 5..<10: return .blue
-        case 10..<15: return .orange
-        default: return .red
-        }
-    }
-    
-    private func fogColor(_ score: Int) -> Color {
-        switch score {
-        case 0..<25: return .green
-        case 25..<50: return .blue
-        case 50..<75: return .orange
         default: return .red
         }
     }

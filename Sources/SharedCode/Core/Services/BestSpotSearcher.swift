@@ -36,6 +36,7 @@ public class BestSpotSearcher {
         self.fogScoreCalculator = fogScoreCalculator
     }
     
+#if os(iOS)
     /// Finds the best viewing condition spots within a radius of a center location
     /// - Parameters:
     ///   - center: The center location to search around
@@ -47,6 +48,25 @@ public class BestSpotSearcher {
     /// - Returns: BestSpotResult containing scored locations sorted by score
     public func findBestSpots(
         around center: SavedLocation,
+        radiusMiles: Double = 30,
+        spacingMiles: Double = 5,
+        for date: Date,
+        topN: Int = 5,
+        progressHandler: ((Double) -> Void)? = nil
+    ) async throws -> BestSpotResult {
+        let cachedLocation = CachedLocation(from: center)
+        return try await findBestSpots(
+            around: cachedLocation,
+            radiusMiles: radiusMiles,
+            spacingMiles: spacingMiles,
+            for: date,
+            topN: topN,
+            progressHandler: progressHandler
+        )
+    }
+    
+    public func findBestSpots(
+        around center: CachedLocation,
         radiusMiles: Double = 30,
         spacingMiles: Double = 5,
         for date: Date,
@@ -82,7 +102,8 @@ public class BestSpotSearcher {
         progressHandler?(0.4)
         
         // Calculate sun and moon data for the date (same for all points in the area)
-        let calendar = Calendar.current
+        let tz = await LocationTimeZoneResolver.resolve(latitude: center.latitude, longitude: center.longitude)
+        let calendar = LocationTimeZoneResolver.calendar(for: tz)
         let startOfDay = calendar.startOfDay(for: date)
         
         let sunEventsToday = await astronomyService.calculateSunEvents(
@@ -91,7 +112,7 @@ public class BestSpotSearcher {
             on: startOfDay
         )
         
-        let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        let nextDay = calendar.date(byAdding: Calendar.Component.day, value: 1, to: startOfDay)!
         let sunEventsTomorrow = await astronomyService.calculateSunEvents(
             latitude: center.latitude,
             longitude: center.longitude,
@@ -119,7 +140,8 @@ public class BestSpotSearcher {
                 sunEventsToday: sunEventsToday,
                 sunEventsTomorrow: sunEventsTomorrow,
                 moonInfo: moonInfo,
-                date: date
+                date: date,
+                calendar: calendar
             ) {
                 scoredLocations.append(locationScore)
             }
@@ -138,7 +160,7 @@ public class BestSpotSearcher {
         let searchDuration = Date().timeIntervalSince(startTime)
         
         return BestSpotResult(
-            centerLocation: CachedLocation(from: center),
+            centerLocation: center,
             searchRadiusMiles: radiusMiles,
             gridSpacingMiles: spacingMiles,
             scoredLocations: topLocations,
@@ -155,7 +177,8 @@ public class BestSpotSearcher {
         sunEventsToday: SunEvents,
         sunEventsTomorrow: SunEvents,
         moonInfo: MoonInfo,
-        date: Date
+        date: Date,
+        calendar: Calendar
     ) async -> LocationScore? {
         // Calculate night quality using the existing analyzer
         let nightQuality = NightQualityAnalyzer.analyzeNight(
@@ -165,7 +188,8 @@ public class BestSpotSearcher {
             moonInfo: moonInfo,
             latitude: gridPoint.coordinate.latitude,
             longitude: gridPoint.coordinate.longitude,
-            for: date
+            for: date,
+            calendar: calendar
         )
         
         // Convert night quality to 0-100 score
@@ -176,7 +200,8 @@ public class BestSpotSearcher {
             forecasts: forecasts,
             sunEventsToday: sunEventsToday,
             sunEventsTomorrow: sunEventsTomorrow,
-            for: date
+            for: date,
+            calendar: calendar
         )
         
         guard !nightForecasts.isEmpty else { return nil }
@@ -200,6 +225,37 @@ public class BestSpotSearcher {
             summary: summary
         )
     }
+    
+    /// Generates a human-readable summary of the conditions
+    private func generateSummary(nightQuality: NightQualityAssessment, score: Int) -> String {
+        let cloudCover = Int(nightQuality.details.cloudCoverScore)
+        let windSpeed = nightQuality.details.windSpeedAvg
+        
+        var parts: [String] = []
+        
+        // Cloud cover description
+        if cloudCover < 10 {
+            parts.append("Crystal clear skies")
+        } else if cloudCover < 30 {
+            parts.append("Mostly clear")
+        } else if cloudCover < 60 {
+            parts.append("Partly cloudy")
+        } else {
+            parts.append("Cloudy")
+        }
+        
+        // Wind description
+        if windSpeed < 5 {
+            parts.append("calm winds")
+        } else if windSpeed < 15 {
+            parts.append("light winds")
+        } else {
+            parts.append("breezy")
+        }
+        
+        return parts.joined(separator: ", ")
+    }
+#endif
     
     /// Converts NightQualityAssessment to a 0-100 score
     /// Higher score = better viewing conditions
@@ -231,35 +287,5 @@ public class BestSpotSearcher {
         
         let finalScore = baseScore + adjustment + elevationBonus
         return min(100, max(0, finalScore))
-    }
-    
-    /// Generates a human-readable summary of the conditions
-    private func generateSummary(nightQuality: NightQualityAssessment, score: Int) -> String {
-        let cloudCover = Int(nightQuality.details.cloudCoverScore)
-        let windSpeed = nightQuality.details.windSpeedAvg
-        
-        var parts: [String] = []
-        
-        // Cloud cover description
-        if cloudCover < 10 {
-            parts.append("Crystal clear skies")
-        } else if cloudCover < 30 {
-            parts.append("Mostly clear")
-        } else if cloudCover < 60 {
-            parts.append("Partly cloudy")
-        } else {
-            parts.append("Cloudy")
-        }
-        
-        // Wind description
-        if windSpeed < 5 {
-            parts.append("calm winds")
-        } else if windSpeed < 15 {
-            parts.append("light winds")
-        } else {
-            parts.append("breezy")
-        }
-        
-        return parts.joined(separator: ", ")
     }
 }

@@ -26,11 +26,12 @@ struct BestSpotView: View {
     @State private var selectedLocation: LocationScore?
     @State private var mapPosition: MapCameraPosition
     @State private var showingSettings = false
+    @State private var centerTimeZone: TimeZone?
     
-    @AppStorage(BestSpotSettings.searchRadiusKey) private var searchRadius: Double = BestSpotSettings.defaultSearchRadius
-    @AppStorage(BestSpotSettings.gridSpacingKey) private var gridSpacing: Double = BestSpotSettings.defaultGridSpacing
-    @State private var previousSearchRadius: Double = BestSpotSettings.defaultSearchRadius
-    @State private var previousGridSpacing: Double = BestSpotSettings.defaultGridSpacing
+    @State private var searchRadius: Double = BestSpotSettings.searchRadius
+    @State private var gridSpacing: Double = BestSpotSettings.gridSpacing
+    @State private var previousSearchRadius: Double = BestSpotSettings.searchRadius
+    @State private var previousGridSpacing: Double = BestSpotSettings.gridSpacing
     
     var body: some View {
         NavigationStack {
@@ -78,6 +79,10 @@ struct BestSpotView: View {
             }
         }
         .task {
+            centerTimeZone = await LocationTimeZoneResolver.resolve(
+                latitude: centerLocation.latitude,
+                longitude: centerLocation.longitude
+            )
             await viewModel.search(around: centerLocation, for: searchDate, topN: 5)
         }
     }
@@ -94,7 +99,7 @@ struct BestSpotView: View {
                 .font(.headline)
                 .multilineTextAlignment(.center)
             
-            Text("For \(DateFormatters.formatShortDate(searchDate)) night")
+            Text("For \(DateFormatters.formatShortDate(searchDate, in: centerTimeZone)) night")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             
@@ -406,8 +411,8 @@ struct BestSpotMapAnnotation: View {
 
 struct BestSpotSettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage(BestSpotSettings.searchRadiusKey) private var searchRadius: Double = BestSpotSettings.defaultSearchRadius
-    @AppStorage(BestSpotSettings.gridSpacingKey) private var gridSpacing: Double = BestSpotSettings.defaultGridSpacing
+    @State private var searchRadius: Double = BestSpotSettings.searchRadius
+    @State private var gridSpacing: Double = BestSpotSettings.gridSpacing
     
     var body: some View {
         NavigationStack {
@@ -426,6 +431,9 @@ struct BestSpotSettingsView: View {
                             in: BestSpotSettings.minSearchRadius...BestSpotSettings.maxSearchRadius,
                             step: 5
                         )
+                        .onChange(of: searchRadius) { _, newValue in
+                            BestSpotSettings.searchRadius = newValue
+                        }
                         
                         Text("Searches up to \(Int(searchRadius)) miles from your location")
                             .font(.caption)
@@ -445,6 +453,9 @@ struct BestSpotSettingsView: View {
                             in: BestSpotSettings.minGridSpacing...BestSpotSettings.maxGridSpacing,
                             step: 1
                         )
+                        .onChange(of: gridSpacing) { _, newValue in
+                            BestSpotSettings.gridSpacing = newValue
+                        }
                         
                         Text("Checks a point every \(Int(gridSpacing)) miles")
                             .font(.caption)

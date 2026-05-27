@@ -2,10 +2,12 @@ import SharedCode
 import SwiftUI
 
 public struct SettingsView: View {
-    @AppStorage("selectedUnitSystem") private var unitSystem: UnitSystem = .metric
+    @State private var unitSystem: UnitSystem
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
     
-    public init() {}
+    public init() {
+        _unitSystem = State(initialValue: UnitSystemStorage.loadSelectedUnitSystem())
+    }
     
     public var body: some View {
         NavigationStack {
@@ -127,6 +129,10 @@ public struct SettingsView: View {
                             .padding(.top, 2)
                     }
                 }
+            }
+            .onChange(of: unitSystem) { _, newValue in
+                UnitSystemStorage.saveSelectedUnitSystem(newValue)
+                WatchConnectivityService.shared.sendUnitSystemToWatch(newValue)
             }
             .navigationTitle("Settings")
         }

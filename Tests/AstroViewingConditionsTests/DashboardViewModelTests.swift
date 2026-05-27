@@ -74,22 +74,24 @@ final class DashboardViewModelTests: XCTestCase {
         viewModel.viewingConditions = conditions
         viewModel.lastSuccessfulFetch = fetchDate
         
-        let expectedDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: fetchDate))!
+        let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: Date()))!
         let actualDay2Title = viewModel.titleForSelectedDay(.dayAfter)
-        let expectedDay2Formatted = DateFormatters.shortDateFormatter.string(from: expectedDay2Date)
+        let currentDay2Formatted = DateFormatters.shortDateFormatter.string(from: currentDay2Date)
         
-        XCTAssertEqual(actualDay2Title, expectedDay2Formatted, 
-            "Tab 2 label should be based on fetch date, not current date")
+        XCTAssertEqual(actualDay2Title, currentDay2Formatted, 
+            "Tab 2 label should be based on current date, not fetch date")
         
         viewModel.selectedDay = .dayAfter
         let day2Forecasts = viewModel.currentHourlyForecasts
         
         XCTAssertFalse(day2Forecasts.isEmpty, "Tab 2 should have forecasts")
         
+        // Forecasts are based on fetch date, not current date
+        let fetchDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: fetchDate))!
         if let firstForecast = day2Forecasts.first {
             let forecastDate = calendar.startOfDay(for: firstForecast.time)
-            XCTAssertEqual(forecastDate, expectedDay2Date,
-                "Tab 2 forecasts should be for the day after tomorrow (based on fetch date)")
+            XCTAssertEqual(forecastDate, fetchDay2Date,
+                "Tab 2 forecasts should be for the day after tomorrow based on fetch date")
         }
     }
     
@@ -169,13 +171,14 @@ final class DashboardViewModelTests: XCTestCase {
         viewModel.viewingConditions = conditions
         viewModel.lastSuccessfulFetch = fetchDate
         
+        // Tab labels use current date, not fetch date
         let fetchStartOfDay0 = calendar.startOfDay(for: fetchDate)
-        let expectedDay2Date = calendar.date(byAdding: .day, value: 2, to: fetchStartOfDay0)!
-        let expectedDay2Formatted = DateFormatters.shortDateFormatter.string(from: expectedDay2Date)
+        let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: Date()))!
+        let currentDay2Formatted = DateFormatters.shortDateFormatter.string(from: currentDay2Date)
         
         let actualDay2Title = viewModel.titleForSelectedDay(.dayAfter)
-        XCTAssertEqual(actualDay2Title, expectedDay2Formatted, 
-            "Tab 2 label should be based on fetch date (Mon Feb 22), not current date (Tue Feb 23)")
+        XCTAssertEqual(actualDay2Title, currentDay2Formatted, 
+            "Tab 2 label should be based on current date, not fetch date")
         
         viewModel.selectedDay = .dayAfter
         let day2Forecasts = viewModel.currentHourlyForecasts
@@ -184,7 +187,7 @@ final class DashboardViewModelTests: XCTestCase {
         
         if let firstForecast = day2Forecasts.first {
             let forecastDate = calendar.startOfDay(for: firstForecast.time)
-            XCTAssertEqual(forecastDate, expectedDay2Date,
+            XCTAssertEqual(forecastDate, calendar.date(byAdding: .day, value: 2, to: fetchStartOfDay0)!,
                 "Tab 2 forecasts should be for day after tomorrow based on fetch date, not current date")
         }
         
@@ -267,13 +270,14 @@ final class DashboardViewModelTests: XCTestCase {
         viewModel.viewingConditions = conditions
         viewModel.lastSuccessfulFetch = refreshDate
         
+        // Tab labels use current date, not refresh date
         let refreshStartOfDay0 = calendar.startOfDay(for: refreshDate)
-        let expectedDay2Date = calendar.date(byAdding: .day, value: 2, to: refreshStartOfDay0)!
-        let expectedDay2Formatted = DateFormatters.shortDateFormatter.string(from: expectedDay2Date)
+        let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: Date()))!
+        let currentDay2Formatted = DateFormatters.shortDateFormatter.string(from: currentDay2Date)
         
         let actualDay2Title = viewModel.titleForSelectedDay(.dayAfter)
-        XCTAssertEqual(actualDay2Title, expectedDay2Formatted, 
-            "Tab 2 label should be based on refresh date (Tue Feb 23)")
+        XCTAssertEqual(actualDay2Title, currentDay2Formatted, 
+            "Tab 2 label should be based on current date, not refresh date")
         
         viewModel.selectedDay = .dayAfter
         let day2Forecasts = viewModel.currentHourlyForecasts
@@ -282,7 +286,7 @@ final class DashboardViewModelTests: XCTestCase {
         
         if let firstForecast = day2Forecasts.first {
             let forecastDate = calendar.startOfDay(for: firstForecast.time)
-            XCTAssertEqual(forecastDate, expectedDay2Date,
+            XCTAssertEqual(forecastDate, calendar.date(byAdding: .day, value: 2, to: refreshStartOfDay0)!,
                 "Tab 2 forecasts should be for day after tomorrow based on refresh date")
         }
         

@@ -137,7 +137,14 @@ public struct LocationSearchView: View {
         )
         
         modelContext.insert(location)
-        dismiss()
+        do {
+            try modelContext.save()
+            publishLocationsToWatch()
+            dismiss()
+        } catch {
+            print("Failed to save location: \(error)")
+            dismiss()
+        }
     }
     
     private func saveLocation(name: String, from coordinate: CLLocationCoordinate2D) {
@@ -148,7 +155,14 @@ public struct LocationSearchView: View {
         )
         
         modelContext.insert(location)
-        dismiss()
+        do {
+            try modelContext.save()
+            publishLocationsToWatch()
+            dismiss()
+        } catch {
+            print("Failed to save location: \(error)")
+            dismiss()
+        }
     }
     
     private func addManualCoordinates() {
@@ -171,7 +185,19 @@ public struct LocationSearchView: View {
         )
         
         modelContext.insert(location)
-        dismiss()
+        do {
+            try modelContext.save()
+            publishLocationsToWatch()
+            dismiss()
+        } catch {
+            print("Failed to save location: \(error)")
+            dismiss()
+        }
+    }
+    
+    private func publishLocationsToWatch() {
+        let locations = LocationStorageService.shared.publishLocationsToWatch(context: modelContext)
+        WatchConnectivityService.shared.sendLocationsToWatch(locations)
     }
     
     private func isValidCoordinateFormat(_ text: String) -> Bool {

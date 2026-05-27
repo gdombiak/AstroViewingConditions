@@ -29,7 +29,7 @@ struct NightConditionsWidgetEntryView: View {
         case .systemSmall:
             NightConditionsWidgetSmallEntryView(assessment: entry.assessment)
         case .systemMedium:
-            NightConditionsWidgetMediumEntryView(assessment: entry.assessment)
+            NightConditionsWidgetMediumEntryView(assessment: entry.assessment, timeZone: entry.timeZone)
         default:
             NightConditionsWidgetSmallEntryView(assessment: entry.assessment)
         }

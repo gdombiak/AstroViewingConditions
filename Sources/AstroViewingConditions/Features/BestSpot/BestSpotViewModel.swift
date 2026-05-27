@@ -16,14 +16,13 @@ public class BestSpotViewModel {
     public var searchProgress: Double = 0
     
     // Settings
-    private let userDefaults = UserDefaults.standard
     
     public var searchRadius: Double {
-        userDefaults.bestSpotSearchRadius
+        BestSpotSettings.searchRadius
     }
     
     public var gridSpacing: Double {
-        userDefaults.bestSpotGridSpacing
+        BestSpotSettings.gridSpacing
     }
     
     public init(fogScoreCalculator: @escaping (HourlyForecast) -> FogScore = FogCalculator.calculate) {

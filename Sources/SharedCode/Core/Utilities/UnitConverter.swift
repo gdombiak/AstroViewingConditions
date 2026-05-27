@@ -1,6 +1,7 @@
 import Foundation
+import os
 
-public enum UnitSystem: String, CaseIterable, Identifiable {
+public enum UnitSystem: String, CaseIterable, Identifiable, Sendable {
     case metric = "Metric"
     case imperial = "Imperial"
     
@@ -14,8 +15,6 @@ public struct AstroUnitConverter {
         self.unitSystem = unitSystem
     }
     
-    // MARK: - Temperature
-    
     public func formatTemperature(_ celsius: Double) -> String {
         switch unitSystem {
         case .metric:
@@ -26,8 +25,6 @@ public struct AstroUnitConverter {
         }
     }
     
-    // MARK: - Wind Speed
-    
     public func formatWindSpeed(_ kmh: Double) -> String {
         switch unitSystem {
         case .metric:
@@ -37,8 +34,6 @@ public struct AstroUnitConverter {
             return String(format: "%.1f mph", mph)
         }
     }
-    
-    // MARK: - Visibility
     
     public func formatVisibility(_ meters: Double?) -> String {
         guard let meters = meters else { return "N/A" }
@@ -61,7 +56,6 @@ public struct AstroUnitConverter {
         }
     }
     
-    /// Short format for hourly forecast tables - uses compact notation like "10k" or "6m"
     public func formatShortVisibility(_ meters: Double?) -> String {
         guard let meters = meters else { return "—" }
         
@@ -83,8 +77,6 @@ public struct AstroUnitConverter {
         }
     }
     
-    // MARK: - Distance
-    
     public func formatDistance(_ kilometers: Double) -> String {
         switch unitSystem {
         case .metric:
@@ -96,29 +88,66 @@ public struct AstroUnitConverter {
     }
 }
 
-// MARK: - User Defaults
+private let appGroupSuiteName = "group.com.astroviewing.conditions"
 
-private let unitSystemKey = "selectedUnitSystem"
+private var containerURL: URL? {
+    FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupSuiteName)
+}
 
-public extension UserDefaults {
-    var selectedUnitSystem: UnitSystem {
-        get {
-            if let rawValue = string(forKey: unitSystemKey) {
-                if let system = UnitSystem(rawValue: rawValue) {
-                    return system
-                } else {
-                    print("Invalid UnitSystem value stored: '\(rawValue)', falling back to metric")
-                }
-            }
-            return .metric
+private let unitLogger = Logger(subsystem: "com.astroviewing.conditions", category: "UnitSystemStorage")
+
+public struct UnitSystemStorage {
+    public static func loadSelectedUnitSystem() -> UnitSystem {
+        if let system = loadFromAppGroup() { return system }
+        if let rawValue = iCloudKeyValueStorage.shared.loadUnitSystem(),
+           let system = UnitSystem(rawValue: rawValue) {
+            saveSelectedUnitSystem(system)
+            return system
         }
-        set {
-            set(newValue.rawValue, forKey: unitSystemKey)
+        return .metric
+    }
+    
+    private static func loadFromAppGroup() -> UnitSystem? {
+        guard let baseURL = containerURL else { return nil }
+        let fileURL = baseURL.appendingPathComponent("unitSystem.json")
+        let data = try? Data(contentsOf: fileURL)
+        guard let data, let rawValue = try? JSONDecoder().decode(String.self, from: data),
+              let system = UnitSystem(rawValue: rawValue) else { return nil }
+        return system
+    }
+    
+    public static func saveSelectedUnitSystem(_ system: UnitSystem) {
+        guard let baseURL = containerURL else {
+            unitLogger.error("App Group container not available")
+            return
+        }
+        
+        let fileURL = baseURL.appendingPathComponent("unitSystem.json")
+        
+        do {
+            let data = try JSONEncoder().encode(system.rawValue)
+            try data.write(to: fileURL)
+            iCloudKeyValueStorage.shared.saveUnitSystem(system.rawValue)
+        } catch {
+            unitLogger.error("Failed to save unit system: \(error.localizedDescription)")
         }
     }
     
-    func initializeUnitSystemIfNeeded() {
-        guard string(forKey: unitSystemKey) == nil else { return }
+    public static func initializeIfNeeded() {
+        guard let baseURL = containerURL else {
+            unitLogger.error("App Group container not available")
+            return
+        }
+        
+        let fileURL = baseURL.appendingPathComponent("unitSystem.json")
+        
+        if FileManager.default.fileExists(atPath: fileURL.path) { return }
+        
+        if let rawValue = iCloudKeyValueStorage.shared.loadUnitSystem(),
+           let system = UnitSystem(rawValue: rawValue) {
+            saveSelectedUnitSystem(system)
+            return
+        }
         
         let defaultSystem: UnitSystem = if #available(iOS 16, *) {
             Locale.current.measurementSystem == .metric ? .metric : .imperial
@@ -126,7 +155,7 @@ public extension UserDefaults {
             Locale.current.usesMetricSystem ? .metric : .imperial
         }
         
-        print("Initializing unit system from locale: \(defaultSystem.rawValue)")
-        set(defaultSystem.rawValue, forKey: unitSystemKey)
+        unitLogger.info("Initializing unit system from locale: \(defaultSystem.rawValue)")
+        saveSelectedUnitSystem(defaultSystem)
     }
 }

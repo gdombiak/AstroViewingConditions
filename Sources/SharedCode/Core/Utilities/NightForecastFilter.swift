@@ -6,7 +6,7 @@ public struct NightForecastFilter: Sendable {
         sunEventsToday: SunEvents,
         sunEventsTomorrow: SunEvents?,
         for date: Date,
-        calendar: Calendar = .current
+        calendar: Calendar
     ) -> (start: Date, end: Date) {
         let startOfDay = calendar.startOfDay(for: date)
         let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
@@ -27,12 +27,14 @@ public struct NightForecastFilter: Sendable {
         forecasts: [HourlyForecast],
         sunEventsToday: SunEvents,
         sunEventsTomorrow: SunEvents?,
-        for date: Date
+        for date: Date,
+        calendar: Calendar
     ) -> [HourlyForecast] {
         let (nightStart, nightEnd) = calculateNightRange(
             sunEventsToday: sunEventsToday,
             sunEventsTomorrow: sunEventsTomorrow,
-            for: date
+            for: date,
+            calendar: calendar
         )
         
         return forecasts.filter { forecast in

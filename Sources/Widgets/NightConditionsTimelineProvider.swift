@@ -1,6 +1,9 @@
 import SharedCode
 import WidgetKit
 import SwiftUI
+import os.log
+
+private let widgetLogger = Logger(subsystem: "com.astroviewing.conditions.widget", category: "Widget")
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> NightConditionsEntry {
@@ -17,24 +20,41 @@ struct Provider: TimelineProvider {
     func getTimeline(in context: Context, completion: @Sendable @escaping (Timeline<NightConditionsEntry>) -> Void) {
         Task { @Sendable in
             let entry = await buildEntry() ?? .placeholder
-            let nextHour = Calendar.current.date(byAdding: .hour, value: 1, to: Date())!
+            let nextHour = Date().addingTimeInterval(3600)
             completion(Timeline(entries: [entry], policy: .after(nextHour)))
         }
     }
 
     private func buildEntry() async -> NightConditionsEntry? {
-        guard let location = WidgetLocationStore.load() else { return nil }
+        guard let location = AppGroupStorage.loadSelectedLocationForWidget() else {
+            widgetLogger.error("No location configured for widget")
+            return nil
+        }
 
         let weatherService = WeatherService()
         let astronomyService = AstronomyService()
 
-        guard let forecasts = try? await weatherService.fetchForecast(
-            latitude: location.latitude,
-            longitude: location.longitude,
-            days: 3
-        ) else { return nil }
+        let forecasts: [HourlyForecast]
+        do {
+            forecasts = try await weatherService.fetchForecast(
+                latitude: location.latitude,
+                longitude: location.longitude,
+                days: 3
+            )
+            widgetLogger.info("Fetched \(forecasts.count) hourly forecasts from API")
+        } catch {
+            widgetLogger.error("Failed to fetch weather forecast: \(error.localizedDescription)")
+            if let cached = AppGroupStorage.loadWidgetConditions() {
+                widgetLogger.info("Falling back to cached weather data")
+                forecasts = cached.hourlyForecasts
+            } else {
+                widgetLogger.error("No cached weather data available as fallback")
+                return nil
+            }
+        }
 
-        let calendar = Calendar.current
+        let tz = await LocationTimeZoneResolver.resolve(latitude: location.latitude, longitude: location.longitude)
+        let calendar = LocationTimeZoneResolver.calendar(for: tz)
         let today = calendar.startOfDay(for: Date())
         let sunEventsToday = await astronomyService.calculateSunEvents(
             latitude: location.latitude,
@@ -60,7 +80,8 @@ struct Provider: TimelineProvider {
             moonInfo: moonInfo,
             latitude: location.latitude,
             longitude: location.longitude,
-            for: today
+            for: today,
+            calendar: calendar
         )
 
         let cachedLocation = CachedLocation(
@@ -75,10 +96,11 @@ struct Provider: TimelineProvider {
             dailySunEvents: [sunEventsToday, sunEventsTomorrow],
             dailyMoonInfo: [moonInfo],
             issPasses: [],
-            fogScore: FogCalculator.calculateCurrent(from: forecasts)
+            fogScore: FogCalculator.calculateCurrent(from: forecasts),
+            timeZoneIdentifier: tz.identifier
         )
-        WidgetCacheStore.save(conditions)
+        AppGroupStorage.saveWidgetConditions(conditions)
 
-        return NightConditionsEntry(date: Date(), assessment: assessment)
+        return NightConditionsEntry(date: Date(), assessment: assessment, timeZone: tz)
     }
 }
