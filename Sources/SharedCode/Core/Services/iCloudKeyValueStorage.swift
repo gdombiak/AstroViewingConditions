@@ -4,7 +4,7 @@ import os
 public final class iCloudKeyValueStorage: @unchecked Sendable {
     public static let shared = iCloudKeyValueStorage()
     
-    private let store = NSUbiquitousKeyValueStore.default
+    private lazy var store = NSUbiquitousKeyValueStore.default
     private let logger = Logger(subsystem: "com.astroviewing.conditions", category: "iCloudKeyValue")
     
     public static let syncErrorNotification = Notification.Name("iCloudKeyValueSyncError")
@@ -23,16 +23,19 @@ public final class iCloudKeyValueStorage: @unchecked Sendable {
     }
     
     public func synchronize() {
+        guard isAvailable else { return }
         store.synchronize()
     }
     
     public func saveLocations(_ locations: [CachedLocation]) {
+        guard isAvailable else { return }
         guard let data = try? JSONEncoder().encode(locations) else { return }
         store.set(data, forKey: Keys.savedLocations)
         logger.info("Saved \(locations.count) locations to iCloud")
     }
     
     public func loadLocations() -> [CachedLocation] {
+        guard isAvailable else { return [] }
         guard let data = store.data(forKey: Keys.savedLocations),
               let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) else {
             return []
@@ -42,12 +45,14 @@ public final class iCloudKeyValueStorage: @unchecked Sendable {
     }
     
     public func saveSelectedLocation(_ location: SelectedLocation) {
+        guard isAvailable else { return }
         guard let data = try? JSONEncoder().encode(location) else { return }
         store.set(data, forKey: Keys.selectedLocation)
         logger.info("Saved selected location to iCloud")
     }
     
     public func loadSelectedLocation() -> SelectedLocation? {
+        guard isAvailable else { return nil }
         guard let data = store.data(forKey: Keys.selectedLocation),
               let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) else {
             return nil
@@ -57,6 +62,7 @@ public final class iCloudKeyValueStorage: @unchecked Sendable {
     }
     
     public func saveBestSpotSettings(searchRadius: Double, gridSpacing: Double) {
+        guard isAvailable else { return }
         let data: [String: Any] = [
             "searchRadius": searchRadius,
             "gridSpacing": gridSpacing
@@ -67,6 +73,7 @@ public final class iCloudKeyValueStorage: @unchecked Sendable {
     }
     
     public func loadBestSpotSettings() -> (searchRadius: Double, gridSpacing: Double)? {
+        guard isAvailable else { return nil }
         guard let data = store.data(forKey: Keys.bestSpotSettings),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let searchRadius = json["searchRadius"] as? Double,
@@ -78,11 +85,13 @@ public final class iCloudKeyValueStorage: @unchecked Sendable {
     }
     
     public func saveUnitSystem(_ unitSystem: String) {
+        guard isAvailable else { return }
         store.set(unitSystem, forKey: Keys.unitSystem)
         logger.info("Saved unit system to iCloud")
     }
     
     public func loadUnitSystem() -> String? {
-        store.string(forKey: Keys.unitSystem)
+        guard isAvailable else { return nil }
+        return store.string(forKey: Keys.unitSystem)
     }
 }

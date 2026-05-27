@@ -34,6 +34,8 @@ public struct AppGroupStorage: Sendable {
     public static func loadSelectedLocation() -> SelectedLocation? {
         guard let baseURL = containerURL else { return nil }
         let fileURL = baseURL.appendingPathComponent("selectedLocation.json")
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        
         do {
             let data = try Data(contentsOf: fileURL)
             return try JSONDecoder().decode(SelectedLocation.self, from: data)
