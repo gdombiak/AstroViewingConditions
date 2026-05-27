@@ -2,10 +2,6 @@ import SwiftUI
 import SharedCode
 
 struct WatchDashboardView: View {
-    @State private var weatherService = WeatherService()
-    @State private var astronomyService = AstronomyService()
-    
-    @State private var error: String?
     @ObservedObject var locationManager = WatchLocationManager.shared
     @ObservedObject var conditionsManager = WatchConditionsManager.shared
     
@@ -54,10 +50,10 @@ struct WatchDashboardView: View {
                             .padding()
                     }
 
-                    if let errorMsg = error {
-                        Text(errorMsg)
-                            .font(.caption)
-                            .foregroundStyle(.red)
+                    if let refreshErrorMessage {
+                        Text(refreshErrorMessage)
+                            .font(.caption2)
+                            .foregroundStyle(conditionsManager.conditions == nil ? .red : .orange)
                             .multilineTextAlignment(.center)
                     }
 
@@ -115,8 +111,14 @@ struct WatchDashboardView: View {
     private func refreshConditions() async {
         guard !conditionsManager.isLoading else { return }
 
-        error = nil
         await conditionsManager.refresh()
+    }
+
+    private var refreshErrorMessage: String? {
+        guard conditionsManager.error != nil else { return nil }
+        return conditionsManager.conditions == nil
+            ? "Unable to load conditions."
+            : "Refresh failed. Showing saved data."
     }
 
     private func updateNightQuality() async {

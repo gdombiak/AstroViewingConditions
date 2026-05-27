@@ -86,6 +86,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             await MainActor.run {
                 self.locationTimeZone = timeZone
                 self.conditions = conditions
+                self.error = nil
                 self.isLoading = false
             }
         }
@@ -101,7 +102,10 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     }
     
     func refresh() async {
-        await MainActor.run { isLoading = true }
+        await MainActor.run {
+            isLoading = true
+            error = nil
+        }
         
         do {
             let conditions = try await fetchConditions()
@@ -109,6 +113,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             await MainActor.run {
                 self.locationTimeZone = timeZone
                 self.conditions = conditions
+                self.error = nil
                 self.isLoading = false
             }
             AppGroupStorage.saveConditions(conditions)
