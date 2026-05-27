@@ -11,7 +11,7 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Real-time Weather Data**: Cloud cover, humidity, wind, temperature, visibility, and hourly forecasts
 - **Astronomical Information**: Sun and moon rise/set times, astronomical night timing, and moon phase
 - **Night Quality Analysis**: Clear, scan-friendly assessment of cloud cover, moonlight, wind, fog, and observing quality
-- **ISS Pass Predictions**: Track when the International Space Station will be visible
+- **ISS Pass Predictions**: Track when the International Space Station will be visible with an optional N2YO API key
 - **Fog Score**: Calculated from humidity, temperature, dew point, visibility, and low cloud cover
 - **Location Management**: Use current location, save observing locations, search by city, enter coordinates, or pick from a map
 - **Unit Preferences**: Toggle between Metric and Imperial units
@@ -24,7 +24,7 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 
 - **Open-Meteo API**: Weather forecasts and geocoding (free, no API key required)
 - **SunCalc Swift Package**: Astronomical calculations (sun/moon positions and phases)
-- **Open Notify API**: ISS pass predictions (free, no API key required)
+- **N2YO API**: Optional ISS pass predictions (free API key required)
 
 ## Requirements
 
@@ -94,7 +94,7 @@ Contributions are welcome. Please feel free to submit a Pull Request.
 
 - Weather data provided by [Open-Meteo](https://open-meteo.com/)
 - Astronomical calculations powered by [SunCalc](https://github.com/nikolajjensen/SunCalc)
-- ISS data from [Open Notify](http://open-notify.org/)
+- Optional ISS pass data from [N2YO](https://www.n2yo.com/)
 
 ## Support
 

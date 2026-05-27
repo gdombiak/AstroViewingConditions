@@ -120,7 +120,7 @@ struct LocationListView: View {
                 }
             }
         }
-        .navigationTitle("Select Location")
+        .navigationTitle("Locations")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: onRefreshLocations) {

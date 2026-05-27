@@ -35,7 +35,7 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to check nigh
 - **Weather Data**: Cloud cover, humidity, wind, temperature, visibility, dew point, and hourly forecasts via Open-Meteo
 - **Astronomical Data**: Sun/moon rise-set times, astronomical night timing, and moon phase via SunCalc
 - **Night Quality Analysis**: Observing assessment based on cloud cover, moonlight, fog, wind, and nighttime windows
-- **ISS Pass Predictions**: Visible ISS passes with duration and max elevation via Open Notify
+- **ISS Pass Predictions**: Visible ISS passes with duration and max elevation via N2YO when a user-provided API key is configured
 - **Fog Score**: Risk calculated from humidity, temperature-dew point difference, visibility, and low cloud cover
 - **Location Management**:
   - Auto-detect current location
@@ -62,9 +62,9 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to check nigh
    - Sun/moon positions and phases
    - Works offline
 
-3. **Open Notify API** (http://open-notify.org/)
-   - ISS pass predictions
-   - Free, no API key required
+3. **N2YO API** (https://www.n2yo.com/)
+   - Optional ISS pass predictions
+   - Free API key required
 
 ---
 
@@ -195,7 +195,7 @@ Important services:
 ### Phase 2: Data Layer - Complete
 - [x] WeatherService with Open-Meteo integration
 - [x] AstronomyService with SunCalc integration
-- [x] ISSService with Open Notify integration
+- [x] ISSService with N2YO integration
 - [x] FogCalculator
 - [x] UnitConverter
 - [x] Location time zone resolution
@@ -305,13 +305,17 @@ Parameters:
   - count: 10
 ```
 
-### Open Notify ISS
+### N2YO ISS
 ```
-GET http://api.open-notify.org/iss-pass.json
+GET https://api.n2yo.com/rest/v1/satellite/visualpasses/{id}/{observer_lat}/{observer_lng}/{observer_alt}/{days}/{min_visibility}/&apiKey={apiKey}
 Parameters:
-  - lat: Double
-  - lon: Double
-  - n: 10
+  - id: Int (25544 for ISS)
+  - observer_lat: Double
+  - observer_lng: Double
+  - observer_alt: Int
+  - days: Int
+  - min_visibility: Int
+  - apiKey: String
 ```
 
 ---
