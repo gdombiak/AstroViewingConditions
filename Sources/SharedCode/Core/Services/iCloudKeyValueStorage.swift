@@ -16,10 +16,15 @@ public final class iCloudKeyValueStorage: @unchecked Sendable {
         static let unitSystem = "iCloud_unitSystem"
     }
     
+    private static var isRunningUnitTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+    
     private init() {}
     
     public var isAvailable: Bool {
-        FileManager.default.ubiquityIdentityToken != nil
+        guard !Self.isRunningUnitTests else { return false }
+        return FileManager.default.ubiquityIdentityToken != nil
     }
     
     public func synchronize() {
