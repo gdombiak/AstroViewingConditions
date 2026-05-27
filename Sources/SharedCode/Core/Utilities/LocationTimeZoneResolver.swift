@@ -19,8 +19,12 @@ public struct LocationTimeZoneResolver {
             // CLGeocoder commonly fails without network - fallback is expected
         }
         
-        // Fallback: approximate timezone from longitude
-        // Each 15 degrees of longitude ≈ 1 hour offset from UTC
+        return approximate(longitude: longitude)
+    }
+    
+    /// Approximates a timezone from longitude when a network/geocoder result is unavailable.
+    public static func approximate(longitude: Double) -> TimeZone {
+        // Each 15 degrees of longitude is roughly 1 hour offset from UTC.
         let offsetHours = Int(round(longitude / 15.0))
         let offsetSeconds = offsetHours * 3600
         return TimeZone(secondsFromGMT: offsetSeconds) ?? TimeZone(identifier: "UTC")!

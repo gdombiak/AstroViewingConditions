@@ -4,6 +4,7 @@ import SwiftUI
 struct CurrentConditionsCard: View {
     let forecast: HourlyForecast?
     let unitConverter: AstroUnitConverter
+    let timeZone: TimeZone?
     @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
@@ -13,7 +14,7 @@ struct CurrentConditionsCard: View {
                     .font(.headline)
                 Spacer()
                 if let time = forecast?.time {
-                    Text(DateFormatters.formatTime(time))
+                    Text(DateFormatters.formatTime(time, in: timeZone))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -196,7 +197,8 @@ struct ConditionItem: View {
             visibility: 10000,
             lowCloudCover: 20
         ),
-        unitConverter: AstroUnitConverter(unitSystem: .metric)
+        unitConverter: AstroUnitConverter(unitSystem: .metric),
+        timeZone: nil
     )
     .padding()
 }

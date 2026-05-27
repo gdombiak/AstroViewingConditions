@@ -4,6 +4,7 @@ import SwiftUI
 struct HourlyForecastView: View {
     let forecasts: [HourlyForecast]
     let unitConverter: AstroUnitConverter
+    let timeZone: TimeZone?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     private var isIPad: Bool {
@@ -24,7 +25,7 @@ struct HourlyForecastView: View {
     
     private var upcomingForecasts: [HourlyForecast] {
         let now = Date()
-        let calendar = Calendar.current
+        let calendar = locationCalendar
         
         return forecasts.filter { forecast in
             guard let forecastHour = calendar.dateInterval(of: .hour, for: forecast.time)?.start,
@@ -70,6 +71,7 @@ struct HourlyForecastView: View {
                                     forecast: forecast,
                                     unitConverter: unitConverter,
                                     isNow: isCurrentHour(forecast.time),
+                                    timeZone: timeZone,
                                     fontScale: fontScale,
                                     columnWidth: columnWidth
                                 )
@@ -93,9 +95,17 @@ struct HourlyForecastView: View {
         #endif
     }
     
+    private var locationCalendar: Calendar {
+        if let timeZone {
+            return LocationTimeZoneResolver.calendar(for: timeZone)
+        }
+        return LocationTimeZoneResolver.calendar(for: TimeZone(identifier: "UTC")!)
+    }
+    
     private func isCurrentHour(_ date: Date) -> Bool {
-        Calendar.current.isDateInToday(date) &&
-        Calendar.current.component(.hour, from: date) == Calendar.current.component(.hour, from: Date())
+        let calendar = locationCalendar
+        return calendar.isDateInToday(date) &&
+        calendar.component(.hour, from: date) == calendar.component(.hour, from: Date())
     }
 }
 
@@ -122,6 +132,7 @@ struct HourlyColumn: View {
     let forecast: HourlyForecast
     let unitConverter: AstroUnitConverter
     let isNow: Bool
+    let timeZone: TimeZone?
     var fontScale: CGFloat = 1.0
     var columnWidth: CGFloat = 60
     
@@ -132,7 +143,7 @@ struct HourlyColumn: View {
     var body: some View {
         VStack(spacing: 16) {
             // Time header
-            Text(DateFormatters.formatTime(forecast.time))
+            Text(DateFormatters.formatTime(forecast.time, in: timeZone))
                 .font(.system(size: 12 * fontScale, weight: isNow ? .bold : .medium))
                 .foregroundStyle(isNow ? Color.accentColor : .primary)
                 .frame(height: 28 * fontScale)
@@ -270,9 +281,10 @@ struct HourlyColumn: View {
 }
 
 #Preview {
+    let calendar = Calendar(identifier: .gregorian)
     let sampleForecasts = (0..<12).map { hour in
         HourlyForecast(
-            time: Calendar.current.date(byAdding: .hour, value: hour, to: Date())!,
+            time: calendar.date(byAdding: .hour, value: hour, to: Date())!,
             cloudCover: Int.random(in: 0...100),
             humidity: Int.random(in: 40...90),
             windSpeed: Double.random(in: 5...25),
@@ -286,7 +298,8 @@ struct HourlyColumn: View {
     
     HourlyForecastView(
         forecasts: sampleForecasts,
-        unitConverter: AstroUnitConverter(unitSystem: .metric)
+        unitConverter: AstroUnitConverter(unitSystem: .metric),
+        timeZone: nil
     )
     .padding()
 }

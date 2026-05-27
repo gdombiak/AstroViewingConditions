@@ -18,15 +18,13 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     
     @Published var locations: [CachedLocation] = []
     @Published var selectedLocation: SelectedLocation?
-    @Published var conditions: ViewingConditions?
-    @Published var nightQuality: NightQualityAssessment?
     @Published var unitSystem: UnitSystem = .metric
     @Published var isLoading = false
     
     private let connectivityManager = WatchConnectivityManager.shared
     
     private init() {
-        connectivityManager.delegate = self
+        connectivityManager.addDelegate(self)
         loadInitialState()
     }
     
@@ -34,7 +32,6 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
         let storedLocations = loadStoredLocations()
         let storedSelected = AppGroupStorage.loadSelectedLocation()
             ?? iCloudKeyValueStorage.shared.loadSelectedLocation()
-        let storedConditions = AppGroupStorage.loadConditionsWithTimestamp()
         let storedUnitSystem = AppGroupStorage.loadUnitSystem()
             .flatMap { UnitSystem(rawValue: $0) }
             ?? iCloudKeyValueStorage.shared.loadUnitSystem()
@@ -45,9 +42,6 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
             self.locations = storedLocations
             self.selectedLocation = storedSelected
             self.unitSystem = storedUnitSystem
-            if let storedConditions = storedConditions, !storedConditions.isStale {
-                self.conditions = storedConditions.conditions
-            }
         }
     }
     
@@ -63,12 +57,6 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     }
     
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveConditions conditions: ViewingConditions) {
-        AppGroupStorage.saveConditions(conditions)
-        WidgetCenter.shared.reloadAllTimelines()
-        DispatchQueue.main.async {
-            self.conditions = conditions
-            self.isLoading = false
-        }
     }
     
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveSelectedLocation location: SelectedLocation) {
@@ -88,43 +76,28 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
     func refresh() async {
         await MainActor.run { isLoading = true }
         
-        async let locationsTask: Void = {
-            do {
-                let (locations, selected) = try await connectivityManager.requestLocations()
-                await MainActor.run {
-                    self.locations = locations
-                    if let selected = selected {
-                        self.selectedLocation = selected
-                    }
-                }
-                AppGroupStorage.saveSavedLocations(locations)
+        do {
+            let (locations, selected) = try await connectivityManager.requestLocations()
+            await MainActor.run {
+                self.locations = locations
                 if let selected = selected {
-                    AppGroupStorage.saveSelectedLocation(selected)
+                    self.selectedLocation = selected
                 }
-            } catch {
-                print("WatchLocationManager: Failed to refresh locations: \(error)")
             }
-        }()
-        
-        async let conditionsTask: Void = {
-            do {
-                let (conditions, selectedLocation) = try await connectivityManager.requestConditions()
-                await MainActor.run {
-                    self.conditions = conditions
-                    if let selected = selectedLocation {
-                        self.selectedLocation = selected
-                    }
-                }
-                AppGroupStorage.saveConditions(conditions)
-                if let selected = selectedLocation {
-                    AppGroupStorage.saveSelectedLocation(selected)
-                }
-            } catch {
-                print("WatchLocationManager: Failed to refresh conditions: \(error)")
+            AppGroupStorage.saveSavedLocations(locations)
+            if let selected = selected {
+                AppGroupStorage.saveSelectedLocation(selected)
             }
-        }()
+        } catch {
+            print("WatchLocationManager: Watch connectivity failed for locations: \(error.localizedDescription), using cached")
+            let cachedLocations = loadStoredLocations()
+            let cachedSelected = AppGroupStorage.loadSelectedLocation()
+            await MainActor.run {
+                self.locations = cachedLocations
+                self.selectedLocation = cachedSelected
+            }
+        }
         
-        _ = await (locationsTask, conditionsTask)
         await MainActor.run { isLoading = false }
     }
     

@@ -7,6 +7,7 @@ struct WatchDashboardView: View {
     
     @State private var error: String?
     @ObservedObject var locationManager = WatchLocationManager.shared
+    @ObservedObject var conditionsManager = WatchConditionsManager.shared
     
     var locationOptions: [LocationOption] {
         LocationOption.fromLocations(saved: locationManager.locations)
@@ -22,7 +23,7 @@ struct WatchDashboardView: View {
                         onSelectionChanged: { handleSelection($0) }
                     )
 
-                    if locationManager.isLoading {
+                    if locationManager.isLoading || conditionsManager.isLoading {
                         ProgressView()
                             .padding()
                     }
@@ -34,13 +35,13 @@ struct WatchDashboardView: View {
                             .multilineTextAlignment(.center)
                     }
 
-                    if let assessment = locationManager.nightQuality {
+                    if let assessment = conditionsManager.nightQuality {
                         WatchNightQualityCard(assessment: assessment)
                     }
 
-                    if let conditions = locationManager.conditions {
+                    if let conditions = conditionsManager.conditions {
                         let now = Date()
-                        let calendar = Calendar.current
+                        let calendar = conditionsManager.locationCalendar
                         
                         let todayForecasts = conditions.hourlyForecasts.filter { forecast in
                             calendar.isDate(forecast.time, inSameDayAs: now)
@@ -55,9 +56,13 @@ struct WatchDashboardView: View {
                         }
                     }
 
-                    if let sunEvents = locationManager.conditions?.dailySunEvents.first,
-                       let moonInfo = locationManager.conditions?.dailyMoonInfo.first {
-                        WatchAstronomicalNightCard(sunEvents: sunEvents, moonInfo: moonInfo)
+                    if let sunEvents = conditionsManager.conditions?.dailySunEvents.first,
+                       let moonInfo = conditionsManager.conditions?.dailyMoonInfo.first {
+                        WatchAstronomicalNightCard(
+                            sunEvents: sunEvents,
+                            moonInfo: moonInfo,
+                            timeZone: conditionsManager.displayTimeZone
+                        )
                     }
 
                     Button(action: { Task { await refresh() } }) {
@@ -67,12 +72,14 @@ struct WatchDashboardView: View {
                 }
                 .padding()
             }
-            .task {
+        .task {
+            if conditionsManager.shouldRefresh {
                 await refresh()
             }
-            .onChange(of: locationManager.conditions?.fetchedAt) { _, _ in
+        }
+            .onChange(of: conditionsManager.conditions?.fetchedAt) { _, _ in
                 Task {
-                    guard let conditions = locationManager.conditions,
+                    guard let conditions = conditionsManager.conditions,
                           let sunEventsToday = conditions.dailySunEvents.first,
                           let sunEventsTomorrow = conditions.dailySunEvents.dropFirst().first,
                           let moonInfo = conditions.dailyMoonInfo.first else {
@@ -94,7 +101,9 @@ struct WatchDashboardView: View {
                         calendar: calendar
                     )
                     
-                    locationManager.nightQuality = assessment
+                    await MainActor.run {
+                        conditionsManager.nightQuality = assessment
+                    }
                 }
             }
         }
@@ -114,6 +123,7 @@ struct WatchDashboardView: View {
         error = nil
 
         await locationManager.refresh()
+        await conditionsManager.refresh()
     }
 
 }

@@ -5,6 +5,7 @@ import Foundation
 struct NightConditionsEntry: TimelineEntry, Sendable {
     let date: Date
     let assessment: NightQualityAssessment
+    let timeZone: TimeZone?
     static var placeholder: NightConditionsEntry {
         NightConditionsEntry(
             date: Date(),
@@ -24,7 +25,8 @@ struct NightConditionsEntry: TimelineEntry, Sendable {
                 trend: .stable,
                 firstHalfScore: nil,
                 secondHalfScore: nil
-            )
+            ),
+            timeZone: nil
         )
     }
 }

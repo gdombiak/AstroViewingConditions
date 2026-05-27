@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ISSCard: View {
     let passes: [ISSPass]
+    let timeZone: TimeZone?
     
     private var upcomingPasses: [ISSPass] {
         passes.filter { $0.riseTime > Date() }
@@ -30,7 +31,7 @@ struct ISSCard: View {
             } else {
                 VStack(spacing: 8) {
                     ForEach(upcomingPasses.prefix(5)) { pass in
-                        ISSPassRow(pass: pass)
+                        ISSPassRow(pass: pass, timeZone: timeZone)
                         
                         if pass.id != upcomingPasses.prefix(5).last?.id {
                             Divider()
@@ -47,15 +48,16 @@ struct ISSCard: View {
 
 struct ISSPassRow: View {
     let pass: ISSPass
+    let timeZone: TimeZone?
     
     var body: some View {
         HStack {
             // Date and time
             VStack(alignment: .leading, spacing: 2) {
-                Text(DateFormatters.formatShortDate(pass.riseTime))
+                Text(DateFormatters.formatShortDate(pass.riseTime, in: timeZone))
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                Text(DateFormatters.formatTime(pass.riseTime))
+                Text(DateFormatters.formatTime(pass.riseTime, in: timeZone))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -91,6 +93,6 @@ struct ISSPassRow: View {
         ISSPass(riseTime: Date().addingTimeInterval(86400), duration: 520, maxElevation: 82),
     ]
     
-    ISSCard(passes: samplePasses)
+    ISSCard(passes: samplePasses, timeZone: nil)
         .padding()
 }

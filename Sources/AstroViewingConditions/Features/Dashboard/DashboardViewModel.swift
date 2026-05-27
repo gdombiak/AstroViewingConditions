@@ -19,7 +19,7 @@ public class DashboardViewModel {
     public var lastSuccessfulFetch: Date?
     
     private var apiKey: String
-    private var locationTimeZone: TimeZone?
+    public private(set) var locationTimeZone: TimeZone?
     
     private static let staleThresholdSeconds: TimeInterval = 6 * 60 * 60 // 6 hours
     
@@ -43,8 +43,7 @@ public class DashboardViewModel {
             }
         }
         
-        public static func title(for selection: DaySelection, referenceDate: Date) -> String {
-            let calendar = Calendar.current
+        public static func title(for selection: DaySelection, referenceDate: Date, calendar: Calendar) -> String {
             let startOfDay = calendar.startOfDay(for: referenceDate)
             switch selection {
             case .today:
@@ -53,19 +52,19 @@ public class DashboardViewModel {
                 return "Tomorrow"
             case .dayAfter:
                 let dayAfter = calendar.date(byAdding: .day, value: 2, to: startOfDay)!
-                return DateFormatters.shortDateFormatter.string(from: dayAfter)
+                return DateFormatters.formatShortDate(dayAfter, in: calendar.timeZone)
             }
         }
     }
     
     public func titleForSelectedDay(_ selection: DaySelection) -> String {
-        return DaySelection.title(for: selection, referenceDate: Date())
+        return DaySelection.title(for: selection, referenceDate: Date(), calendar: locationCalendar)
     }
     
     public var isDataStale: Bool {
         guard let lastFetch = lastSuccessfulFetch else { return true }
         let timeStale = Date().timeIntervalSince(lastFetch) > Self.staleThresholdSeconds
-        let dayRolledOver = !Calendar.current.isDate(lastFetch, inSameDayAs: Date())
+        let dayRolledOver = !locationCalendar.isDate(lastFetch, inSameDayAs: Date())
         return timeStale || dayRolledOver
     }
     
@@ -77,7 +76,7 @@ public class DashboardViewModel {
         guard let conditions = viewingConditions,
               !conditions.hourlyForecasts.isEmpty else { return [] }
         
-        let calendar = Calendar.current
+        let calendar = locationCalendar
         let firstForecastTime = conditions.hourlyForecasts.first!.time
         let startOfFirstDay = calendar.startOfDay(for: firstForecastTime)
         let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay)!
@@ -90,7 +89,7 @@ public class DashboardViewModel {
     
     public var currentHourForecast: HourlyForecast? {
         let now = Date()
-        let calendar = Calendar.current
+        let calendar = locationCalendar
         
         // Find the forecast for the current hour
         return currentHourlyForecasts.first { forecast in
@@ -123,11 +122,21 @@ public class DashboardViewModel {
         viewingConditions?.fogScore
     }
     
-    private var locationCalendar: Calendar {
-        if let tz = locationTimeZone {
-            return LocationTimeZoneResolver.calendar(for: tz)
+    public var locationCalendar: Calendar {
+        if let timeZone = displayTimeZone {
+            return LocationTimeZoneResolver.calendar(for: timeZone)
         }
-        return Calendar.current
+        return LocationTimeZoneResolver.calendar(for: TimeZone(identifier: "UTC")!)
+    }
+    
+    public var displayTimeZone: TimeZone? {
+        if let locationTimeZone {
+            return locationTimeZone
+        }
+        if let longitude = viewingConditions?.location.longitude {
+            return LocationTimeZoneResolver.approximate(longitude: longitude)
+        }
+        return nil
     }
     
     public var currentNightQuality: NightQualityAssessment? {
@@ -295,7 +304,17 @@ public class DashboardViewModel {
         return true
     }
     
+    private func resolveTimeZone(for location: CachedLocation) async {
+        locationTimeZone = await LocationTimeZoneResolver.resolve(
+            latitude: location.latitude,
+            longitude: location.longitude
+        )
+    }
+    
     public func loadConditionsIfNeeded(for location: SavedLocation) async {
+        let cachedLocation = CachedLocation(from: location)
+        await resolveTimeZone(for: cachedLocation)
+        
         if let widgetConditions = AppGroupStorage.loadWidgetConditions(),
            widgetConditions.fetchedAt.timeIntervalSinceNow > -3600,
            widgetConditions.location.latitude == location.latitude,
@@ -306,7 +325,6 @@ public class DashboardViewModel {
         }
 
         let loadedFromCache = loadFromCache()
-        let cachedLocation = CachedLocation(from: location)
         let cachedLocationMatches = cacheService.cachedLocationMatches(cachedLocation)
 
         if shouldFetchFreshConditions || !cachedLocationMatches {

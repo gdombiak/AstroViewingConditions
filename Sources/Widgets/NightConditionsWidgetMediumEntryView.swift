@@ -4,6 +4,7 @@ import WidgetKit
 
 struct NightConditionsWidgetMediumEntryView: View {
     var assessment: NightQualityAssessment
+    var timeZone: TimeZone?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -59,6 +60,7 @@ struct NightConditionsWidgetMediumEntryView: View {
     private func formatTime(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm a"
+        formatter.timeZone = timeZone ?? TimeZone(identifier: "UTC")
         return formatter.string(from: date)
     }
 

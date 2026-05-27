@@ -4,6 +4,7 @@ import SwiftUI
 struct SunMoonCard: View {
     let sunEvents: SunEvents
     let moonInfo: MoonInfo
+    let timeZone: TimeZone?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     private var isIPad: Bool {
@@ -25,13 +26,15 @@ struct SunMoonCard: View {
                     SunEventItem(
                         icon: "sunrise.fill",
                         time: sunEvents.sunrise,
-                        label: "Sunrise"
+                        label: "Sunrise",
+                        timeZone: timeZone
                     )
                     
                     SunEventItem(
                         icon: "sunset.fill",
                         time: sunEvents.sunset,
-                        label: "Sunset"
+                        label: "Sunset",
+                        timeZone: timeZone
                     )
                 }
                 
@@ -48,13 +51,13 @@ struct SunMoonCard: View {
                     
                     HStack {
                         HStack(spacing: 16) {
-                            Text(DateFormatters.formatTime(sunEvents.astronomicalNightStart))
+                            Text(DateFormatters.formatTime(sunEvents.astronomicalNightStart, in: timeZone))
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                             Text("to")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
-                            Text(DateFormatters.formatTime(sunEvents.astronomicalNightEnd))
+                            Text(DateFormatters.formatTime(sunEvents.astronomicalNightEnd, in: timeZone))
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                         }
@@ -141,13 +144,14 @@ struct SunEventItem: View {
     let icon: String
     let time: Date
     let label: String
+    let timeZone: TimeZone?
     
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .foregroundStyle(.orange)
             VStack(alignment: .leading, spacing: 2) {
-                Text(DateFormatters.formatTime(time))
+                Text(DateFormatters.formatTime(time, in: timeZone))
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 Text(label)
@@ -176,7 +180,8 @@ struct SunEventItem: View {
             altitude: 45.5,
             illumination: 50,
             emoji: "🌓"
-        )
+        ),
+        timeZone: nil
     )
     .padding()
 }

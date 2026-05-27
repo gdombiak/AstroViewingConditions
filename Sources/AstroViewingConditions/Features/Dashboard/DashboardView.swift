@@ -41,7 +41,7 @@ public struct DashboardView: View {
     private var searchDate: Date {
         guard let conditions = viewModel.viewingConditions,
               let firstForecast = conditions.hourlyForecasts.first else { return Date() }
-        let calendar = Calendar.current
+        let calendar = viewModel.locationCalendar
         let startOfFirstDay = calendar.startOfDay(for: firstForecast.time)
         return calendar.date(byAdding: .day, value: viewModel.selectedDay.rawValue, to: startOfFirstDay) ?? Date()
     }
@@ -208,25 +208,28 @@ public struct DashboardView: View {
                 if viewModel.selectedDay == .today {
                     CurrentConditionsCard(
                         forecast: viewModel.currentHourForecast,
-                        unitConverter: unitConverter
+                        unitConverter: unitConverter,
+                        timeZone: viewModel.displayTimeZone
                     )
                 }
                 
                 HourlyForecastView(
                     forecasts: viewModel.currentHourlyForecasts,
-                    unitConverter: unitConverter
+                    unitConverter: unitConverter,
+                    timeZone: viewModel.displayTimeZone
                 )
                 
                 if let sunEvents = viewModel.currentSunEvents,
                    let moonInfo = viewModel.currentMoonInfo {
                     SunMoonCard(
                         sunEvents: sunEvents,
-                        moonInfo: moonInfo
+                        moonInfo: moonInfo,
+                        timeZone: viewModel.displayTimeZone
                     )
                 }
                 
                 if viewModel.hasISSConfigured && !viewModel.currentISSPasses.isEmpty {
-                    ISSCard(passes: viewModel.currentISSPasses)
+                    ISSCard(passes: viewModel.currentISSPasses, timeZone: viewModel.displayTimeZone)
                 }
                 
                 if let fetchedAt = viewModel.viewingConditions?.fetchedAt {

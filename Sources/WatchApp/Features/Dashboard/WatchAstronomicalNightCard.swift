@@ -4,6 +4,7 @@ import SharedCode
 struct WatchAstronomicalNightCard: View {
     let sunEvents: SunEvents
     let moonInfo: MoonInfo
+    let timeZone: TimeZone?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -13,13 +14,13 @@ struct WatchAstronomicalNightCard: View {
 
             if sunEvents.astronomicalNightStart > sunEvents.astronomicalNightEnd {
                 HStack(spacing: 4) {
-                    Text(DateFormatters.formatTime(sunEvents.astronomicalNightStart))
+                    Text(DateFormatters.formatTime(sunEvents.astronomicalNightStart, in: timeZone))
                         .font(.caption)
                         .fontWeight(.medium)
                     Text("to")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Text(DateFormatters.formatTime(sunEvents.astronomicalNightEnd))
+                    Text(DateFormatters.formatTime(sunEvents.astronomicalNightEnd, in: timeZone))
                         .font(.caption)
                         .fontWeight(.medium)
                 }

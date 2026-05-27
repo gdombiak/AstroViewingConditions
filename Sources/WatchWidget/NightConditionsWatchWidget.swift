@@ -48,7 +48,7 @@ struct WatchProvider: TimelineProvider {
     func getTimeline(in context: Context, completion: @Sendable @escaping (Timeline<NightConditionsEntry>) -> Void) {
         Task { @Sendable in
             let entry = await buildEntry() ?? .placeholder
-            let nextUpdate = Calendar.current.date(byAdding: .hour, value: 1, to: Date())!
+            let nextUpdate = Date().addingTimeInterval(3600)
             completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
         }
     }

@@ -20,7 +20,7 @@ struct Provider: TimelineProvider {
     func getTimeline(in context: Context, completion: @Sendable @escaping (Timeline<NightConditionsEntry>) -> Void) {
         Task { @Sendable in
             let entry = await buildEntry() ?? .placeholder
-            let nextHour = Calendar.current.date(byAdding: .hour, value: 1, to: Date())!
+            let nextHour = Date().addingTimeInterval(3600)
             completion(Timeline(entries: [entry], policy: .after(nextHour)))
         }
     }
@@ -100,6 +100,6 @@ struct Provider: TimelineProvider {
         )
         AppGroupStorage.saveWidgetConditions(conditions)
 
-        return NightConditionsEntry(date: Date(), assessment: assessment)
+        return NightConditionsEntry(date: Date(), assessment: assessment, timeZone: tz)
     }
 }

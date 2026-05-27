@@ -10,7 +10,7 @@ enum WatchConnectivityError: Error, LocalizedError {
     
     var errorDescription: String? {
         switch self {
-        case .sessionNotReachable: return "Watch not connected to iPhone"
+        case .sessionNotReachable: return "Watch not connected"
         case .requestFailed(let msg): return msg
         case .decodeFailed(let msg): return msg
         }
@@ -27,7 +27,21 @@ protocol WatchConnectivityManagerDelegate: AnyObject {
 class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable {
     static let shared = WatchConnectivityManager()
     
-    weak var delegate: WatchConnectivityManagerDelegate?
+    private var delegateQueue: [WatchConnectivityManagerDelegate] = []
+    
+    func addDelegate(_ delegate: WatchConnectivityManagerDelegate) {
+        delegateQueue.append(delegate)
+    }
+    
+    func removeDelegate(_ delegate: WatchConnectivityManagerDelegate) {
+        delegateQueue.removeAll { $0 === delegate }
+    }
+    
+    private func notifyDelegates(_ block: (WatchConnectivityManagerDelegate) -> Void) {
+        for delegate in delegateQueue {
+            block(delegate)
+        }
+    }
     
     private var locationContinuations: [UUID: CheckedContinuation<([CachedLocation], SelectedLocation?), Error>] = [:]
     private var conditionsContinuations: [UUID: CheckedContinuation<(ViewingConditions, SelectedLocation?), Error>] = [:]
@@ -148,6 +162,9 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
                let location = try? JSONDecoder().decode(SelectedLocation.self, from: selectedData) {
                 print("WatchConnectivityManager: Received selected location with conditions: \(location.name)")
                 selectedLocation = location
+                DispatchQueue.main.async {
+                    self.notifyDelegates { $0.connectivityManager(self, didReceiveSelectedLocation: location) }
+                }
             }
             conditionsContinuations.removeValue(forKey: id)?.resume(returning: (conditions, selectedLocation))
         } else {
@@ -190,26 +207,26 @@ extension WatchConnectivityManager: WCSessionDelegate {
                 if let data = locationsData,
                    let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
                     print("WatchConnectivityManager: Received \(locations.count) locations from \(source)")
-                    self.delegate?.connectivityManager(self, didReceiveLocations: locations, selectedLocation: nil)
+                    self.notifyDelegates { $0.connectivityManager(self, didReceiveLocations: locations, selectedLocation: nil) }
                 }
                 
             case "conditions":
                 if let data = conditionsData,
                    let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
                     print("WatchConnectivityManager: Received conditions from \(source)")
-                    self.delegate?.connectivityManager(self, didReceiveConditions: conditions)
+                    self.notifyDelegates { $0.connectivityManager(self, didReceiveConditions: conditions) }
                 }
                 
             case "locationSync", "selectedLocation":
                 if let data = selectedLocationData,
                    let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) {
                     print("WatchConnectivityManager: Received selected location from \(source): \(location.name)")
-                    self.delegate?.connectivityManager(self, didReceiveSelectedLocation: location)
+                    self.notifyDelegates { $0.connectivityManager(self, didReceiveSelectedLocation: location) }
                 }
                 if let data = locationsData,
                    let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
                     print("WatchConnectivityManager: Received location sync from \(source): \(locations.count) locations")
-                    self.delegate?.connectivityManager(self, didReceiveLocations: locations, selectedLocation: nil)
+                    self.notifyDelegates { $0.connectivityManager(self, didReceiveLocations: locations, selectedLocation: nil) }
                 }
                 
             case "unitSystem":
@@ -217,7 +234,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
                    let unitSystem = try? JSONDecoder().decode(String.self, from: data) {
                     print("WatchConnectivityManager: Received unit system: \(unitSystem)")
                     if let system = UnitSystem(rawValue: unitSystem) {
-                        self.delegate?.connectivityManager(self, didReceiveUnitSystem: system)
+                        self.notifyDelegates { $0.connectivityManager(self, didReceiveUnitSystem: system) }
                     }
                 }
                 

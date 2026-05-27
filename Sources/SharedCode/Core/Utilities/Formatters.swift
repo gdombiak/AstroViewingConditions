@@ -25,12 +25,35 @@ public struct DateFormatters {
         return timeFormatter.string(from: date)
     }
     
+    public static func formatTime(_ date: Date, in timeZone: TimeZone?) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        formatter.timeZone = timeZone ?? TimeZone(identifier: "UTC")
+        return formatter.string(from: date)
+    }
+    
     public static func formatShortDate(_ date: Date) -> String {
         return shortDateFormatter.string(from: date)
     }
     
+    public static func formatShortDate(_ date: Date, in timeZone: TimeZone?) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE, MMM d"
+        formatter.timeZone = timeZone ?? TimeZone(identifier: "UTC")
+        return formatter.string(from: date)
+    }
+    
     public static func formatFullDate(_ date: Date) -> String {
         return fullDateFormatter.string(from: date)
+    }
+    
+    public static func formatFullDate(_ date: Date, in timeZone: TimeZone?) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        formatter.timeZone = timeZone ?? TimeZone(identifier: "UTC")
+        return formatter.string(from: date)
     }
     
     public static func timeAgo(from date: Date) -> String {

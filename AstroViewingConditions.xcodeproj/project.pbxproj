@@ -66,6 +66,7 @@
 		79062FBE45607986301BB065 /* iCloudKeyValueStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFB7767724742E57F6D26F8 /* iCloudKeyValueStorage.swift */; };
 		7A89A153288A8546467C4A18 /* GeographicGridGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054461D2A435B336317EB4A1 /* GeographicGridGenerator.swift */; };
 		7F283D19C8B4A4B68560DCCD /* WatchLocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B0076F8062F05E911D2C19 /* WatchLocationManager.swift */; };
+		A8B0C0D0E0F0A0B0C0D0E0 /* WatchConditionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8B0C0D0E0F0A0B0C0D0E0F0 /* WatchConditionsManager.swift */; };
 		7F811ED4961AF122575308C6 /* AstronomyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E091BB8BE5C0597F0ECD6457 /* AstronomyService.swift */; };
 		833E71BF50A436FA8384AC8F /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BE20FBA13683FA9BC910AF4 /* AppGroupStorage.swift */; };
 		86C45576C8C4D52A095C2659 /* SunCalc in Frameworks */ = {isa = PBXBuildFile; productRef = A62EA8AA4DD3F9D6236669F9 /* SunCalc */; };
@@ -299,6 +300,7 @@
 		9B1DA95CCE7AC3B2926F6F78 /* BestSpotSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSettings.swift; sourceTree = "<group>"; };
 		9BDEE6998588C3B988DD4C4C /* MigrationHelperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationHelperTests.swift; sourceTree = "<group>"; };
 		A7B0076F8062F05E911D2C19 /* WatchLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLocationManager.swift; sourceTree = "<group>"; };
+		A8B0C0D0E0F0A0B0C0D0E0F0 /* WatchConditionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConditionsManager.swift; sourceTree = "<group>"; };
 		AC8772D9418812D0B637F247 /* LocationsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationsListView.swift; sourceTree = "<group>"; };
 		ADE06EBEFA2C9FF9F117C927 /* TodayCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayCard.swift; sourceTree = "<group>"; };
 		B581B80777CE9587A7AFA72D /* CornerComplicationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CornerComplicationView.swift; sourceTree = "<group>"; };
@@ -614,6 +616,7 @@
 			isa = PBXGroup;
 			children = (
 				097CB1A1C6A002382B8D37A6 /* WatchConnectivityManager.swift */,
+				A8B0C0D0E0F0A0B0C0D0E0F0 /* WatchConditionsManager.swift */,
 				A7B0076F8062F05E911D2C19 /* WatchLocationManager.swift */,
 			);
 			path = Services;
@@ -971,6 +974,7 @@
 				AB222D5B8A1D68A17FD795F5 /* WatchCurrentConditionsCard.swift in Sources */,
 				24910EE1672EF7B13F23E650 /* WatchDashboardView.swift in Sources */,
 				7F283D19C8B4A4B68560DCCD /* WatchLocationManager.swift in Sources */,
+				A8B0C0D0E0F0A0B0C0D0E0 /* WatchConditionsManager.swift in Sources */,
 				782BE329FE4061D2F957A7C6 /* WatchNightQualityCard.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

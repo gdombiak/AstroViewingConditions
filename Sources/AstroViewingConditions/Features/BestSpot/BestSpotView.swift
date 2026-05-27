@@ -26,6 +26,7 @@ struct BestSpotView: View {
     @State private var selectedLocation: LocationScore?
     @State private var mapPosition: MapCameraPosition
     @State private var showingSettings = false
+    @State private var centerTimeZone: TimeZone?
     
     @State private var searchRadius: Double = BestSpotSettings.searchRadius
     @State private var gridSpacing: Double = BestSpotSettings.gridSpacing
@@ -78,6 +79,10 @@ struct BestSpotView: View {
             }
         }
         .task {
+            centerTimeZone = await LocationTimeZoneResolver.resolve(
+                latitude: centerLocation.latitude,
+                longitude: centerLocation.longitude
+            )
             await viewModel.search(around: centerLocation, for: searchDate, topN: 5)
         }
     }
@@ -94,7 +99,7 @@ struct BestSpotView: View {
                 .font(.headline)
                 .multilineTextAlignment(.center)
             
-            Text("For \(DateFormatters.formatShortDate(searchDate)) night")
+            Text("For \(DateFormatters.formatShortDate(searchDate, in: centerTimeZone)) night")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             
