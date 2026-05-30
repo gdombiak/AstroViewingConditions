@@ -20,16 +20,15 @@ public enum BestSpotSearchError: Error, LocalizedError {
 }
 
 /// Orchestrates the search for the best viewing conditions in a geographic area
-@MainActor
-public class BestSpotSearcher {
+public final class BestSpotSearcher: Sendable {
     private let weatherService: WeatherService
     private let astronomyService: AstronomyService
-    private let fogScoreCalculator: (HourlyForecast) -> FogScore
+    private let fogScoreCalculator: @Sendable (HourlyForecast) -> FogScore
     
     public init(
         weatherService: WeatherService = WeatherService(),
         astronomyService: AstronomyService = AstronomyService(),
-        fogScoreCalculator: @escaping (HourlyForecast) -> FogScore = FogCalculator.calculate
+        fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate
     ) {
         self.weatherService = weatherService
         self.astronomyService = astronomyService
@@ -52,7 +51,7 @@ public class BestSpotSearcher {
         spacingMiles: Double = 5,
         for date: Date,
         topN: Int = 5,
-        progressHandler: ((Double) -> Void)? = nil
+        progressHandler: (@Sendable (Double) -> Void)? = nil
     ) async throws -> BestSpotResult {
         let cachedLocation = CachedLocation(from: center)
         return try await findBestSpots(
@@ -71,7 +70,7 @@ public class BestSpotSearcher {
         spacingMiles: Double = 5,
         for date: Date,
         topN: Int = 5,
-        progressHandler: ((Double) -> Void)? = nil
+        progressHandler: (@Sendable (Double) -> Void)? = nil
     ) async throws -> BestSpotResult {
         let startTime = Date()
         
@@ -130,18 +129,20 @@ public class BestSpotSearcher {
         // Score each location
         var scoredLocations: [LocationScore] = []
         let totalPoints = gridPoints.count
+        let moonCalculationCache = NightQualityAnalyzer.MoonCalculationCache()
         
         for (index, gridPoint) in gridPoints.enumerated() {
             guard let forecasts = weatherData[gridPoint.coordinate] else { continue }
             
-            if let locationScore = await scoreLocation(
+            if let locationScore = scoreLocation(
                 gridPoint: gridPoint,
                 forecasts: forecasts,
                 sunEventsToday: sunEventsToday,
                 sunEventsTomorrow: sunEventsTomorrow,
                 moonInfo: moonInfo,
                 date: date,
-                calendar: calendar
+                calendar: calendar,
+                moonCalculationCache: moonCalculationCache
             ) {
                 scoredLocations.append(locationScore)
             }
@@ -178,8 +179,9 @@ public class BestSpotSearcher {
         sunEventsTomorrow: SunEvents,
         moonInfo: MoonInfo,
         date: Date,
-        calendar: Calendar
-    ) async -> LocationScore? {
+        calendar: Calendar,
+        moonCalculationCache: NightQualityAnalyzer.MoonCalculationCache
+    ) -> LocationScore? {
         // Calculate night quality using the existing analyzer
         let nightQuality = NightQualityAnalyzer.analyzeNight(
             forecasts: forecasts,
@@ -189,7 +191,8 @@ public class BestSpotSearcher {
             latitude: gridPoint.coordinate.latitude,
             longitude: gridPoint.coordinate.longitude,
             for: date,
-            calendar: calendar
+            calendar: calendar,
+            moonCalculationCache: moonCalculationCache
         )
         
         // Convert night quality to 0-100 score

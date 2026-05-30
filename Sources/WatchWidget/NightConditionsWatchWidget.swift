@@ -60,8 +60,8 @@ struct WatchProvider: TimelineProvider {
             location = saved
         } else {
             widgetLogger.info("No saved location, requesting current GPS location")
-            let locManager = LocationManager()
-            locManager.requestAuthorization()
+            let locManager = await MainActor.run { LocationManager() }
+            await locManager.requestAuthorization()
             
             do {
                 let coord = try await locManager.getCurrentLocation()

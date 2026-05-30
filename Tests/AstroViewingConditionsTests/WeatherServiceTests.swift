@@ -31,7 +31,6 @@ final class WeatherServiceTests: XCTestCase {
         
         let data = mockOpenMeteoResponse.data(using: .utf8)!
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .formatted(DateFormatter.apiDateFormatter)
         
         let response = try decoder.decode(OpenMeteoResponse.self, from: data)
         let forecasts = service.parseHourlyForecasts(from: response)
@@ -59,7 +58,6 @@ final class WeatherServiceTests: XCTestCase {
         
         let data = json.data(using: .utf8)!
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .formatted(DateFormatter.apiDateFormatter)
         
         let response = try decoder.decode(OpenMeteoResponse.self, from: data)
         let forecasts = WeatherService().parseHourlyForecasts(from: response)
@@ -89,7 +87,6 @@ final class WeatherServiceTests: XCTestCase {
         
         let data = json.data(using: .utf8)!
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .formatted(DateFormatter.apiDateFormatter)
         
         let response = try decoder.decode(OpenMeteoResponse.self, from: data)
         let forecasts = WeatherService().parseHourlyForecasts(from: response)
@@ -107,7 +104,6 @@ final class WeatherServiceTests: XCTestCase {
     func testOpenMeteoResponseDecoding() throws {
         let data = mockOpenMeteoResponse.data(using: .utf8)!
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .formatted(DateFormatter.apiDateFormatter)
         
         let response = try decoder.decode(OpenMeteoResponse.self, from: data)
         
@@ -137,7 +133,6 @@ final class WeatherServiceTests: XCTestCase {
         
         let data = json.data(using: .utf8)!
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .formatted(DateFormatter.apiDateFormatter)
         
         let response = try decoder.decode(OpenMeteoResponse.self, from: data)
         

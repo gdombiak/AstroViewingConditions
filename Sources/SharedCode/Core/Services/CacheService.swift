@@ -1,6 +1,6 @@
 import Foundation
 
-public final class CacheService: @unchecked Sendable {
+public final class CacheService: Sendable {
     private let locationTolerance = 0.0001
     
     public init() {}

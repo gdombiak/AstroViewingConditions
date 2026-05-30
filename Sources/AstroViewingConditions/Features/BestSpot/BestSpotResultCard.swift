@@ -102,16 +102,6 @@ struct BestSpotResultCard: View {
         }
     }
     
-    private var scoreColor: Color {
-        let score = locationScore.score
-        switch score {
-        case 80...100: return .green
-        case 60..<80: return .blue
-        case 40..<60: return .orange
-        default: return .red
-        }
-    }
-    
     private var cardBackgroundColor: Color {
         #if os(iOS)
         return Color(uiColor: .systemGray6)

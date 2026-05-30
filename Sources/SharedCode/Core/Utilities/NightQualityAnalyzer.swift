@@ -2,6 +2,57 @@ import Foundation
 import SunCalc
 
 public struct NightQualityAnalyzer {
+    final class MoonCalculationCache: @unchecked Sendable {
+        private struct MoonAltitudeKey: Hashable {
+            let latitude: Double
+            let longitude: Double
+            let time: Date
+        }
+        
+        private let lock = NSLock()
+        private var moonAltitudes: [MoonAltitudeKey: Double] = [:]
+        private var moonIlluminations: [Date: Int] = [:]
+        
+        func moonAltitude(latitude: Double, longitude: Double, at time: Date) -> Double {
+            let key = MoonAltitudeKey(latitude: latitude, longitude: longitude, time: time)
+            
+            lock.lock()
+            if let cachedAltitude = moonAltitudes[key] {
+                lock.unlock()
+                return cachedAltitude
+            }
+            lock.unlock()
+            
+            let altitude = NightQualityAnalyzer.calculateMoonAltitude(
+                latitude: latitude,
+                longitude: longitude,
+                at: time
+            )
+            
+            lock.lock()
+            moonAltitudes[key] = altitude
+            lock.unlock()
+            
+            return altitude
+        }
+        
+        func moonIllumination(at time: Date) -> Int {
+            lock.lock()
+            if let cachedIllumination = moonIlluminations[time] {
+                lock.unlock()
+                return cachedIllumination
+            }
+            lock.unlock()
+            
+            let illumination = NightQualityAnalyzer.calculateMoonIllumination(at: time)
+            
+            lock.lock()
+            moonIlluminations[time] = illumination
+            lock.unlock()
+            
+            return illumination
+        }
+    }
     
     private enum Constants {
         static let cloudCoverWeight: Double = 0.55
@@ -11,10 +62,6 @@ public struct NightQualityAnalyzer {
         
         static let cloudCoverThresholds: [(max: Int, score: Double)] = [
             (5, 0.0), (20, 0.5), (40, 1.0), (60, 1.5), (100, 2.0)
-        ]
-        
-        static let fogScoreThresholds: [(max: Int, score: Double)] = [
-            (25, 0.0), (50, 0.5), (75, 1.0), (100, 2.0)
         ]
         
         static let moonIlluminationThresholds: [(max: Int, score: Double)] = [
@@ -38,6 +85,30 @@ public struct NightQualityAnalyzer {
         for date: Date,
         calendar: Calendar
     ) -> NightQualityAssessment {
+        analyzeNight(
+            forecasts: forecasts,
+            sunEventsToday: sunEventsToday,
+            sunEventsTomorrow: sunEventsTomorrow,
+            moonInfo: moonInfo,
+            latitude: latitude,
+            longitude: longitude,
+            for: date,
+            calendar: calendar,
+            moonCalculationCache: MoonCalculationCache()
+        )
+    }
+    
+    static func analyzeNight(
+        forecasts: [HourlyForecast],
+        sunEventsToday: SunEvents,
+        sunEventsTomorrow: SunEvents?,
+        moonInfo: MoonInfo,
+        latitude: Double,
+        longitude: Double,
+        for date: Date,
+        calendar: Calendar,
+        moonCalculationCache: MoonCalculationCache
+    ) -> NightQualityAssessment {
         
         // Filter forecasts to nighttime hours only
         let (nightStart, nightEnd) = NightForecastFilter.calculateNightRange(
@@ -59,8 +130,12 @@ public struct NightQualityAnalyzer {
         var totalScore: Double = 0
         
         for forecast in nightForecasts {
-            let moonAltitude = calculateMoonAltitude(latitude: latitude, longitude: longitude, at: forecast.time)
-            let moonIllumination = calculateMoonIllumination(at: forecast.time)
+            let moonAltitude = moonCalculationCache.moonAltitude(
+                latitude: latitude,
+                longitude: longitude,
+                at: forecast.time
+            )
+            let moonIllumination = moonCalculationCache.moonIllumination(at: forecast.time)
             
             let fogScore = FogCalculator.calculate(from: forecast)
             let cloudScore = calculateCloudCoverScore(forecast.cloudCover)
@@ -129,15 +204,6 @@ public struct NightQualityAnalyzer {
     private static func calculateCloudCoverScore(_ cloudCover: Int) -> Double {
         for threshold in Constants.cloudCoverThresholds {
             if cloudCover <= threshold.max {
-                return threshold.score
-            }
-        }
-        return 2.0
-    }
-    
-    private static func calculateFogScore(_ score: Int) -> Double {
-        for threshold in Constants.fogScoreThresholds {
-            if score <= threshold.max {
                 return threshold.score
             }
         }
@@ -233,7 +299,7 @@ public struct NightQualityAnalyzer {
             switch trend {
             case .improving: return "Poor early, improving after midnight."
             case .stable: return "Not ideal for stargazing this night."
-            case .degrading: return "Fair early, degrading after midnight."
+            case .degrading: return "Poor early, degrading after midnight."
             }
         }
     }

@@ -5,9 +5,9 @@ import MapKit
 struct BestSpotView: View {
     let centerLocation: SavedLocation
     let searchDate: Date
-    let fogScoreCalculator: (HourlyForecast) -> FogScore
+    let fogScoreCalculator: @Sendable (HourlyForecast) -> FogScore
     
-    public init(centerLocation: SavedLocation, searchDate: Date, fogScoreCalculator: @escaping (HourlyForecast) -> FogScore = FogCalculator.calculate) {
+    public init(centerLocation: SavedLocation, searchDate: Date, fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate) {
         self.centerLocation = centerLocation
         self.searchDate = searchDate
         self.fogScoreCalculator = fogScoreCalculator

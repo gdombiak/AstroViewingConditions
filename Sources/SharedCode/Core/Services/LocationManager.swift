@@ -31,7 +31,8 @@ public enum LocationError: Error, LocalizedError {
 #if os(iOS)
 
 @Observable
-public class LocationManager: NSObject, @unchecked Sendable {
+@MainActor
+public class LocationManager: NSObject {
     private let manager = CLLocationManager()
     
     public var authorizationStatus: CLAuthorizationStatus = .notDetermined
@@ -89,33 +90,41 @@ public class LocationManager: NSObject, @unchecked Sendable {
 }
 
 extension LocationManager: CLLocationManagerDelegate {
-    public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorizationStatus = manager.authorizationStatus
-    }
-    
-    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
-        currentLocation = location
-        
-        if let continuation = locationContinuation {
-            locationContinuation = nil
-            continuation.resume(returning: location.coordinate)
+    nonisolated public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let authorizationStatus = manager.authorizationStatus
+        Task { @MainActor in
+            self.authorizationStatus = authorizationStatus
         }
     }
     
-    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        locationError = error
-        
-        if let continuation = locationContinuation {
-            locationContinuation = nil
-            continuation.resume(throwing: error)
+    nonisolated public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        Task { @MainActor in
+            self.currentLocation = location
+            
+            if let continuation = self.locationContinuation {
+                self.locationContinuation = nil
+                continuation.resume(returning: location.coordinate)
+            }
+        }
+    }
+    
+    nonisolated public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in
+            self.locationError = error
+            
+            if let continuation = self.locationContinuation {
+                self.locationContinuation = nil
+                continuation.resume(throwing: error)
+            }
         }
     }
 }
 
 #elseif os(watchOS)
 
-public class LocationManager: NSObject, @unchecked Sendable {
+@MainActor
+public class LocationManager: NSObject {
     private let manager = CLLocationManager()
     private var locationContinuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
     private var timeoutTask: Task<Void, Never>?
@@ -226,24 +235,31 @@ public class LocationManager: NSObject, @unchecked Sendable {
 }
 
 extension LocationManager: CLLocationManagerDelegate {
-    public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        authorizationStatus = manager.authorizationStatus
-        
-        if let cont = authContinuation, isAuthorized {
-            authContinuation = nil
-            cont.resume()
+    nonisolated public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let authorizationStatus = manager.authorizationStatus
+        Task { @MainActor in
+            self.authorizationStatus = authorizationStatus
+            
+            if let cont = self.authContinuation, self.isAuthorized {
+                self.authContinuation = nil
+                cont.resume()
+            }
         }
     }
     
-    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    nonisolated public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        currentLocation = location
-        completeLocationRequest(with: location)
+        Task { @MainActor in
+            self.currentLocation = location
+            self.completeLocationRequest(with: location)
+        }
     }
     
-    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        locationError = error
-        failLocationRequest(with: error)
+    nonisolated public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in
+            self.locationError = error
+            self.failLocationRequest(with: error)
+        }
     }
 }
 

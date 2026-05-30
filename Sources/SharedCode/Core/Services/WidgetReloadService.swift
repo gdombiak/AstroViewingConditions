@@ -23,8 +23,6 @@ public final class WidgetReloadService: @unchecked Sendable {
     }
     
     private func performReload() {
-//        WidgetCenter.shared.reloadAllTimelines()
-        
         WidgetCenter.shared.reloadTimelines(ofKind: "NightConditionsWidget")
         WidgetCenter.shared.reloadTimelines(ofKind: "NightConditionsWatchWidget")
     }

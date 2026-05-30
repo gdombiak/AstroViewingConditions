@@ -223,46 +223,22 @@ struct HourlyColumn: View {
     
     // Astronomy-friendly: Dark blue = good (clear), lighter = bad (cloudy)
     private var cloudBackgroundColor: Color {
-        let coverage = Double(forecast.cloudCover) / 100.0
-        // Interpolate from dark blue (0%) to light gray/white (100%)
-        let red = 10 + (230 * coverage)
-        let green = 20 + (220 * coverage)
-        let blue = 80 + (155 * coverage)
-        return Color(red: red/255, green: green/255, blue: blue/255)
+        ConditionColorPalette.astronomyRiskBackground(for: forecast.cloudCover)
     }
     
     // Text color that contrasts with the background
     private var cloudTextColor: Color {
-        forecast.cloudCover > 60 ? .black : .white
+        ConditionColorPalette.astronomyRiskText(for: forecast.cloudCover)
     }
     
     // Fog background: similar gradient to clouds (dark = low fog risk, light = high fog risk)
     private var fogBackgroundColor: Color {
-        let percentage = Double(fogScore.score) / 100.0
-        // Interpolate from dark blue (0%) to light gray/white (100%)
-        let red = 10 + (230 * percentage)
-        let green = 20 + (220 * percentage)
-        let blue = 80 + (155 * percentage)
-        return Color(red: red/255, green: green/255, blue: blue/255)
+        ConditionColorPalette.astronomyRiskBackground(for: fogScore.score)
     }
     
     // Fog color: for text contrast (dark background -> white, light background -> black)
     private var fogColor: Color {
-        fogScore.score > 60 ? .black : .white
-    }
-    
-    // Legacy fog color for compatibility
-    private var fogLevelColor: Color {
-        switch fogScore.score {
-        case 0..<30:
-            return .green
-        case 30..<60:
-            return .yellow
-        case 60..<80:
-            return .orange
-        default:
-            return .red
-        }
+        ConditionColorPalette.astronomyRiskText(for: fogScore.score)
     }
     
     // Visibility color: green for good (>10km), yellow for moderate (5-10km), orange/red for poor

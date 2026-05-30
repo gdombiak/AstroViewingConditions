@@ -139,14 +139,14 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
             return (coord.latitude, coord.longitude)
         }
         
-        let locManager = LocationManager()
+        let locManager = await MainActor.run { LocationManager() }
         
-        if locManager.authorizationStatus == .notDetermined {
-            locManager.requestAuthorization()
+        if await locManager.authorizationStatus == .notDetermined {
+            await locManager.requestAuthorization()
             try await Task.sleep(nanoseconds: 2_000_000_000)
         }
         
-        guard locManager.isAuthorized else {
+        guard await locManager.isAuthorized else {
             throw LocationError.notAuthorized
         }
         

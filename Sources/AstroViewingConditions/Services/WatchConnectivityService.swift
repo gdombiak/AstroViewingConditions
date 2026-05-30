@@ -2,7 +2,8 @@ import Foundation
 import WatchConnectivity
 import SharedCode
 
-public class WatchConnectivityService: NSObject, ObservableObject, @unchecked Sendable {
+@MainActor
+public class WatchConnectivityService: NSObject, ObservableObject {
     public static let shared = WatchConnectivityService()
     
     @Published public var isReachable = false
@@ -74,41 +75,41 @@ public class WatchConnectivityService: NSObject, ObservableObject, @unchecked Se
 }
 
 extension WatchConnectivityService: WCSessionDelegate {
-    public func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: (any Error)?) {
+    nonisolated public func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: (any Error)?) {
         let isPaired = session.isPaired
         print("WatchConnectivityService: Activation state: \(activationState.rawValue)")
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.isPaired = isPaired
         }
     }
     
-    public func sessionDidBecomeInactive(_ session: WCSession) {
+    nonisolated public func sessionDidBecomeInactive(_ session: WCSession) {
         print("WatchConnectivityService: Session became inactive")
     }
     
-    public func sessionDidDeactivate(_ session: WCSession) {
+    nonisolated public func sessionDidDeactivate(_ session: WCSession) {
         print("WatchConnectivityService: Session deactivated")
     }
     
-    public func sessionReachabilityDidChange(_ session: WCSession) {
+    nonisolated public func sessionReachabilityDidChange(_ session: WCSession) {
         let isReachable = session.isReachable
         print("WatchConnectivityService: Reachability changed: \(isReachable)")
-        DispatchQueue.main.async {
+        Task { @MainActor in
             self.isReachable = isReachable
         }
     }
     
-    public func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+    nonisolated public func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
         print("WatchConnectivityService: Received message: \(message)")
         handleMessage(message, replyHandler: replyHandler)
     }
     
-    public func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+    nonisolated public func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         print("WatchConnectivityService: Received userInfo: \(userInfo)")
         handleMessage(userInfo)
     }
     
-    private func handleMessage(_ message: [String: Any], replyHandler: (([String: Any]) -> Void)? = nil) {
+    nonisolated private func handleMessage(_ message: [String: Any], replyHandler: (([String: Any]) -> Void)? = nil) {
         if let type = message["type"] as? String {
             switch type {
             case "requestLocations":
@@ -128,7 +129,7 @@ extension WatchConnectivityService: WCSessionDelegate {
         }
     }
     
-    private func refreshForLocation(location: SelectedLocation) {
+    nonisolated private func refreshForLocation(location: SelectedLocation) {
         LocationStorageService.shared.saveSelectedLocation(location)
         DispatchQueue.main.async {
             NotificationCenter.default.post(
@@ -138,7 +139,7 @@ extension WatchConnectivityService: WCSessionDelegate {
         }
     }
     
-    private func handleRequestLocations(replyHandler: (([String: Any]) -> Void)?) {
+    nonisolated private func handleRequestLocations(replyHandler: (([String: Any]) -> Void)?) {
         print("WatchConnectivityService: Handling request for locations")
         
         let locations = LocationStorageService.shared.loadSavedLocations()
@@ -154,7 +155,7 @@ extension WatchConnectivityService: WCSessionDelegate {
         replyHandler?(reply)
     }
     
-    private func handleRequestConditions(replyHandler: (([String: Any]) -> Void)?) {
+    nonisolated private func handleRequestConditions(replyHandler: (([String: Any]) -> Void)?) {
         print("WatchConnectivityService: Handling request for conditions")
         
         let cacheService = CacheService()

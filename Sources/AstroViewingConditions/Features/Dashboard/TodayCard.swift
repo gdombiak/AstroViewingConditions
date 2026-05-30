@@ -114,37 +114,25 @@ struct CurrentConditionsCard: View {
     
     // Cloud background: dark blue (clear) to whitish (cloudy)
     private func cloudBackgroundColor(for percentage: Int) -> Color {
-        let coverage = Double(percentage) / 100.0
-        let red = 10 + (230 * coverage)
-        let green = 20 + (220 * coverage)
-        let blue = 80 + (155 * coverage)
-        return Color(red: red/255, green: green/255, blue: blue/255)
+        ConditionColorPalette.astronomyRiskBackground(for: percentage)
     }
     
     // Cloud icon color: dark blue (clear) to whitish (cloudy)
     private func cloudIconColor(for percentage: Int) -> Color {
-        let coverage = Double(percentage) / 100.0
-        let red = 10 + (230 * coverage)
-        let green = 20 + (220 * coverage)
-        let blue = 80 + (155 * coverage)
-        return Color(red: red/255, green: green/255, blue: blue/255)
+        ConditionColorPalette.astronomyRiskBackground(for: percentage)
     }
     
     private func cloudTextColor(for percentage: Int) -> Color {
-        percentage > 60 ? .black : .white
+        ConditionColorPalette.astronomyRiskText(for: percentage)
     }
     
     // Fog background: same gradient as clouds
     private func fogBackgroundColor(for percentage: Int) -> Color {
-        let coverage = Double(percentage) / 100.0
-        let red = 10 + (230 * coverage)
-        let green = 20 + (220 * coverage)
-        let blue = 80 + (155 * coverage)
-        return Color(red: red/255, green: green/255, blue: blue/255)
+        ConditionColorPalette.astronomyRiskBackground(for: percentage)
     }
     
     private func fogTextColor(for percentage: Int) -> Color {
-        percentage > 60 ? .black : .white
+        ConditionColorPalette.astronomyRiskText(for: percentage)
     }
 
     // Visibility color: green for good (>10km), yellow for moderate (5-10km), orange/red for poor

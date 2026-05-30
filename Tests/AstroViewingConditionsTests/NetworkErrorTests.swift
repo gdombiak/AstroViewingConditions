@@ -243,7 +243,6 @@ actor MockWeatherService {
             }
             
             let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .formatted(DateFormatter.apiDateFormatter)
             let weatherResponse = try decoder.decode(OpenMeteoResponse.self, from: data)
             
             return parseHourlyForecasts(from: weatherResponse)
@@ -254,15 +253,18 @@ actor MockWeatherService {
     
     private func parseHourlyForecasts(from response: OpenMeteoResponse) -> [HourlyForecast] {
         let hourly = response.hourly
-        let utcOffsetSeconds = response.utcOffsetSeconds
+        let timeZone = response.timezone
+            .flatMap(TimeZone.init(identifier:))
+            ?? TimeZone(secondsFromGMT: response.utcOffsetSeconds)
+            ?? TimeZone(identifier: "UTC")!
+        let formatter = DateFormatter.openMeteoLocalDateFormatter(timeZone: timeZone)
         var forecasts: [HourlyForecast] = []
         
         for index in hourly.time.indices {
-            let utcDate = hourly.time[index]
-            let localDate = utcDate.addingTimeInterval(TimeInterval(-utcOffsetSeconds))
+            guard let date = formatter.date(from: hourly.time[index]) else { continue }
             
             let forecast = HourlyForecast(
-                time: localDate,
+                time: date,
                 cloudCover: hourly.cloudcover[safe: index] ?? 0,
                 humidity: hourly.relativehumidity2M[safe: index] ?? 0,
                 windSpeed: hourly.windspeed10M[safe: index] ?? 0,

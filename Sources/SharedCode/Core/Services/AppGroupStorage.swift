@@ -12,36 +12,52 @@ extension Notification.Name {
 public struct AppGroupStorage: Sendable {
     public static let suiteName = "group.com.astroviewing.conditions"
     
-    private static let fileQueue = DispatchQueue(label: "com.astroviewing.storage", qos: .utility)
+    private static let fileQueueKey = DispatchSpecificKey<Void>()
+    private static let fileQueue: DispatchQueue = {
+        let queue = DispatchQueue(label: "com.astroviewing.storage", qos: .utility)
+        queue.setSpecific(key: fileQueueKey, value: ())
+        return queue
+    }()
     
     public static var containerURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suiteName)
     }
     
+    private static func performFileAccess<T>(_ work: () -> T) -> T {
+        if DispatchQueue.getSpecific(key: fileQueueKey) != nil {
+            return work()
+        }
+        return fileQueue.sync(execute: work)
+    }
+    
     // MARK: - Selected Location (unified)
     
     public static func saveSelectedLocation(_ location: SelectedLocation) {
-        guard let baseURL = containerURL else { return }
-        do {
-            let data = try JSONEncoder().encode(location)
-            let fileURL = baseURL.appendingPathComponent("selectedLocation.json")
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            logger.error("Failed to save selected location: \(error.localizedDescription)")
+        performFileAccess {
+            guard let baseURL = containerURL else { return }
+            do {
+                let data = try JSONEncoder().encode(location)
+                let fileURL = baseURL.appendingPathComponent("selectedLocation.json")
+                try data.write(to: fileURL, options: .atomic)
+            } catch {
+                logger.error("Failed to save selected location: \(error.localizedDescription)")
+            }
         }
     }
     
     public static func loadSelectedLocation() -> SelectedLocation? {
-        guard let baseURL = containerURL else { return nil }
-        let fileURL = baseURL.appendingPathComponent("selectedLocation.json")
-        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode(SelectedLocation.self, from: data)
-        } catch {
-            logger.warning("Failed to load selected location: \(error.localizedDescription)")
-            return nil
+        performFileAccess {
+            guard let baseURL = containerURL else { return nil }
+            let fileURL = baseURL.appendingPathComponent("selectedLocation.json")
+            guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+            
+            do {
+                let data = try Data(contentsOf: fileURL)
+                return try JSONDecoder().decode(SelectedLocation.self, from: data)
+            } catch {
+                logger.warning("Failed to load selected location: \(error.localizedDescription)")
+                return nil
+            }
         }
     }
     
@@ -51,124 +67,138 @@ public struct AppGroupStorage: Sendable {
     }
     
     public static func saveWidgetConditions(_ conditions: ViewingConditions) {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return
-        }
-        
-        do {
-            let data = try JSONEncoder().encode(conditions)
-            let fileURL = baseURL.appendingPathComponent("widgetConditions.json")
-            try data.write(to: fileURL, options: .atomic)
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
+                return
+            }
             
-            NotificationCenter.default.post(name: .widgetConditionsDidChange, object: nil)
-        } catch {
-            logger.error("Failed to save widget conditions: \(error.localizedDescription)")
+            do {
+                let data = try JSONEncoder().encode(conditions)
+                let fileURL = baseURL.appendingPathComponent("widgetConditions.json")
+                try data.write(to: fileURL, options: .atomic)
+                
+                NotificationCenter.default.post(name: .widgetConditionsDidChange, object: nil)
+            } catch {
+                logger.error("Failed to save widget conditions: \(error.localizedDescription)")
+            }
         }
     }
 
     public static func loadWidgetConditions() -> ViewingConditions? {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return nil
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("widgetConditions.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode(ViewingConditions.self, from: data)
-        } catch {
-            logger.warning("Failed to load widget conditions: \(error.localizedDescription)")
-            return nil
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
+                return nil
+            }
+            
+            let fileURL = baseURL.appendingPathComponent("widgetConditions.json")
+            
+            do {
+                let data = try Data(contentsOf: fileURL)
+                return try JSONDecoder().decode(ViewingConditions.self, from: data)
+            } catch {
+                logger.warning("Failed to load widget conditions: \(error.localizedDescription)")
+                return nil
+            }
         }
     }
     
     // MARK: - Saved Locations
     
     public static func saveSavedLocations(_ locations: [CachedLocation]) {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return
-        }
-        
-        do {
-            let data = try JSONEncoder().encode(locations)
-            let fileURL = baseURL.appendingPathComponent("savedLocations.json")
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            logger.error("Failed to save locations: \(error.localizedDescription)")
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
+                return
+            }
+            
+            do {
+                let data = try JSONEncoder().encode(locations)
+                let fileURL = baseURL.appendingPathComponent("savedLocations.json")
+                try data.write(to: fileURL, options: .atomic)
+            } catch {
+                logger.error("Failed to save locations: \(error.localizedDescription)")
+            }
         }
     }
     
     public static func loadSavedLocations() -> [CachedLocation] {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return []
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("savedLocations.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode([CachedLocation].self, from: data)
-        } catch {
-            logger.warning("Failed to load locations: \(error.localizedDescription)")
-            return []
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
+                return []
+            }
+            
+            let fileURL = baseURL.appendingPathComponent("savedLocations.json")
+            
+            do {
+                let data = try Data(contentsOf: fileURL)
+                return try JSONDecoder().decode([CachedLocation].self, from: data)
+            } catch {
+                logger.warning("Failed to load locations: \(error.localizedDescription)")
+                return []
+            }
         }
     }
     
     // MARK: - Conditions
     
     public static func saveConditions(_ conditions: ViewingConditions, timestamp: Date = Date()) {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return
-        }
-        
-        do {
-            let data = try JSONEncoder().encode(conditions)
-            let fileURL = baseURL.appendingPathComponent("conditions.json")
-            try data.write(to: fileURL, options: .atomic)
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
+                return
+            }
             
-            let tsData = try JSONEncoder().encode(timestamp)
-            let tsFileURL = baseURL.appendingPathComponent("conditionsTimestamp.json")
-            try tsData.write(to: tsFileURL, options: .atomic)
-        } catch {
-            logger.error("Failed to save conditions: \(error.localizedDescription)")
+            do {
+                let data = try JSONEncoder().encode(conditions)
+                let fileURL = baseURL.appendingPathComponent("conditions.json")
+                try data.write(to: fileURL, options: .atomic)
+                
+                let tsData = try JSONEncoder().encode(timestamp)
+                let tsFileURL = baseURL.appendingPathComponent("conditionsTimestamp.json")
+                try tsData.write(to: tsFileURL, options: .atomic)
+            } catch {
+                logger.error("Failed to save conditions: \(error.localizedDescription)")
+            }
         }
     }
     
     public static func loadConditions() -> ViewingConditions? {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return nil
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("conditions.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode(ViewingConditions.self, from: data)
-        } catch {
-            logger.warning("Failed to load conditions: \(error.localizedDescription)")
-            return nil
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
+                return nil
+            }
+            
+            let fileURL = baseURL.appendingPathComponent("conditions.json")
+            
+            do {
+                let data = try Data(contentsOf: fileURL)
+                return try JSONDecoder().decode(ViewingConditions.self, from: data)
+            } catch {
+                logger.warning("Failed to load conditions: \(error.localizedDescription)")
+                return nil
+            }
         }
     }
     
     public static func loadConditionsTimestamp() -> Date? {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return nil
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("conditionsTimestamp.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode(Date.self, from: data)
-        } catch {
-            return nil
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
+                return nil
+            }
+            
+            let fileURL = baseURL.appendingPathComponent("conditionsTimestamp.json")
+            
+            do {
+                let data = try Data(contentsOf: fileURL)
+                return try JSONDecoder().decode(Date.self, from: data)
+            } catch {
+                return nil
+            }
         }
     }
     
@@ -183,14 +213,16 @@ public struct AppGroupStorage: Sendable {
     }
     
     public static func clearConditions() {
-        guard let baseURL = containerURL else { return }
-        
-        let conditionsFile = baseURL.appendingPathComponent("conditions.json")
-        let timestampFile = baseURL.appendingPathComponent("conditionsTimestamp.json")
-        
-        try? FileManager.default.removeItem(at: conditionsFile)
-        try? FileManager.default.removeItem(at: timestampFile)
-        logger.info("Cleared conditions cache")
+        performFileAccess {
+            guard let baseURL = containerURL else { return }
+            
+            let conditionsFile = baseURL.appendingPathComponent("conditions.json")
+            let timestampFile = baseURL.appendingPathComponent("conditionsTimestamp.json")
+            
+            try? FileManager.default.removeItem(at: conditionsFile)
+            try? FileManager.default.removeItem(at: timestampFile)
+            logger.info("Cleared conditions cache")
+        }
     }
     
     // MARK: - Best Spot Settings

@@ -45,7 +45,6 @@ public actor WeatherService {
         }
         
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .formatted(DateFormatter.apiDateFormatter)
         let weatherResponse = try decoder.decode(OpenMeteoResponse.self, from: data)
         
         return parseHourlyForecasts(from: weatherResponse)
@@ -154,7 +153,6 @@ public actor WeatherService {
         }
         
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .formatted(DateFormatter.apiDateFormatter)
         
         // Handle both single and multiple location responses
         if coordinates.count == 1 {
@@ -178,20 +176,20 @@ public actor WeatherService {
     
     public nonisolated func parseHourlyForecasts(from response: OpenMeteoResponse) -> [HourlyForecast] {
         let hourly = response.hourly
-        let utcOffsetSeconds = response.utcOffsetSeconds
+        let timeZone = response.timezone
+            .flatMap(TimeZone.init(identifier:))
+            ?? TimeZone(secondsFromGMT: response.utcOffsetSeconds)
+            ?? TimeZone(identifier: "UTC")!
+        let formatter = DateFormatter.openMeteoLocalDateFormatter(timeZone: timeZone)
         var forecasts: [HourlyForecast] = []
         
         for index in hourly.time.indices {
-            // The API returns times without timezone info, but they represent local time
-            // The DateFormatter parses them as UTC, so we need to apply the NEGATIVE offset
-            // to shift from UTC back to the correct local time
-            // Example: "2026-02-19T00:00" parsed as UTC is midnight UTC (8am LA time)
-            // With offset -28800 (-8h), we subtract (-8h) = add 8h to get to midnight LA time
-            let utcDate = hourly.time[index]
-            let localDate = utcDate.addingTimeInterval(TimeInterval(-utcOffsetSeconds))
+            guard let date = formatter.date(from: hourly.time[index]) else {
+                continue
+            }
             
             let forecast = HourlyForecast(
-                time: localDate,
+                time: date,
                 cloudCover: hourly.cloudcover[safe: index] ?? 0,
                 humidity: hourly.relativehumidity2M[safe: index] ?? 0,
                 windSpeed: hourly.windspeed10M[safe: index] ?? 0,
@@ -220,21 +218,24 @@ public enum WeatherError: Error {
 
 public struct OpenMeteoResponse: Codable {
     public let utcOffsetSeconds: Int
+    public let timezone: String?
     public let hourly: HourlyData
     
     public enum CodingKeys: String, CodingKey {
         case utcOffsetSeconds = "utc_offset_seconds"
+        case timezone
         case hourly
     }
     
-    public init(utcOffsetSeconds: Int, hourly: HourlyData) {
+    public init(utcOffsetSeconds: Int, timezone: String? = nil, hourly: HourlyData) {
         self.utcOffsetSeconds = utcOffsetSeconds
+        self.timezone = timezone
         self.hourly = hourly
     }
 }
 
 public struct HourlyData: Codable {
-    public let time: [Date]
+    public let time: [String]
     public let cloudcover: [Int]
     public let cloudcoverLow: [Int]?
     public let relativehumidity2M: [Int]
@@ -259,7 +260,7 @@ public struct HourlyData: Codable {
     }
     
     public init(
-        time: [Date],
+        time: [String],
         cloudcover: [Int],
         cloudcoverLow: [Int]?,
         relativehumidity2M: [Int],
@@ -326,10 +327,12 @@ extension JSONDecoder {
 }
 
 extension DateFormatter {
-    public static let apiDateFormatter: DateFormatter = {
+    public static func openMeteoLocalDateFormatter(timeZone: TimeZone) -> DateFormatter {
         let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
-        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.timeZone = timeZone
         return formatter
-    }()
+    }
 }

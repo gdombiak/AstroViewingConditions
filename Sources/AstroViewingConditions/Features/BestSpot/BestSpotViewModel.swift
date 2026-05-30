@@ -25,7 +25,7 @@ public class BestSpotViewModel {
         BestSpotSettings.gridSpacing
     }
     
-    public init(fogScoreCalculator: @escaping (HourlyForecast) -> FogScore = FogCalculator.calculate) {
+    public init(fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate) {
         self.searcher = BestSpotSearcher(fogScoreCalculator: fogScoreCalculator)
     }
     
@@ -39,10 +39,11 @@ public class BestSpotViewModel {
         error = nil
         searchProgress = 0
         result = nil
+        let cachedCenter = CachedLocation(from: center)
         
         do {
             let searchResult = try await searcher.findBestSpots(
-                around: center,
+                around: cachedCenter,
                 radiusMiles: searchRadius,
                 spacingMiles: gridSpacing,
                 for: date,

@@ -28,7 +28,19 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
     static let shared = WatchConnectivityManager()
     
     private var delegateQueue: [WatchConnectivityManagerDelegate] = []
-    private let continuationQueue = DispatchQueue(label: "com.astroviewing.conditions.watchconnectivity.continuations")
+    private let continuationQueueKey = DispatchSpecificKey<Void>()
+    private lazy var continuationQueue: DispatchQueue = {
+        let queue = DispatchQueue(label: "com.astroviewing.conditions.watchconnectivity.continuations")
+        queue.setSpecific(key: continuationQueueKey, value: ())
+        return queue
+    }()
+    
+    private func performContinuationAccess<T>(_ work: () -> T) -> T {
+        if DispatchQueue.getSpecific(key: continuationQueueKey) != nil {
+            return work()
+        }
+        return continuationQueue.sync(execute: work)
+    }
     
     func addDelegate(_ delegate: WatchConnectivityManagerDelegate) {
         delegateQueue.append(delegate)
@@ -62,7 +74,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         
         return try await withCheckedThrowingContinuation { continuation in
             let id = UUID()
-            continuationQueue.sync {
+            performContinuationAccess {
                 locationContinuations[id] = continuation
             }
             
@@ -89,7 +101,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         
         return try await withCheckedThrowingContinuation { continuation in
             let id = UUID()
-            continuationQueue.sync {
+            performContinuationAccess {
                 conditionsContinuations[id] = continuation
             }
             

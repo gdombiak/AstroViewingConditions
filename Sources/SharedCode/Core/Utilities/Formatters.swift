@@ -1,6 +1,35 @@
 import Foundation
 
 public struct DateFormatters {
+    private final class TimeZoneTimeFormatterCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var formatters: [String: DateFormatter] = [:]
+        
+        func string(from date: Date, in timeZone: TimeZone?) -> String {
+            let resolvedTimeZone = timeZone ?? TimeZone(identifier: "UTC")!
+            let key = resolvedTimeZone.identifier
+            
+            lock.lock()
+            defer { lock.unlock() }
+            
+            let formatter: DateFormatter
+            if let cachedFormatter = formatters[key] {
+                formatter = cachedFormatter
+            } else {
+                let newFormatter = DateFormatter()
+                newFormatter.timeStyle = .short
+                newFormatter.dateStyle = .none
+                newFormatter.timeZone = resolvedTimeZone
+                formatters[key] = newFormatter
+                formatter = newFormatter
+            }
+            
+            return formatter.string(from: date)
+        }
+    }
+    
+    private static let timeZoneTimeFormatterCache = TimeZoneTimeFormatterCache()
+    
     public static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
@@ -26,11 +55,7 @@ public struct DateFormatters {
     }
     
     public static func formatTime(_ date: Date, in timeZone: TimeZone?) -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        formatter.dateStyle = .none
-        formatter.timeZone = timeZone ?? TimeZone(identifier: "UTC")
-        return formatter.string(from: date)
+        timeZoneTimeFormatterCache.string(from: date, in: timeZone)
     }
     
     public static func formatShortDate(_ date: Date) -> String {

@@ -277,8 +277,8 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
         
         public var emoji: String {
             switch self {
-            case .excellent: return "🥉"
-            case .good: return "🏅"
+            case .excellent: return "🥇"
+            case .good: return "🥈"
             case .fair: return "⚠️"
             case .poor: return "❌"
             }
@@ -467,5 +467,19 @@ extension NightQualityAssessment {
         case 50..<75: return .orange
         default: return .red
         }
+    }
+}
+
+public enum ConditionColorPalette {
+    public static func astronomyRiskBackground(for percentage: Int) -> Color {
+        let coverage = Double(min(max(percentage, 0), 100)) / 100.0
+        let red = 10 + (230 * coverage)
+        let green = 20 + (220 * coverage)
+        let blue = 80 + (155 * coverage)
+        return Color(red: red / 255, green: green / 255, blue: blue / 255)
+    }
+    
+    public static func astronomyRiskText(for percentage: Int) -> Color {
+        percentage > 60 ? .black : .white
     }
 }
