@@ -52,6 +52,23 @@ final class ISSServiceTests: XCTestCase {
     }
     """
     
+    func testVisualPassesURLEncodesAPIKey() throws {
+        let url = try XCTUnwrap(ISSService.visualPassesURL(
+            latitude: 45.5,
+            longitude: -122.7,
+            altitude: 12.9,
+            days: 5,
+            minVisibility: 120,
+            apiKey: "abc+123/==&space key"
+        ))
+        
+        XCTAssertEqual(url.scheme, "https")
+        XCTAssertEqual(url.host, "api.n2yo.com")
+        XCTAssertEqual(url.path, "/rest/v1/satellite/visualpasses/25544/45.5/-122.7/12/5/120")
+        XCTAssertTrue(url.absoluteString.contains("apiKey=abc%2B123%2F%3D%3D%26space%20key"))
+        XCTAssertEqual(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first?.value, "abc+123/==&space key")
+    }
+    
     func testISSPassParsing() throws {
         let data = mockISSResponse.data(using: .utf8)!
         let decoder = JSONDecoder()

@@ -5,9 +5,34 @@ public actor ISSService {
     private let baseURL = "https://api.n2yo.com/rest/v1/satellite"
     private let issNoradId = 25544
     private let apiKey: String
+    private static let apiKeyQueryValueAllowed: CharacterSet = {
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: ":#[]@!$&'()*+,;=/?")
+        return allowed
+    }()
     
     public init(apiKey: String) {
         self.apiKey = apiKey
+    }
+    
+    public static func visualPassesURL(
+        baseURL: String = "https://api.n2yo.com/rest/v1/satellite",
+        noradId: Int = 25544,
+        latitude: Double,
+        longitude: Double,
+        altitude: Double = 0,
+        days: Int = 10,
+        minVisibility: Int = 60,
+        apiKey: String
+    ) -> URL? {
+        guard let encodedAPIKey = apiKey.addingPercentEncoding(withAllowedCharacters: apiKeyQueryValueAllowed) else {
+            return nil
+        }
+        
+        var components = URLComponents(string: baseURL)
+        components?.path += "/visualpasses/\(noradId)/\(latitude)/\(longitude)/\(Int(altitude))/\(days)/\(minVisibility)/"
+        components?.percentEncodedQuery = "apiKey=\(encodedAPIKey)"
+        return components?.url
     }
     
     public func fetchPasses(
@@ -18,9 +43,16 @@ public actor ISSService {
         minVisibility: Int = 60
     ) async throws -> [ISSPass] {
         // N2YO endpoint: /visualpasses/{id}/{observer_lat}/{observer_lng}/{observer_alt}/{days}/{min_visibility}/
-        let urlString = "\(baseURL)/visualpasses/\(issNoradId)/\(latitude)/\(longitude)/\(Int(altitude))/\(days)/\(minVisibility)/&apiKey=\(apiKey)"
-        
-        guard let url = URL(string: urlString) else {
+        guard let url = Self.visualPassesURL(
+            baseURL: baseURL,
+            noradId: issNoradId,
+            latitude: latitude,
+            longitude: longitude,
+            altitude: altitude,
+            days: days,
+            minVisibility: minVisibility,
+            apiKey: apiKey
+        ) else {
             throw ISSError.invalidURL
         }
         

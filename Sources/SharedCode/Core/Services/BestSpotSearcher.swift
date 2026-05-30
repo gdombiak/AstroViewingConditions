@@ -86,12 +86,16 @@ public final class BestSpotSearcher: Sendable {
             throw BestSpotSearchError.noLocationsFound
         }
         
+        let tz = await LocationTimeZoneResolver.resolve(latitude: center.latitude, longitude: center.longitude)
+        let calendar = LocationTimeZoneResolver.calendar(for: tz)
+        let forecastDays = Self.forecastDaysNeeded(for: date, calendar: calendar)
+        
         // Fetch weather for all grid points in one API call
         progressHandler?(0.2)
         let coordinates = gridPoints.map { $0.coordinate }
         let weatherData = try await weatherService.fetchForecastForMultipleLocations(
             coordinates: coordinates,
-            days: 3
+            days: forecastDays
         )
         
         guard !weatherData.isEmpty else {
@@ -101,8 +105,6 @@ public final class BestSpotSearcher: Sendable {
         progressHandler?(0.4)
         
         // Calculate sun and moon data for the date (same for all points in the area)
-        let tz = await LocationTimeZoneResolver.resolve(latitude: center.latitude, longitude: center.longitude)
-        let calendar = LocationTimeZoneResolver.calendar(for: tz)
         let startOfDay = calendar.startOfDay(for: date)
         
         let sunEventsToday = await astronomyService.calculateSunEvents(
@@ -257,6 +259,14 @@ public final class BestSpotSearcher: Sendable {
         }
         
         return parts.joined(separator: ", ")
+    }
+    
+    static func forecastDaysNeeded(for date: Date, calendar: Calendar, referenceDate: Date = Date()) -> Int {
+        let referenceStart = calendar.startOfDay(for: referenceDate)
+        let searchStart = calendar.startOfDay(for: date)
+        let dayOffset = calendar.dateComponents([.day], from: referenceStart, to: searchStart).day ?? 0
+        
+        return max(2, dayOffset + 2)
     }
 #endif
     

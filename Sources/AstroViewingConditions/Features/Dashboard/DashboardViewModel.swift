@@ -74,10 +74,9 @@ public class DashboardViewModel {
     
     public var currentHourlyForecasts: [HourlyForecast] {
         guard let conditions = viewingConditions,
-              !conditions.hourlyForecasts.isEmpty else { return [] }
+              let firstForecastTime = conditions.hourlyForecasts.first?.time else { return [] }
         
         let calendar = locationCalendar
-        let firstForecastTime = conditions.hourlyForecasts.first!.time
         let startOfFirstDay = calendar.startOfDay(for: firstForecastTime)
         let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay)!
         let endOfSelectedDay = calendar.date(byAdding: .day, value: 1, to: startOfSelectedDay)!
@@ -178,10 +177,9 @@ public class DashboardViewModel {
     
     private var nightTimeForecasts: [HourlyForecast] {
         guard let conditions = viewingConditions,
-              !conditions.hourlyForecasts.isEmpty else { return [] }
+              let firstForecastTime = conditions.hourlyForecasts.first?.time else { return [] }
         
         let calendar = locationCalendar
-        let firstForecastTime = conditions.hourlyForecasts.first!.time
         let startOfFirstDay = calendar.startOfDay(for: firstForecastTime)
         let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay)!
         let endOfFollowingDay = calendar.date(byAdding: .day, value: 3, to: startOfSelectedDay)!

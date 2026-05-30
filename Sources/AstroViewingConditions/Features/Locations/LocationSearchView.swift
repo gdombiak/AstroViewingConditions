@@ -14,6 +14,7 @@ public struct LocationSearchView: View {
     @State private var showingMapPicker = false
     @State private var manualLocationName = ""
     @State private var manualCoordinates = ""
+    @State private var searchTask: Task<Void, Never>?
     
     private let weatherService = WeatherService()
     
@@ -26,8 +27,11 @@ public struct LocationSearchView: View {
                 Section {
                     TextField("Search for a city...", text: $searchText)
                         .autocorrectionDisabled()
+                        .onChange(of: searchText) { _, _ in
+                            scheduleSearch()
+                        }
                         .onSubmit {
-                            performSearch()
+                            scheduleSearch(debounce: false)
                         }
                     
                     if isSearching {
@@ -108,23 +112,54 @@ public struct LocationSearchView: View {
                 }
             }
         }
+        .onDisappear {
+            searchTask?.cancel()
+        }
     }
     
-    private func performSearch() {
-        guard !searchText.isEmpty else { return }
+    private func scheduleSearch(debounce: Bool = true) {
+        searchTask?.cancel()
         
-        isSearching = true
-        searchError = nil
-        searchResults = []
-        
-        Task {
-            do {
-                let results = try await weatherService.searchLocations(query: searchText)
-                searchResults = results
-            } catch {
-                searchError = error
-            }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            searchResults = []
+            searchError = nil
             isSearching = false
+            return
+        }
+        
+        searchError = nil
+        isSearching = true
+        
+        searchTask = Task { @MainActor in
+            do {
+                if debounce {
+                    try await Task.sleep(nanoseconds: 350_000_000)
+                }
+                
+                let results = try await weatherService.searchLocations(query: query)
+                
+                guard !Task.isCancelled,
+                      query == searchText.trimmingCharacters(in: .whitespacesAndNewlines) else {
+                    return
+                }
+                
+                searchResults = results
+                isSearching = false
+            } catch is CancellationError {
+                if query == searchText.trimmingCharacters(in: .whitespacesAndNewlines) {
+                    isSearching = false
+                }
+            } catch {
+                guard !Task.isCancelled,
+                      query == searchText.trimmingCharacters(in: .whitespacesAndNewlines) else {
+                    return
+                }
+                
+                searchResults = []
+                searchError = error
+                isSearching = false
+            }
         }
     }
     

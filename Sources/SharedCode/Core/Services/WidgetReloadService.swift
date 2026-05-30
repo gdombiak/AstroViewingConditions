@@ -2,28 +2,27 @@ import Foundation
 import WidgetKit
 import SwiftUI
 
-public final class WidgetReloadService: @unchecked Sendable {
+@MainActor
+public final class WidgetReloadService {
     public static let shared = WidgetReloadService()
     
-    private var workItem: DispatchWorkItem?
+    private var reloadTask: Task<Void, Never>?
     private let debounceDelay: UInt64 = 1_000_000_000
-    private let reloadQueue = DispatchQueue(label: "com.astroviewing.widget.reload", qos: .utility)
     
     private init() {}
     
     public func scheduleReload() {
-        workItem?.cancel()
+        reloadTask?.cancel()
         
-        let newWorkItem = DispatchWorkItem { [weak self] in
-            self?.performReload()
+        reloadTask = Task { [debounceDelay] in
+            do {
+                try await Task.sleep(nanoseconds: debounceDelay)
+            } catch {
+                return
+            }
+            
+            WidgetCenter.shared.reloadTimelines(ofKind: "NightConditionsWidget")
+            WidgetCenter.shared.reloadTimelines(ofKind: "NightConditionsWatchWidget")
         }
-        
-        workItem = newWorkItem
-        reloadQueue.asyncAfter(deadline: .now() + .nanoseconds(Int(debounceDelay)), execute: newWorkItem)
-    }
-    
-    private func performReload() {
-        WidgetCenter.shared.reloadTimelines(ofKind: "NightConditionsWidget")
-        WidgetCenter.shared.reloadTimelines(ofKind: "NightConditionsWatchWidget")
     }
 }

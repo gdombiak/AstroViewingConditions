@@ -1,9 +1,38 @@
 import Foundation
 
 public struct DateFormatters {
-    private final class TimeZoneTimeFormatterCache: @unchecked Sendable {
+    private enum TimeZoneDateFormatterStyle: Sendable {
+        case time
+        case shortDate
+        case fullDate
+        
+        func makeFormatter(timeZone: TimeZone) -> DateFormatter {
+            let formatter = DateFormatter()
+            formatter.timeZone = timeZone
+            
+            switch self {
+            case .time:
+                formatter.timeStyle = .short
+                formatter.dateStyle = .none
+            case .shortDate:
+                formatter.dateFormat = "EEE, MMM d"
+            case .fullDate:
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .short
+            }
+            
+            return formatter
+        }
+    }
+    
+    private final class TimeZoneDateFormatterCache: @unchecked Sendable {
         private let lock = NSLock()
         private var formatters: [String: DateFormatter] = [:]
+        private let style: TimeZoneDateFormatterStyle
+        
+        init(style: TimeZoneDateFormatterStyle) {
+            self.style = style
+        }
         
         func string(from date: Date, in timeZone: TimeZone?) -> String {
             let resolvedTimeZone = timeZone ?? TimeZone(identifier: "UTC")!
@@ -16,10 +45,7 @@ public struct DateFormatters {
             if let cachedFormatter = formatters[key] {
                 formatter = cachedFormatter
             } else {
-                let newFormatter = DateFormatter()
-                newFormatter.timeStyle = .short
-                newFormatter.dateStyle = .none
-                newFormatter.timeZone = resolvedTimeZone
+                let newFormatter = style.makeFormatter(timeZone: resolvedTimeZone)
                 formatters[key] = newFormatter
                 formatter = newFormatter
             }
@@ -28,7 +54,9 @@ public struct DateFormatters {
         }
     }
     
-    private static let timeZoneTimeFormatterCache = TimeZoneTimeFormatterCache()
+    private static let timeZoneTimeFormatterCache = TimeZoneDateFormatterCache(style: .time)
+    private static let timeZoneShortDateFormatterCache = TimeZoneDateFormatterCache(style: .shortDate)
+    private static let timeZoneFullDateFormatterCache = TimeZoneDateFormatterCache(style: .fullDate)
     
     public static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -63,10 +91,7 @@ public struct DateFormatters {
     }
     
     public static func formatShortDate(_ date: Date, in timeZone: TimeZone?) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE, MMM d"
-        formatter.timeZone = timeZone ?? TimeZone(identifier: "UTC")
-        return formatter.string(from: date)
+        timeZoneShortDateFormatterCache.string(from: date, in: timeZone)
     }
     
     public static func formatFullDate(_ date: Date) -> String {
@@ -74,17 +99,17 @@ public struct DateFormatters {
     }
     
     public static func formatFullDate(_ date: Date, in timeZone: TimeZone?) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        formatter.timeZone = timeZone ?? TimeZone(identifier: "UTC")
-        return formatter.string(from: date)
+        timeZoneFullDateFormatterCache.string(from: date, in: timeZone)
     }
     
     public static func timeAgo(from date: Date) -> String {
+        timeAgo(from: date, relativeTo: Date())
+    }
+    
+    public static func timeAgo(from date: Date, relativeTo referenceDate: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
-        return formatter.localizedString(for: date, relativeTo: Date())
+        return formatter.localizedString(for: date, relativeTo: referenceDate)
     }
     
     public static func formatDuration(_ seconds: TimeInterval) -> String {

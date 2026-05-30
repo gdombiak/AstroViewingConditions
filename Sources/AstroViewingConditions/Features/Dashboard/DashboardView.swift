@@ -234,11 +234,10 @@ public struct DashboardView: View {
                 }
                 
                 if let fetchedAt = viewModel.viewingConditions?.fetchedAt {
-                    Text("Last updated: \(DateFormatters.timeAgo(from: fetchedAt))")
+                    Text("Last updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: lastActiveCheck))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.top)
-                        .id(lastActiveCheck)
                 }
             }
             .padding()
