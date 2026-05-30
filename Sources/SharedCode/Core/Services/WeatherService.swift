@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let weatherLogger = Logger(subsystem: "com.astroviewing.conditions", category: "WeatherService")
 
 public actor WeatherService {
     private let baseURL = "https://api.open-meteo.com/v1/forecast"
@@ -185,6 +188,7 @@ public actor WeatherService {
         
         for index in hourly.time.indices {
             guard let date = formatter.date(from: hourly.time[index]) else {
+                weatherLogger.warning("Skipping hourly forecast with malformed time: \(hourly.time[index], privacy: .public)")
                 continue
             }
             

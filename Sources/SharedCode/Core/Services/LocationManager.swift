@@ -159,7 +159,7 @@ public class LocationManager: NSObject {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 self.authContinuation = continuation
                 
-                Task {
+                Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 20_000_000_000)
                     if let cont = self.authContinuation {
                         self.authContinuation = nil
@@ -188,7 +188,7 @@ public class LocationManager: NSObject {
             self.locationContinuation = continuation
             self.manager.startUpdatingLocation()
             
-            self.timeoutTask = Task { [weak self] in
+            self.timeoutTask = Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(10))
                 guard let self = self else { return }
                 

@@ -77,28 +77,52 @@ public struct AppGroupStorage: Sendable {
         return (selected.latitude, selected.longitude, selected.name)
     }
     
-    public static func saveWidgetConditions(_ conditions: ViewingConditions) {
-        performFileAccess {
-            guard let baseURL = containerURL else {
-                logger.error("App Group container not available")
-                return
-            }
-            
-            do {
-                let data = try JSONEncoder().encode(conditions)
-                let fileURL = baseURL.appendingPathComponent("widgetConditions.json")
-                try data.write(to: fileURL, options: .atomic)
-                
+    private static func writeWidgetConditions(_ conditions: ViewingConditions) -> Bool {
+        guard let baseURL = containerURL else {
+            logger.error("App Group container not available")
+            return false
+        }
+
+        do {
+            let data = try JSONEncoder().encode(conditions)
+            let fileURL = baseURL.appendingPathComponent("widgetConditions.json")
+            try data.write(to: fileURL, options: .atomic)
+            return true
+        } catch {
+            logger.error("Failed to save widget conditions: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private static func postWidgetConditionsDidChange() {
+        if Thread.isMainThread {
+            NotificationCenter.default.post(name: .widgetConditionsDidChange, object: nil)
+        } else {
+            DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .widgetConditionsDidChange, object: nil)
-            } catch {
-                logger.error("Failed to save widget conditions: \(error.localizedDescription)")
             }
         }
     }
 
+    public static func saveWidgetConditions(_ conditions: ViewingConditions) {
+        let didSave = performFileAccess {
+            writeWidgetConditions(conditions)
+        }
+
+        if didSave {
+            postWidgetConditionsDidChange()
+        }
+    }
+
     public static func saveWidgetConditionsAsync(_ conditions: ViewingConditions) async {
-        await performFileAccessAsync {
-            saveWidgetConditions(conditions)
+        let didSave = await performFileAccessAsync {
+            writeWidgetConditions(conditions)
+        }
+
+        if didSave {
+            await MainActor.run {
+                NotificationCenter.default.post(name: .widgetConditionsDidChange, object: nil)
+            }
         }
     }
 
