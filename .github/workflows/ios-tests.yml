@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     name: Run Tests
-    runs-on: macos-latest
+    runs-on: macos-26
     
     steps:
       - name: Checkout
@@ -23,6 +23,74 @@ jobs:
       
       - name: Show Xcode version
         run: xcodebuild -version
+
+      - name: Select Test Simulator
+        id: simulator
+        run: |
+          set -euo pipefail
+
+          xcrun simctl list devices available
+
+          simulator_id="$(
+            ruby -rjson -ropen3 -e '
+          devices_by_runtime = JSON.parse(`xcrun simctl list -j devices available`)["devices"]
+
+          devices = devices_by_runtime.flat_map do |runtime, runtime_devices|
+            next [] unless runtime.include?("iOS")
+
+            runtime_devices.map { |device| device.merge("runtime" => runtime) }
+          end
+
+          preferred_devices = [
+            /\AiPhone 17 Pro\z/,
+            /\AiPhone 16 Pro\z/,
+            /\AiPhone 17\z/,
+            /\AiPhone 16\z/,
+            /\AiPhone/
+          ]
+
+          selected_device = preferred_devices.lazy
+            .map { |pattern| devices.find { |device| device["name"].match?(pattern) } }
+            .find(&:itself)
+
+          if selected_device
+            puts selected_device["udid"]
+            exit
+          end
+
+          runtimes = JSON.parse(`xcrun simctl list -j runtimes available`)["runtimes"]
+            .select { |runtime| runtime["platform"] == "iOS" && runtime["isAvailable"] != false }
+            .sort_by { |runtime| Gem::Version.new(runtime["version"]) }
+            .reverse
+
+          device_types = JSON.parse(`xcrun simctl list -j devicetypes`)["devicetypes"]
+          preferred_types = preferred_devices
+            .filter_map { |pattern| device_types.find { |type| type["name"].match?(pattern) } }
+
+          runtimes.each do |runtime|
+            preferred_types.each do |device_type|
+              stdout, _stderr, status = Open3.capture3(
+                "xcrun",
+                "simctl",
+                "create",
+                "CI #{device_type["name"]}",
+                device_type["identifier"],
+                runtime["identifier"]
+              )
+
+              if status.success?
+                puts stdout.strip
+                exit
+              end
+            end
+          end
+
+          abort "No available iOS simulator devices or compatible iOS runtimes found"
+          '
+          )"
+
+          echo "id=${simulator_id}" >> "$GITHUB_OUTPUT"
+          echo "Selected simulator ${simulator_id}"
       
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -35,7 +103,7 @@ jobs:
           xcodebuild -project AstroViewingConditions.xcodeproj \
             -scheme AstroViewingConditions \
             -configuration Debug \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' \
             test
       
       - name: Upload Test Results
