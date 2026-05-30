@@ -87,7 +87,7 @@ public struct DashboardView: View {
                             Task {
                                 if let location = activeSavedLocation {
                                     await viewModel.refresh(for: location)
-                                    viewModel.saveToCache()
+                                    await viewModel.saveToCache()
                                 }
                             }
                         }) {
@@ -131,7 +131,7 @@ public struct DashboardView: View {
             }
             if let location = activeSavedLocation {
                 await viewModel.loadConditionsIfNeeded(for: location)
-                viewModel.saveToCache()
+                await viewModel.saveToCache()
             }
         }
         .onChange(of: locationManager.authorizationStatus) { _, _ in
@@ -139,7 +139,7 @@ public struct DashboardView: View {
                 await loadCurrentLocation()
                 if let location = activeSavedLocation {
                     await viewModel.loadConditionsIfNeeded(for: location)
-                    viewModel.saveToCache()
+                    await viewModel.saveToCache()
                 }
             }
         }
@@ -148,7 +148,7 @@ public struct DashboardView: View {
             Task {
                 if let location = activeSavedLocation {
                     await viewModel.refresh(for: location)
-                    viewModel.saveToCache()
+                    await viewModel.saveToCache()
                 }
             }
         }
@@ -158,7 +158,7 @@ public struct DashboardView: View {
                 Task {
                     if let savedLocation = activeSavedLocation {
                         await viewModel.loadConditionsIfNeeded(for: savedLocation)
-                        viewModel.saveToCache()
+                        await viewModel.saveToCache()
                     }
                 }
                 WatchConnectivityService.shared.sendSelectedLocationToWatch(location)
@@ -171,7 +171,7 @@ public struct DashboardView: View {
             if viewModel.isDataStale, let location = activeSavedLocation {
                 Task {
                     await viewModel.refresh(for: location)
-                    viewModel.saveToCache()
+                    await viewModel.saveToCache()
                 }
             }
         }
@@ -358,7 +358,7 @@ public struct DashboardView: View {
             
             if let location = currentLocation {
                 await viewModel.loadConditionsIfNeeded(for: location)
-                viewModel.saveToCache()
+                await viewModel.saveToCache()
             }
         } catch {
             viewModel.error = error

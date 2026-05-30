@@ -29,6 +29,17 @@ public struct AppGroupStorage: Sendable {
         }
         return fileQueue.sync(execute: work)
     }
+
+    private static func performFileAccessAsync<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
+        if DispatchQueue.getSpecific(key: fileQueueKey) != nil {
+            return work()
+        }
+        return await withCheckedContinuation { continuation in
+            fileQueue.async {
+                continuation.resume(returning: work())
+            }
+        }
+    }
     
     // MARK: - Selected Location (unified)
     
@@ -85,6 +96,12 @@ public struct AppGroupStorage: Sendable {
         }
     }
 
+    public static func saveWidgetConditionsAsync(_ conditions: ViewingConditions) async {
+        await performFileAccessAsync {
+            saveWidgetConditions(conditions)
+        }
+    }
+
     public static func loadWidgetConditions() -> ViewingConditions? {
         performFileAccess {
             guard let baseURL = containerURL else {
@@ -101,6 +118,12 @@ public struct AppGroupStorage: Sendable {
                 logger.warning("Failed to load widget conditions: \(error.localizedDescription)")
                 return nil
             }
+        }
+    }
+
+    public static func loadWidgetConditionsAsync() async -> ViewingConditions? {
+        await performFileAccessAsync {
+            loadWidgetConditions()
         }
     }
     
@@ -164,6 +187,12 @@ public struct AppGroupStorage: Sendable {
             }
         }
     }
+
+    public static func saveConditionsAsync(_ conditions: ViewingConditions, timestamp: Date = Date()) async {
+        await performFileAccessAsync {
+            saveConditions(conditions, timestamp: timestamp)
+        }
+    }
     
     public static func loadConditions() -> ViewingConditions? {
         performFileAccess {
@@ -181,6 +210,12 @@ public struct AppGroupStorage: Sendable {
                 logger.warning("Failed to load conditions: \(error.localizedDescription)")
                 return nil
             }
+        }
+    }
+
+    public static func loadConditionsAsync() async -> ViewingConditions? {
+        await performFileAccessAsync {
+            loadConditions()
         }
     }
     

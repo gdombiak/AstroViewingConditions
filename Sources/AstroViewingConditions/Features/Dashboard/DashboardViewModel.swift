@@ -296,17 +296,17 @@ public class DashboardViewModel {
         await loadConditions(for: location)
     }
     
-    public func saveToCache() {
+    public func saveToCache() async {
         guard let conditions = viewingConditions else { return }
-        cacheService.save(conditions)
-        AppGroupStorage.saveWidgetConditions(conditions)
+        await cacheService.saveAsync(conditions)
+        await AppGroupStorage.saveWidgetConditionsAsync(conditions)
         WatchConnectivityService.shared.sendConditionsToWatch(conditions)
         
         WidgetReloadService.shared.scheduleReload()
     }
     
-    public func loadFromCache() -> Bool {
-        guard let conditions = cacheService.load() else {
+    public func loadFromCache() async -> Bool {
+        guard let conditions = await cacheService.loadAsync() else {
             return false
         }
         
@@ -327,7 +327,7 @@ public class DashboardViewModel {
         let cachedLocation = CachedLocation(from: location)
         await resolveTimeZone(for: cachedLocation)
         
-        if let widgetConditions = AppGroupStorage.loadWidgetConditions(),
+        if let widgetConditions = await AppGroupStorage.loadWidgetConditionsAsync(),
            widgetConditions.fetchedAt.timeIntervalSinceNow > -3600,
            widgetConditions.location.latitude == location.latitude,
            widgetConditions.location.longitude == location.longitude {
@@ -336,16 +336,16 @@ public class DashboardViewModel {
             return
         }
 
-        let loadedFromCache = loadFromCache()
-        let cachedLocationMatches = cacheService.cachedLocationMatches(cachedLocation)
+        let loadedFromCache = await loadFromCache()
+        let cachedLocationMatches = await cacheService.cachedLocationMatchesAsync(cachedLocation)
 
         if shouldFetchFreshConditions || !cachedLocationMatches {
             await loadConditions(for: location)
-            saveToCache()
+            await saveToCache()
         } else if !loadedFromCache {
             viewingConditions = nil
             await loadConditions(for: location)
-            saveToCache()
+            await saveToCache()
         }
     }
 }
