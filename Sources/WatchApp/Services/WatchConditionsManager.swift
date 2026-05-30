@@ -68,8 +68,8 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     }
 
     private func loadCachedConditions() {
-        guard let cached = AppGroupStorage.loadConditionsWithTimestamp() else { return }
         Task {
+            guard let cached = await AppGroupStorage.loadConditionsWithTimestampAsync() else { return }
             let timeZone = await Self.resolveTimeZone(for: cached.conditions)
             await MainActor.run {
                 self.locationTimeZone = timeZone
@@ -79,9 +79,9 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     }
     
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveConditions conditions: ViewingConditions) {
-        AppGroupStorage.saveConditions(conditions)
         WidgetCenter.shared.reloadAllTimelines()
         Task {
+            await AppGroupStorage.saveConditionsAsync(conditions)
             let timeZone = await Self.resolveTimeZone(for: conditions)
             await MainActor.run {
                 self.locationTimeZone = timeZone
@@ -116,7 +116,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
                 self.error = nil
                 self.isLoading = false
             }
-            AppGroupStorage.saveConditions(conditions)
+            await AppGroupStorage.saveConditionsAsync(conditions)
             WidgetCenter.shared.reloadAllTimelines()
         } catch {
             print("WatchConditionsManager: Failed to refresh conditions: \(error)")

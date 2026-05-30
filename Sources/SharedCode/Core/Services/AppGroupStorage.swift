@@ -94,13 +94,26 @@ public struct AppGroupStorage: Sendable {
         }
     }
 
+    private static func readWidgetConditions() -> ViewingConditions? {
+        guard let baseURL = containerURL else {
+            logger.error("App Group container not available")
+            return nil
+        }
+
+        let fileURL = baseURL.appendingPathComponent("widgetConditions.json")
+
+        do {
+            let data = try Data(contentsOf: fileURL)
+            return try JSONDecoder().decode(ViewingConditions.self, from: data)
+        } catch {
+            logger.warning("Failed to load widget conditions: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     private static func postWidgetConditionsDidChange() {
-        if Thread.isMainThread {
+        DispatchQueue.main.async {
             NotificationCenter.default.post(name: .widgetConditionsDidChange, object: nil)
-        } else {
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(name: .widgetConditionsDidChange, object: nil)
-            }
         }
     }
 
@@ -128,26 +141,13 @@ public struct AppGroupStorage: Sendable {
 
     public static func loadWidgetConditions() -> ViewingConditions? {
         performFileAccess {
-            guard let baseURL = containerURL else {
-                logger.error("App Group container not available")
-                return nil
-            }
-            
-            let fileURL = baseURL.appendingPathComponent("widgetConditions.json")
-            
-            do {
-                let data = try Data(contentsOf: fileURL)
-                return try JSONDecoder().decode(ViewingConditions.self, from: data)
-            } catch {
-                logger.warning("Failed to load widget conditions: \(error.localizedDescription)")
-                return nil
-            }
+            readWidgetConditions()
         }
     }
 
     public static func loadWidgetConditionsAsync() async -> ViewingConditions? {
         await performFileAccessAsync {
-            loadWidgetConditions()
+            readWidgetConditions()
         }
     }
     
@@ -190,85 +190,117 @@ public struct AppGroupStorage: Sendable {
     }
     
     // MARK: - Conditions
+
+    private static func writeConditions(_ conditions: ViewingConditions, timestamp: Date) {
+        guard let baseURL = containerURL else {
+            logger.error("App Group container not available")
+            return
+        }
+
+        do {
+            let data = try JSONEncoder().encode(conditions)
+            let fileURL = baseURL.appendingPathComponent("conditions.json")
+            try data.write(to: fileURL, options: .atomic)
+
+            let tsData = try JSONEncoder().encode(timestamp)
+            let tsFileURL = baseURL.appendingPathComponent("conditionsTimestamp.json")
+            try tsData.write(to: tsFileURL, options: .atomic)
+        } catch {
+            logger.error("Failed to save conditions: \(error.localizedDescription)")
+        }
+    }
+
+    private static func readConditions() -> ViewingConditions? {
+        guard let baseURL = containerURL else {
+            logger.error("App Group container not available")
+            return nil
+        }
+
+        let fileURL = baseURL.appendingPathComponent("conditions.json")
+
+        do {
+            let data = try Data(contentsOf: fileURL)
+            return try JSONDecoder().decode(ViewingConditions.self, from: data)
+        } catch {
+            logger.warning("Failed to load conditions: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private static func readConditionsTimestamp() -> Date? {
+        guard let baseURL = containerURL else {
+            logger.error("App Group container not available")
+            return nil
+        }
+
+        let fileURL = baseURL.appendingPathComponent("conditionsTimestamp.json")
+
+        do {
+            let data = try Data(contentsOf: fileURL)
+            return try JSONDecoder().decode(Date.self, from: data)
+        } catch {
+            return nil
+        }
+    }
     
     public static func saveConditions(_ conditions: ViewingConditions, timestamp: Date = Date()) {
         performFileAccess {
-            guard let baseURL = containerURL else {
-                logger.error("App Group container not available")
-                return
-            }
-            
-            do {
-                let data = try JSONEncoder().encode(conditions)
-                let fileURL = baseURL.appendingPathComponent("conditions.json")
-                try data.write(to: fileURL, options: .atomic)
-                
-                let tsData = try JSONEncoder().encode(timestamp)
-                let tsFileURL = baseURL.appendingPathComponent("conditionsTimestamp.json")
-                try tsData.write(to: tsFileURL, options: .atomic)
-            } catch {
-                logger.error("Failed to save conditions: \(error.localizedDescription)")
-            }
+            writeConditions(conditions, timestamp: timestamp)
         }
     }
 
     public static func saveConditionsAsync(_ conditions: ViewingConditions, timestamp: Date = Date()) async {
         await performFileAccessAsync {
-            saveConditions(conditions, timestamp: timestamp)
+            writeConditions(conditions, timestamp: timestamp)
         }
     }
     
     public static func loadConditions() -> ViewingConditions? {
         performFileAccess {
-            guard let baseURL = containerURL else {
-                logger.error("App Group container not available")
-                return nil
-            }
-            
-            let fileURL = baseURL.appendingPathComponent("conditions.json")
-            
-            do {
-                let data = try Data(contentsOf: fileURL)
-                return try JSONDecoder().decode(ViewingConditions.self, from: data)
-            } catch {
-                logger.warning("Failed to load conditions: \(error.localizedDescription)")
-                return nil
-            }
+            readConditions()
         }
     }
 
     public static func loadConditionsAsync() async -> ViewingConditions? {
         await performFileAccessAsync {
-            loadConditions()
+            readConditions()
         }
     }
     
     public static func loadConditionsTimestamp() -> Date? {
         performFileAccess {
-            guard let baseURL = containerURL else {
-                logger.error("App Group container not available")
-                return nil
-            }
-            
-            let fileURL = baseURL.appendingPathComponent("conditionsTimestamp.json")
-            
-            do {
-                let data = try Data(contentsOf: fileURL)
-                return try JSONDecoder().decode(Date.self, from: data)
-            } catch {
-                return nil
-            }
+            readConditionsTimestamp()
+        }
+    }
+
+    public static func loadConditionsTimestampAsync() async -> Date? {
+        await performFileAccessAsync {
+            readConditionsTimestamp()
         }
     }
     
     public static func loadConditionsWithTimestamp() -> (conditions: ViewingConditions, timestamp: Date, isStale: Bool)? {
-        guard let conditions = loadConditions(),
-              let timestamp = loadConditionsTimestamp() else {
-            return nil
+        performFileAccess {
+            guard let conditions = readConditions(),
+                  let timestamp = readConditionsTimestamp() else {
+                return nil
+            }
+            
+            let isStale = Date().timeIntervalSince(timestamp) > 3600
+            return (conditions, timestamp, isStale)
         }
-        
-        let isStale = Date().timeIntervalSince(timestamp) > 3600
-        return (conditions, timestamp, isStale)
+    }
+
+    public static func loadConditionsWithTimestampAsync() async -> (conditions: ViewingConditions, timestamp: Date, isStale: Bool)? {
+        await performFileAccessAsync {
+            guard let conditions = readConditions(),
+                  let timestamp = readConditionsTimestamp() else {
+                return nil
+            }
+
+            let isStale = Date().timeIntervalSince(timestamp) > 3600
+            return (conditions, timestamp, isStale)
+        }
     }
     
     public static func clearConditions() {

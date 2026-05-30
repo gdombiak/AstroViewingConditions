@@ -44,7 +44,7 @@ struct Provider: TimelineProvider {
             widgetLogger.info("Fetched \(forecasts.count) hourly forecasts from API")
         } catch {
             widgetLogger.error("Failed to fetch weather forecast: \(error.localizedDescription)")
-            if let cached = AppGroupStorage.loadWidgetConditions() {
+            if let cached = await AppGroupStorage.loadWidgetConditionsAsync() {
                 widgetLogger.info("Falling back to cached weather data")
                 forecasts = cached.hourlyForecasts
             } else {
@@ -99,7 +99,7 @@ struct Provider: TimelineProvider {
             fogScore: FogCalculator.calculateCurrent(from: forecasts),
             timeZoneIdentifier: tz.identifier
         )
-        AppGroupStorage.saveWidgetConditions(conditions)
+        await AppGroupStorage.saveWidgetConditionsAsync(conditions)
 
         return NightConditionsEntry(date: Date(), assessment: assessment, timeZone: tz)
     }
