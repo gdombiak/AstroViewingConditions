@@ -56,6 +56,31 @@ public struct ViewingConditions: Sendable, Codable {
     }
 }
 
+public extension ViewingConditions {
+    func limitedToTonightCache() -> ViewingConditions {
+        let timeZone = timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
+            ?? LocationTimeZoneResolver.approximate(longitude: location.longitude)
+        let calendar = LocationTimeZoneResolver.calendar(for: timeZone)
+        let referenceDate = hourlyForecasts.first?.time ?? fetchedAt
+        let startOfToday = calendar.startOfDay(for: referenceDate)
+        let endOfTomorrow = calendar.date(byAdding: .day, value: 2, to: startOfToday) ?? referenceDate
+        let limitedForecasts = hourlyForecasts.filter { forecast in
+            forecast.time >= startOfToday && forecast.time < endOfTomorrow
+        }
+
+        return ViewingConditions(
+            fetchedAt: fetchedAt,
+            location: location,
+            hourlyForecasts: limitedForecasts,
+            dailySunEvents: Array(dailySunEvents.prefix(2)),
+            dailyMoonInfo: Array(dailyMoonInfo.prefix(2)),
+            issPasses: [],
+            fogScore: fogScore,
+            timeZoneIdentifier: timeZoneIdentifier
+        )
+    }
+}
+
 // MARK: - Hourly Forecast
 
 public struct HourlyForecast: Identifiable, Sendable, Codable {

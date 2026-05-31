@@ -21,7 +21,7 @@ public class DashboardViewModel {
     private var apiKey: String
     public private(set) var locationTimeZone: TimeZone?
     
-    private static let staleThresholdSeconds: TimeInterval = 6 * 60 * 60 // 6 hours
+    private static let staleThresholdSeconds: TimeInterval = 60 * 60 // 1 hour
     
     public var hasISSConfigured: Bool {
         !apiKey.isEmpty
@@ -296,9 +296,10 @@ public class DashboardViewModel {
     
     public func saveToCache() async {
         guard let conditions = viewingConditions else { return }
+        let companionConditions = conditions.limitedToTonightCache()
         await cacheService.saveAsync(conditions)
-        await AppGroupStorage.saveWidgetConditionsAsync(conditions)
-        WatchConnectivityService.shared.sendConditionsToWatch(conditions)
+        await AppGroupStorage.saveWidgetConditionsAsync(companionConditions)
+        WatchConnectivityService.shared.sendConditionsToWatch(companionConditions)
         
         WidgetReloadService.shared.scheduleReload()
     }
@@ -324,15 +325,6 @@ public class DashboardViewModel {
     public func loadConditionsIfNeeded(for location: SavedLocation) async {
         let cachedLocation = CachedLocation(from: location)
         await resolveTimeZone(for: cachedLocation)
-        
-        if let widgetConditions = await AppGroupStorage.loadWidgetConditionsAsync(),
-           widgetConditions.fetchedAt.timeIntervalSinceNow > -3600,
-           widgetConditions.location.latitude == location.latitude,
-           widgetConditions.location.longitude == location.longitude {
-            self.viewingConditions = widgetConditions
-            self.lastSuccessfulFetch = widgetConditions.fetchedAt
-            return
-        }
 
         let loadedFromCache = await loadFromCache()
         let cachedLocationMatches = await cacheService.cachedLocationMatchesAsync(cachedLocation)
