@@ -2,7 +2,8 @@ import SharedCode
 import SwiftUI
 import WidgetKit
 
-final class WidgetReloadListener: ObservableObject, @unchecked Sendable {
+@MainActor
+final class WidgetReloadListener: ObservableObject {
     @Published private var debounceWorkItem: DispatchWorkItem?
     let debounceDelay: UInt64 = 500_000_000 // 0.5 seconds
     
@@ -16,7 +17,9 @@ final class WidgetReloadListener: ObservableObject, @unchecked Sendable {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.onWidgetDataChanged()
+            Task { @MainActor in
+                self?.onWidgetDataChanged()
+            }
         }
         
         NotificationCenter.default.addObserver(
@@ -24,7 +27,9 @@ final class WidgetReloadListener: ObservableObject, @unchecked Sendable {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.onWidgetDataChanged()
+            Task { @MainActor in
+                self?.onWidgetDataChanged()
+            }
         }
     }
     

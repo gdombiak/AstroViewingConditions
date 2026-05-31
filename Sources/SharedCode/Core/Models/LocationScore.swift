@@ -33,11 +33,7 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
     }
     
     public var distanceString: String {
-        if point.distanceMiles < 1 {
-            return String(format: "%.1f mi", point.distanceMiles)
-        } else {
-            return String(format: "%.1f mi", point.distanceMiles)
-        }
+        String(format: "%.1f mi", point.distanceMiles)
     }
     
     public var bearingString: String {

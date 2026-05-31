@@ -24,10 +24,14 @@ protocol WatchConnectivityManagerDelegate: AnyObject {
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveUnitSystem unitSystem: UnitSystem)
 }
 
+private struct WeakWatchConnectivityDelegate {
+    weak var value: WatchConnectivityManagerDelegate?
+}
+
 class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable {
     static let shared = WatchConnectivityManager()
     
-    private var delegateQueue: [WatchConnectivityManagerDelegate] = []
+    private var delegates: [WeakWatchConnectivityDelegate] = []
     private let continuationQueueKey = DispatchSpecificKey<Void>()
     private lazy var continuationQueue: DispatchQueue = {
         let queue = DispatchQueue(label: "com.astroviewing.conditions.watchconnectivity.continuations")
@@ -43,17 +47,24 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
     }
     
     func addDelegate(_ delegate: WatchConnectivityManagerDelegate) {
-        delegateQueue.append(delegate)
+        removeReleasedDelegates()
+        guard !delegates.contains(where: { $0.value === delegate }) else { return }
+        delegates.append(WeakWatchConnectivityDelegate(value: delegate))
     }
     
     func removeDelegate(_ delegate: WatchConnectivityManagerDelegate) {
-        delegateQueue.removeAll { $0 === delegate }
+        delegates.removeAll { $0.value == nil || $0.value === delegate }
     }
     
     private func notifyDelegates(_ block: (WatchConnectivityManagerDelegate) -> Void) {
-        for delegate in delegateQueue {
+        removeReleasedDelegates()
+        for delegate in delegates.compactMap(\.value) {
             block(delegate)
         }
+    }
+
+    private func removeReleasedDelegates() {
+        delegates.removeAll { $0.value == nil }
     }
     
     private var locationContinuations: [UUID: CheckedContinuation<([CachedLocation], SelectedLocation?), Error>] = [:]

@@ -63,7 +63,8 @@ public final class BestSpotSearcher: Sendable {
             progressHandler: progressHandler
         )
     }
-    
+#endif
+
     public func findBestSpots(
         around center: CachedLocation,
         radiusMiles: Double = 30,
@@ -268,7 +269,6 @@ public final class BestSpotSearcher: Sendable {
         
         return max(2, dayOffset + 2)
     }
-#endif
     
     /// Converts NightQualityAssessment to a 0-100 score
     /// Higher score = better viewing conditions

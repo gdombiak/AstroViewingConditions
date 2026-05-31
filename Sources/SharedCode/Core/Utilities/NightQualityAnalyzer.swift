@@ -16,12 +16,13 @@ public struct NightQualityAnalyzer {
         func moonAltitude(latitude: Double, longitude: Double, at time: Date) -> Double {
             let key = MoonAltitudeKey(latitude: latitude, longitude: longitude, time: time)
             
-            lock.lock()
-            if let cachedAltitude = moonAltitudes[key] {
-                lock.unlock()
-                return cachedAltitude
+            do {
+                lock.lock()
+                defer { lock.unlock() }
+                if let cachedAltitude = moonAltitudes[key] {
+                    return cachedAltitude
+                }
             }
-            lock.unlock()
             
             let altitude = NightQualityAnalyzer.calculateMoonAltitude(
                 latitude: latitude,
@@ -29,26 +30,31 @@ public struct NightQualityAnalyzer {
                 at: time
             )
             
-            lock.lock()
-            moonAltitudes[key] = altitude
-            lock.unlock()
+            do {
+                lock.lock()
+                defer { lock.unlock() }
+                moonAltitudes[key] = altitude
+            }
             
             return altitude
         }
         
         func moonIllumination(at time: Date) -> Int {
-            lock.lock()
-            if let cachedIllumination = moonIlluminations[time] {
-                lock.unlock()
-                return cachedIllumination
+            do {
+                lock.lock()
+                defer { lock.unlock() }
+                if let cachedIllumination = moonIlluminations[time] {
+                    return cachedIllumination
+                }
             }
-            lock.unlock()
             
             let illumination = NightQualityAnalyzer.calculateMoonIllumination(at: time)
             
-            lock.lock()
-            moonIlluminations[time] = illumination
-            lock.unlock()
+            do {
+                lock.lock()
+                defer { lock.unlock() }
+                moonIlluminations[time] = illumination
+            }
             
             return illumination
         }

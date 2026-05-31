@@ -1,5 +1,8 @@
 import Foundation
+import os
 import SunCalc
+
+private let astronomyLogger = Logger(subsystem: "com.astroviewing.conditions", category: "AstronomyService")
 
 public actor AstronomyService {
     public init() {}
@@ -38,29 +41,35 @@ public actor AstronomyService {
                 .twilight(Twilight.astronomical)
                 .execute()
             
+            let fallback = approximateSunEvents(on: date)
+            let hasMissingTimes = [
+                visualTimes.rise,
+                visualTimes.set,
+                civilTimes.rise,
+                civilTimes.set,
+                nauticalTimes.rise,
+                nauticalTimes.set,
+                astronomicalTimes.rise,
+                astronomicalTimes.set
+            ].contains { $0 == nil }
+
+            if hasMissingTimes {
+                astronomyLogger.warning("Sun calculation returned missing times for latitude \(latitude), longitude \(longitude); using approximate fallback values for missing events")
+            }
+
             return SunEvents(
-                sunrise: visualTimes.rise?.date ?? date,
-                sunset: visualTimes.set?.date ?? date,
-                civilTwilightBegin: civilTimes.rise?.date ?? date,
-                civilTwilightEnd: civilTimes.set?.date ?? date,
-                nauticalTwilightBegin: nauticalTimes.rise?.date ?? date,
-                nauticalTwilightEnd: nauticalTimes.set?.date ?? date,
-                astronomicalTwilightBegin: astronomicalTimes.rise?.date ?? date,
-                astronomicalTwilightEnd: astronomicalTimes.set?.date ?? date
+                sunrise: visualTimes.rise?.date ?? fallback.sunrise,
+                sunset: visualTimes.set?.date ?? fallback.sunset,
+                civilTwilightBegin: civilTimes.rise?.date ?? fallback.civilTwilightBegin,
+                civilTwilightEnd: civilTimes.set?.date ?? fallback.civilTwilightEnd,
+                nauticalTwilightBegin: nauticalTimes.rise?.date ?? fallback.nauticalTwilightBegin,
+                nauticalTwilightEnd: nauticalTimes.set?.date ?? fallback.nauticalTwilightEnd,
+                astronomicalTwilightBegin: astronomicalTimes.rise?.date ?? fallback.astronomicalTwilightBegin,
+                astronomicalTwilightEnd: astronomicalTimes.set?.date ?? fallback.astronomicalTwilightEnd
             )
         } catch {
-            print("Error calculating sun events: \(error)")
-            // Return default values if calculation fails
-            return SunEvents(
-                sunrise: date,
-                sunset: date,
-                civilTwilightBegin: date,
-                civilTwilightEnd: date,
-                nauticalTwilightBegin: date,
-                nauticalTwilightEnd: date,
-                astronomicalTwilightBegin: date,
-                astronomicalTwilightEnd: date
-            )
+            astronomyLogger.error("Failed to calculate sun events for latitude \(latitude), longitude \(longitude): \(error.localizedDescription)")
+            return approximateSunEvents(on: date)
         }
     }
     
@@ -93,7 +102,7 @@ public actor AstronomyService {
                 emoji: emoji
             )
         } catch {
-            print("Error calculating moon info: \(error)")
+            astronomyLogger.error("Failed to calculate moon info for latitude \(latitude), longitude \(longitude): \(error.localizedDescription)")
             return MoonInfo(
                 phase: 0.5,
                 phaseName: "Unknown",
@@ -116,7 +125,7 @@ public actor AstronomyService {
                 .execute()
             return position.altitude
         } catch {
-            print("Error calculating moon altitude: \(error)")
+            astronomyLogger.error("Failed to calculate moon altitude for latitude \(latitude), longitude \(longitude): \(error.localizedDescription)")
             return 0
         }
     }
@@ -127,6 +136,19 @@ public actor AstronomyService {
         // Convert phase from degrees (-180 to 180) to 0-1 range
         let normalized = (phase + 180) / 360
         return normalized
+    }
+
+    private func approximateSunEvents(on date: Date) -> SunEvents {
+        SunEvents(
+            sunrise: date.addingTimeInterval(6 * 3600),
+            sunset: date.addingTimeInterval(18 * 3600),
+            civilTwilightBegin: date.addingTimeInterval(5 * 3600),
+            civilTwilightEnd: date.addingTimeInterval(19 * 3600),
+            nauticalTwilightBegin: date.addingTimeInterval(4.5 * 3600),
+            nauticalTwilightEnd: date.addingTimeInterval(19.5 * 3600),
+            astronomicalTwilightBegin: date.addingTimeInterval(4 * 3600),
+            astronomicalTwilightEnd: date.addingTimeInterval(20 * 3600)
+        )
     }
     
     private func getMoonPhaseName(phase: Double) -> String {

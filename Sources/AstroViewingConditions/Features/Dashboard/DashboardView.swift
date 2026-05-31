@@ -9,7 +9,9 @@ public struct DashboardView: View {
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
     @State private var selectedLocation: SelectedLocation?
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
-    @State private var viewModel = DashboardViewModel(apiKey: "")
+    @State private var viewModel = DashboardViewModel(
+        apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
+    )
     @State private var locationManager = LocationManager()
     
     @State private var currentLocation: SavedLocation?
