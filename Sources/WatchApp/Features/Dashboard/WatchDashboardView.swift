@@ -86,7 +86,7 @@ struct WatchDashboardView: View {
                     await refreshConditions()
                 }
             }
-            .onChange(of: conditionsManager.conditions?.fetchedAt) { _, _ in
+            .onReceive(conditionsManager.$conditions) { _ in
                 Task {
                     await updateNightQuality()
                 }
@@ -123,29 +123,9 @@ struct WatchDashboardView: View {
 
     private func updateNightQuality() async {
         guard let conditions = conditionsManager.conditions,
-              let sunEventsToday = conditions.dailySunEvents.first,
-              let sunEventsTomorrow = conditions.dailySunEvents.dropFirst().first,
-              let moonInfo = conditions.dailyMoonInfo.first else {
+              let assessment = NightQualityAnalyzer.analyzeConditions(conditions) else {
             return
         }
-
-        let tz = await LocationTimeZoneResolver.resolve(
-            latitude: conditions.location.latitude,
-            longitude: conditions.location.longitude
-        )
-        let calendar = LocationTimeZoneResolver.calendar(for: tz)
-        let today = calendar.startOfDay(for: Date())
-
-        let assessment = NightQualityAnalyzer.analyzeNight(
-            forecasts: conditions.hourlyForecasts,
-            sunEventsToday: sunEventsToday,
-            sunEventsTomorrow: sunEventsTomorrow,
-            moonInfo: moonInfo,
-            latitude: conditions.location.latitude,
-            longitude: conditions.location.longitude,
-            for: today,
-            calendar: calendar
-        )
 
         await MainActor.run {
             conditionsManager.nightQuality = assessment
