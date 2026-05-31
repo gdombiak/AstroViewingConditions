@@ -28,7 +28,7 @@ public struct DashboardView: View {
     }
     
     private var activeSavedLocation: SavedLocation? {
-        guard let selectedLocation else { return nil }
+        guard let selectedLocation else { return currentLocation }
         if selectedLocation.source == .currentGPS {
             return currentLocation
         }
@@ -131,18 +131,12 @@ public struct DashboardView: View {
                     LocationStorageService.shared.saveSelectedLocation(selectedLocation!)
                 }
             }
-            if let location = activeSavedLocation {
-                await viewModel.loadConditionsIfNeeded(for: location)
-                await viewModel.saveToCache()
-            }
+            await loadActiveLocationConditionsIfNeeded()
         }
         .onChange(of: locationManager.authorizationStatus) { _, _ in
             Task {
                 await loadCurrentLocation()
-                if let location = activeSavedLocation {
-                    await viewModel.loadConditionsIfNeeded(for: location)
-                    await viewModel.saveToCache()
-                }
+                await loadActiveLocationConditionsIfNeeded()
             }
         }
         .onChange(of: n2yoApiKey) { _, newKey in
@@ -158,10 +152,7 @@ public struct DashboardView: View {
             if let location = newValue {
                 LocationStorageService.shared.saveSelectedLocation(location)
                 Task {
-                    if let savedLocation = activeSavedLocation {
-                        await viewModel.loadConditionsIfNeeded(for: savedLocation)
-                        await viewModel.saveToCache()
-                    }
+                    await loadActiveLocationConditionsIfNeeded()
                 }
                 WatchConnectivityService.shared.sendSelectedLocationToWatch(location)
             }
@@ -170,7 +161,7 @@ public struct DashboardView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             lastActiveCheck = Date()
-            if viewModel.isDataStale, let location = activeSavedLocation {
+            if viewModel.isDataStale, !viewModel.isLoading, let location = activeSavedLocation {
                 Task {
                     await viewModel.refresh(for: location)
                     await viewModel.saveToCache()
@@ -356,14 +347,14 @@ public struct DashboardView: View {
                 latitude: coordinate.latitude,
                 longitude: coordinate.longitude
             )
-            
-            if let location = currentLocation {
-                await viewModel.loadConditionsIfNeeded(for: location)
-                await viewModel.saveToCache()
-            }
         } catch {
             viewModel.error = error
         }
+    }
+    
+    private func loadActiveLocationConditionsIfNeeded() async {
+        guard let location = activeSavedLocation else { return }
+        await viewModel.loadConditionsIfNeeded(for: location)
     }
 }
 
