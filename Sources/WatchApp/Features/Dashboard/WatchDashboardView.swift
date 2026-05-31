@@ -2,8 +2,11 @@ import SwiftUI
 import SharedCode
 
 struct WatchDashboardView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @ObservedObject var locationManager = WatchLocationManager.shared
     @ObservedObject var conditionsManager = WatchConditionsManager.shared
+    @State private var isAutomaticRefreshInFlight = false
+    @State private var lastActiveCheck = Date()
     
     var locationOptions: [LocationOption] {
         LocationOption.fromLocations(saved: locationManager.locations)
@@ -74,6 +77,14 @@ struct WatchDashboardView: View {
                             timeZone: conditionsManager.displayTimeZone
                         )
                     }
+
+                    if let fetchedAt = conditionsManager.conditions?.fetchedAt {
+                        Text("Updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: lastActiveCheck))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 4)
+                    }
                 }
                 .padding()
             }
@@ -82,8 +93,14 @@ struct WatchDashboardView: View {
                     await locationManager.refresh()
                 }
 
-                if conditionsManager.shouldRefresh {
-                    await refreshConditions()
+                await refreshConditionsIfNeeded()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    lastActiveCheck = Date()
+                    Task {
+                        await refreshConditionsIfNeeded()
+                    }
                 }
             }
             .onReceive(conditionsManager.$conditions) { _ in
@@ -112,6 +129,18 @@ struct WatchDashboardView: View {
         guard !conditionsManager.isLoading else { return }
 
         await conditionsManager.refresh()
+    }
+
+    @MainActor
+    private func refreshConditionsIfNeeded() async {
+        guard !isAutomaticRefreshInFlight else { return }
+        await conditionsManager.loadNewerSharedCacheIfAvailable()
+        guard conditionsManager.shouldRefresh else { return }
+
+        isAutomaticRefreshInFlight = true
+        defer { isAutomaticRefreshInFlight = false }
+
+        await refreshConditions()
     }
 
     private var refreshErrorMessage: String? {
