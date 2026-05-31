@@ -2,37 +2,41 @@ import SharedCode
 import SwiftUI
 import WidgetKit
 
-@MainActor
-final class WidgetReloadListener: ObservableObject {
-    @Published private var debounceWorkItem: DispatchWorkItem?
+final class WidgetReloadListener: NSObject, ObservableObject {
+    private var debounceWorkItem: DispatchWorkItem?
+    private var observerTokens: [NSObjectProtocol] = []
     let debounceDelay: UInt64 = 500_000_000 // 0.5 seconds
     
-    init() {
+    override init() {
+        super.init()
         setupNotificationObservers()
+    }
+
+    deinit {
+        debounceWorkItem?.cancel()
+        observerTokens.forEach(NotificationCenter.default.removeObserver)
     }
     
     private func setupNotificationObservers() {
-        NotificationCenter.default.addObserver(
+        let selectedLocationToken = NotificationCenter.default.addObserver(
             forName: .selectedLocationDidChange,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                self?.onWidgetDataChanged()
-            }
+            self?.onWidgetDataChanged()
         }
         
-        NotificationCenter.default.addObserver(
+        let widgetConditionsToken = NotificationCenter.default.addObserver(
             forName: .widgetConditionsDidChange,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                self?.onWidgetDataChanged()
-            }
+            self?.onWidgetDataChanged()
         }
+        
+        observerTokens = [selectedLocationToken, widgetConditionsToken]
     }
-    
+
     private func onWidgetDataChanged() {
         debounceWorkItem?.cancel()
         debounceWorkItem = DispatchWorkItem {
