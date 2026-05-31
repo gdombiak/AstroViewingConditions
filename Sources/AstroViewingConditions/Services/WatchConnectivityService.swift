@@ -2,6 +2,18 @@ import Foundation
 import WatchConnectivity
 import SharedCode
 
+private final class WatchReplyHandler: @unchecked Sendable {
+    private let replyHandler: ([String: Any]) -> Void
+    
+    init(_ replyHandler: @escaping ([String: Any]) -> Void) {
+        self.replyHandler = replyHandler
+    }
+    
+    func reply(_ message: [String: Any]) {
+        replyHandler(message)
+    }
+}
+
 @MainActor
 public class WatchConnectivityService: NSObject, ObservableObject {
     public static let shared = WatchConnectivityService()
@@ -158,26 +170,31 @@ extension WatchConnectivityService: WCSessionDelegate {
     nonisolated private func handleRequestConditions(replyHandler: (([String: Any]) -> Void)?) {
         print("WatchConnectivityService: Handling request for conditions")
         
-        let cacheService = CacheService()
-        var reply: [String: Any] = ["status": "ok"]
+        guard let replyHandler else { return }
+        let replyHandlerBox = WatchReplyHandler(replyHandler)
         
-        if let conditions = cacheService.load() {
-            if let data = try? JSONEncoder().encode(conditions) {
-                reply["conditions"] = data
+        Task {
+            let cacheService = CacheService()
+            var reply: [String: Any] = ["status": "ok"]
+            
+            if let conditions = await cacheService.loadAsync() {
+                if let data = try? JSONEncoder().encode(conditions) {
+                    reply["conditions"] = data
+                } else {
+                    replyHandlerBox.reply(["status": "error", "message": "Failed to encode conditions"])
+                    return
+                }
             } else {
-                replyHandler?(["status": "error", "message": "Failed to encode conditions"])
+                replyHandlerBox.reply(["status": "error", "message": "No cached conditions"])
                 return
             }
-        } else {
-            replyHandler?(["status": "error", "message": "No cached conditions"])
-            return
+            
+            if let selectedLoc = LocationStorageService.shared.loadSelectedLocation(),
+               let data = try? JSONEncoder().encode(selectedLoc) {
+                reply["selectedLocation"] = data
+            }
+            
+            replyHandlerBox.reply(reply)
         }
-        
-        if let selectedLoc = LocationStorageService.shared.loadSelectedLocation(),
-           let data = try? JSONEncoder().encode(selectedLoc) {
-            reply["selectedLocation"] = data
-        }
-        
-        replyHandler?(reply)
     }
 }
