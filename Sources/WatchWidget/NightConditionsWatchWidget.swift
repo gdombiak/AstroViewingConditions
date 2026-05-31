@@ -86,11 +86,13 @@ struct WatchProvider: TimelineProvider {
 
         let forecasts: [HourlyForecast]
         do {
-            forecasts = try await weatherService.fetchForecast(latitude: location.latitude, longitude: location.longitude, days: 3)
+            forecasts = try await weatherService.fetchForecast(latitude: location.latitude, longitude: location.longitude, days: 2)
             widgetLogger.info("Fetched \(forecasts.count) hourly forecasts from API")
         } catch {
             widgetLogger.error("Failed to fetch weather forecast: \(error.localizedDescription)")
-            if let cached = await AppGroupStorage.loadWidgetConditionsAsync() {
+            if let cached = await AppGroupStorage.loadWatchNightConditionsAsync(),
+               cached.isFreshForWatchNight,
+               cached.location.matches(latitude: location.latitude, longitude: location.longitude) {
                 widgetLogger.info("Falling back to cached weather data")
                 forecasts = cached.hourlyForecasts
             } else {
@@ -107,6 +109,7 @@ struct WatchProvider: TimelineProvider {
         let sunEventsToday = await astronomyService.calculateSunEvents(latitude: location.latitude, longitude: location.longitude, on: today)
         let sunEventsTomorrow = await astronomyService.calculateSunEvents(latitude: location.latitude, longitude: location.longitude, on: tomorrow)
         let moonInfo = await astronomyService.calculateMoonInfo(latitude: location.latitude, longitude: location.longitude, on: today)
+        let moonInfoTomorrow = await astronomyService.calculateMoonInfo(latitude: location.latitude, longitude: location.longitude, on: tomorrow)
 
         let assessment = NightQualityAnalyzer.analyzeNight(
             forecasts: forecasts,
@@ -124,14 +127,27 @@ struct WatchProvider: TimelineProvider {
             location: cachedLocation,
             hourlyForecasts: forecasts,
             dailySunEvents: [sunEventsToday, sunEventsTomorrow],
-            dailyMoonInfo: [moonInfo],
+            dailyMoonInfo: [moonInfo, moonInfoTomorrow],
             issPasses: [],
             fogScore: FogCalculator.calculateCurrent(from: forecasts),
             timeZoneIdentifier: tz.identifier
         )
-        await AppGroupStorage.saveWidgetConditionsAsync(conditions)
+        await AppGroupStorage.saveWatchNightConditionsAsync(conditions)
 
         return NightConditionsEntry(date: Date(), assessment: assessment)
+    }
+}
+
+private extension ViewingConditions {
+    var isFreshForWatchNight: Bool {
+        Date().timeIntervalSince(fetchedAt) <= 3600
+    }
+}
+
+private extension CachedLocation {
+    func matches(latitude: Double, longitude: Double) -> Bool {
+        abs(self.latitude - latitude) <= 0.01 &&
+            abs(self.longitude - longitude) <= 0.01
     }
 }
 

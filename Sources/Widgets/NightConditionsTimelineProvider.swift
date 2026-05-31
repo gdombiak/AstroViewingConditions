@@ -39,12 +39,14 @@ struct Provider: TimelineProvider {
             forecasts = try await weatherService.fetchForecast(
                 latitude: location.latitude,
                 longitude: location.longitude,
-                days: 3
+                days: 2
             )
             widgetLogger.info("Fetched \(forecasts.count) hourly forecasts from API")
         } catch {
             widgetLogger.error("Failed to fetch weather forecast: \(error.localizedDescription)")
-            if let cached = await AppGroupStorage.loadWidgetConditionsAsync() {
+            if let cached = await AppGroupStorage.loadWidgetConditionsAsync(),
+               cached.isFreshForWidget,
+               cached.location.matches(latitude: location.latitude, longitude: location.longitude) {
                 widgetLogger.info("Falling back to cached weather data")
                 forecasts = cached.hourlyForecasts
             } else {
@@ -72,6 +74,11 @@ struct Provider: TimelineProvider {
             longitude: location.longitude,
             on: today
         )
+        let moonInfoTomorrow = await astronomyService.calculateMoonInfo(
+            latitude: location.latitude,
+            longitude: location.longitude,
+            on: tomorrow
+        )
 
         let assessment = NightQualityAnalyzer.analyzeNight(
             forecasts: forecasts,
@@ -94,7 +101,7 @@ struct Provider: TimelineProvider {
             location: cachedLocation,
             hourlyForecasts: forecasts,
             dailySunEvents: [sunEventsToday, sunEventsTomorrow],
-            dailyMoonInfo: [moonInfo],
+            dailyMoonInfo: [moonInfo, moonInfoTomorrow],
             issPasses: [],
             fogScore: FogCalculator.calculateCurrent(from: forecasts),
             timeZoneIdentifier: tz.identifier
@@ -102,5 +109,18 @@ struct Provider: TimelineProvider {
         await AppGroupStorage.saveWidgetConditionsAsync(conditions)
 
         return NightConditionsEntry(date: Date(), assessment: assessment, timeZone: tz)
+    }
+}
+
+private extension ViewingConditions {
+    var isFreshForWidget: Bool {
+        Date().timeIntervalSince(fetchedAt) <= 3600
+    }
+}
+
+private extension CachedLocation {
+    func matches(latitude: Double, longitude: Double) -> Bool {
+        abs(self.latitude - latitude) <= 0.01 &&
+            abs(self.longitude - longitude) <= 0.01
     }
 }

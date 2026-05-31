@@ -6,39 +6,27 @@ private let logger = Logger(subsystem: "com.astroviewing.conditions", category: 
 extension Notification.Name {
     public static let watchLocationSelected = Notification.Name("watchLocationSelected")
     public static let selectedLocationDidChange = Notification.Name("selectedLocationDidChange")
-    public static let widgetConditionsDidChange = Notification.Name("widgetConditionsDidChange")
 }
 
 public struct AppGroupStorage: Sendable {
     public static let suiteName = "group.com.astroviewing.conditions"
     
-    private static let fileQueueKey = DispatchSpecificKey<Void>()
-    private static let fileQueue: DispatchQueue = {
-        let queue = DispatchQueue(label: "com.astroviewing.storage", qos: .utility)
-        queue.setSpecific(key: fileQueueKey, value: ())
-        return queue
-    }()
+    private static let fileLock = NSRecursiveLock()
     
     public static var containerURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: suiteName)
     }
     
     private static func performFileAccess<T>(_ work: () -> T) -> T {
-        if DispatchQueue.getSpecific(key: fileQueueKey) != nil {
-            return work()
-        }
-        return fileQueue.sync(execute: work)
+        fileLock.lock()
+        defer { fileLock.unlock() }
+        return work()
     }
 
     private static func performFileAccessAsync<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
-        if DispatchQueue.getSpecific(key: fileQueueKey) != nil {
-            return work()
-        }
-        return await withCheckedContinuation { continuation in
-            fileQueue.async {
-                continuation.resume(returning: work())
-            }
-        }
+        await Task.detached(priority: .utility) {
+            performFileAccess(work)
+        }.value
     }
     
     // MARK: - Selected Location (unified)
@@ -111,43 +99,63 @@ public struct AppGroupStorage: Sendable {
         }
     }
 
-    private static func postWidgetConditionsDidChange() {
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .widgetConditionsDidChange, object: nil)
-        }
-    }
-
-    public static func saveWidgetConditions(_ conditions: ViewingConditions) {
-        let didSave = performFileAccess {
-            writeWidgetConditions(conditions)
-        }
-
-        if didSave {
-            postWidgetConditionsDidChange()
-        }
-    }
-
     public static func saveWidgetConditionsAsync(_ conditions: ViewingConditions) async {
-        let didSave = await performFileAccessAsync {
-            writeWidgetConditions(conditions)
-        }
-
-        if didSave {
-            await MainActor.run {
-                NotificationCenter.default.post(name: .widgetConditionsDidChange, object: nil)
-            }
-        }
-    }
-
-    public static func loadWidgetConditions() -> ViewingConditions? {
-        performFileAccess {
-            readWidgetConditions()
+        await performFileAccessAsync {
+            _ = writeWidgetConditions(conditions)
         }
     }
 
     public static func loadWidgetConditionsAsync() async -> ViewingConditions? {
         await performFileAccessAsync {
             readWidgetConditions()
+        }
+    }
+
+    // MARK: - Watch Night Conditions
+
+    private static func writeWatchNightConditions(_ conditions: ViewingConditions) -> Bool {
+        guard let baseURL = containerURL else {
+            logger.error("App Group container not available")
+            return false
+        }
+
+        do {
+            let data = try JSONEncoder().encode(conditions)
+            let fileURL = baseURL.appendingPathComponent("watchNightConditions.json")
+            try data.write(to: fileURL, options: .atomic)
+            return true
+        } catch {
+            logger.error("Failed to save watch night conditions: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private static func readWatchNightConditions() -> ViewingConditions? {
+        guard let baseURL = containerURL else {
+            logger.error("App Group container not available")
+            return nil
+        }
+
+        let fileURL = baseURL.appendingPathComponent("watchNightConditions.json")
+
+        do {
+            let data = try Data(contentsOf: fileURL)
+            return try JSONDecoder().decode(ViewingConditions.self, from: data)
+        } catch {
+            logger.warning("Failed to load watch night conditions: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    public static func saveWatchNightConditionsAsync(_ conditions: ViewingConditions) async {
+        await performFileAccessAsync {
+            _ = writeWatchNightConditions(conditions)
+        }
+    }
+
+    public static func loadWatchNightConditionsAsync() async -> ViewingConditions? {
+        await performFileAccessAsync {
+            readWatchNightConditions()
         }
     }
     
@@ -191,7 +199,7 @@ public struct AppGroupStorage: Sendable {
     
     // MARK: - Conditions
 
-    private static func writeConditions(_ conditions: ViewingConditions, timestamp: Date) {
+    private static func writeConditions(_ conditions: ViewingConditions) {
         guard let baseURL = containerURL else {
             logger.error("App Group container not available")
             return
@@ -201,10 +209,6 @@ public struct AppGroupStorage: Sendable {
             let data = try JSONEncoder().encode(conditions)
             let fileURL = baseURL.appendingPathComponent("conditions.json")
             try data.write(to: fileURL, options: .atomic)
-
-            let tsData = try JSONEncoder().encode(timestamp)
-            let tsFileURL = baseURL.appendingPathComponent("conditionsTimestamp.json")
-            try tsData.write(to: tsFileURL, options: .atomic)
         } catch {
             logger.error("Failed to save conditions: \(error.localizedDescription)")
         }
@@ -227,31 +231,15 @@ public struct AppGroupStorage: Sendable {
         }
     }
 
-    private static func readConditionsTimestamp() -> Date? {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return nil
-        }
-
-        let fileURL = baseURL.appendingPathComponent("conditionsTimestamp.json")
-
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode(Date.self, from: data)
-        } catch {
-            return nil
-        }
-    }
-    
-    public static func saveConditions(_ conditions: ViewingConditions, timestamp: Date = Date()) {
+    public static func saveConditions(_ conditions: ViewingConditions) {
         performFileAccess {
-            writeConditions(conditions, timestamp: timestamp)
+            writeConditions(conditions)
         }
     }
 
-    public static func saveConditionsAsync(_ conditions: ViewingConditions, timestamp: Date = Date()) async {
+    public static func saveConditionsAsync(_ conditions: ViewingConditions) async {
         await performFileAccessAsync {
-            writeConditions(conditions, timestamp: timestamp)
+            writeConditions(conditions)
         }
     }
     
@@ -264,42 +252,6 @@ public struct AppGroupStorage: Sendable {
     public static func loadConditionsAsync() async -> ViewingConditions? {
         await performFileAccessAsync {
             readConditions()
-        }
-    }
-    
-    public static func loadConditionsTimestamp() -> Date? {
-        performFileAccess {
-            readConditionsTimestamp()
-        }
-    }
-
-    public static func loadConditionsTimestampAsync() async -> Date? {
-        await performFileAccessAsync {
-            readConditionsTimestamp()
-        }
-    }
-    
-    public static func loadConditionsWithTimestamp() -> (conditions: ViewingConditions, timestamp: Date, isStale: Bool)? {
-        performFileAccess {
-            guard let conditions = readConditions(),
-                  let timestamp = readConditionsTimestamp() else {
-                return nil
-            }
-            
-            let isStale = Date().timeIntervalSince(timestamp) > 3600
-            return (conditions, timestamp, isStale)
-        }
-    }
-
-    public static func loadConditionsWithTimestampAsync() async -> (conditions: ViewingConditions, timestamp: Date, isStale: Bool)? {
-        await performFileAccessAsync {
-            guard let conditions = readConditions(),
-                  let timestamp = readConditionsTimestamp() else {
-                return nil
-            }
-
-            let isStale = Date().timeIntervalSince(timestamp) > 3600
-            return (conditions, timestamp, isStale)
         }
     }
     
