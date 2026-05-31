@@ -207,7 +207,8 @@ public class DashboardViewModel {
         }
     }
     
-    public func loadConditions(for location: SavedLocation) async {
+    @discardableResult
+    private func loadConditions(for location: SavedLocation) async -> Bool {
         isLoading = true
         error = nil
         
@@ -281,37 +282,51 @@ public class DashboardViewModel {
                 timeZoneIdentifier: tz.identifier
             )
             viewingConditions = newConditions
-            lastSuccessfulFetch = Date()
+            lastSuccessfulFetch = newConditions.fetchedAt
+            isLoading = false
+            return true
             
         } catch {
             self.error = error
+            isLoading = false
+            return false
         }
-        
-        isLoading = false
     }
     
-    public func refresh(for location: SavedLocation) async {
-        await loadConditions(for: location)
+    @discardableResult
+    public func refresh(for location: SavedLocation) async -> Bool {
+        guard await loadConditions(for: location) else {
+            return false
+        }
+
+        await saveToCache()
+        await publishCompanionConditions()
+        return true
     }
     
-    public func saveToCache() async {
+    private func saveToCache() async {
+        guard let conditions = viewingConditions else { return }
+        await cacheService.saveAsync(conditions)
+    }
+
+    private func publishCompanionConditions() async {
         guard let conditions = viewingConditions else { return }
         let companionConditions = conditions.limitedToTonightCache()
-        await cacheService.saveAsync(conditions)
         await AppGroupStorage.saveWidgetConditionsAsync(companionConditions)
         WatchConnectivityService.shared.sendConditionsToWatch(companionConditions)
         
         WidgetReloadService.shared.scheduleReload()
     }
     
-    public func loadFromCache() async -> Bool {
-        guard let conditions = await cacheService.loadAsync() else {
+    private func loadFromCache(matching location: CachedLocation) async -> Bool {
+        guard let conditions = await cacheService.loadAsync(),
+              conditionsMatch(conditions, location: location) else {
             return false
         }
-        
+
         self.viewingConditions = conditions
         self.lastSuccessfulFetch = conditions.fetchedAt
-        
+
         return true
     }
     
@@ -326,16 +341,30 @@ public class DashboardViewModel {
         let cachedLocation = CachedLocation(from: location)
         await resolveTimeZone(for: cachedLocation)
 
-        let loadedFromCache = await loadFromCache()
-        let cachedLocationMatches = await cacheService.cachedLocationMatchesAsync(cachedLocation)
-
-        if shouldFetchFreshConditions || !cachedLocationMatches {
-            await loadConditions(for: location)
-            await saveToCache()
-        } else if !loadedFromCache {
+        let loadedFromCache = await loadFromCache(matching: cachedLocation)
+        if !loadedFromCache, !currentConditionsMatch(cachedLocation) {
             viewingConditions = nil
-            await loadConditions(for: location)
-            await saveToCache()
+            lastSuccessfulFetch = nil
         }
+
+        if shouldFetchFreshConditions {
+            await refresh(for: location)
+        }
+    }
+
+    private func currentConditionsMatch(_ location: CachedLocation) -> Bool {
+        guard let viewingConditions else { return false }
+        return conditionsMatch(viewingConditions, location: location)
+    }
+
+    private func conditionsMatch(_ conditions: ViewingConditions, location: CachedLocation) -> Bool {
+        let tolerance = 0.0001
+        let cachedLat = conditions.location.latitude
+        let cachedLon = conditions.location.longitude
+
+        guard cachedLat != 0, cachedLon != 0 else { return false }
+
+        return abs(cachedLat - location.latitude) < tolerance &&
+               abs(cachedLon - location.longitude) < tolerance
     }
 }

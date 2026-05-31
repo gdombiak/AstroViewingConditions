@@ -88,7 +88,6 @@ public struct DashboardView: View {
                             Task {
                                 if let location = activeSavedLocation {
                                     await viewModel.refresh(for: location)
-                                    await viewModel.saveToCache()
                                 }
                             }
                         }) {
@@ -143,7 +142,6 @@ public struct DashboardView: View {
             Task {
                 if let location = activeSavedLocation {
                     await viewModel.refresh(for: location)
-                    await viewModel.saveToCache()
                 }
             }
         }
@@ -162,7 +160,6 @@ public struct DashboardView: View {
             if viewModel.isDataStale, !viewModel.isLoading, let location = activeSavedLocation {
                 Task {
                     await viewModel.refresh(for: location)
-                    await viewModel.saveToCache()
                 }
             }
         }

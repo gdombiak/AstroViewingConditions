@@ -35,12 +35,14 @@ struct Provider: TimelineProvider {
         let astronomyService = AstronomyService()
 
         let forecasts: [HourlyForecast]
+        let fetchedAt: Date
         do {
             forecasts = try await weatherService.fetchForecast(
                 latitude: location.latitude,
                 longitude: location.longitude,
                 days: 2
             )
+            fetchedAt = Date()
             widgetLogger.info("Fetched \(forecasts.count) hourly forecasts from API")
         } catch {
             widgetLogger.error("Failed to fetch weather forecast: \(error.localizedDescription)")
@@ -49,6 +51,7 @@ struct Provider: TimelineProvider {
                cached.location.matches(latitude: location.latitude, longitude: location.longitude) {
                 widgetLogger.info("Falling back to cached weather data")
                 forecasts = cached.hourlyForecasts
+                fetchedAt = cached.fetchedAt
             } else {
                 widgetLogger.error("No cached weather data available as fallback")
                 return nil
@@ -97,7 +100,7 @@ struct Provider: TimelineProvider {
             longitude: location.longitude
         )
         let conditions = ViewingConditions(
-            fetchedAt: Date(),
+            fetchedAt: fetchedAt,
             location: cachedLocation,
             hourlyForecasts: forecasts,
             dailySunEvents: [sunEventsToday, sunEventsTomorrow],

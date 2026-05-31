@@ -223,13 +223,12 @@ extension WatchConnectivityService: WCSessionDelegate {
         let viewModel = DashboardViewModel(
             apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
         )
-        await viewModel.refresh(for: location)
-
-        guard viewModel.error == nil, let conditions = viewModel.viewingConditions else {
+        guard await viewModel.refresh(for: location),
+              viewModel.error == nil,
+              let conditions = viewModel.viewingConditions else {
             return nil
         }
 
-        await viewModel.saveToCache()
         return conditions
     }
 
