@@ -107,6 +107,10 @@ public struct DateFormatters {
     }
     
     public static func timeAgo(from date: Date, relativeTo referenceDate: Date) -> String {
+        if abs(referenceDate.timeIntervalSince(date)) < 1 {
+            return "now"
+        }
+
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
         return formatter.localizedString(for: date, relativeTo: referenceDate)
