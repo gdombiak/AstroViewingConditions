@@ -143,7 +143,8 @@ final class HourlyForecastTests: XCTestCase {
     func testTomorrowHourlyForecastFiltering() throws {
         // Given
         let forecasts = createForecastsFromJSON()
-        let calendar = Calendar.current
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = losAngelesTimezone
         
         // Simulate "tomorrow" being 2026-02-19
         var dateComponents = DateComponents()
@@ -161,20 +162,7 @@ final class HourlyForecastTests: XCTestCase {
             forecast.time >= startOfTomorrow && forecast.time < endOfTomorrow
         }
         
-        // Debug: Print what we got
-        print("Tomorrow (2026-02-19) forecasts count: \(tomorrowForecasts.count)")
-        for (_, forecast) in tomorrowForecasts.enumerated() {
-            let hour = calendar.component(.hour, from: forecast.time)
-            print("Hour \(hour): \(forecast.cloudCover)%")
-        }
-        
-        // Then - BUG: Currently this will fail because the times are parsed as UTC
-        // but the filtering is done in local time
-        // The API returns "2026-02-19T00:00" which should be 00:00 local time
-        // But it's parsed as 00:00 UTC, which is 16:00 on Feb 18 in local time (GMT-8)
-        
-        // This test documents the expected behavior:
-        // We should have 24 hours of forecast for tomorrow
+        // Then
         XCTAssertEqual(tomorrowForecasts.count, 24, "Should have 24 hourly forecasts for tomorrow")
         
         // Verify the expected cloud cover values
@@ -189,20 +177,16 @@ final class HourlyForecastTests: XCTestCase {
                       "Hour 11 should have 81% cloud cover")
     }
     
-    func testDateTimezoneHandling() throws {
+    func testOpenMeteoLocalDateFormatterParsesLocalTime() throws {
         // Given
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
-        formatter.timeZone = TimeZone(identifier: "UTC")
+        let formatter = DateFormatter.openMeteoLocalDateFormatter(timeZone: losAngelesTimezone)
         let dateString = "2026-02-19T00:00"
         
         // When
         let parsedDate = formatter.date(from: dateString)!
         
-        // Then - This documents the bug: the date is parsed as UTC
-        var calendar = Calendar.current
+        // Then
+        var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = losAngelesTimezone
         
         let year = calendar.component(.year, from: parsedDate)
@@ -210,15 +194,10 @@ final class HourlyForecastTests: XCTestCase {
         let day = calendar.component(.day, from: parsedDate)
         let hour = calendar.component(.hour, from: parsedDate)
         
-        print("Parsed date components in LA timezone: \(year)-\(month)-\(day) \(hour):00")
-        
-        // BUG: The date is parsed as UTC "2026-02-19T00:00Z"
-        // In Los Angeles timezone (GMT-8), this becomes "2026-02-18T16:00"
-        // So the day component is 18, not 19!
-        // This causes the filtering to fail when looking for tomorrow's forecasts
-        
-        XCTAssertEqual(day, 18, "BUG: Day should be 18 (not 19) because time is parsed as UTC")
-        XCTAssertEqual(hour, 16, "BUG: Hour should be 16 (not 0) because of UTC-8 offset")
+        XCTAssertEqual(year, 2026)
+        XCTAssertEqual(month, 2)
+        XCTAssertEqual(day, 19)
+        XCTAssertEqual(hour, 0)
     }
     
     func testCorrectDateParsingWithTimezone() throws {
@@ -241,12 +220,8 @@ final class HourlyForecastTests: XCTestCase {
         var calendar = Calendar.current
         calendar.timeZone = losAngelesTimezone
         
-        let year = calendar.component(.year, from: localDate)
-        let month = calendar.component(.month, from: localDate)
         let day = calendar.component(.day, from: localDate)
         let hour = calendar.component(.hour, from: localDate)
-        
-        print("Corrected date components in LA timezone: \(year)-\(month)-\(day) \(hour):00")
         
         // After applying the offset, we should get the correct local time
         XCTAssertEqual(day, 19, "Day should be 19 after applying timezone offset")
@@ -288,28 +263,19 @@ final class HourlyForecastTests: XCTestCase {
         // Then
         let tomorrowForecasts = viewModel.currentHourlyForecasts
         
-        print("DashboardViewModel tomorrow forecasts count: \(tomorrowForecasts.count)")
-        for (_, forecast) in tomorrowForecasts.enumerated() {
-            let calendar = Calendar.current
-            let hour = calendar.component(.hour, from: forecast.time)
-            print("Hour \(hour): \(forecast.cloudCover)%")
-        }
-        
-        // This test will fail until the timezone bug is fixed
         // The expected values are based on the API response:
         // - Hours 0-10 (00:00-10:00) should have 100% cloud cover
         // - Hour 11 (11:00) should have 81% cloud cover
         
-        // TODO: Uncomment after fixing the timezone bug
-        // XCTAssertEqual(tomorrowForecasts.count, 24, "Should have 24 hourly forecasts")
-        // 
-        // for i in 0...10 {
-        //     XCTAssertEqual(tomorrowForecasts[i].cloudCover, 100, 
-        //                   "Hour \(i):00 should show 100% cloud cover")
-        // }
-        // 
-        // XCTAssertEqual(tomorrowForecasts[11].cloudCover, 81, 
-        //               "Hour 11:00 should show 81% cloud cover")
+        XCTAssertEqual(tomorrowForecasts.count, 24, "Should have 24 hourly forecasts")
+        
+        for i in 0...10 {
+            XCTAssertEqual(tomorrowForecasts[i].cloudCover, 100,
+                          "Hour \(i):00 should show 100% cloud cover")
+        }
+        
+        XCTAssertEqual(tomorrowForecasts[11].cloudCover, 81,
+                      "Hour 11:00 should show 81% cloud cover")
     }
     
     // MARK: - Helper Methods
