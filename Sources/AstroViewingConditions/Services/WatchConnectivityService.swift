@@ -68,7 +68,7 @@ public class WatchConnectivityService: NSObject, ObservableObject {
             print("WatchConnectivityService: Updated applicationContext with \(type)")
         } catch {
             print("WatchConnectivityService: Failed to update applicationContext: \(error)")
-            sendMessage(type: type, payload: payload)
+            sendMessage(type: type, payload: message)
         }
     }
     
@@ -78,11 +78,23 @@ public class WatchConnectivityService: NSObject, ObservableObject {
             return
         }
         
-        session.sendMessage(payload, replyHandler: { reply in
+        session.sendMessage(
+            payload,
+            replyHandler: Self.makeReplyHandler(type: type),
+            errorHandler: Self.makeErrorHandler(type: type)
+        )
+    }
+
+    nonisolated private static func makeReplyHandler(type: String) -> ([String: Any]) -> Void {
+        { reply in
             print("WatchConnectivityService: Sent \(type), reply: \(reply)")
-        }, errorHandler: { error in
+        }
+    }
+
+    nonisolated private static func makeErrorHandler(type: String) -> (any Error) -> Void {
+        { error in
             print("WatchConnectivityService: Failed to send \(type): \(error.localizedDescription)")
-        })
+        }
     }
 }
 
@@ -178,7 +190,8 @@ extension WatchConnectivityService: WCSessionDelegate {
             var reply: [String: Any] = ["status": "ok"]
             
             if let conditions = await cacheService.loadAsync() {
-                if let data = try? JSONEncoder().encode(conditions) {
+                let watchConditions = conditions.limitedToTonightCache()
+                if let data = try? JSONEncoder().encode(watchConditions) {
                     reply["conditions"] = data
                 } else {
                     replyHandlerBox.reply(["status": "error", "message": "Failed to encode conditions"])
