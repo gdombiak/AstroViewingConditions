@@ -319,80 +319,88 @@ public struct AppGroupStorage: Sendable {
     // MARK: - Best Spot Settings
     
     public static func saveBestSpotSettings(searchRadius: Double, gridSpacing: Double) {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return
-        }
-        
-        let data: [String: Any] = [
-            "searchRadius": searchRadius,
-            "gridSpacing": gridSpacing
-        ]
-        
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: data)
-            let fileURL = baseURL.appendingPathComponent("bestSpotSettings.json")
-            try jsonData.write(to: fileURL, options: .atomic)
-        } catch {
-            logger.error("Failed to save best spot settings: \(error.localizedDescription)")
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
+                return
+            }
+            
+            let data: [String: Any] = [
+                "searchRadius": searchRadius,
+                "gridSpacing": gridSpacing
+            ]
+            
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: data)
+                let fileURL = baseURL.appendingPathComponent("bestSpotSettings.json")
+                try jsonData.write(to: fileURL, options: .atomic)
+            } catch {
+                logger.error("Failed to save best spot settings: \(error.localizedDescription)")
+            }
         }
     }
     
     public static func loadBestSpotSettings() -> (searchRadius: Double, gridSpacing: Double)? {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return nil
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("bestSpotSettings.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let searchRadius = json["searchRadius"] as? Double,
-                  let gridSpacing = json["gridSpacing"] as? Double else {
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
                 return nil
             }
             
-            let validatedRadius = BestSpotSettings.validateSearchRadius(searchRadius)
-            let validatedSpacing = BestSpotSettings.validateGridSpacing(gridSpacing)
+            let fileURL = baseURL.appendingPathComponent("bestSpotSettings.json")
             
-            return (validatedRadius, validatedSpacing)
-        } catch {
-            return nil
+            do {
+                let data = try Data(contentsOf: fileURL)
+                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let searchRadius = json["searchRadius"] as? Double,
+                      let gridSpacing = json["gridSpacing"] as? Double else {
+                    return nil
+                }
+                
+                let validatedRadius = BestSpotSettings.validateSearchRadius(searchRadius)
+                let validatedSpacing = BestSpotSettings.validateGridSpacing(gridSpacing)
+                
+                return (validatedRadius, validatedSpacing)
+            } catch {
+                return nil
+            }
         }
     }
     
     // MARK: - Unit System
     
     public static func saveUnitSystem(_ unitSystem: String) {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return
-        }
-        
-        do {
-            let data = try JSONEncoder().encode(unitSystem)
-            let fileURL = baseURL.appendingPathComponent("unitSystem.json")
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            logger.error("Failed to save unit system: \(error.localizedDescription)")
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
+                return
+            }
+            
+            do {
+                let data = try JSONEncoder().encode(unitSystem)
+                let fileURL = baseURL.appendingPathComponent("unitSystem.json")
+                try data.write(to: fileURL, options: .atomic)
+            } catch {
+                logger.error("Failed to save unit system: \(error.localizedDescription)")
+            }
         }
     }
     
     public static func loadUnitSystem() -> String? {
-        guard let baseURL = containerURL else {
-            logger.error("App Group container not available")
-            return nil
-        }
-        
-        let fileURL = baseURL.appendingPathComponent("unitSystem.json")
-        
-        do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode(String.self, from: data)
-        } catch {
-            return nil
+        performFileAccess {
+            guard let baseURL = containerURL else {
+                logger.error("App Group container not available")
+                return nil
+            }
+            
+            let fileURL = baseURL.appendingPathComponent("unitSystem.json")
+            
+            do {
+                let data = try Data(contentsOf: fileURL)
+                return try JSONDecoder().decode(String.self, from: data)
+            } catch {
+                return nil
+            }
         }
     }
     
