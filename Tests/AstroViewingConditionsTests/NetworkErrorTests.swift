@@ -63,7 +63,7 @@ final class NetworkErrorTests: XCTestCase {
         let service = MockWeatherService(session: mockSession)
         
         do {
-            _ = try await service.fetchForecast(latitude: 45.0, longitude: -122.0)
+            _ = try await service.fetchForecast(latitude: 45.0, longitude: -122.0, days: 3)
             XCTFail("Expected error to be thrown")
         } catch {
             XCTAssertTrue(true)
@@ -84,7 +84,7 @@ final class NetworkErrorTests: XCTestCase {
         let service = MockWeatherService(session: mockSession)
         
         do {
-            _ = try await service.fetchForecast(latitude: 45.0, longitude: -122.0)
+            _ = try await service.fetchForecast(latitude: 45.0, longitude: -122.0, days: 3)
             XCTFail("Expected error to be thrown")
         } catch {
             XCTAssertTrue(true)
@@ -108,7 +108,7 @@ final class NetworkErrorTests: XCTestCase {
         let service = MockWeatherService(session: mockSession)
         
         do {
-            _ = try await service.fetchForecast(latitude: 45.0, longitude: -122.0)
+            _ = try await service.fetchForecast(latitude: 45.0, longitude: -122.0, days: 3)
             XCTFail("Expected error to be thrown")
         } catch {
             XCTAssertTrue(true)
@@ -130,7 +130,7 @@ final class NetworkErrorTests: XCTestCase {
         let service = MockWeatherService(session: mockSession)
         
         do {
-            _ = try await service.fetchForecast(latitude: 45.0, longitude: -122.0)
+            _ = try await service.fetchForecast(latitude: 45.0, longitude: -122.0, days: 3)
             XCTFail("Expected error to be thrown")
         } catch {
             XCTAssertTrue(true)
@@ -152,7 +152,7 @@ final class NetworkErrorTests: XCTestCase {
         let service = MockWeatherService(session: mockSession)
         
         do {
-            _ = try await service.fetchForecast(latitude: 45.0, longitude: -122.0)
+            _ = try await service.fetchForecast(latitude: 45.0, longitude: -122.0, days: 3)
             return nil
         } catch {
             return error
@@ -210,7 +210,7 @@ actor MockWeatherService {
     func fetchForecast(
         latitude: Double,
         longitude: Double,
-        days: Int = 3
+        days: Int
     ) async throws -> [HourlyForecast] {
         var components = URLComponents(string: baseURL)!
         

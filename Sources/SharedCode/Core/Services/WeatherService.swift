@@ -12,7 +12,7 @@ public actor WeatherService {
     public func fetchForecast(
         latitude: Double,
         longitude: Double,
-        days: Int = 3
+        days: Int
     ) async throws -> [HourlyForecast] {
         var components = URLComponents(string: baseURL)!
         
@@ -83,7 +83,7 @@ public actor WeatherService {
     /// Open-Meteo API has a limit on the number of locations per request
     public func fetchForecastForMultipleLocations(
         coordinates: [Coordinate],
-        days: Int = 3
+        days: Int
     ) async throws -> [Coordinate: [HourlyForecast]] {
         guard !coordinates.isEmpty else {
             return [:]
@@ -117,7 +117,7 @@ public actor WeatherService {
     /// Fetches forecasts for a single batch of locations
     private func fetchForecastBatch(
         coordinates: [Coordinate],
-        days: Int = 3
+        days: Int
     ) async throws -> [Coordinate: [HourlyForecast]] {
         var components = URLComponents(string: baseURL)!
         
