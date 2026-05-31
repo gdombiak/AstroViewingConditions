@@ -40,10 +40,14 @@ public final class iCloudKeyValueStorage: @unchecked Sendable {
     }
     
     public func loadLocations() -> [CachedLocation] {
-        guard isAvailable else { return [] }
+        loadLocationsIfPresent() ?? []
+    }
+
+    public func loadLocationsIfPresent() -> [CachedLocation]? {
+        guard isAvailable else { return nil }
         guard let data = store.data(forKey: Keys.savedLocations),
               let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) else {
-            return []
+            return nil
         }
         logger.info("Loaded \(locations.count) locations from iCloud")
         return locations

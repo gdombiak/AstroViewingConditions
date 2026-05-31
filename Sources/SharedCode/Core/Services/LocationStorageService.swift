@@ -30,7 +30,12 @@ public final class LocationStorageService: @unchecked Sendable {
     }
     
     public func loadSavedLocations() -> [CachedLocation] {
-        AppGroupStorage.loadSavedLocations()
+        if let cloudLocations = iCloudKeyValueStorage.shared.loadLocationsIfPresent() {
+            AppGroupStorage.saveSavedLocations(cloudLocations)
+            return cloudLocations
+        }
+
+        return AppGroupStorage.loadSavedLocations()
     }
     
     public func getSavedLocations(context: ModelContext) -> [CachedLocation] {
@@ -73,7 +78,12 @@ public final class LocationStorageService: @unchecked Sendable {
     }
     
     public func loadSavedLocations() -> [CachedLocation] {
-        AppGroupStorage.loadSavedLocations()
+        if let cloudLocations = iCloudKeyValueStorage.shared.loadLocationsIfPresent() {
+            AppGroupStorage.saveSavedLocations(cloudLocations)
+            return cloudLocations
+        }
+
+        return AppGroupStorage.loadSavedLocations()
     }
     
     public func publishLocationsToWatch(context: Any) -> [CachedLocation] {
