@@ -6,7 +6,6 @@ struct WatchDashboardView: View {
     @ObservedObject var locationManager = WatchLocationManager.shared
     @ObservedObject var conditionsManager = WatchConditionsManager.shared
     @State private var isAutomaticRefreshInFlight = false
-    @State private var lastActiveCheck = Date()
     
     var locationOptions: [LocationOption] {
         LocationOption.fromLocations(saved: locationManager.locations)
@@ -79,11 +78,13 @@ struct WatchDashboardView: View {
                     }
 
                     if let fetchedAt = conditionsManager.conditions?.fetchedAt {
-                        Text("Updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: lastActiveCheck))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.top, 4)
+                        TimelineView(.periodic(from: .now, by: 60)) { context in
+                            Text("Updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: context.date))")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.top, 4)
+                        }
                     }
                 }
                 .padding()
@@ -97,7 +98,6 @@ struct WatchDashboardView: View {
             }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
-                    lastActiveCheck = Date()
                     Task {
                         await refreshConditionsIfNeeded()
                     }

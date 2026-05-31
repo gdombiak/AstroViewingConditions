@@ -189,7 +189,12 @@ extension WatchConnectivityService: WCSessionDelegate {
             let cacheService = CacheService()
             var reply: [String: Any] = ["status": "ok"]
             
-            if let conditions = await cacheService.loadAsync() {
+            var conditions = await fetchFreshConditionsForWatchRequest()
+            if conditions == nil {
+                conditions = await cacheService.loadAsync()
+            }
+
+            if let conditions {
                 let watchConditions = conditions.limitedToTonightCache()
                 if let data = try? JSONEncoder().encode(watchConditions) {
                     reply["conditions"] = data
@@ -208,6 +213,64 @@ extension WatchConnectivityService: WCSessionDelegate {
             }
             
             replyHandlerBox.reply(reply)
+        }
+    }
+
+    @MainActor
+    private func fetchFreshConditionsForWatchRequest() async -> ViewingConditions? {
+        guard let location = watchRequestLocation() else { return nil }
+
+        let viewModel = DashboardViewModel(
+            apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
+        )
+        await viewModel.refresh(for: location)
+
+        guard viewModel.error == nil, let conditions = viewModel.viewingConditions else {
+            return nil
+        }
+
+        await viewModel.saveToCache()
+        return conditions
+    }
+
+    @MainActor
+    private func watchRequestLocation() -> SavedLocation? {
+        let selectedLocation = LocationStorageService.shared.loadSelectedLocation()
+        let savedLocations = LocationStorageService.shared.loadSavedLocations()
+
+        if let selectedLocation,
+           selectedLocation.source == .saved,
+           let selectedID = selectedLocation.id,
+           let savedLocation = savedLocations.first(where: { $0.id == selectedID }) {
+            return SavedLocation(cachedLocation: savedLocation)
+        }
+
+        if let selectedLocation, selectedLocation.latitude != 0, selectedLocation.longitude != 0 {
+            return SavedLocation(
+                name: selectedLocation.name,
+                latitude: selectedLocation.latitude,
+                longitude: selectedLocation.longitude
+            )
+        }
+
+        if let cachedConditions = CacheService().load() {
+            return SavedLocation(cachedLocation: cachedConditions.location)
+        }
+
+        return nil
+    }
+}
+
+private extension SavedLocation {
+    convenience init(cachedLocation: CachedLocation) {
+        self.init(
+            name: cachedLocation.name,
+            latitude: cachedLocation.latitude,
+            longitude: cachedLocation.longitude,
+            elevation: cachedLocation.elevation
+        )
+        if let id = cachedLocation.id {
+            self.id = id
         }
     }
 }

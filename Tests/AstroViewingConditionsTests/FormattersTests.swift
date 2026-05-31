@@ -55,6 +55,15 @@ final class FormattersTests: XCTestCase {
         
         XCTAssertFalse(result.isEmpty)
     }
+
+    func testTimeAgoTreatsFutureDatesAsNow() {
+        let referenceDate = Date()
+        let futureDate = referenceDate.addingTimeInterval(30 * 60)
+
+        let result = DateFormatters.timeAgo(from: futureDate, relativeTo: referenceDate)
+
+        XCTAssertEqual(result, "now")
+    }
     
     // MARK: - Duration Formatting
     

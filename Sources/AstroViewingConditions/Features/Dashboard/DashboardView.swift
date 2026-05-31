@@ -17,7 +17,6 @@ public struct DashboardView: View {
     @State private var currentLocation: SavedLocation?
     @State private var showingLocationPicker = false
     @State private var showingBestSpotSearch = false
-    @State private var lastActiveCheck = Date()
     
     public init() {
         _selectedLocation = State(initialValue: LocationStorageService.shared.loadSelectedLocation())
@@ -160,7 +159,6 @@ public struct DashboardView: View {
             WatchConnectivityService.shared.sendLocationsToWatch(locations)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            lastActiveCheck = Date()
             if viewModel.isDataStale, !viewModel.isLoading, let location = activeSavedLocation {
                 Task {
                     await viewModel.refresh(for: location)
@@ -227,10 +225,12 @@ public struct DashboardView: View {
                 }
                 
                 if let fetchedAt = viewModel.viewingConditions?.fetchedAt {
-                    Text("Last updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: lastActiveCheck))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.top)
+                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                        Text("Last updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: context.date))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.top)
+                    }
                 }
             }
             .padding()
