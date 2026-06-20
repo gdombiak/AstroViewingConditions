@@ -70,9 +70,7 @@ struct BestSpotView: View {
             .sheet(isPresented: $showingSettings, onDismiss: {
                 // Only refresh if settings actually changed
                 if searchRadius != previousSearchRadius || gridSpacing != previousGridSpacing {
-                    Task {
-                        await viewModel.search(around: centerLocation, for: searchDate, topN: 5)
-                    }
+                    viewModel.startSearch(around: centerLocation, for: searchDate, topN: 5)
                 }
             }) {
                 BestSpotSettingsView()
@@ -83,7 +81,10 @@ struct BestSpotView: View {
                 latitude: centerLocation.latitude,
                 longitude: centerLocation.longitude
             )
-            await viewModel.search(around: centerLocation, for: searchDate, topN: 5)
+            viewModel.startSearch(around: centerLocation, for: searchDate, topN: 5)
+        }
+        .onDisappear {
+            viewModel.cancelSearch()
         }
     }
     
@@ -104,9 +105,7 @@ struct BestSpotView: View {
                 .foregroundStyle(.secondary)
             
             Button("Start Search") {
-                Task {
-                    await viewModel.search(around: centerLocation, for: searchDate, topN: 5)
-                }
+                viewModel.startSearch(around: centerLocation, for: searchDate, topN: 5)
             }
             .buttonStyle(.borderedProminent)
             .padding(.top)

@@ -8,6 +8,8 @@ import CoreLocation
 public class BestSpotViewModel {
     // Services
     private let searcher: BestSpotSearcher
+    private var searchTask: Task<Void, Never>?
+    private var activeSearchID: UUID?
     
     // State
     public var result: BestSpotResult?
@@ -28,6 +30,17 @@ public class BestSpotViewModel {
     public init(fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate) {
         self.searcher = BestSpotSearcher(fogScoreCalculator: fogScoreCalculator)
     }
+
+    public func startSearch(
+        around center: SavedLocation,
+        for date: Date,
+        topN: Int = 5
+    ) {
+        searchTask?.cancel()
+        searchTask = Task { [weak self] in
+            await self?.search(around: center, for: date, topN: topN)
+        }
+    }
     
     /// Starts a search for the best viewing conditions
     public func search(
@@ -35,6 +48,8 @@ public class BestSpotViewModel {
         for date: Date,
         topN: Int = 5
     ) async {
+        let searchID = UUID()
+        activeSearchID = searchID
         isSearching = true
         error = nil
         searchProgress = 0
@@ -50,23 +65,41 @@ public class BestSpotViewModel {
                 topN: topN
             ) { [weak self] progress in
                 Task { @MainActor in
+                    guard self?.activeSearchID == searchID,
+                          self?.isSearching == true else { return }
                     self?.searchProgress = progress
                 }
             }
             
+            try Task.checkCancellation()
+            guard activeSearchID == searchID else { return }
             self.result = searchResult
             
+        } catch is CancellationError {
+            if activeSearchID == searchID {
+                result = nil
+                error = nil
+            }
         } catch {
-            self.error = error
+            if !Task.isCancelled, activeSearchID == searchID {
+                self.error = error
+            }
         }
         
-        isSearching = false
+        if activeSearchID == searchID {
+            isSearching = false
+            activeSearchID = nil
+            searchTask = nil
+        }
     }
     
     /// Cancels the current search
     public func cancelSearch() {
-        // In a real implementation, we might want to add cancellation support
-        // to BestSpotSearcher. For now, we'll just reset the state.
+        searchTask?.cancel()
+        searchTask = nil
+        activeSearchID = nil
+        result = nil
+        error = nil
         isSearching = false
         searchProgress = 0
     }

@@ -74,6 +74,7 @@ public final class BestSpotSearcher: Sendable {
         progressHandler: (@Sendable (Double) -> Void)? = nil
     ) async throws -> BestSpotResult {
         let startTime = Date()
+        try Task.checkCancellation()
         
         // Generate grid points
         progressHandler?(0.1)
@@ -88,6 +89,7 @@ public final class BestSpotSearcher: Sendable {
         }
         
         let tz = await LocationTimeZoneResolver.resolve(latitude: center.latitude, longitude: center.longitude)
+        try Task.checkCancellation()
         let calendar = LocationTimeZoneResolver.calendar(for: tz)
         let forecastDays = Self.forecastDaysNeeded(for: date, calendar: calendar)
         
@@ -98,6 +100,7 @@ public final class BestSpotSearcher: Sendable {
             coordinates: coordinates,
             days: forecastDays
         )
+        try Task.checkCancellation()
         
         guard !weatherData.isEmpty else {
             throw BestSpotSearchError.noWeatherData
@@ -114,18 +117,22 @@ public final class BestSpotSearcher: Sendable {
             on: startOfDay
         )
         
-        let nextDay = calendar.date(byAdding: Calendar.Component.day, value: 1, to: startOfDay)!
+        guard let nextDay = calendar.date(byAdding: Calendar.Component.day, value: 1, to: startOfDay) else {
+            throw BestSpotSearchError.invalidDate
+        }
         let sunEventsTomorrow = await astronomyService.calculateSunEvents(
             latitude: center.latitude,
             longitude: center.longitude,
             on: nextDay
         )
+        try Task.checkCancellation()
         
         let moonInfo = await astronomyService.calculateMoonInfo(
             latitude: center.latitude,
             longitude: center.longitude,
             on: startOfDay
         )
+        try Task.checkCancellation()
         
         progressHandler?(0.5)
         
@@ -135,6 +142,7 @@ public final class BestSpotSearcher: Sendable {
         let moonCalculationCache = NightQualityAnalyzer.MoonCalculationCache()
         
         for (index, gridPoint) in gridPoints.enumerated() {
+            try Task.checkCancellation()
             guard let forecasts = weatherData[gridPoint.coordinate] else { continue }
             
             if let locationScore = scoreLocation(
@@ -216,7 +224,7 @@ public final class BestSpotSearcher: Sendable {
         let avgWindSpeed = nightForecasts.map { $0.windSpeed }.reduce(0, +) / Double(nightForecasts.count)
         
         // Calculate fog score for current conditions
-        let fogScore = fogScoreCalculator(nightForecasts.first ?? forecasts.first!)
+        let fogScore = fogScoreCalculator(nightForecasts[0])
         
         // Generate summary
         let summary = generateSummary(nightQuality: nightQuality, score: score)
