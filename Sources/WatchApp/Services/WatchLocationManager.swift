@@ -3,16 +3,6 @@ import Combine
 import SharedCode
 import WidgetKit
 
-enum LocationError: Error, LocalizedError {
-    case notAuthorized
-    
-    var errorDescription: String? {
-        switch self {
-        case .notAuthorized: return "Location access not authorized"
-        }
-    }
-}
-
 class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnectivityManagerDelegate {
     static let shared = WatchLocationManager()
     

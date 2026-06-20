@@ -14,7 +14,9 @@ public actor WeatherService {
         longitude: Double,
         days: Int
     ) async throws -> [HourlyForecast] {
-        var components = URLComponents(string: baseURL)!
+        guard var components = URLComponents(string: baseURL) else {
+            throw WeatherError.invalidURL
+        }
         
         let hourlyParams = [
             "cloudcover",
@@ -54,7 +56,9 @@ public actor WeatherService {
     }
     
     public func searchLocations(query: String) async throws -> [GeocodingResult] {
-        var components = URLComponents(string: geocodingURL)!
+        guard var components = URLComponents(string: geocodingURL) else {
+            throw WeatherError.invalidURL
+        }
         components.queryItems = [
             URLQueryItem(name: "name", value: query),
             URLQueryItem(name: "count", value: "10"),
@@ -119,7 +123,9 @@ public actor WeatherService {
         coordinates: [Coordinate],
         days: Int
     ) async throws -> [Coordinate: [HourlyForecast]] {
-        var components = URLComponents(string: baseURL)!
+        guard var components = URLComponents(string: baseURL) else {
+            throw WeatherError.invalidURL
+        }
         
         let hourlyParams = [
             "cloudcover",
@@ -182,7 +188,8 @@ public actor WeatherService {
         let timeZone = response.timezone
             .flatMap(TimeZone.init(identifier:))
             ?? TimeZone(secondsFromGMT: response.utcOffsetSeconds)
-            ?? TimeZone(identifier: "UTC")!
+            ?? TimeZone(secondsFromGMT: 0)
+            ?? TimeZone.current
         let formatter = DateFormatter.openMeteoLocalDateFormatter(timeZone: timeZone)
         var forecasts: [HourlyForecast] = []
         

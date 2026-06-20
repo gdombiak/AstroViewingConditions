@@ -99,7 +99,7 @@ struct HourlyForecastView: View {
         if let timeZone {
             return LocationTimeZoneResolver.calendar(for: timeZone)
         }
-        return LocationTimeZoneResolver.calendar(for: TimeZone(identifier: "UTC")!)
+        return LocationTimeZoneResolver.calendar(for: TimeZone(secondsFromGMT: 0) ?? TimeZone.current)
     }
     
     private func isCurrentHour(_ date: Date) -> Bool {
@@ -260,7 +260,7 @@ struct HourlyColumn: View {
     let calendar = Calendar(identifier: .gregorian)
     let sampleForecasts = (0..<12).map { hour in
         HourlyForecast(
-            time: calendar.date(byAdding: .hour, value: hour, to: Date())!,
+            time: calendar.date(byAdding: .hour, value: hour, to: Date()) ?? Date().addingTimeInterval(Double(hour) * 3600),
             cloudCover: Int.random(in: 0...100),
             humidity: Int.random(in: 40...90),
             windSpeed: Double.random(in: 5...25),

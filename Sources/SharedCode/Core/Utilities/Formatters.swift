@@ -35,7 +35,7 @@ public struct DateFormatters {
         }
         
         func string(from date: Date, in timeZone: TimeZone?) -> String {
-            let resolvedTimeZone = timeZone ?? TimeZone(identifier: "UTC")!
+            let resolvedTimeZone = timeZone ?? TimeZone(secondsFromGMT: 0) ?? TimeZone.current
             let key = resolvedTimeZone.identifier
             
             lock.lock()

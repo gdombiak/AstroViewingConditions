@@ -119,14 +119,15 @@ public struct DashboardView: View {
             await loadCurrentLocation()
             if let location = selectedLocation, location.source == .saved, location.latitude == 0, location.longitude == 0, location.name.isEmpty {
                 if let id = location.id, let saved = savedLocations.first(where: { $0.id == id }) {
-                    selectedLocation = SelectedLocation(
+                    let restoredLocation = SelectedLocation(
                         source: .saved,
                         id: saved.id,
                         name: saved.name,
                         latitude: saved.latitude,
                         longitude: saved.longitude
                     )
-                    LocationStorageService.shared.saveSelectedLocation(selectedLocation!)
+                    selectedLocation = restoredLocation
+                    LocationStorageService.shared.saveSelectedLocation(restoredLocation)
                 }
             }
             await loadActiveLocationConditionsIfNeeded()

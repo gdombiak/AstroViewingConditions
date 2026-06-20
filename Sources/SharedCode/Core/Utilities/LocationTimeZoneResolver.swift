@@ -27,7 +27,7 @@ public struct LocationTimeZoneResolver {
         // Each 15 degrees of longitude is roughly 1 hour offset from UTC.
         let offsetHours = Int(round(longitude / 15.0))
         let offsetSeconds = offsetHours * 3600
-        return TimeZone(secondsFromGMT: offsetSeconds) ?? TimeZone(identifier: "UTC")!
+        return TimeZone(secondsFromGMT: offsetSeconds) ?? TimeZone(secondsFromGMT: 0) ?? TimeZone.current
     }
     
     /// Creates a calendar configured for the given timezone.

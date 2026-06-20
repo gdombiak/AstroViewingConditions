@@ -9,16 +9,19 @@ public struct NightForecastFilter: Sendable {
         calendar: Calendar
     ) -> (start: Date, end: Date) {
         let startOfDay = calendar.startOfDay(for: date)
-        let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)
+            ?? startOfDay.addingTimeInterval(24 * 60 * 60)
         
         let duskHour = calendar.component(.hour, from: sunEventsToday.astronomicalTwilightEnd)
         let duskMinute = calendar.component(.minute, from: sunEventsToday.astronomicalTwilightEnd)
-        let nightStart = calendar.date(bySettingHour: duskHour, minute: duskMinute, second: 0, of: startOfDay)!
+        let nightStart = calendar.date(bySettingHour: duskHour, minute: duskMinute, second: 0, of: startOfDay)
+            ?? sunEventsToday.astronomicalTwilightEnd
         
         let tomorrowSunEvents = sunEventsTomorrow ?? sunEventsToday
         let dawnHour = calendar.component(.hour, from: tomorrowSunEvents.astronomicalTwilightBegin)
         let dawnMinute = calendar.component(.minute, from: tomorrowSunEvents.astronomicalTwilightBegin)
-        let nightEnd = calendar.date(bySettingHour: dawnHour, minute: dawnMinute, second: 0, of: nextDay)!
+        let nightEnd = calendar.date(bySettingHour: dawnHour, minute: dawnMinute, second: 0, of: nextDay)
+            ?? tomorrowSunEvents.astronomicalTwilightBegin
         
         return (nightStart, nightEnd)
     }

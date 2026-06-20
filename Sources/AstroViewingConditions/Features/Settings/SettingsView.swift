@@ -81,9 +81,11 @@ public struct SettingsView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 
-                                Link(destination: URL(string: "https://www.n2yo.com/")!) {
-                                    Label("Get a free API key at n2yo.com", systemImage: "arrow.up.right.square")
-                                        .font(.caption)
+                                if let n2yoURL = URL(string: "https://www.n2yo.com/") {
+                                    Link(destination: n2yoURL) {
+                                        Label("Get a free API key at n2yo.com", systemImage: "arrow.up.right.square")
+                                            .font(.caption)
+                                    }
                                 }
                             }
                         } else {
@@ -111,8 +113,10 @@ public struct SettingsView: View {
                     }
                     .padding(.vertical, 4)
                     
-                    Link(destination: URL(string: "https://github.com/gdombiak/AstroViewingConditions")!) {
-                        Label("View on GitHub", systemImage: "link")
+                    if let repositoryURL = URL(string: "https://github.com/gdombiak/AstroViewingConditions") {
+                        Link(destination: repositoryURL) {
+                            Label("View on GitHub", systemImage: "link")
+                        }
                     }
                 }
                 
