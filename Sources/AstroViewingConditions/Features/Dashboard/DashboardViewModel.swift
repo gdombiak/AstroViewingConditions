@@ -6,9 +6,7 @@ import WidgetKit
 @Observable
 public class DashboardViewModel {
     // Services
-    private let weatherService = WeatherService()
-    private let astronomyService = AstronomyService()
-    private var issService: ISSService?
+    private let conditionsProvider: ConditionsProvider
     private let cacheService: CacheService
     
     // State
@@ -51,7 +49,8 @@ public class DashboardViewModel {
             case .tomorrow:
                 return "Tomorrow"
             case .dayAfter:
-                let dayAfter = calendar.date(byAdding: .day, value: 2, to: startOfDay)!
+                let dayAfter = calendar.date(byAdding: .day, value: 2, to: startOfDay)
+                    ?? startOfDay.addingTimeInterval(2 * 24 * 60 * 60)
                 return DateFormatters.formatShortDate(dayAfter, in: calendar.timeZone)
             }
         }
@@ -78,8 +77,10 @@ public class DashboardViewModel {
         
         let calendar = locationCalendar
         let startOfFirstDay = calendar.startOfDay(for: firstForecastTime)
-        let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay)!
-        let endOfSelectedDay = calendar.date(byAdding: .day, value: 1, to: startOfSelectedDay)!
+        guard let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay),
+              let endOfSelectedDay = calendar.date(byAdding: .day, value: 1, to: startOfSelectedDay) else {
+            return []
+        }
         
         return conditions.hourlyForecasts.filter { forecast in
             forecast.time >= startOfSelectedDay && forecast.time < endOfSelectedDay
@@ -132,7 +133,7 @@ public class DashboardViewModel {
         if let timeZone = displayTimeZone {
             return LocationTimeZoneResolver.calendar(for: timeZone)
         }
-        return LocationTimeZoneResolver.calendar(for: TimeZone(identifier: "UTC")!)
+        return LocationTimeZoneResolver.calendar(for: TimeZone(secondsFromGMT: 0) ?? TimeZone.current)
     }
     
     public var displayTimeZone: TimeZone? {
@@ -159,7 +160,9 @@ public class DashboardViewModel {
         let calendar = locationCalendar
         let tomorrowIndex = selectedDay.rawValue + 1
         let sunEventsTomorrow = tomorrowIndex < conditions.dailySunEvents.count ? conditions.dailySunEvents[tomorrowIndex] : nil
-        let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: Date()))!
+        guard let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: Date())) else {
+            return nil
+        }
         
         let nightForecasts = nightTimeForecasts
         
@@ -181,30 +184,29 @@ public class DashboardViewModel {
         
         let calendar = locationCalendar
         let startOfFirstDay = calendar.startOfDay(for: firstForecastTime)
-        let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay)!
-        let endOfFollowingDay = calendar.date(byAdding: .day, value: 3, to: startOfSelectedDay)!
+        guard let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay),
+              let endOfFollowingDay = calendar.date(byAdding: .day, value: 3, to: startOfSelectedDay) else {
+            return []
+        }
         
         return conditions.hourlyForecasts.filter { forecast in
             forecast.time >= startOfSelectedDay && forecast.time < endOfFollowingDay
         }
     }
     
-    public init(apiKey: String = "", cacheService: CacheService = CacheService()) {
+    public init(
+        apiKey: String = "",
+        cacheService: CacheService = CacheService(),
+        conditionsProvider: ConditionsProvider = ConditionsProvider()
+    ) {
         self.apiKey = apiKey
         self.cacheService = cacheService
-        if !apiKey.isEmpty {
-            self.issService = ISSService(apiKey: apiKey)
-        }
+        self.conditionsProvider = conditionsProvider
     }
     
     public func updateAPIKey(_ newKey: String) {
         guard newKey != apiKey else { return }
         self.apiKey = newKey
-        if !newKey.isEmpty {
-            self.issService = ISSService(apiKey: newKey)
-        } else {
-            self.issService = nil
-        }
     }
     
     @discardableResult
@@ -212,75 +214,17 @@ public class DashboardViewModel {
         isLoading = true
         error = nil
         
-        let latitude = location.latitude
-        let longitude = location.longitude
-        let locationName = location.name
-        let locationElevation = location.elevation
-        
         do {
-            // Resolve timezone for the location being viewed
-            let tz = await LocationTimeZoneResolver.resolve(latitude: latitude, longitude: longitude)
-            locationTimeZone = tz
-            let calendar = LocationTimeZoneResolver.calendar(for: tz)
-            
-            // Fetch weather data
-            let forecasts = try await weatherService.fetchForecast(
-                latitude: latitude,
-                longitude: longitude,
-                days: 4
+            let newConditions = try await conditionsProvider.fetchConditions(
+                for: CachedLocation(from: location),
+                days: 4,
+                apiKey: apiKey
             )
-            
-            let startOfToday = calendar.startOfDay(for: Date())
-            
-            var dailySunEvents: [SunEvents] = []
-            var dailyMoonInfo: [MoonInfo] = []
-            
-            for dayOffset in 0..<4 {
-                let date = calendar.date(byAdding: Calendar.Component.day, value: dayOffset, to: startOfToday)!
-                let sunEvents = await astronomyService.calculateSunEvents(
-                    latitude: latitude,
-                    longitude: longitude,
-                    on: date
-                )
-                let moonInfo = await astronomyService.calculateMoonInfo(
-                    latitude: latitude,
-                    longitude: longitude,
-                    on: date
-                )
-                dailySunEvents.append(sunEvents)
-                dailyMoonInfo.append(moonInfo)
-            }
-            
-            // Fetch ISS passes (only if API key is configured)
-            let issPasses: [ISSPass]
-            if let service = issService {
-                issPasses = try await service.fetchPasses(
-                    latitude: latitude,
-                    longitude: longitude
-                )
+            if let identifier = newConditions.timeZoneIdentifier {
+                locationTimeZone = TimeZone(identifier: identifier)
             } else {
-                issPasses = []
+                locationTimeZone = LocationTimeZoneResolver.approximate(longitude: newConditions.location.longitude)
             }
-            
-            let fogScore = FogCalculator.calculateCurrent(from: forecasts)
-            
-            let cachedLocation = CachedLocation(
-                name: locationName,
-                latitude: latitude,
-                longitude: longitude,
-                elevation: locationElevation
-            )
-            
-            let newConditions = ViewingConditions(
-                fetchedAt: Date(),
-                location: cachedLocation,
-                hourlyForecasts: forecasts,
-                dailySunEvents: dailySunEvents,
-                dailyMoonInfo: dailyMoonInfo,
-                issPasses: issPasses,
-                fogScore: fogScore,
-                timeZoneIdentifier: tz.identifier
-            )
             viewingConditions = newConditions
             lastSuccessfulFetch = newConditions.fetchedAt
             isLoading = false

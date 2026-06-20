@@ -14,6 +14,8 @@ private final class WatchReplyHandler: @unchecked Sendable {
     }
 }
 
+private let watchRequestCacheMaxAge: TimeInterval = 3600
+
 @MainActor
 public class WatchConnectivityService: NSObject, ObservableObject {
     public static let shared = WatchConnectivityService()
@@ -22,6 +24,7 @@ public class WatchConnectivityService: NSObject, ObservableObject {
     @Published public var isPaired = false
     
     private var session: WCSession?
+    private let conditionsProvider = ConditionsProvider()
     
     private override init() {
         super.init()
@@ -189,7 +192,7 @@ extension WatchConnectivityService: WCSessionDelegate {
             let cacheService = CacheService()
             var reply: [String: Any] = ["status": "ok"]
             
-            var conditions = await fetchFreshConditionsForWatchRequest()
+            var conditions = await conditionsForWatchRequest(cacheService: cacheService)
             if conditions == nil {
                 conditions = await cacheService.loadAsync()
             }
@@ -217,19 +220,21 @@ extension WatchConnectivityService: WCSessionDelegate {
     }
 
     @MainActor
-    private func fetchFreshConditionsForWatchRequest() async -> ViewingConditions? {
+    private func conditionsForWatchRequest(cacheService: CacheService) async -> ViewingConditions? {
         guard let location = watchRequestLocation() else { return nil }
 
-        let viewModel = DashboardViewModel(
-            apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
-        )
-        guard await viewModel.refresh(for: location),
-              viewModel.error == nil,
-              let conditions = viewModel.viewingConditions else {
+        do {
+            return try await conditionsProvider.conditions(
+                for: CachedLocation(from: location),
+                days: 4,
+                apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? "",
+                cacheService: cacheService,
+                cacheMaxAge: watchRequestCacheMaxAge,
+                locationTolerance: 0.0001
+            )
+        } catch {
             return nil
         }
-
-        return conditions
     }
 
     @MainActor

@@ -28,6 +28,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     
     private let connectivityManager = WatchConnectivityManager.shared
     private let locationManager = WatchLocationManager.shared
+    private let conditionsProvider = ConditionsProvider()
     
     @Published var conditions: ViewingConditions?
     @Published var nightQuality: NightQualityAssessment?
@@ -39,7 +40,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         if let timeZone = displayTimeZone {
             return LocationTimeZoneResolver.calendar(for: timeZone)
         }
-        return LocationTimeZoneResolver.calendar(for: TimeZone(identifier: "UTC")!)
+        return LocationTimeZoneResolver.calendar(for: TimeZone(secondsFromGMT: 0) ?? TimeZone.current)
     }
     
     var displayTimeZone: TimeZone? {
@@ -186,7 +187,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     }
 
     private static func isFresh(_ conditions: ViewingConditions) -> Bool {
-        Date().timeIntervalSince(conditions.fetchedAt) <= freshConditionsInterval
+        conditions.isFreshForLocalDay(within: freshConditionsInterval)
     }
 
     private static func conditions(_ conditions: ViewingConditions, match selectedLocation: SelectedLocation) -> Bool {
@@ -224,56 +225,13 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         longitude: Double,
         locationName: String
     ) async throws -> ViewingConditions {
-        let tz = await LocationTimeZoneResolver.resolve(latitude: latitude, longitude: longitude)
-        let calendar = LocationTimeZoneResolver.calendar(for: tz)
-        
-        let weatherService = WeatherService()
-        let forecasts = try await weatherService.fetchForecast(
-            latitude: latitude,
-            longitude: longitude,
+        try await conditionsProvider.fetchConditions(
+            for: CachedLocation(
+                name: locationName,
+                latitude: latitude,
+                longitude: longitude
+            ),
             days: 2
-        )
-        
-        let startOfToday = calendar.startOfDay(for: Date())
-        
-        let astronomyService = AstronomyService()
-        var dailySunEvents: [SunEvents] = []
-        var dailyMoonInfo: [MoonInfo] = []
-        
-        for dayOffset in 0..<2 {
-            let date = calendar.date(byAdding: Calendar.Component.day, value: dayOffset, to: startOfToday)!
-            let sunEvents = await astronomyService.calculateSunEvents(
-                latitude: latitude,
-                longitude: longitude,
-                on: date
-            )
-            let moonInfo = await astronomyService.calculateMoonInfo(
-                latitude: latitude,
-                longitude: longitude,
-                on: date
-            )
-            dailySunEvents.append(sunEvents)
-            dailyMoonInfo.append(moonInfo)
-        }
-        
-        let fogScore = FogCalculator.calculateCurrent(from: forecasts)
-        
-        let cachedLocation = CachedLocation(
-            name: locationName,
-            latitude: latitude,
-            longitude: longitude,
-            elevation: nil
-        )
-        
-        return ViewingConditions(
-            fetchedAt: Date(),
-            location: cachedLocation,
-            hourlyForecasts: forecasts,
-            dailySunEvents: dailySunEvents,
-            dailyMoonInfo: dailyMoonInfo,
-            issPasses: [],
-            fogScore: fogScore,
-            timeZoneIdentifier: tz.identifier
         )
     }
     

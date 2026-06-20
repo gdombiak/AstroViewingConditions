@@ -83,6 +83,77 @@ final class ViewingConditionsModelTests: XCTestCase {
         XCTAssertEqual(decoded.fogScore.score, 25)
         XCTAssertEqual(decoded.timeZoneIdentifier, "America/New_York")
     }
+
+    func testViewingConditionsFreshForLocalDayRejectsCacheAfterLocalMidnight() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+
+        let fetchedAt = calendar.date(from: DateComponents(
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 1,
+            hour: 23,
+            minute: 45
+        ))!
+        let referenceDate = calendar.date(from: DateComponents(
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 2,
+            hour: 0,
+            minute: 15
+        ))!
+
+        let conditions = ViewingConditions(
+            fetchedAt: fetchedAt,
+            location: CachedLocation(name: "Los Angeles", latitude: 34.05, longitude: -118.25),
+            hourlyForecasts: [],
+            dailySunEvents: [],
+            dailyMoonInfo: [],
+            issPasses: [],
+            fogScore: FogScore(score: 0, factors: []),
+            timeZoneIdentifier: "America/Los_Angeles"
+        )
+
+        XCTAssertTrue(conditions.isFresh(within: 3600, relativeTo: referenceDate))
+        XCTAssertFalse(conditions.isFreshForLocalDay(within: 3600, relativeTo: referenceDate))
+    }
+
+    func testViewingConditionsFreshForLocalDayAcceptsSameLocalDayCache() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+
+        let fetchedAt = calendar.date(from: DateComponents(
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 1,
+            hour: 21,
+            minute: 45
+        ))!
+        let referenceDate = calendar.date(from: DateComponents(
+            timeZone: calendar.timeZone,
+            year: 2026,
+            month: 6,
+            day: 1,
+            hour: 22,
+            minute: 15
+        ))!
+
+        let conditions = ViewingConditions(
+            fetchedAt: fetchedAt,
+            location: CachedLocation(name: "Los Angeles", latitude: 34.05, longitude: -118.25),
+            hourlyForecasts: [],
+            dailySunEvents: [],
+            dailyMoonInfo: [],
+            issPasses: [],
+            fogScore: FogScore(score: 0, factors: []),
+            timeZoneIdentifier: "America/Los_Angeles"
+        )
+
+        XCTAssertTrue(conditions.isFreshForLocalDay(within: 3600, relativeTo: referenceDate))
+    }
     
     // MARK: - CachedLocation Codable
     

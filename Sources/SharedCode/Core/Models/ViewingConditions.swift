@@ -57,6 +57,25 @@ public struct ViewingConditions: Sendable, Codable {
 }
 
 public extension ViewingConditions {
+    func isFresh(within maxAge: TimeInterval, relativeTo referenceDate: Date = Date()) -> Bool {
+        referenceDate.timeIntervalSince(fetchedAt) <= maxAge
+    }
+
+    func isFreshForLocalDay(within maxAge: TimeInterval, relativeTo referenceDate: Date = Date()) -> Bool {
+        guard isFresh(within: maxAge, relativeTo: referenceDate) else {
+            return false
+        }
+
+        let timeZone = timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
+            ?? LocationTimeZoneResolver.approximate(longitude: location.longitude)
+        let calendar = LocationTimeZoneResolver.calendar(for: timeZone)
+        return calendar.isDate(fetchedAt, inSameDayAs: referenceDate)
+    }
+
+    func locationMatches(latitude: Double, longitude: Double, tolerance: Double = 0.01) -> Bool {
+        location.matches(latitude: latitude, longitude: longitude, tolerance: tolerance)
+    }
+
     func limitedToTonightCache() -> ViewingConditions {
         let timeZone = timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
             ?? LocationTimeZoneResolver.approximate(longitude: location.longitude)
@@ -78,6 +97,13 @@ public extension ViewingConditions {
             fogScore: fogScore,
             timeZoneIdentifier: timeZoneIdentifier
         )
+    }
+}
+
+public extension CachedLocation {
+    func matches(latitude: Double, longitude: Double, tolerance: Double = 0.01) -> Bool {
+        abs(self.latitude - latitude) <= tolerance &&
+            abs(self.longitude - longitude) <= tolerance
     }
 }
 

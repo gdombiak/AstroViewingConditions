@@ -4,6 +4,7 @@ import SwiftUI
 import os.log
 
 private let widgetLogger = Logger(subsystem: "com.astroviewing.conditions.widget", category: "Widget")
+private let widgetCacheMaxAge: TimeInterval = 3600
 
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> NightConditionsEntry {
@@ -31,85 +32,71 @@ struct Provider: TimelineProvider {
             return nil
         }
 
-        let weatherService = WeatherService()
-        let astronomyService = AstronomyService()
-
-        let forecasts: [HourlyForecast]
-        let fetchedAt: Date
-        do {
-            forecasts = try await weatherService.fetchForecast(
-                latitude: location.latitude,
-                longitude: location.longitude,
-                days: 2
-            )
-            fetchedAt = Date()
-            widgetLogger.info("Fetched \(forecasts.count) hourly forecasts from API")
-        } catch {
-            widgetLogger.error("Failed to fetch weather forecast: \(error.localizedDescription)")
-            if let cached = await AppGroupStorage.loadWidgetConditionsAsync(),
-               cached.isFreshForWidget,
-               cached.location.matches(latitude: location.latitude, longitude: location.longitude) {
-                widgetLogger.info("Falling back to cached weather data")
-                forecasts = cached.hourlyForecasts
-                fetchedAt = cached.fetchedAt
-            } else {
-                widgetLogger.error("No cached weather data available as fallback")
-                return nil
-            }
+        if let cached = await AppGroupStorage.loadWidgetConditionsAsync(),
+           cached.isFreshForLocalDay(within: widgetCacheMaxAge),
+           cached.locationMatches(latitude: location.latitude, longitude: location.longitude) {
+            widgetLogger.info("Using fresh cached weather data")
+            return await buildEntry(from: cached, location: location)
         }
-
-        let tz = await LocationTimeZoneResolver.resolve(latitude: location.latitude, longitude: location.longitude)
-        let calendar = LocationTimeZoneResolver.calendar(for: tz)
-        let today = calendar.startOfDay(for: Date())
-        let sunEventsToday = await astronomyService.calculateSunEvents(
-            latitude: location.latitude,
-            longitude: location.longitude,
-            on: today
-        )
-        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
-        let sunEventsTomorrow = await astronomyService.calculateSunEvents(
-            latitude: location.latitude,
-            longitude: location.longitude,
-            on: tomorrow
-        )
-        let moonInfo = await astronomyService.calculateMoonInfo(
-            latitude: location.latitude,
-            longitude: location.longitude,
-            on: today
-        )
-        let moonInfoTomorrow = await astronomyService.calculateMoonInfo(
-            latitude: location.latitude,
-            longitude: location.longitude,
-            on: tomorrow
-        )
-
-        let assessment = NightQualityAnalyzer.analyzeNight(
-            forecasts: forecasts,
-            sunEventsToday: sunEventsToday,
-            sunEventsTomorrow: sunEventsTomorrow,
-            moonInfo: moonInfo,
-            latitude: location.latitude,
-            longitude: location.longitude,
-            for: today,
-            calendar: calendar
-        )
 
         let cachedLocation = CachedLocation(
             name: location.name,
             latitude: location.latitude,
             longitude: location.longitude
         )
-        let conditions = ViewingConditions(
-            fetchedAt: fetchedAt,
-            location: cachedLocation,
-            hourlyForecasts: forecasts,
-            dailySunEvents: [sunEventsToday, sunEventsTomorrow],
-            dailyMoonInfo: [moonInfo, moonInfoTomorrow],
-            issPasses: [],
-            fogScore: FogCalculator.calculateCurrent(from: forecasts),
-            timeZoneIdentifier: tz.identifier
-        )
+        let conditions: ViewingConditions
+        do {
+            conditions = try await ConditionsProvider().fetchConditions(
+                for: cachedLocation,
+                days: 2
+            )
+            widgetLogger.info("Fetched \(conditions.hourlyForecasts.count) hourly forecasts from API")
+        } catch {
+            widgetLogger.error("Failed to fetch widget conditions: \(error.localizedDescription)")
+            if let cached = await AppGroupStorage.loadWidgetConditionsAsync(),
+               cached.isFreshForWidget,
+               cached.location.matches(latitude: location.latitude, longitude: location.longitude) {
+                widgetLogger.info("Falling back to cached weather data")
+                return await buildEntry(from: cached, location: location)
+            } else {
+                widgetLogger.error("No cached weather data available as fallback")
+                return nil
+            }
+        }
+
         await AppGroupStorage.saveWidgetConditionsAsync(conditions)
+
+        return await buildEntry(from: conditions, location: location)
+    }
+
+    private func buildEntry(
+        from conditions: ViewingConditions,
+        location: (latitude: Double, longitude: Double, name: String)
+    ) async -> NightConditionsEntry? {
+        guard let sunEventsToday = conditions.dailySunEvents.first,
+              let sunEventsTomorrow = conditions.dailySunEvents.dropFirst().first,
+              let moonInfo = conditions.dailyMoonInfo.first else {
+            widgetLogger.error("Cached widget conditions are missing astronomy data")
+            return nil
+        }
+
+        let tz: TimeZone
+        if let cachedTimeZone = conditions.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)) {
+            tz = cachedTimeZone
+        } else {
+            tz = await LocationTimeZoneResolver.resolve(latitude: location.latitude, longitude: location.longitude)
+        }
+        let calendar = LocationTimeZoneResolver.calendar(for: tz)
+        let assessment = NightQualityAnalyzer.analyzeNight(
+            forecasts: conditions.hourlyForecasts,
+            sunEventsToday: sunEventsToday,
+            sunEventsTomorrow: sunEventsTomorrow,
+            moonInfo: moonInfo,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            for: calendar.startOfDay(for: Date()),
+            calendar: calendar
+        )
 
         return NightConditionsEntry(date: Date(), assessment: assessment, timeZone: tz)
     }
@@ -117,13 +104,6 @@ struct Provider: TimelineProvider {
 
 private extension ViewingConditions {
     var isFreshForWidget: Bool {
-        Date().timeIntervalSince(fetchedAt) <= 3600
-    }
-}
-
-private extension CachedLocation {
-    func matches(latitude: Double, longitude: Double) -> Bool {
-        abs(self.latitude - latitude) <= 0.01 &&
-            abs(self.longitude - longitude) <= 0.01
+        isFreshForLocalDay(within: widgetCacheMaxAge)
     }
 }
