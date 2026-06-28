@@ -5,7 +5,7 @@ import SwiftData
 
 public struct LocationsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
+    @Query private var savedLocations: [SavedLocation]
     
     @State private var showingAddLocation = false
     @State private var locationToDelete: SavedLocation?
@@ -19,7 +19,7 @@ public struct LocationsView: View {
         NavigationStack {
             List {
                 Section {
-                    if savedLocations.isEmpty {
+                    if orderedLocations.isEmpty {
                         ContentUnavailableView {
                             Label("No Saved Locations", systemImage: "mappin.slash")
                         } description: {
@@ -30,7 +30,7 @@ public struct LocationsView: View {
                             }
                         }
                     } else {
-                        ForEach(savedLocations) { location in
+                        ForEach(orderedLocations) { location in
                             LocationRow(location: location)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
@@ -46,11 +46,20 @@ public struct LocationsView: View {
                                     }
                                 }
                         }
+                        .onMove(perform: moveLocations)
                     }
                 }
             }
             .navigationTitle("Locations")
+            .task {
+                persistCurrentOrderIfNeeded()
+            }
             .toolbar {
+                if !orderedLocations.isEmpty {
+                    ToolbarItem(placement: .topBarLeading) {
+                        EditButton()
+                    }
+                }
                 ToolbarItem(placement: toolbarPlacement) {
                     Button(action: { showingAddLocation = true }) {
                         Image(systemName: "plus")
@@ -80,6 +89,35 @@ public struct LocationsView: View {
         #else
         return .automatic
         #endif
+    }
+
+    private var orderedLocations: [SavedLocation] {
+        SavedLocation.ordered(savedLocations)
+    }
+
+    private func persistCurrentOrderIfNeeded() {
+        guard orderedLocations.contains(where: { $0.sortPosition == nil }) else { return }
+        saveOrder(orderedLocations)
+    }
+
+    private func moveLocations(from source: IndexSet, to destination: Int) {
+        var reordered = orderedLocations
+        reordered.move(fromOffsets: source, toOffset: destination)
+        saveOrder(reordered)
+    }
+
+    private func saveOrder(_ locations: [SavedLocation]) {
+        for (position, location) in locations.enumerated() {
+            location.sortPosition = position
+        }
+
+        do {
+            try modelContext.save()
+            let cachedLocations = LocationStorageService.shared.publishLocationsToWatch(context: modelContext)
+            WatchConnectivityService.shared.sendLocationsToWatch(cachedLocations)
+        } catch {
+            print("Failed to save location order: \(error)")
+        }
     }
     
     private func deleteLocation(_ location: SavedLocation) {

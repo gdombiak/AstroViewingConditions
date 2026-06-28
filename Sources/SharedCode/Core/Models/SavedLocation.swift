@@ -12,6 +12,8 @@ public class SavedLocation {
     public var elevation: Double?
     public var isFavorite: Bool
     public var dateAdded: Date
+    /// Nil for locations created before manual ordering was introduced.
+    public var sortPosition: Int?
     
     public init(
         name: String,
@@ -26,12 +28,34 @@ public class SavedLocation {
         self.elevation = elevation
         self.isFavorite = false
         self.dateAdded = Date()
+        self.sortPosition = nil
     }
 }
 
 extension SavedLocation {
     public var coordinate: Coordinate {
         Coordinate(latitude: latitude, longitude: longitude)
+    }
+
+    /// Manual positions sort first. Unpositioned records retain the app's
+    /// previous newest-first ordering and are placed above positioned records,
+    /// which also keeps newly added locations at the top of the list.
+    public static func ordered(_ locations: [SavedLocation]) -> [SavedLocation] {
+        locations.sorted { lhs, rhs in
+            switch (lhs.sortPosition, rhs.sortPosition) {
+            case let (lhsPosition?, rhsPosition?):
+                if lhsPosition != rhsPosition {
+                    return lhsPosition < rhsPosition
+                }
+                return lhs.dateAdded > rhs.dateAdded
+            case (nil, nil):
+                return lhs.dateAdded > rhs.dateAdded
+            case (nil, _?):
+                return true
+            case (_?, nil):
+                return false
+            }
+        }
     }
 }
 #endif

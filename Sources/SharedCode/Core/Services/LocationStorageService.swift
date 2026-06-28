@@ -43,7 +43,7 @@ public final class LocationStorageService: @unchecked Sendable {
         do {
             let saved = try context.fetch(descriptor)
             storageLogger.info("Fetched \(saved.count) saved locations")
-            return saved.map { CachedLocation(from: $0) }
+            return SavedLocation.ordered(saved).map { CachedLocation(from: $0) }
         } catch {
             storageLogger.error("Failed to fetch locations: \(error.localizedDescription)")
             return []
