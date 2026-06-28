@@ -10,6 +10,9 @@ public struct LocationsView: View {
     @State private var showingAddLocation = false
     @State private var locationToDelete: SavedLocation?
     @State private var showingDeleteConfirmation = false
+    @State private var locationToRename: SavedLocation?
+    @State private var editedLocationName = ""
+    @State private var showingRenamePrompt = false
     @State private var selectedLocation: SavedLocation?
     @State private var showingLocationMap = false
     
@@ -44,6 +47,13 @@ public struct LocationsView: View {
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
+
+                                    Button {
+                                        beginRenaming(location)
+                                    } label: {
+                                        Label("Rename", systemImage: "pencil")
+                                    }
+                                    .tint(.blue)
                                 }
                         }
                         .onMove(perform: moveLocations)
@@ -79,6 +89,16 @@ public struct LocationsView: View {
                 }
             } message: { location in
                 Text("Are you sure you want to delete \"\(location.name)\"?")
+            }
+            .alert("Rename Location", isPresented: $showingRenamePrompt, presenting: locationToRename) { location in
+                TextField("Location name", text: $editedLocationName)
+                Button("Cancel", role: .cancel) {}
+                Button("Save") {
+                    renameLocation(location)
+                }
+                .disabled(trimmedLocationName.isEmpty)
+            } message: { _ in
+                Text("Enter a new name for this saved location.")
             }
         }
     }
@@ -128,6 +148,39 @@ public struct LocationsView: View {
             WatchConnectivityService.shared.sendLocationsToWatch(locations)
         } catch {
             print("Failed to save after deleting location: \(error)")
+        }
+    }
+    
+    private var trimmedLocationName: String {
+        editedLocationName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func beginRenaming(_ location: SavedLocation) {
+        locationToRename = location
+        editedLocationName = location.name
+        showingRenamePrompt = true
+    }
+
+    private func renameLocation(_ location: SavedLocation) {
+        let newName = trimmedLocationName
+        guard !newName.isEmpty else { return }
+
+        location.name = newName
+
+        do {
+            try modelContext.save()
+
+            if var selected = LocationStorageService.shared.loadSelectedLocation(),
+               selected.source == .saved,
+               selected.id == location.id {
+                selected.name = newName
+                LocationStorageService.shared.saveSelectedLocation(selected)
+            }
+
+            let locations = LocationStorageService.shared.publishLocationsToWatch(context: modelContext)
+            WatchConnectivityService.shared.sendLocationsToWatch(locations)
+        } catch {
+            print("Failed to rename location: \(error)")
         }
     }
 }
