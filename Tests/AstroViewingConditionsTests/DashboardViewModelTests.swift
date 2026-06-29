@@ -47,7 +47,7 @@ final class DashboardViewModelTests: XCTestCase {
             fogScore: FogScore(score: 0, factors: []),
             timeZoneIdentifier: timeZone.identifier
         )
-        let viewModel = DashboardViewModel()
+        let viewModel = DashboardViewModel(now: { firstDay })
         viewModel.viewingConditions = conditions
 
         XCTAssertEqual(viewModel.currentISSPasses.map(\.maxElevation), [30, 35])
@@ -147,11 +147,11 @@ final class DashboardViewModelTests: XCTestCase {
             fogScore: FogScore(score: 25, factors: [])
         )
         
-        let viewModel = DashboardViewModel()
+        let viewModel = DashboardViewModel(now: { fetchDate })
         viewModel.viewingConditions = conditions
         viewModel.lastSuccessfulFetch = fetchDate
         
-        let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: Date()))!
+        let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: fetchDate))!
         let actualDay2Title = viewModel.titleForSelectedDay(.dayAfter)
         let currentDay2Formatted = DateFormatters.shortDateFormatter.string(from: currentDay2Date)
         
@@ -172,7 +172,7 @@ final class DashboardViewModelTests: XCTestCase {
         }
     }
     
-    func testScenario1_at1AM_noRefresh_tabLabelsAndDataShouldMatchFetchDate() {
+    func testAt1AMStaleCacheTabsRemainAnchoredToCurrentDate() {
         var calendar = Calendar.current
         calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
         
@@ -190,7 +190,7 @@ final class DashboardViewModelTests: XCTestCase {
         tuesday1AM.day = 23
         tuesday1AM.hour = 1
         tuesday1AM.minute = 0
-        _ = calendar.date(from: tuesday1AM)!
+        let currentDate = calendar.date(from: tuesday1AM)!
         
         let location = CachedLocation(
             name: "Test",
@@ -244,13 +244,12 @@ final class DashboardViewModelTests: XCTestCase {
             fogScore: FogScore(score: 25, factors: [])
         )
         
-        let viewModel = DashboardViewModel()
+        let viewModel = DashboardViewModel(now: { currentDate })
         viewModel.viewingConditions = conditions
         viewModel.lastSuccessfulFetch = fetchDate
         
         // Tab labels use current date, not fetch date
-        let fetchStartOfDay0 = calendar.startOfDay(for: fetchDate)
-        let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: Date()))!
+        let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: currentDate))!
         let currentDay2Formatted = DateFormatters.shortDateFormatter.string(from: currentDay2Date)
         
         let actualDay2Title = viewModel.titleForSelectedDay(.dayAfter)
@@ -260,22 +259,22 @@ final class DashboardViewModelTests: XCTestCase {
         viewModel.selectedDay = .dayAfter
         let day2Forecasts = viewModel.currentHourlyForecasts
         
-        XCTAssertFalse(day2Forecasts.isEmpty, "Tab 2 should have forecasts from the fetch date")
+        XCTAssertFalse(day2Forecasts.isEmpty, "Tab 2 should have forecasts for two days after the current date")
         
         if let firstForecast = day2Forecasts.first {
             let forecastDate = calendar.startOfDay(for: firstForecast.time)
-            XCTAssertEqual(forecastDate, calendar.date(byAdding: .day, value: 2, to: fetchStartOfDay0)!,
-                "Tab 2 forecasts should be for day after tomorrow based on fetch date, not current date")
+            XCTAssertEqual(forecastDate, calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: currentDate))!,
+                "Tab 2 forecasts should be based on the current date, not a stale cache date")
         }
         
         viewModel.selectedDay = .today
         let todayForecasts = viewModel.currentHourlyForecasts
-        XCTAssertFalse(todayForecasts.isEmpty, "Tab 0 (Today) should have forecasts from fetch date")
+        XCTAssertFalse(todayForecasts.isEmpty, "Tab 0 (Today) should use the actual current day")
         
         if let firstTodayForecast = todayForecasts.first {
             let forecastDate = calendar.startOfDay(for: firstTodayForecast.time)
-            XCTAssertEqual(forecastDate, fetchStartOfDay0,
-                "Tab 0 forecasts should be for the fetch date, not current date")
+            XCTAssertEqual(forecastDate, calendar.startOfDay(for: currentDate),
+                "Tab 0 forecasts should not remain pinned to a stale cache's first day")
         }
     }
     
@@ -343,13 +342,13 @@ final class DashboardViewModelTests: XCTestCase {
             fogScore: FogScore(score: 25, factors: [])
         )
         
-        let viewModel = DashboardViewModel()
+        let viewModel = DashboardViewModel(now: { refreshDate })
         viewModel.viewingConditions = conditions
         viewModel.lastSuccessfulFetch = refreshDate
         
         // Tab labels use current date, not refresh date
         let refreshStartOfDay0 = calendar.startOfDay(for: refreshDate)
-        let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: Date()))!
+        let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: refreshDate))!
         let currentDay2Formatted = DateFormatters.shortDateFormatter.string(from: currentDay2Date)
         
         let actualDay2Title = viewModel.titleForSelectedDay(.dayAfter)

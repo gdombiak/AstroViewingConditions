@@ -8,6 +8,7 @@ public class DashboardViewModel {
     // Services
     private let conditionsProvider: ConditionsProvider
     private let cacheService: CacheService
+    private let now: () -> Date
     
     // State
     public var viewingConditions: ViewingConditions?
@@ -58,7 +59,7 @@ public class DashboardViewModel {
     }
     
     public func titleForSelectedDay(_ selection: DaySelection) -> String {
-        return DaySelection.title(for: selection, referenceDate: Date(), calendar: locationCalendar)
+        return DaySelection.title(for: selection, referenceDate: now(), calendar: locationCalendar)
     }
     
     public var isDataStale: Bool {
@@ -73,12 +74,11 @@ public class DashboardViewModel {
     }
     
     public var currentHourlyForecasts: [HourlyForecast] {
-        guard let conditions = viewingConditions,
-              let firstForecastTime = conditions.hourlyForecasts.first?.time else { return [] }
+        guard let conditions = viewingConditions else { return [] }
         
         let calendar = locationCalendar
-        let startOfFirstDay = calendar.startOfDay(for: firstForecastTime)
-        guard let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay),
+        let startOfToday = calendar.startOfDay(for: now())
+        guard let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfToday),
               let endOfSelectedDay = calendar.date(byAdding: .day, value: 1, to: startOfSelectedDay) else {
             return []
         }
@@ -89,7 +89,7 @@ public class DashboardViewModel {
     }
     
     public var currentHourForecast: HourlyForecast? {
-        let now = Date()
+        let now = now()
         let calendar = locationCalendar
         
         // Find the forecast for the current hour
@@ -103,22 +103,22 @@ public class DashboardViewModel {
     
     public var currentSunEvents: SunEvents? {
         guard let conditions = viewingConditions else { return nil }
-        let index = selectedDay.rawValue
-        guard index < conditions.dailySunEvents.count else { return nil }
+        let index = conditionsDayIndex
+        guard index >= 0, index < conditions.dailySunEvents.count else { return nil }
         return conditions.dailySunEvents[index]
     }
     
     public var nextSunEvents: SunEvents? {
         guard let conditions = viewingConditions else { return nil }
-        let index = selectedDay.rawValue + 1
-        guard index < conditions.dailySunEvents.count else { return nil }
+        let index = conditionsDayIndex + 1
+        guard index >= 0, index < conditions.dailySunEvents.count else { return nil }
         return conditions.dailySunEvents[index]
     }
     
     public var currentMoonInfo: MoonInfo? {
         guard let conditions = viewingConditions else { return nil }
-        let index = selectedDay.rawValue
-        guard index < conditions.dailyMoonInfo.count else { return nil }
+        let index = conditionsDayIndex
+        guard index >= 0, index < conditions.dailyMoonInfo.count else { return nil }
         return conditions.dailyMoonInfo[index]
     }
     
@@ -187,9 +187,11 @@ public class DashboardViewModel {
         }
         
         let calendar = locationCalendar
-        let tomorrowIndex = selectedDay.rawValue + 1
-        let sunEventsTomorrow = tomorrowIndex < conditions.dailySunEvents.count ? conditions.dailySunEvents[tomorrowIndex] : nil
-        guard let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: Date())) else {
+        let tomorrowIndex = conditionsDayIndex + 1
+        let sunEventsTomorrow = tomorrowIndex >= 0 && tomorrowIndex < conditions.dailySunEvents.count
+            ? conditions.dailySunEvents[tomorrowIndex]
+            : nil
+        guard let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: now())) else {
             return nil
         }
         
@@ -208,12 +210,11 @@ public class DashboardViewModel {
     }
     
     private var nightTimeForecasts: [HourlyForecast] {
-        guard let conditions = viewingConditions,
-              let firstForecastTime = conditions.hourlyForecasts.first?.time else { return [] }
+        guard let conditions = viewingConditions else { return [] }
         
         let calendar = locationCalendar
-        let startOfFirstDay = calendar.startOfDay(for: firstForecastTime)
-        guard let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfFirstDay),
+        let startOfToday = calendar.startOfDay(for: now())
+        guard let startOfSelectedDay = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: startOfToday),
               let endOfFollowingDay = calendar.date(byAdding: .day, value: 3, to: startOfSelectedDay) else {
             return []
         }
@@ -226,11 +227,24 @@ public class DashboardViewModel {
     public init(
         apiKey: String = "",
         cacheService: CacheService = CacheService(),
-        conditionsProvider: ConditionsProvider = ConditionsProvider()
+        conditionsProvider: ConditionsProvider = ConditionsProvider(),
+        now: @escaping () -> Date = Date.init
     ) {
         self.apiKey = apiKey
         self.cacheService = cacheService
         self.conditionsProvider = conditionsProvider
+        self.now = now
+    }
+
+    private var conditionsDayIndex: Int {
+        guard let firstForecastTime = viewingConditions?.hourlyForecasts.first?.time else {
+            return selectedDay.rawValue
+        }
+        let calendar = locationCalendar
+        let firstDay = calendar.startOfDay(for: firstForecastTime)
+        let today = calendar.startOfDay(for: now())
+        let elapsedDays = calendar.dateComponents([.day], from: firstDay, to: today).day ?? 0
+        return elapsedDays + selectedDay.rawValue
     }
     
     public func updateAPIKey(_ newKey: String) {

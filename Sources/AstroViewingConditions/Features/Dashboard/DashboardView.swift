@@ -40,11 +40,9 @@ public struct DashboardView: View {
     }
     
     private var searchDate: Date {
-        guard let conditions = viewModel.viewingConditions,
-              let firstForecast = conditions.hourlyForecasts.first else { return Date() }
         let calendar = viewModel.locationCalendar
-        let startOfFirstDay = calendar.startOfDay(for: firstForecast.time)
-        return calendar.date(byAdding: .day, value: viewModel.selectedDay.rawValue, to: startOfFirstDay) ?? Date()
+        let startOfToday = calendar.startOfDay(for: Date())
+        return calendar.date(byAdding: .day, value: viewModel.selectedDay.rawValue, to: startOfToday) ?? Date()
     }
     
     public var body: some View {
