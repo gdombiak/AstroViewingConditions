@@ -5,6 +5,83 @@ import Foundation
 
 @MainActor
 final class DashboardViewModelTests: XCTestCase {
+
+    func testCurrentISSPassesFollowSelectedLocationDay() {
+        let timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let firstDay = calendar.date(from: DateComponents(
+            year: 2026, month: 6, day: 28, hour: 12
+        ))!
+        let startOfFirstDay = calendar.startOfDay(for: firstDay)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: startOfFirstDay)!
+        let dayAfter = calendar.date(byAdding: .day, value: 2, to: startOfFirstDay)!
+        let fourthDay = calendar.date(byAdding: .day, value: 3, to: startOfFirstDay)!
+        let sunEvents = [startOfFirstDay, tomorrow, dayAfter, fourthDay].map {
+            Self.makeSunEvents(for: $0, calendar: calendar)
+        }
+        let tonightBeforeMidnight = calendar.date(
+            bySettingHour: 22, minute: 0, second: 0, of: startOfFirstDay
+        )!
+        let tonightAfterMidnight = calendar.date(
+            bySettingHour: 2, minute: 28, second: 0, of: tomorrow
+        )!
+        let tomorrowNight = calendar.date(
+            bySettingHour: 22, minute: 0, second: 0, of: tomorrow
+        )!
+        let dayAfterNight = calendar.date(
+            bySettingHour: 22, minute: 0, second: 0, of: dayAfter
+        )!
+        let conditions = ViewingConditions(
+            fetchedAt: firstDay,
+            location: CachedLocation(name: "Test", latitude: 34, longitude: -118, elevation: 0),
+            hourlyForecasts: [Self.makeForecast(at: firstDay)],
+            dailySunEvents: sunEvents,
+            dailyMoonInfo: [],
+            issPasses: [
+                ISSPass(riseTime: tonightBeforeMidnight, duration: 300, maxElevation: 30),
+                ISSPass(riseTime: tonightAfterMidnight, duration: 300, maxElevation: 35),
+                ISSPass(riseTime: tomorrowNight, duration: 300, maxElevation: 40),
+                ISSPass(riseTime: dayAfterNight, duration: 300, maxElevation: 50)
+            ],
+            fogScore: FogScore(score: 0, factors: []),
+            timeZoneIdentifier: timeZone.identifier
+        )
+        let viewModel = DashboardViewModel()
+        viewModel.viewingConditions = conditions
+
+        XCTAssertEqual(viewModel.currentISSPasses.map(\.maxElevation), [30, 35])
+        viewModel.selectedDay = .tomorrow
+        XCTAssertEqual(viewModel.currentISSPasses.map(\.maxElevation), [40])
+        viewModel.selectedDay = .dayAfter
+        XCTAssertEqual(viewModel.currentISSPasses.map(\.maxElevation), [50])
+    }
+
+    private static func makeForecast(at date: Date) -> HourlyForecast {
+        HourlyForecast(
+            time: date,
+            cloudCover: 0,
+            humidity: 0,
+            windSpeed: 0,
+            windDirection: 0,
+            temperature: 0
+        )
+    }
+
+    private static func makeSunEvents(for date: Date, calendar: Calendar) -> SunEvents {
+        let sunrise = calendar.date(bySettingHour: 6, minute: 0, second: 0, of: date)!
+        let sunset = calendar.date(bySettingHour: 20, minute: 0, second: 0, of: date)!
+        return SunEvents(
+            sunrise: sunrise,
+            sunset: sunset,
+            civilTwilightBegin: sunrise.addingTimeInterval(-1_800),
+            civilTwilightEnd: sunset.addingTimeInterval(1_800),
+            nauticalTwilightBegin: sunrise.addingTimeInterval(-3_600),
+            nauticalTwilightEnd: sunset.addingTimeInterval(3_600),
+            astronomicalTwilightBegin: sunrise.addingTimeInterval(-5_400),
+            astronomicalTwilightEnd: sunset.addingTimeInterval(5_400)
+        )
+    }
     
     func testScenario1_at11PM_tabLabelsMatchData() {
         var calendar = Calendar.current

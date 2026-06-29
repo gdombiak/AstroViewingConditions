@@ -4,26 +4,53 @@ import SwiftUI
 struct ISSCard: View {
     let passes: [ISSPass]
     let timeZone: TimeZone?
+    let errorMessage: String?
+    let title: String
+    let emptyMessage: String
     
     private var upcomingPasses: [ISSPass] {
-        passes.filter { $0.riseTime > Date() }
+        Self.visiblePasses(passes, at: Date())
+    }
+
+    static func visiblePasses(_ passes: [ISSPass], at date: Date) -> [ISSPass] {
+        passes
+            .filter { $0.setTime > date }
+            .sorted { $0.riseTime < $1.riseTime }
+    }
+
+    private var passCountDescription: String {
+        let now = Date()
+        let activeCount = upcomingPasses.filter { $0.riseTime <= now }.count
+        let futureCount = upcomingPasses.count - activeCount
+        if activeCount > 0 {
+            return futureCount > 0
+                ? "\(activeCount) active · \(futureCount) upcoming"
+                : "\(activeCount) active"
+        }
+        return "\(futureCount) upcoming"
     }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("ISS Passes", systemImage: "airplane")
+                Label(title, systemImage: "airplane")
                     .font(.headline)
                 Spacer()
                 if !upcomingPasses.isEmpty {
-                    Text("\(upcomingPasses.count) upcoming")
+                    Text(passCountDescription)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
             
-            if upcomingPasses.isEmpty {
-                Text("No upcoming ISS passes in the next few days")
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.triangle")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+            } else if upcomingPasses.isEmpty {
+                Text(emptyMessage)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -93,6 +120,12 @@ struct ISSPassRow: View {
         ISSPass(riseTime: Date().addingTimeInterval(86400), duration: 520, maxElevation: 82),
     ]
     
-    ISSCard(passes: samplePasses, timeZone: nil)
+    ISSCard(
+        passes: samplePasses,
+        timeZone: nil,
+        errorMessage: nil,
+        title: "ISS Passes Tonight",
+        emptyMessage: "No visible ISS passes tonight"
+    )
         .padding()
 }

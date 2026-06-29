@@ -417,18 +417,21 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
 // MARK: - ISS Pass
 
 public struct ISSPass: Identifiable, Sendable, Codable {
-    public let id: UUID
+    public let id: String
     public let riseTime: Date
     public let duration: TimeInterval
     public let maxElevation: Double
     
     public init(
-        id: UUID = UUID(),
+        id: String? = nil,
         riseTime: Date,
         duration: TimeInterval,
         maxElevation: Double
     ) {
-        self.id = id
+        self.id = id ?? Self.stableID(
+            riseTime: riseTime,
+            duration: duration
+        )
         self.riseTime = riseTime
         self.duration = duration
         self.maxElevation = maxElevation
@@ -436,6 +439,13 @@ public struct ISSPass: Identifiable, Sendable, Codable {
     
     public var setTime: Date {
         riseTime.addingTimeInterval(duration)
+    }
+
+    private static func stableID(
+        riseTime: Date,
+        duration: TimeInterval
+    ) -> String {
+        "\(riseTime.timeIntervalSince1970.bitPattern)-\(duration.bitPattern)"
     }
 }
 

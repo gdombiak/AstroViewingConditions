@@ -13,6 +13,7 @@ public class DashboardViewModel {
     public var viewingConditions: ViewingConditions?
     public var isLoading = false
     public var error: (any Error)?
+    public private(set) var issError: ISSError?
     public var selectedDay: DaySelection = .today
     public var lastSuccessfulFetch: Date?
     
@@ -122,7 +123,35 @@ public class DashboardViewModel {
     }
     
     public var currentISSPasses: [ISSPass] {
-        viewingConditions?.issPasses ?? []
+        guard let conditions = viewingConditions,
+              let sunset = currentSunEvents?.sunset,
+              let followingSunrise = nextSunEvents?.sunrise else { return [] }
+
+        return conditions.issPasses.filter {
+            $0.riseTime >= sunset && $0.riseTime < followingSunrise
+        }
+    }
+
+    public var issCardTitle: String {
+        switch selectedDay {
+        case .today:
+            return "ISS Passes Tonight"
+        case .tomorrow:
+            return "ISS Passes Tomorrow Night"
+        case .dayAfter:
+            return "ISS Passes \(titleForSelectedDay(.dayAfter)) Night"
+        }
+    }
+
+    public var issEmptyMessage: String {
+        switch selectedDay {
+        case .today:
+            return "No visible ISS passes tonight"
+        case .tomorrow:
+            return "No visible ISS passes tomorrow night"
+        case .dayAfter:
+            return "No visible ISS passes on \(titleForSelectedDay(.dayAfter)) night"
+        }
     }
     
     public var fogScore: FogScore? {
@@ -215,11 +244,13 @@ public class DashboardViewModel {
         error = nil
         
         do {
-            let newConditions = try await conditionsProvider.fetchConditions(
+            let result = try await conditionsProvider.fetchConditionsWithDiagnostics(
                 for: CachedLocation(from: location),
                 days: 4,
                 apiKey: apiKey
             )
+            let newConditions = result.conditions
+            issError = result.issError
             if let identifier = newConditions.timeZoneIdentifier {
                 locationTimeZone = TimeZone(identifier: identifier)
             } else {
@@ -270,6 +301,7 @@ public class DashboardViewModel {
 
         self.viewingConditions = conditions
         self.lastSuccessfulFetch = conditions.fetchedAt
+        self.issError = nil
 
         return true
     }

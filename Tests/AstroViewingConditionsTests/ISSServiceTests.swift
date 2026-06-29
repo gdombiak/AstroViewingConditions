@@ -112,21 +112,53 @@ final class ISSServiceTests: XCTestCase {
         
         XCTAssertEqual(pass.setTime, expectedSetTime)
     }
+
+    func testVisiblePassesIncludeActiveAndFutureButExcludeFinishedPasses() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let finished = ISSPass(
+            riseTime: now.addingTimeInterval(-600),
+            duration: 300,
+            maxElevation: 20
+        )
+        let active = ISSPass(
+            riseTime: now.addingTimeInterval(-60),
+            duration: 300,
+            maxElevation: 40
+        )
+        let future = ISSPass(
+            riseTime: now.addingTimeInterval(600),
+            duration: 300,
+            maxElevation: 60
+        )
+
+        XCTAssertEqual(
+            ISSCard.visiblePasses([future, finished, active], at: now).map(\.id),
+            [active.id, future.id]
+        )
+    }
     
     func testISSPassIdGeneration() {
+        let riseTime = Date(timeIntervalSince1970: 1_700_000_000)
         let pass1 = ISSPass(
-            riseTime: Date(),
+            riseTime: riseTime,
             duration: 300,
             maxElevation: 45.0
         )
         
         let pass2 = ISSPass(
-            riseTime: Date(),
+            riseTime: riseTime,
             duration: 300,
             maxElevation: 45.0
         )
         
-        XCTAssertNotEqual(pass1.id, pass2.id)
+        XCTAssertEqual(pass1.id, pass2.id, "The same N2YO event should retain its SwiftUI identity")
+
+        let laterPass = ISSPass(
+            riseTime: riseTime.addingTimeInterval(60),
+            duration: 300,
+            maxElevation: 45.0
+        )
+        XCTAssertNotEqual(pass1.id, laterPass.id)
     }
     
     // MARK: - Empty Response
@@ -193,8 +225,19 @@ final class ISSServiceTests: XCTestCase {
     }
     
     func testISSErrorApiError() {
-        let error = ISSError.apiError("Test error message")
+        let error = ISSError.apiError(statusCode: 403, message: "Test error message")
         
-        XCTAssertNotNil(error.localizedDescription)
+        XCTAssertEqual(error.localizedDescription, "Test error message")
+    }
+
+    func testISSErrorExplainsCommonHTTPFailures() {
+        XCTAssertTrue(
+            ISSError.apiError(statusCode: 403, message: nil)
+                .localizedDescription.contains("API key")
+        )
+        XCTAssertTrue(
+            ISSError.apiError(statusCode: 429, message: nil)
+                .localizedDescription.contains("request limit")
+        )
     }
 }

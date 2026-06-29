@@ -58,9 +58,16 @@ public actor ISSService {
         
         let (data, response) = try await URLSession.shared.data(from: url)
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw ISSError.invalidResponse
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            let message = Self.apiMessage(from: data)
+            throw ISSError.apiError(
+                statusCode: httpResponse.statusCode,
+                message: message
+            )
         }
         
         let decoder = JSONDecoder()
@@ -78,14 +85,47 @@ public actor ISSService {
             )
         } ?? []
     }
+
+    private static func apiMessage(from data: Data) -> String? {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let message = object["error"] as? String ?? object["message"] as? String
+        else {
+            return nil
+        }
+        return message
+    }
 }
 
 // MARK: - Errors
 
-public enum ISSError: Error {
+public enum ISSError: Error, Sendable, Equatable, LocalizedError {
     case invalidURL
     case invalidResponse
-    case apiError(String)
+    case apiError(statusCode: Int?, message: String?)
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "The ISS service URL could not be created."
+        case .invalidResponse:
+            return "The ISS service returned an invalid response."
+        case let .apiError(statusCode, message):
+            if let message, !message.isEmpty {
+                return message
+            }
+            if statusCode == 401 || statusCode == 403 {
+                return "The N2YO API key was rejected. Check it in Settings."
+            }
+            if statusCode == 429 {
+                return "N2YO's request limit has been reached. Try again later."
+            }
+            if let statusCode {
+                return "The ISS service returned HTTP \(statusCode)."
+            }
+            return "ISS passes could not be loaded."
+        }
+    }
 }
 
 // MARK: - N2YO Response Models

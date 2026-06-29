@@ -218,8 +218,14 @@ public struct DashboardView: View {
                     )
                 }
                 
-                if viewModel.hasISSConfigured && !viewModel.currentISSPasses.isEmpty {
-                    ISSCard(passes: viewModel.currentISSPasses, timeZone: viewModel.displayTimeZone)
+                if viewModel.hasISSConfigured {
+                    ISSCard(
+                        passes: viewModel.currentISSPasses,
+                        timeZone: viewModel.displayTimeZone,
+                        errorMessage: viewModel.issError?.localizedDescription,
+                        title: viewModel.issCardTitle,
+                        emptyMessage: viewModel.issEmptyMessage
+                    )
                 }
                 
                 if let fetchedAt = viewModel.viewingConditions?.fetchedAt {

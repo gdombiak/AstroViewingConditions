@@ -17,6 +17,18 @@ public actor ConditionsProvider {
         days: Int,
         apiKey: String? = nil
     ) async throws -> ViewingConditions {
+        try await fetchConditionsWithDiagnostics(
+            for: location,
+            days: days,
+            apiKey: apiKey
+        ).conditions
+    }
+
+    public func fetchConditionsWithDiagnostics(
+        for location: CachedLocation,
+        days: Int,
+        apiKey: String? = nil
+    ) async throws -> ConditionsFetchResult {
         let tz = await LocationTimeZoneResolver.resolve(
             latitude: location.latitude,
             longitude: location.longitude
@@ -50,18 +62,29 @@ public actor ConditionsProvider {
         }
         
         let issPasses: [ISSPass]
+        let issError: ISSError?
         if let apiKey, !apiKey.isEmpty {
             let issService = ISSService(apiKey: apiKey)
-            issPasses = try await issService.fetchPasses(
-                latitude: location.latitude,
-                longitude: location.longitude,
-                altitude: location.elevation ?? 0
-            )
+            do {
+                issPasses = try await issService.fetchPasses(
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    altitude: location.elevation ?? 0
+                )
+                issError = nil
+            } catch let error as ISSError {
+                issPasses = []
+                issError = error
+            } catch {
+                issPasses = []
+                issError = .apiError(statusCode: nil, message: error.localizedDescription)
+            }
         } else {
             issPasses = []
+            issError = nil
         }
         
-        return ViewingConditions(
+        let conditions = ViewingConditions(
             fetchedAt: Date(),
             location: location,
             hourlyForecasts: forecasts,
@@ -71,6 +94,7 @@ public actor ConditionsProvider {
             fogScore: FogCalculator.calculateCurrent(from: forecasts),
             timeZoneIdentifier: tz.identifier
         )
+        return ConditionsFetchResult(conditions: conditions, issError: issError)
     }
 
     public func conditions(
@@ -98,5 +122,15 @@ public actor ConditionsProvider {
         )
         await cacheService.saveAsync(freshConditions)
         return freshConditions
+    }
+}
+
+public struct ConditionsFetchResult: Sendable {
+    public let conditions: ViewingConditions
+    public let issError: ISSError?
+
+    public init(conditions: ViewingConditions, issError: ISSError?) {
+        self.conditions = conditions
+        self.issError = issError
     }
 }
