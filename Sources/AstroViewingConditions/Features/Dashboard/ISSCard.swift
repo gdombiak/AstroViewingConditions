@@ -76,37 +76,69 @@ struct ISSCard: View {
 struct ISSPassRow: View {
     let pass: ISSPass
     let timeZone: TimeZone?
-    
-    var body: some View {
-        HStack {
-            // Date and time
-            VStack(alignment: .leading, spacing: 2) {
-                Text(DateFormatters.formatShortDate(pass.riseTime, in: timeZone))
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Text(DateFormatters.formatTime(pass.riseTime, in: timeZone))
+
+    private var pathDescription: String? {
+        guard let startDirection = pass.startDirection,
+              let endDirection = pass.endDirection else { return nil }
+        let start = pass.startElevation.map { "\(startDirection) \(Int($0))°" } ?? startDirection
+        let end = pass.endElevation.map { "\(endDirection) \(Int($0))°" } ?? endDirection
+        return "\(start) → \(end)"
+    }
+
+    private var peakDescription: String {
+        let direction = pass.maxDirection.map { "\($0), " } ?? ""
+        let peak = "Peak: \(direction)\(Int(pass.maxElevation))°"
+        guard let maxTime = pass.maxTime else { return peak }
+        return "\(peak) at \(DateFormatters.formatTime(maxTime, in: timeZone))"
+    }
+
+    private var timeColumn: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(DateFormatters.formatTimeRange(
+                from: pass.riseTime,
+                to: pass.setTime,
+                in: timeZone
+            ))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            Text(DateFormatters.formatShortDate(pass.riseTime, in: timeZone))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func peakColumn(
+        alignment: HorizontalAlignment,
+        textAlignment: TextAlignment
+    ) -> some View {
+        VStack(alignment: alignment, spacing: 2) {
+            Text(peakDescription)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            if let pathDescription {
+                Text(pathDescription)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            
-            Spacer()
-            
-            // Duration and elevation
-            VStack(alignment: .trailing, spacing: 2) {
-                HStack(spacing: 4) {
-                    Image(systemName: "clock")
-                        .font(.caption)
-                    Text(DateFormatters.formatDuration(pass.duration))
-                        .font(.subheadline)
-                }
-                
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.up.forward")
-                        .font(.caption)
-                    Text("\(Int(pass.maxElevation))° max")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+        }
+        .multilineTextAlignment(textAlignment)
+    }
+    
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 12) {
+                timeColumn
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 4)
+                peakColumn(alignment: .trailing, textAlignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                timeColumn
+                peakColumn(alignment: .leading, textAlignment: .leading)
             }
         }
         .padding(.vertical, 4)

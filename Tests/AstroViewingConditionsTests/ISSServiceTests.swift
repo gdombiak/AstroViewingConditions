@@ -113,6 +113,28 @@ final class ISSServiceTests: XCTestCase {
         XCTAssertEqual(pass.setTime, expectedSetTime)
     }
 
+    func testISSPassUsesExactN2YOEndTimeWhenAvailable() {
+        let riseTime = Date(timeIntervalSince1970: 1_700_000_000)
+        let exactEndTime = riseTime.addingTimeInterval(600)
+        let pass = ISSPass(
+            riseTime: riseTime,
+            duration: 300,
+            maxElevation: 65,
+            maxTime: riseTime.addingTimeInterval(300),
+            endTime: exactEndTime,
+            startDirection: "NW",
+            maxDirection: "E",
+            endDirection: "SE",
+            startElevation: 10,
+            endElevation: 10
+        )
+
+        XCTAssertEqual(pass.setTime, exactEndTime)
+        XCTAssertEqual(pass.startDirection, "NW")
+        XCTAssertEqual(pass.maxDirection, "E")
+        XCTAssertEqual(pass.endDirection, "SE")
+    }
+
     func testVisiblePassesIncludeActiveAndFutureButExcludeFinishedPasses() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let finished = ISSPass(

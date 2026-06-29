@@ -81,7 +81,14 @@ public actor ISSService {
             ISSPass(
                 riseTime: Date(timeIntervalSince1970: TimeInterval(pass.startUTC)),
                 duration: TimeInterval(pass.duration),
-                maxElevation: pass.maxEl
+                maxElevation: pass.maxEl,
+                maxTime: Date(timeIntervalSince1970: TimeInterval(pass.maxUTC)),
+                endTime: Date(timeIntervalSince1970: TimeInterval(pass.endUTC)),
+                startDirection: pass.startAzCompass,
+                maxDirection: pass.maxAzCompass,
+                endDirection: pass.endAzCompass,
+                startElevation: pass.startEl,
+                endElevation: pass.endEl
             )
         } ?? []
     }

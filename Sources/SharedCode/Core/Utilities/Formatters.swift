@@ -85,6 +85,18 @@ public struct DateFormatters {
     public static func formatTime(_ date: Date, in timeZone: TimeZone?) -> String {
         timeZoneTimeFormatterCache.string(from: date, in: timeZone)
     }
+
+    public static func formatTimeRange(
+        from start: Date,
+        to end: Date,
+        in timeZone: TimeZone?
+    ) -> String {
+        let formatter = DateIntervalFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .short
+        formatter.timeZone = timeZone ?? TimeZone(secondsFromGMT: 0) ?? TimeZone.current
+        return formatter.string(from: start, to: end)
+    }
     
     public static func formatShortDate(_ date: Date) -> String {
         return shortDateFormatter.string(from: date)
