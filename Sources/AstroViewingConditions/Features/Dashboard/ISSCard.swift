@@ -12,7 +12,7 @@ struct ISSCard: View {
         Self.visiblePasses(passes, at: Date())
     }
 
-    static func visiblePasses(_ passes: [ISSPass], at date: Date) -> [ISSPass] {
+    nonisolated static func visiblePasses(_ passes: [ISSPass], at date: Date) -> [ISSPass] {
         passes
             .filter { $0.setTime > date }
             .sorted { $0.riseTime < $1.riseTime }
