@@ -234,7 +234,12 @@ final class HourlyForecastTests: XCTestCase {
     func testDashboardViewModelTomorrowForecasts() async throws {
         // Given
         let forecasts = createForecastsFromJSON()
-        let viewModel = DashboardViewModel()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = losAngelesTimezone
+        let fixtureToday = calendar.date(from: DateComponents(
+            year: 2026, month: 2, day: 18, hour: 12
+        ))!
+        let viewModel = DashboardViewModel(now: { fixtureToday })
         
         // Create mock ViewingConditions with our test data
         let mockLocation = CachedLocation(
@@ -251,7 +256,8 @@ final class HourlyForecastTests: XCTestCase {
             dailySunEvents: [],
             dailyMoonInfo: [],
             issPasses: [],
-            fogScore: FogScore(score: 0, factors: [])
+            fogScore: FogScore(score: 0, factors: []),
+            timeZoneIdentifier: losAngelesTimezone.identifier
         )
         
         // Inject the mock data
