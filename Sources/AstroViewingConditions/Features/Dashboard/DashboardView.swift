@@ -34,6 +34,10 @@ public struct DashboardView: View {
         guard let id = selectedLocation.id else { return nil }
         return savedLocations.first { $0.id == id }
     }
+
+    private var orderedSavedLocations: [SavedLocation] {
+        SavedLocation.ordered(savedLocations)
+    }
     
     private var selectedLocationName: String {
         activeSavedLocation?.name ?? "Astro Conditions"
@@ -99,7 +103,7 @@ public struct DashboardView: View {
                 LocationPickerView(
                     selectedLocation: $selectedLocation,
                     currentLocation: currentLocation,
-                    savedLocations: savedLocations
+                    savedLocations: orderedSavedLocations
                 )
             }
             .sheet(isPresented: $showingBestSpotSearch) {
