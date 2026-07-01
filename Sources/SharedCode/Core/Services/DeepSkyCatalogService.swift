@@ -212,7 +212,8 @@ public struct DeepSkyTargetPositionProvider: TargetPositionProvider {
                 end: end,
                 bestTime: best.date,
                 maxAltitude: best.altitude,
-                direction: Self.compassDirection(for: best.azimuth)
+                direction: Self.compassDirection(for: best.azimuth),
+                azimuth: best.azimuth
             ))
             runStartIndex = nil
         }

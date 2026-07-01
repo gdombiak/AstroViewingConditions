@@ -316,7 +316,8 @@ public struct DefaultMoonTargetRecommendationProvider: MoonTargetRecommendationP
             end: min(max(end, start.addingTimeInterval(30 * 60)), usefulWindow.end),
             bestTime: bestTime,
             maxAltitude: bestSample?.altitude,
-            direction: bestSample?.azimuth.map(Self.compassDirection)
+            direction: bestSample?.azimuth.map(Self.compassDirection),
+            azimuth: bestSample?.azimuth
         )
     }
 

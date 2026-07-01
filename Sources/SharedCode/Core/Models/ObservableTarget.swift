@@ -112,6 +112,7 @@ public struct TargetVisibilityWindow: Identifiable, Sendable, Codable, Hashable 
     public let bestTime: Date
     public let maxAltitude: Double?
     public let direction: String?
+    public let azimuth: Double?
 
     public init(
         id: String? = nil,
@@ -119,7 +120,8 @@ public struct TargetVisibilityWindow: Identifiable, Sendable, Codable, Hashable 
         end: Date,
         bestTime: Date,
         maxAltitude: Double?,
-        direction: String?
+        direction: String?,
+        azimuth: Double? = nil
     ) {
         self.id = id ?? "\(start.timeIntervalSince1970.bitPattern)-\(end.timeIntervalSince1970.bitPattern)-\(direction ?? "")"
         self.start = start
@@ -127,6 +129,7 @@ public struct TargetVisibilityWindow: Identifiable, Sendable, Codable, Hashable 
         self.bestTime = bestTime
         self.maxAltitude = maxAltitude
         self.direction = direction
+        self.azimuth = azimuth
     }
 
     public var duration: TimeInterval {

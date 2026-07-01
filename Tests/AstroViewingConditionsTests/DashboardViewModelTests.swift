@@ -6,6 +6,13 @@ import Foundation
 @MainActor
 final class DashboardViewModelTests: XCTestCase {
 
+    func testTargetScoreColorsUseSharedCategories() {
+        XCTAssertEqual(TargetScoreColorProvider.category(for: 84), .excellent)
+        XCTAssertEqual(TargetScoreColorProvider.category(for: 76), .good)
+        XCTAssertEqual(TargetScoreColorProvider.category(for: 55), .fair)
+        XCTAssertEqual(TargetScoreColorProvider.category(for: 35), .poor)
+    }
+
     func testBestTargetsPoorConditionsNoteThreshold() {
         XCTAssertTrue(TonightsBestTargetsCard.showsPoorConditionsNote(for: 29))
         XCTAssertFalse(TonightsBestTargetsCard.showsPoorConditionsNote(for: 30))
@@ -37,6 +44,135 @@ final class DashboardViewModelTests: XCTestCase {
             [64, 45]
         ])
         XCTAssertFalse(sections.flatMap(\.recommendations).contains { $0.score < 45 })
+    }
+
+    func testM57DetailUnderBrightMoonExplainsCompactNebulaAndContrast() {
+        let content = Self.detailContent(
+            name: "M57 Ring Nebula",
+            type: .planetaryNebula,
+            reasons: [.moonInterference],
+            summary: "Small bright nebula; well placed despite bright Moon."
+        )
+
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("small bright nebula"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("Moon"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("contrast"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("small bright nebula"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("contrast"))
+    }
+
+    func testEpsilonLyraeDetailRecommendsTelescopeAndHighMagnification() {
+        let content = Self.detailContent(
+            name: "Epsilon Lyrae",
+            type: .doubleStar,
+            reasons: [.highAltitude, .astronomicalDarkness, .goodNightQuality],
+            summary: "Good target even under bright Moon.",
+            direction: "S",
+            altitude: 84
+        )
+
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("double"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("telescope"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("high magnification"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("steady moments"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("split the pair"))
+        XCTAssertEqual(content.directionText, "Look south.")
+        XCTAssertEqual(content.altitudeDegrees ?? 0, 84, accuracy: 0.01)
+        XCTAssertEqual(content.altitudeText, "About 84° high.")
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("bright Moon"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("high in the sky"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("astronomical darkness"))
+        XCTAssertNotEqual(
+            content.whyRecommended,
+            "Good target even under bright Moon. High in the sky during the best window. Visible during astronomical darkness. Weather and sky quality look favorable."
+        )
+    }
+
+    func testMoonDetailIncludesFilterAndBrightnessGuidance() {
+        let content = Self.detailContent(
+            name: "Moon",
+            targetType: .moon,
+            reasons: [.brightFullMoonDeepSkyImpact]
+        )
+
+        XCTAssertTrue(content.sectionsText.contains("Moon filter"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("brightness"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("good lunar target"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("faint deep-sky"))
+    }
+
+    func testM31UnderBrightMoonPrefersDarkSkyAndWarnsOfWashedOutDetail() {
+        let content = Self.detailContent(
+            name: "M31 Andromeda Galaxy",
+            type: .galaxy,
+            reasons: [.moonInterference],
+            summary: "High in the sky, but bright Moon will wash out galaxy detail."
+        )
+
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("wash out"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("dark"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("averted vision"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("wash out"))
+    }
+
+    func testLowVenusDetailIncludesWestLowHorizonAndTwilightGuidance() {
+        let content = Self.detailContent(
+            name: "Venus",
+            targetType: .planet,
+            reasons: [.lowAltitude, .outsideAstronomicalDarkness],
+            direction: "W",
+            altitude: 9
+        )
+
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("west"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("low"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("trees, hills, or buildings"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("twilight"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("low in the sky"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("trees, hills, or buildings"))
+    }
+
+    func testTargetDetailIncludesWindowDirectionAltitudeAndNeedsNoOptionalCatalogData() {
+        let content = Self.detailContent(name: "Unknown", direction: "S", altitude: 78)
+
+        XCTAssertFalse(content.bestTime.isEmpty)
+        XCTAssertEqual(content.direction, "Look south.")
+        XCTAssertEqual(content.altitude, "About 78° high.")
+        XCTAssertEqual(content.sections.count, 4)
+    }
+
+    func testTargetDetailPreservesKnownAzimuthWithoutAddingItToBeginnerRows() {
+        let content = Self.detailContent(
+            name: "Known Position",
+            direction: "S",
+            altitude: 84,
+            azimuth: 180
+        )
+
+        XCTAssertEqual(content.compassDirectionLabel, "S")
+        XCTAssertEqual(content.azimuthDegrees ?? 0, 180, accuracy: 0.01)
+        XCTAssertEqual(content.azimuthText, "Azimuth 180°")
+        XCTAssertEqual(content.directionText, "Look south.")
+        XCTAssertEqual(content.altitudeText, "About 84° high.")
+    }
+
+    func testTargetDetailWithoutAzimuthLeavesStructuredAzimuthEmpty() {
+        let content = Self.detailContent(name: "No Azimuth", azimuth: nil)
+
+        XCTAssertNil(content.azimuthDegrees)
+        XCTAssertNil(content.azimuthText)
+        XCTAssertFalse(content.sectionsText.localizedCaseInsensitiveContains("azimuth"))
+    }
+
+    func testDateNeutralTargetDetailProseDoesNotHardCodeTonight() {
+        let content = Self.detailContent(
+            name: "Future Target",
+            reasons: [.highAltitude, .astronomicalDarkness],
+            summary: "A strong target tonight."
+        )
+
+        XCTAssertFalse(content.sectionsText.localizedCaseInsensitiveContains("tonight"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("for this night"))
     }
 
     func testCurrentTargetRecommendationsUseInjectedServiceOutput() {
@@ -197,6 +333,44 @@ final class DashboardViewModelTests: XCTestCase {
             ),
             reasons: [.convenientPlanetWindow],
             summary: "\(name) summary"
+        )
+    }
+
+    private static func detailContent(
+        name: String,
+        targetType: ObservableTargetType = .deepSky,
+        type: DeepSkyObjectType? = nil,
+        reasons: [TargetRecommendationReason] = [],
+        summary: String = "Visible tonight.",
+        direction: String? = "S",
+        altitude: Double? = 60,
+        azimuth: Double? = nil
+    ) -> TargetDetailContent {
+        let start = Date(timeIntervalSince1970: 1_782_790_000)
+        let recommendation = TargetRecommendation(
+            target: ObservableTarget(
+                id: name.lowercased(),
+                name: name,
+                type: targetType,
+                preferredEquipment: .telescope,
+                difficulty: 0.5,
+                deepSkyObjectType: type
+            ),
+            score: 75,
+            visibilityWindow: TargetVisibilityWindow(
+                start: start,
+                end: start.addingTimeInterval(7_200),
+                bestTime: start.addingTimeInterval(3_600),
+                maxAltitude: altitude,
+                direction: direction,
+                azimuth: azimuth
+            ),
+            reasons: reasons,
+            summary: summary
+        )
+        return TargetDetailContentBuilder().build(
+            from: recommendation,
+            timeZone: TimeZone(secondsFromGMT: 0)
         )
     }
     

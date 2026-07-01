@@ -273,7 +273,8 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
             end: visibleSamples.last?.time.addingTimeInterval(15 * 60) ?? bestSample.time.addingTimeInterval(15 * 60),
             bestTime: bestSample.time,
             maxAltitude: bestSample.altitude,
-            direction: Self.userFacingCompassDirection(for: bestSample.azimuth)
+            direction: Self.userFacingCompassDirection(for: bestSample.azimuth),
+            azimuth: bestSample.azimuth
         )
     }
 
