@@ -6,6 +6,95 @@ import Foundation
 @MainActor
 final class DashboardViewModelTests: XCTestCase {
 
+    func testBestTargetsPoorConditionsNoteThreshold() {
+        XCTAssertTrue(TonightsBestTargetsCard.showsPoorConditionsNote(for: 29))
+        XCTAssertFalse(TonightsBestTargetsCard.showsPoorConditionsNote(for: 30))
+        XCTAssertFalse(TonightsBestTargetsCard.showsPoorConditionsNote(for: nil))
+    }
+
+    func testBestTargetsDashboardCapsAtFiveAndShowsViewAllForAdditionalTargets() {
+        let recommendations = [90, 85, 80, 75, 70, 65].enumerated().map { index, score in
+            Self.makeRecommendation(id: "target-\(index)", name: "Target \(index)", score: score)
+        }
+        let presentation = BestTargetsListPresentation(recommendations: recommendations)
+
+        XCTAssertEqual(presentation.dashboardRecommendations.count, 5)
+        XCTAssertTrue(presentation.hasAdditionalTargets)
+        XCTAssertTrue(TonightsBestTargetsCard.showsViewAll(hasAdditionalTargets: true))
+        XCTAssertFalse(TonightsBestTargetsCard.showsViewAll(hasAdditionalTargets: false))
+    }
+
+    func testBestTargetsFullListGroupsScoreBandsAndHidesScoresBelow45() {
+        let recommendations = [90, 80, 79, 65, 64, 45, 44].enumerated().map { index, score in
+            Self.makeRecommendation(id: "target-\(index)", name: "Target \(index)", score: score)
+        }
+        let sections = BestTargetsListPresentation(recommendations: recommendations).sections(for: .all)
+
+        XCTAssertEqual(sections.map(\.band), [.excellent, .good, .fair])
+        XCTAssertEqual(sections.map { $0.recommendations.map(\.score) }, [
+            [90, 80],
+            [79, 65],
+            [64, 45]
+        ])
+        XCTAssertFalse(sections.flatMap(\.recommendations).contains { $0.score < 45 })
+    }
+
+    func testCurrentTargetRecommendationsUseInjectedServiceOutput() {
+        let timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let referenceDate = calendar.date(from: DateComponents(
+            year: 2026, month: 6, day: 29, hour: 12
+        ))!
+        let startOfDay = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        let sunEvents = [
+            Self.makeSunEvents(for: startOfDay, calendar: calendar),
+            Self.makeSunEvents(for: tomorrow, calendar: calendar)
+        ]
+        let forecasts = (20...28).map { hour -> HourlyForecast in
+            let date = calendar.date(
+                bySettingHour: hour % 24,
+                minute: 0,
+                second: 0,
+                of: hour >= 24 ? tomorrow : startOfDay
+            )!
+            return Self.makeForecast(at: date)
+        }
+        let expectedRecommendations = [
+            Self.makeRecommendation(id: "saturn", name: "Saturn", score: 65),
+            Self.makeRecommendation(id: "venus", name: "Venus", score: 62),
+            Self.makeRecommendation(id: "jupiter", name: "Jupiter", score: 53),
+            Self.makeRecommendation(id: "mars", name: "Mars", score: 45)
+        ]
+        let targetRecommendationService = FixedDashboardTargetRecommendationService(
+            recommendations: expectedRecommendations
+        )
+        let viewModel = DashboardViewModel(
+            targetRecommendationService: targetRecommendationService,
+            now: { referenceDate }
+        )
+        viewModel.viewingConditions = ViewingConditions(
+            fetchedAt: referenceDate,
+            location: CachedLocation(name: "Cupertino", latitude: 37.323, longitude: -122.0322, elevation: 72),
+            hourlyForecasts: forecasts,
+            dailySunEvents: sunEvents,
+            dailyMoonInfo: [
+                MoonInfo(phase: 0.98, phaseName: "Full Moon", altitude: 20, illumination: 98, emoji: ""),
+                MoonInfo(phase: 0.99, phaseName: "Full Moon", altitude: 18, illumination: 99, emoji: "")
+            ],
+            issPasses: [],
+            fogScore: FogScore(score: 0, factors: []),
+            timeZoneIdentifier: timeZone.identifier
+        )
+
+        let recommendations = viewModel.currentTargetRecommendations
+
+        XCTAssertEqual(recommendations.map(\.target.name), ["Saturn", "Venus", "Jupiter", "Mars"])
+        XCTAssertEqual(recommendations.map(\.score), [65, 62, 53, 45])
+        XCTAssertEqual(targetRecommendationService.requestedLimits, [100])
+    }
+
     func testCurrentISSPassesFollowSelectedLocationDay() {
         let timeZone = TimeZone(identifier: "America/Los_Angeles")!
         var calendar = Calendar(identifier: .gregorian)
@@ -80,6 +169,34 @@ final class DashboardViewModelTests: XCTestCase {
             nauticalTwilightEnd: sunset.addingTimeInterval(3_600),
             astronomicalTwilightBegin: sunrise.addingTimeInterval(-5_400),
             astronomicalTwilightEnd: sunset.addingTimeInterval(5_400)
+        )
+    }
+
+    private static func makeRecommendation(
+        id: String,
+        name: String,
+        score: Int
+    ) -> TargetRecommendation {
+        let start = Date(timeIntervalSince1970: 1_782_790_000)
+        let end = start.addingTimeInterval(3_600)
+        return TargetRecommendation(
+            target: ObservableTarget(
+                id: id,
+                name: name,
+                type: .planet,
+                preferredEquipment: .nakedEye,
+                difficulty: 0.2
+            ),
+            score: score,
+            visibilityWindow: TargetVisibilityWindow(
+                start: start,
+                end: end,
+                bestTime: start.addingTimeInterval(1_800),
+                maxAltitude: 35,
+                direction: "SE"
+            ),
+            reasons: [.convenientPlanetWindow],
+            summary: "\(name) summary"
         )
     }
     
@@ -375,5 +492,22 @@ final class DashboardViewModelTests: XCTestCase {
             XCTAssertEqual(forecastDate, refreshStartOfDay0,
                 "Tab 0 forecasts should be for refresh date")
         }
+    }
+}
+
+private final class FixedDashboardTargetRecommendationService: TargetRecommendationProviding, @unchecked Sendable {
+    let recommendations: [TargetRecommendation]
+    private(set) var requestedLimits: [Int] = []
+
+    init(recommendations: [TargetRecommendation]) {
+        self.recommendations = recommendations
+    }
+
+    func recommendations(
+        for context: TargetRecommendationContext,
+        limit: Int
+    ) -> [TargetRecommendation] {
+        requestedLimits.append(limit)
+        return Array(recommendations.prefix(limit))
     }
 }

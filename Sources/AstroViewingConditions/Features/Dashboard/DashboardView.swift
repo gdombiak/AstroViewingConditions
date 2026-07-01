@@ -17,6 +17,7 @@ public struct DashboardView: View {
     @State private var currentLocation: SavedLocation?
     @State private var showingLocationPicker = false
     @State private var showingBestSpotSearch = false
+    @State private var showingAllBestTargets = false
     
     public init() {
         _selectedLocation = State(initialValue: LocationStorageService.shared.loadSelectedLocation())
@@ -115,6 +116,12 @@ public struct DashboardView: View {
                     )
                 }
             }
+            .sheet(isPresented: $showingAllBestTargets) {
+                BestTargetsListView(
+                    presentation: viewModel.currentBestTargetsPresentation,
+                    timeZone: viewModel.displayTimeZone
+                )
+            }
         }
         .task {
             viewModel.updateAPIKey(n2yoApiKey)
@@ -182,7 +189,9 @@ public struct DashboardView: View {
     }
     
     private func conditionsContent(conditions: ViewingConditions) -> some View {
-        ScrollView {
+        let bestTargets = viewModel.currentBestTargetsPresentation
+
+        return ScrollView {
             VStack(spacing: 16) {
                 if viewModel.isDataStale {
                     staleDataBanner
@@ -195,6 +204,14 @@ public struct DashboardView: View {
                         assessment: nightQuality
                     )
                 }
+
+                TonightsBestTargetsCard(
+                    recommendations: bestTargets.dashboardRecommendations,
+                    timeZone: viewModel.displayTimeZone,
+                    nightQualityScore: viewModel.currentNightQuality?.calculatedScore,
+                    hasAdditionalTargets: bestTargets.hasAdditionalTargets,
+                    onViewAll: { showingAllBestTargets = true }
+                )
                 
                 if viewModel.selectedDay == .today {
                     CurrentConditionsCard(

@@ -3,6 +3,7 @@ import Foundation
 public struct DateFormatters {
     private enum TimeZoneDateFormatterStyle: Sendable {
         case time
+        case dashboardObservingTime
         case shortDate
         case fullDate
         
@@ -14,6 +15,9 @@ public struct DateFormatters {
             case .time:
                 formatter.timeStyle = .short
                 formatter.dateStyle = .none
+            case .dashboardObservingTime:
+                formatter.locale = Locale(identifier: "en_US_POSIX")
+                formatter.dateFormat = "h:mm a"
             case .shortDate:
                 formatter.dateFormat = "EEE, MMM d"
             case .fullDate:
@@ -55,6 +59,7 @@ public struct DateFormatters {
     }
     
     private static let timeZoneTimeFormatterCache = TimeZoneDateFormatterCache(style: .time)
+    private static let dashboardObservingTimeFormatterCache = TimeZoneDateFormatterCache(style: .dashboardObservingTime)
     private static let timeZoneShortDateFormatterCache = TimeZoneDateFormatterCache(style: .shortDate)
     private static let timeZoneFullDateFormatterCache = TimeZoneDateFormatterCache(style: .fullDate)
     
@@ -96,6 +101,16 @@ public struct DateFormatters {
         formatter.timeStyle = .short
         formatter.timeZone = timeZone ?? TimeZone(secondsFromGMT: 0) ?? TimeZone.current
         return formatter.string(from: start, to: end)
+    }
+
+    public static func formatDashboardObservingTimeRange(
+        from start: Date,
+        to end: Date,
+        in timeZone: TimeZone?
+    ) -> String {
+        let startText = dashboardObservingTimeFormatterCache.string(from: start, in: timeZone)
+        let endText = dashboardObservingTimeFormatterCache.string(from: end, in: timeZone)
+        return "\(startText) – \(endText)"
     }
     
     public static func formatShortDate(_ date: Date) -> String {

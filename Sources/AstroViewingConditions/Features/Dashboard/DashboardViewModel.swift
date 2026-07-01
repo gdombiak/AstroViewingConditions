@@ -2,12 +2,88 @@ import SharedCode
 import SwiftUI
 import WidgetKit
 
+enum BestTargetsFilter: String, CaseIterable, Identifiable {
+    case all = "All"
+    case moonAndPlanets = "Moon & Planets"
+    case deepSky = "Deep Sky"
+    case doubleStars = "Double Stars"
+
+    var id: Self { self }
+}
+
+enum BestTargetsScoreBand: String, CaseIterable, Identifiable {
+    case excellent = "Excellent"
+    case good = "Good"
+    case fair = "Fair / Marginal"
+
+    var id: Self { self }
+
+    func contains(score: Int) -> Bool {
+        switch self {
+        case .excellent: return score >= 80
+        case .good: return (65...79).contains(score)
+        case .fair: return (45...64).contains(score)
+        }
+    }
+}
+
+struct BestTargetsSection: Identifiable {
+    let band: BestTargetsScoreBand
+    let recommendations: [TargetRecommendation]
+
+    var id: BestTargetsScoreBand { band }
+}
+
+struct BestTargetsListPresentation {
+    static let dashboardLimit = 5
+    static let minimumVisibleScore = 45
+
+    let recommendations: [TargetRecommendation]
+
+    var dashboardRecommendations: [TargetRecommendation] {
+        Array(recommendations.prefix(Self.dashboardLimit))
+    }
+
+    var hasAdditionalTargets: Bool {
+        visibleRecommendations.count > Self.dashboardLimit
+    }
+
+    func sections(for filter: BestTargetsFilter) -> [BestTargetsSection] {
+        let filtered = visibleRecommendations.filter { recommendation in
+            switch filter {
+            case .all:
+                return true
+            case .moonAndPlanets:
+                return recommendation.target.type == .moon || recommendation.target.type == .planet
+            case .deepSky:
+                return recommendation.target.type == .deepSky
+                    && recommendation.target.deepSkyObjectType != .doubleStar
+            case .doubleStars:
+                return recommendation.target.deepSkyObjectType == .doubleStar
+            }
+        }
+
+        return BestTargetsScoreBand.allCases.compactMap { band in
+            let recommendations = filtered.filter { band.contains(score: $0.score) }
+            return recommendations.isEmpty ? nil : BestTargetsSection(
+                band: band,
+                recommendations: recommendations
+            )
+        }
+    }
+
+    private var visibleRecommendations: [TargetRecommendation] {
+        recommendations.filter { $0.score >= Self.minimumVisibleScore }
+    }
+}
+
 @MainActor
 @Observable
 public class DashboardViewModel {
     // Services
     private let conditionsProvider: ConditionsProvider
     private let cacheService: CacheService
+    private let targetRecommendationService: any TargetRecommendationProviding
     private let now: () -> Date
     
     // State
@@ -208,6 +284,36 @@ public class DashboardViewModel {
             calendar: calendar
         )
     }
+
+    var currentBestTargetsPresentation: BestTargetsListPresentation {
+        guard let conditions = viewingConditions,
+              let sunEventsToday = currentSunEvents,
+              let nightQuality = currentNightQuality,
+              let moonInfo = currentMoonInfo else {
+            return BestTargetsListPresentation(recommendations: [])
+        }
+
+        let context = TargetRecommendationContext(
+            location: conditions.location,
+            astronomicalNightStart: sunEventsToday.astronomicalNightStart,
+            astronomicalNightEnd: sunEventsToday.astronomicalNightEnd(using: nextSunEvents),
+            nightQuality: nightQuality,
+            moonInfo: moonInfo
+        )
+
+        let recommendations = targetRecommendationService.recommendations(for: context, limit: 100)
+        Self.logUITargetRecommendations(
+            recommendations,
+            selectedDay: selectedDay,
+            context: context,
+            timeZone: displayTimeZone
+        )
+        return BestTargetsListPresentation(recommendations: recommendations)
+    }
+
+    public var currentTargetRecommendations: [TargetRecommendation] {
+        currentBestTargetsPresentation.dashboardRecommendations
+    }
     
     private var nightTimeForecasts: [HourlyForecast] {
         guard let conditions = viewingConditions else { return [] }
@@ -228,12 +334,46 @@ public class DashboardViewModel {
         apiKey: String = "",
         cacheService: CacheService = CacheService(),
         conditionsProvider: ConditionsProvider = ConditionsProvider(),
+        targetRecommendationService: any TargetRecommendationProviding = DefaultTargetRecommendationService(),
         now: @escaping () -> Date = Date.init
     ) {
         self.apiKey = apiKey
         self.cacheService = cacheService
         self.conditionsProvider = conditionsProvider
+        self.targetRecommendationService = targetRecommendationService
         self.now = now
+    }
+
+    private static func logUITargetRecommendations(
+        _ recommendations: [TargetRecommendation],
+        selectedDay: DaySelection,
+        context: TargetRecommendationContext,
+        timeZone: TimeZone?
+    ) {
+#if DEBUG
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        formatter.timeZone = timeZone ?? .current
+
+        let rows = recommendations.enumerated().map { index, recommendation in
+            let window = recommendation.visibilityWindow
+            let windowText = "\(formatter.string(from: window.start)) - \(formatter.string(from: window.end))"
+            return "\(index + 1). \(recommendation.target.name) [\(recommendation.target.type.rawValue)] score=\(recommendation.score) best=\(formatter.string(from: window.bestTime)) window=\(windowText) summary=\"\(recommendation.summary)\""
+        }
+
+        debugPrint(
+            """
+            [BestTargetsUIInput]
+            selectedDay: \(selectedDay.title)
+            selectedDate: \(formatter.string(from: context.nightQuality.nightStart))
+            timezone: \((timeZone ?? .current).identifier)
+            count: \(recommendations.count)
+            order:
+            \(rows.joined(separator: "\n"))
+            """
+        )
+#endif
     }
 
     private var conditionsDayIndex: Int {

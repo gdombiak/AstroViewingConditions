@@ -47,6 +47,42 @@ final class FormattersTests: XCTestCase {
         
         XCTAssertFalse(formatted.isEmpty)
     }
+
+    func testDashboardObservingTimeRangeIncludesAmPmOnBothEnds() {
+        let timeZone = TimeZone(secondsFromGMT: 0)!
+
+        XCTAssertEqual(
+            DateFormatters.formatDashboardObservingTimeRange(
+                from: Self.date(hour: 1, minute: 14),
+                to: Self.date(hour: 2, minute: 0),
+                in: timeZone
+            ),
+            "1:14 AM – 2:00 AM"
+        )
+
+        XCTAssertEqual(
+            DateFormatters.formatDashboardObservingTimeRange(
+                from: Self.date(hour: 0, minute: 14),
+                to: Self.date(hour: 2, minute: 18),
+                in: timeZone
+            ),
+            "12:14 AM – 2:18 AM"
+        )
+    }
+
+    func testDashboardObservingTimeRangeOmitsDatesAcrossMidnight() {
+        let timeZone = TimeZone(secondsFromGMT: 0)!
+
+        let formatted = DateFormatters.formatDashboardObservingTimeRange(
+            from: Self.date(hour: 21, minute: 45),
+            to: Self.date(day: 2, hour: 0, minute: 30),
+            in: timeZone
+        )
+
+        XCTAssertEqual(formatted, "9:45 PM – 12:30 AM")
+        XCTAssertFalse(formatted.contains("2026"))
+        XCTAssertFalse(formatted.contains("Mar"))
+    }
     
     func testTimeAgo() {
         let pastDate = Date().addingTimeInterval(-3600)
@@ -178,5 +214,20 @@ final class FormattersTests: XCTestCase {
         let formatted = DateFormatters.formatTime(date)
         
         XCTAssertFalse(formatted.isEmpty)
+    }
+
+    private static func date(
+        day: Int = 1,
+        hour: Int,
+        minute: Int
+    ) -> Date {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 3
+        components.day = day
+        components.hour = hour
+        components.minute = minute
+        components.timeZone = TimeZone(secondsFromGMT: 0)
+        return Calendar(identifier: .gregorian).date(from: components)!
     }
 }
