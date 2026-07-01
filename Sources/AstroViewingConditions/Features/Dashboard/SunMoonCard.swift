@@ -91,11 +91,11 @@ struct SunMoonCard: View {
                 }
                 
                 HStack(spacing: 16) {
-                    // Moon emoji and phase
+                    // Moon appearance and illumination
                     VStack(spacing: 4) {
                         Text(moonInfo.emoji)
                             .font(.system(size: 48))
-                        Text("\(moonInfo.illumination)%")
+                        Text("Illumination: \(moonInfo.illumination)%")
                             .font(.caption)
                             .fontWeight(.semibold)
                     }
@@ -108,13 +108,6 @@ struct SunMoonCard: View {
                                 .font(.subheadline)
                         }
                         
-                        HStack {
-                            Image(systemName: "circle.fill")
-                                .foregroundStyle(.secondary)
-                                .font(.caption)
-                            Text("Phase: \(String(format: "%.1f", moonInfo.phase * 100))%")
-                                .font(.subheadline)
-                        }
                     }
                     
                     Spacer()
