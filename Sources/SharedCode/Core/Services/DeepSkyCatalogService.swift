@@ -303,6 +303,7 @@ public struct DeepSkyTargetPositionProvider: TargetPositionProvider {
         context: TargetRecommendationContext
     ) {
 #if DEBUG
+        /*
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
@@ -337,6 +338,7 @@ public struct DeepSkyTargetPositionProvider: TargetPositionProvider {
             azimuthAtBestTime: \(best.map { String(format: "%.1f° (%@)", $0.azimuth, compassDirection(for: $0.azimuth)) } ?? "n/a")
             """
         )
+        */
 #endif
     }
 

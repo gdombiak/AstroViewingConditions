@@ -351,6 +351,7 @@ public class DashboardViewModel {
         timeZone: TimeZone?
     ) {
 #if DEBUG
+        /*
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
@@ -373,6 +374,7 @@ public class DashboardViewModel {
             \(rows.joined(separator: "\n"))
             """
         )
+        */
 #endif
     }
 

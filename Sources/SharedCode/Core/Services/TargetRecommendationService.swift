@@ -56,6 +56,7 @@ enum TargetRecommendationDebugLogger {
         scoreBreakdown: [String]
     ) {
 #if DEBUG
+        /*
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
@@ -89,6 +90,7 @@ enum TargetRecommendationDebugLogger {
             reasons: \(reasons)
             """
         )
+        */
 #endif
     }
 
@@ -108,6 +110,7 @@ enum TargetRecommendationDebugLogger {
         limit: Int
     ) {
 #if DEBUG
+        /*
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
@@ -129,6 +132,7 @@ enum TargetRecommendationDebugLogger {
             \(rows.joined(separator: "\n"))
             """
         )
+        */
 #endif
     }
 }
