@@ -121,6 +121,7 @@ public struct DashboardView: View {
                     presentation: viewModel.currentBestTargetsPresentation,
                     timeZone: viewModel.displayTimeZone
                 )
+                .adaptiveTargetSheet(horizontalSizeClass: horizontalSizeClass)
             }
         }
         .task {

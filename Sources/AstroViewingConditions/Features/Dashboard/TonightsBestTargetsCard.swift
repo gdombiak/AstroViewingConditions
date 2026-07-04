@@ -29,6 +29,7 @@ enum TargetScoreColorProvider {
 }
 
 struct TonightsBestTargetsCard: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let recommendations: [TargetRecommendation]
     let timeZone: TimeZone?
     let nightQualityScore: Int?
@@ -111,6 +112,10 @@ struct TonightsBestTargetsCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .sheet(item: $selectedRecommendation) { recommendation in
             TargetDetailView(recommendation: recommendation, timeZone: timeZone)
+                .adaptiveTargetSheet(
+                    horizontalSizeClass: horizontalSizeClass,
+                    prefersTallerPresentation: true
+                )
         }
     }
 }
@@ -118,6 +123,8 @@ struct TonightsBestTargetsCard: View {
 struct TargetRecommendationRow: View {
     let recommendation: TargetRecommendation
     let timeZone: TimeZone?
+    var showsThumbnail = false
+    private let imageRepository = TargetImageRepository()
 
     private var windowText: String {
         DateFormatters.formatDashboardObservingTimeRange(
@@ -159,7 +166,13 @@ struct TargetRecommendationRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        HStack(alignment: .center, spacing: 10) {
+            if showsThumbnail,
+               let image = imageRepository.thumbnailImage(for: recommendation.target.id) {
+                TargetThumbnail(image: image, size: 48)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(targetName)
                     .font(.subheadline)
@@ -203,6 +216,7 @@ struct TargetRecommendationRow: View {
 
                 Spacer(minLength: 0)
             }
+            }
         }
         .padding(.vertical, 4)
     }
@@ -210,6 +224,7 @@ struct TargetRecommendationRow: View {
 
 struct BestTargetsListView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let presentation: BestTargetsListPresentation
     let timeZone: TimeZone?
     @State private var filter: BestTargetsFilter = .all
@@ -243,7 +258,8 @@ struct BestTargetsListView: View {
                             ForEach(section.recommendations) { recommendation in
                                 TargetRecommendationRow(
                                     recommendation: recommendation,
-                                    timeZone: timeZone
+                                    timeZone: timeZone,
+                                    showsThumbnail: true
                                 )
                                 .contentShape(Rectangle())
                                 .onTapGesture { selectedRecommendation = recommendation }
@@ -262,6 +278,10 @@ struct BestTargetsListView: View {
             }
             .sheet(item: $selectedRecommendation) { recommendation in
                 TargetDetailView(recommendation: recommendation, timeZone: timeZone)
+                    .adaptiveTargetSheet(
+                        horizontalSizeClass: horizontalSizeClass,
+                        prefersTallerPresentation: true
+                    )
             }
         }
     }
@@ -284,6 +304,7 @@ struct TargetDetailContent: Equatable {
     let altitudeText: String?
     let azimuthDegrees: Double?
     let azimuthText: String?
+    let imageAttribution: String?
     let sections: [Section]
 
     // Compatibility conveniences for call sites that only need display text.
@@ -323,9 +344,10 @@ struct TargetDetailContentBuilder {
             altitudeText: window.maxAltitude.map(Self.altitudeText),
             azimuthDegrees: window.azimuth,
             azimuthText: window.azimuth.map(Self.azimuthText),
+            imageAttribution: target.image?.attributionText,
             sections: [
                 .init(title: "Why recommended", text: whyRecommended(recommendation)),
-                .init(title: "How to find it", text: howToFind(window, windowText: windowText)),
+                .init(title: "How to find it", text: howToFind(target, window: window, windowText: windowText)),
                 .init(title: "Best equipment", text: equipment(for: target)),
                 .init(title: "Observing notes", text: observingNotes(for: target))
             ]
@@ -354,6 +376,10 @@ struct TargetDetailContentBuilder {
         }
 
         if hasBrightMoonImpact {
+            if target.id.lowercased() == "m27" {
+                return "This large, bright planetary nebula is well placed during this observing window. The bright Moon may reduce contrast, but M27 is still worth trying because its dumbbell shape can stand out better than many faint nebulae."
+            }
+
             switch target.deepSkyObjectType {
             case .doubleStar:
                 return Self.joinSentences(
@@ -411,15 +437,40 @@ struct TargetDetailContentBuilder {
         return clause.map { "\($0)." }
     }
 
-    private func howToFind(_ window: TargetVisibilityWindow, windowText: String) -> String {
+    private func howToFind(
+        _ target: ObservableTarget,
+        window: TargetVisibilityWindow,
+        windowText: String
+    ) -> String {
         var instructions: [String] = []
-        if let direction = window.direction { instructions.append(Self.directionText(direction)) }
-        if let altitude = window.maxAltitude { instructions.append(Self.altitudeText(altitude)) }
+        if target.id.lowercased() == "m27" {
+            if let direction = window.direction {
+                instructions.append("Look \(Self.directionName(direction)), in Vulpecula near Sagitta and Cygnus.")
+            } else {
+                instructions.append("Look in Vulpecula near Sagitta and Cygnus.")
+            }
+        } else if let direction = window.direction {
+            instructions.append(Self.directionText(direction))
+        }
+        if let altitude = window.maxAltitude {
+            if target.id.lowercased() == "m27" {
+                instructions.append("It is about \(Int(round(altitude)))° high.")
+            } else {
+                instructions.append(Self.altitudeText(altitude))
+            }
+        }
+        if target.id.lowercased() == "m27" {
+            instructions.append("Use low power first, then increase magnification once found.")
+        }
         instructions.append("Best from \(windowText.replacingOccurrences(of: " – ", with: " to ")).")
         return instructions.joined(separator: " ")
     }
 
     private func equipment(for target: ObservableTarget) -> String {
+        if target.id.lowercased() == "m27" {
+            return "Use a telescope at low to moderate magnification. A nebula filter may help if available."
+        }
+
         switch (target.type, target.deepSkyObjectType) {
         case (.moon, _):
             return "Use the naked eye, binoculars, or a telescope. A Moon filter can reduce brightness and improve comfort."
@@ -443,6 +494,14 @@ struct TargetDetailContentBuilder {
     }
 
     private func observingNotes(for target: ObservableTarget) -> String {
+        if target.id.lowercased() == "m27" {
+            return "Visually, M27 usually appears as a grayish fuzzy patch with a dumbbell or apple-core shape. Photos show much more color than you should expect at the eyepiece."
+        }
+
+        if target.id.lowercased() == "ngc7009" {
+            return "Small bright planetary nebula. In a telescope it may look like a tiny blue-green oval; the Saturn-like extensions need higher magnification and good seeing."
+        }
+
         switch (target.type, target.deepSkyObjectType) {
         case (.moon, _): return "Very bright; reduce brightness with a Moon filter if needed."
         case (.planet, _): return "Atmospheric steadiness matters; wait for moments of sharp seeing."
@@ -462,9 +521,13 @@ struct TargetDetailContentBuilder {
     }
 
     private static func directionText(_ direction: String) -> String {
+        "Look \(directionName(direction))."
+    }
+
+    private static func directionName(_ direction: String) -> String {
         let names = ["N": "north", "NE": "northeast", "E": "east", "SE": "southeast",
                      "S": "south", "SW": "southwest", "W": "west", "NW": "northwest"]
-        return "Look \(names[direction.uppercased()] ?? direction.lowercased())."
+        return names[direction.uppercased()] ?? direction.lowercased()
     }
 
     private static func altitudeText(_ altitude: Double) -> String {
@@ -494,6 +557,7 @@ struct TargetDetailContentBuilder {
 
 struct TargetDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var viewerPresentation = TargetImageViewerPresentationState()
     let recommendation: TargetRecommendation
     let timeZone: TimeZone?
 
@@ -501,9 +565,27 @@ struct TargetDetailView: View {
         TargetDetailContentBuilder().build(from: recommendation, timeZone: timeZone)
     }
 
+    private let imageRepository = TargetImageRepository()
+
     var body: some View {
         NavigationStack {
             List {
+                if let resolvedImage = imageRepository.heroImage(for: recommendation.target.id) {
+                    Section {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TargetHeroImage(
+                                image: resolvedImage.image,
+                                accessibilityName: content.name,
+                                action: { viewerPresentation.present(resolvedImage) }
+                            )
+                            TargetImageAttributionView(info: resolvedImage.record)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowBackground(Color.clear)
+                }
+
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(content.name).font(.title2.bold())
@@ -525,11 +607,19 @@ struct TargetDetailView: View {
                     Section(section.title) { Text(section.text) }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color(uiColor: .systemGroupedBackground))
             .navigationTitle("Target Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
+        }
+        .fullScreenCover(item: $viewerPresentation.image) { resolvedImage in
+            TargetImageViewer(
+                resolvedImage: resolvedImage,
+                targetName: content.name
+            )
         }
     }
 }

@@ -14,6 +14,7 @@ public struct DeepSkyCatalogEntry: Identifiable, Sendable, Codable, Hashable {
     public let difficulty: Double
     public let recommendedEquipment: TargetEquipmentType
     public let notes: String
+    public let image: TargetImageCredit?
 
     public init(
         id: String,
@@ -28,7 +29,8 @@ public struct DeepSkyCatalogEntry: Identifiable, Sendable, Codable, Hashable {
         surfaceBrightness: Double? = nil,
         difficulty: Double,
         recommendedEquipment: TargetEquipmentType,
-        notes: String
+        notes: String,
+        image: TargetImageCredit? = nil
     ) {
         self.id = id
         self.commonName = commonName
@@ -43,6 +45,7 @@ public struct DeepSkyCatalogEntry: Identifiable, Sendable, Codable, Hashable {
         self.difficulty = min(max(difficulty, 0), 1)
         self.recommendedEquipment = recommendedEquipment
         self.notes = notes
+        self.image = image
     }
 }
 
@@ -58,23 +61,23 @@ public struct CuratedDeepSkyCatalogProvider: DeepSkyCatalogProvider {
     }
 
     private static let catalog: [DeepSkyCatalogEntry] = [
-        entry("m13", "M13 Hercules Cluster", "M13", .globularCluster, "Hercules", 16.6949, 36.4613, 5.8, "20 arcmin", 12.0, 0.55, .binoculars, "Bright northern globular cluster."),
-        entry("m31", "M31 Andromeda Galaxy", "M31", .galaxy, "Andromeda", 0.7123, 41.2692, 3.4, "190 x 60 arcmin", 13.5, 0.45, .binoculars, "Large galaxy; dark skies reveal its extended disk."),
-        entry("m2", "M2 Globular Cluster", "M2", .globularCluster, "Aquarius", 21.5575, -0.8233, 6.2, "16 arcmin", 12.5, 0.55, .binoculars, "Compact globular cluster."),
+        entry("m13", "M13 Hercules Cluster", "M13", .globularCluster, "Hercules", 16.6949, 36.4613, 5.8, "20 arcmin", 12.0, 0.55, .binoculars, "Bright northern globular cluster.", image: TargetImageManifest.image(for: "m13")),
+        entry("m31", "M31 Andromeda Galaxy", "M31", .galaxy, "Andromeda", 0.7123, 41.2692, 3.4, "190 x 60 arcmin", 13.5, 0.45, .binoculars, "Large galaxy; dark skies reveal its extended disk.", image: TargetImageManifest.image(for: "m31")),
+        entry("m2", "M2 Globular Cluster", "M2", .globularCluster, "Aquarius", 21.5575, -0.8233, 6.2, "16 arcmin", 12.5, 0.55, .binoculars, "Compact globular cluster.", image: TargetImageManifest.image(for: "m2")),
         entry("m30", "M30 Globular Cluster", "M30", .globularCluster, "Capricornus", 21.6728, -23.1799, 7.2, "12 arcmin", 11.0, 0.65, .smallTelescope, "Dense globular cluster with a bright core."),
-        entry("m52", "M52 Open Cluster", "M52", .openCluster, "Cassiopeia", 23.4133, 61.5931, 6.9, "13 arcmin", 12.0, 0.45, .binoculars, "Rich open cluster in a crowded Milky Way field."),
-        entry("m11", "M11 Wild Duck Cluster", "M11", .openCluster, "Scutum", 18.8514, -6.2700, 6.3, "14 arcmin", 11.1, 0.4, .binoculars, "Bright, compact open cluster."),
-        entry("m57", "M57 Ring Nebula", "M57", .planetaryNebula, "Lyra", 18.8931, 33.0292, 8.8, "1.4 x 1.0 arcmin", 9.3, 0.55, .smallTelescope, "Small, high-surface-brightness planetary nebula."),
-        entry("m27", "M27 Dumbbell Nebula", "M27", .planetaryNebula, "Vulpecula", 19.9934, 22.7212, 7.5, "8.0 x 5.7 arcmin", 11.3, 0.5, .binoculars, "Large, bright planetary nebula."),
-        entry("ngc7009", "NGC 7009 Saturn Nebula", "NGC 7009", .planetaryNebula, "Aquarius", 21.0697, -11.3633, 8.0, "0.7 x 0.4 arcmin", 8.1, 0.5, .smallTelescope, "Compact planetary nebula that tolerates moonlight well."),
+        entry("m52", "M52 Open Cluster", "M52", .openCluster, "Cassiopeia", 23.4133, 61.5931, 6.9, "13 arcmin", 12.0, 0.45, .binoculars, "Rich open cluster in a crowded Milky Way field.", image: TargetImageManifest.image(for: "m52")),
+        entry("m11", "M11 Wild Duck Cluster", "M11", .openCluster, "Scutum", 18.8514, -6.2700, 6.3, "14 arcmin", 11.1, 0.4, .binoculars, "Bright, compact open cluster.", image: TargetImageManifest.image(for: "m11")),
+        entry("m57", "M57 Ring Nebula", "M57", .planetaryNebula, "Lyra", 18.8931, 33.0292, 8.8, "1.4 x 1.0 arcmin", 9.3, 0.55, .smallTelescope, "Small, high-surface-brightness planetary nebula.", image: TargetImageManifest.image(for: "m57")),
+        entry("m27", "M27 Dumbbell Nebula", "M27", .planetaryNebula, "Vulpecula", 19.9934, 22.7212, 7.5, "8.0 x 5.7 arcmin", 11.3, 0.5, .binoculars, "Large, bright planetary nebula.", image: TargetImageManifest.image(for: "m27")),
+        entry("ngc7009", "NGC 7009 Saturn Nebula", "NGC 7009", .planetaryNebula, "Aquarius", 21.0697, -11.3633, 8.0, "0.7 x 0.4 arcmin", 8.1, 0.5, .smallTelescope, "Compact planetary nebula that tolerates moonlight well.", image: TargetImageManifest.image(for: "ngc7009")),
         entry("ngc7293", "NGC 7293 Helix Nebula", "NGC 7293", .planetaryNebula, "Aquarius", 22.4933, -20.8372, 7.6, "25 x 20 arcmin", 13.6, 0.8, .telescope, "Very large planetary nebula with low surface brightness."),
         entry("m51", "M51 Whirlpool Galaxy", "M51", .galaxy, "Canes Venatici", 13.4978, 47.1952, 8.4, "11 x 7 arcmin", 12.9, 0.75, .telescope, "Face-on galaxy whose spiral detail needs dark skies."),
         entry("m64", "M64 Black Eye Galaxy", "M64", .galaxy, "Coma Berenices", 12.9455, 21.6827, 8.5, "10 x 5 arcmin", 12.8, 0.7, .telescope, "Galaxy with a prominent dark dust feature."),
         entry("m81", "M81 Bode's Galaxy", "M81", .galaxy, "Ursa Major", 9.9259, 69.0653, 6.9, "27 x 14 arcmin", 13.0, 0.55, .binoculars, "Bright galaxy, though extended detail favors dark skies."),
         entry("m82", "M82 Cigar Galaxy", "M82", .galaxy, "Ursa Major", 9.9313, 69.6797, 8.4, "11 x 5 arcmin", 12.7, 0.6, .smallTelescope, "High-surface-brightness edge-on galaxy."),
-        entry("m92", "M92 Globular Cluster", "M92", .globularCluster, "Hercules", 17.2854, 43.1365, 6.4, "14 arcmin", 11.2, 0.5, .binoculars, "Bright compact globular cluster."),
-        entry("albireo", "Albireo", "Beta Cygni", .doubleStar, "Cygnus", 19.5120, 27.9597, 3.1, "34 arcsec", nil, 0.25, .smallTelescope, "Colorful gold-and-blue double star."),
-        entry("epsilon-lyrae", "Epsilon Lyrae", "Epsilon Lyrae", .doubleStar, "Lyra", 18.7380, 39.6701, 4.7, "208 arcsec", nil, 0.4, .smallTelescope, "The Double Double; higher power resolves both pairs.")
+        entry("m92", "M92 Globular Cluster", "M92", .globularCluster, "Hercules", 17.2854, 43.1365, 6.4, "14 arcmin", 11.2, 0.5, .binoculars, "Bright compact globular cluster.", image: TargetImageManifest.image(for: "m92")),
+        entry("albireo", "Albireo", "Beta Cygni", .doubleStar, "Cygnus", 19.5120, 27.9597, 3.1, "34 arcsec", nil, 0.25, .smallTelescope, "Colorful gold-and-blue double star.", image: TargetImageManifest.image(for: "albireo")),
+        entry("epsilon-lyrae", "Epsilon Lyrae", "Epsilon Lyrae", .doubleStar, "Lyra", 18.7380, 39.6701, 4.7, "208 arcsec", nil, 0.4, .smallTelescope, "The Double Double; higher power resolves both pairs.", image: TargetImageManifest.image(for: "epsilon-lyrae"))
     ]
 
     private static func entry(
@@ -90,7 +93,8 @@ public struct CuratedDeepSkyCatalogProvider: DeepSkyCatalogProvider {
         _ surfaceBrightness: Double?,
         _ difficulty: Double,
         _ equipment: TargetEquipmentType,
-        _ notes: String
+        _ notes: String,
+        image: TargetImageCredit? = nil
     ) -> DeepSkyCatalogEntry {
         DeepSkyCatalogEntry(
             id: id,
@@ -105,7 +109,8 @@ public struct CuratedDeepSkyCatalogProvider: DeepSkyCatalogProvider {
             surfaceBrightness: surfaceBrightness,
             difficulty: difficulty,
             recommendedEquipment: equipment,
-            notes: notes
+            notes: notes,
+            image: image
         )
     }
 }
@@ -126,7 +131,8 @@ public struct DefaultTargetCatalogProvider: TargetCatalogProvider {
                 preferredEquipment: entry.recommendedEquipment,
                 difficulty: entry.difficulty,
                 deepSkyObjectType: entry.objectType,
-                moonInterferenceSensitivity: Self.moonInterferenceSensitivity(for: entry)
+                moonInterferenceSensitivity: Self.moonInterferenceSensitivity(for: entry),
+                image: entry.image
             )
         }
     }
@@ -140,11 +146,11 @@ public struct DefaultTargetCatalogProvider: TargetCatalogProvider {
     }
 
     private static let solarSystemTargets = [
-        ObservableTarget(id: "moon", name: "Moon", type: .moon, preferredEquipment: .nakedEye, difficulty: 0.1),
-        ObservableTarget(id: "venus", name: "Venus", type: .planet, preferredEquipment: .nakedEye, difficulty: 0.1),
-        ObservableTarget(id: "mars", name: "Mars", type: .planet, preferredEquipment: .nakedEye, difficulty: 0.2),
-        ObservableTarget(id: "jupiter", name: "Jupiter", type: .planet, preferredEquipment: .smallTelescope, difficulty: 0.25),
-        ObservableTarget(id: "saturn", name: "Saturn", type: .planet, preferredEquipment: .smallTelescope, difficulty: 0.35)
+        ObservableTarget(id: "moon", name: "Moon", type: .moon, preferredEquipment: .nakedEye, difficulty: 0.1, image: TargetImageManifest.image(for: "moon")),
+        ObservableTarget(id: "venus", name: "Venus", type: .planet, preferredEquipment: .nakedEye, difficulty: 0.1, image: TargetImageManifest.image(for: "venus")),
+        ObservableTarget(id: "mars", name: "Mars", type: .planet, preferredEquipment: .nakedEye, difficulty: 0.2, image: TargetImageManifest.image(for: "mars")),
+        ObservableTarget(id: "jupiter", name: "Jupiter", type: .planet, preferredEquipment: .smallTelescope, difficulty: 0.25, image: TargetImageManifest.image(for: "jupiter")),
+        ObservableTarget(id: "saturn", name: "Saturn", type: .planet, preferredEquipment: .smallTelescope, difficulty: 0.35, image: TargetImageManifest.image(for: "saturn"))
     ]
 }
 

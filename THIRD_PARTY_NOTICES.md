@@ -1,0 +1,22 @@
+# Third-Party Image Notices
+
+Target images are bundled locally and are not downloaded at runtime. The copies in the asset catalog may be resized, recognition-cropped for thumbnail/detail presentation, and JPEG-compressed without recoloring or other creative modification. Full assets remain available for the zoom viewer. Metadata was last verified on 2026-07-04.
+
+| Target ID | Target | Source page | Credit | License | Verified |
+|---|---|---|---|---|---|
+| `moon` | Moon | [Apollo 17 full-disc Moon](https://commons.wikimedia.org/wiki/File:Full_disc_of_moon_photographed_by_Apollo_17_crewmen_during_transearth_coast_(as17-152-23311).jpg) | NASA Johnson Space Center | [NASA Public Domain](https://www.nasa.gov/nasa-brand-center/images-and-media/) | 2026-07-04 |
+| `venus` | Venus | [PIA00270 Venus](https://commons.wikimedia.org/wiki/File:PIA00270_Venus_(Computer_Simulated_Global_View_Centered_at_90_Degrees_East_Longitude).jpg) | NASA/JPL | [NASA Public Domain](https://www.nasa.gov/nasa-brand-center/images-and-media/) | 2026-07-04 |
+| `mars` | Mars | [PIA00407 Mars Viking mosaic](https://commons.wikimedia.org/wiki/File:MARS-Viking.jpg) | NASA/JPL/USGS | [NASA Public Domain](https://www.nasa.gov/nasa-brand-center/images-and-media/) | 2026-07-04 |
+| `jupiter` | Jupiter | [PIA20701 Juno on Jupiter's Doorstep](https://commons.wikimedia.org/wiki/File:(PIA20701)_Juno_on_Jupiter%27s_Doorstep.jpg) | NASA/JPL-Caltech/SwRI/MSSS | [NASA Public Domain](https://www.nasa.gov/nasa-brand-center/images-and-media/) | 2026-07-04 |
+| `saturn` | Saturn | [Saturn in Color](https://science.nasa.gov/photojournal/saturn-in-color/) | NASA/JPL/Space Science Institute | [NASA Public Domain](https://www.nasa.gov/nasa-brand-center/images-and-media/) | 2026-07-04 |
+| `m57` | M57 Ring Nebula | [NASA Spitzer image](https://commons.wikimedia.org/wiki/File:M57RingNebula.jpg) | NASA/JPL-Caltech/J. Hora (Harvard-Smithsonian CfA) | [NASA Public Domain](https://www.nasa.gov/nasa-brand-center/images-and-media/) | 2026-07-04 |
+| `m27` | M27 Dumbbell Nebula | [NASA Science — VLT Image of Dumbbell Nebula](https://science.nasa.gov/asset/hubble/vlt-image-of-dumbbell-nebula/) | European Southern Observatory | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | 2026-07-04 |
+| `ngc7009` | NGC 7009 Saturn Nebula | [NASA/ESA Hubble image](https://commons.wikimedia.org/wiki/File:NGC_7009_Hubble.jpg) | NASA, ESA and STScI | [Public Domain (PD-Hubble)](https://www.nasa.gov/nasa-brand-center/images-and-media/) | 2026-07-04 |
+| `m11` | M11 Wild Duck Cluster | [ESO — The Wild Duck cluster](https://www.eso.org/public/images/eso1430a/) | ESO | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | 2026-07-04 |
+| `m2` | M2 Globular Cluster | [ESA/Hubble image](https://commons.wikimedia.org/wiki/File:Messier2_-_HST_-_Potw1913a.jpg) | ESA/Hubble & NASA, G. Piotto et al. | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | 2026-07-04 |
+| `m52` | M52 Open Cluster | [NOIRLab — M52, NGC 7654](https://noirlab.edu/public/images/noao-m52/) ([Commons copy](https://commons.wikimedia.org/wiki/File:M52,_NGC_7654_(noao-m52).jpg)) | NOIRLab | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | 2026-07-04 |
+| `m13` | M13 Hercules Cluster | [Wikimedia Commons file](https://commons.wikimedia.org/wiki/File:Hercules_globular_cluster_m13.jpg) | Miodrag Sekulic | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) | 2026-07-04 |
+| `m31` | M31 Andromeda Galaxy | [ESA/Hubble image](https://commons.wikimedia.org/wiki/File:Andromeda_Galaxy_M31_-_Heic1502a_10k.jpg) | NASA, ESA and the Hubble Heritage Team (STScI/AURA) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | 2026-07-04 |
+| `m92` | M92 Globular Cluster | [NASA/ESA Hubble image](https://commons.wikimedia.org/wiki/File:Messier_92_(Hubble)_(2021-012-01EYXC08H7WCDRGQWW8E41JC89).png) | ESA/Hubble & NASA; Gilles Chapdelaine | [Public domain](https://www.nasa.gov/nasa-brand-center/images-and-media/) | 2026-07-04 |
+| `albireo` | Albireo | [Wikimedia Commons file](https://commons.wikimedia.org/wiki/File:Albireo_-_Westview_Observatory.jpg) | Charlemagne920 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | 2026-07-04 |
+| `epsilon-lyrae` | Epsilon Lyrae | [Wikimedia Commons file](https://commons.wikimedia.org/wiki/File:Epsilon_Lyrae_the_double-double.jpg) | Nikolay Nikolov | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | 2026-07-04 |

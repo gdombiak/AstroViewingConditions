@@ -63,6 +63,73 @@ public enum DeepSkyObjectType: String, CaseIterable, Sendable, Codable, Hashable
     }
 }
 
+/// Auditable provenance for an image shipped with the app.
+public struct TargetImageCredit: Sendable, Codable, Hashable {
+    public let targetID: String
+    public let assetName: String
+    public let thumbnailAssetName: String?
+    public let heroAssetName: String?
+    public let sourceName: String
+    public let sourceURL: URL
+    public let credit: String
+    public let licenseName: String
+    public let licenseURL: URL
+    public let requiresAttribution: Bool
+    public let isVerified: Bool
+    public let verifiedAt: Date
+    public let displayName: String?
+    public let objectName: String?
+    public let commonsPageURL: URL?
+
+    public init(
+        targetID: String,
+        assetName: String,
+        thumbnailAssetName: String?,
+        sourceName: String,
+        sourceURL: URL,
+        credit: String,
+        licenseName: String,
+        licenseURL: URL,
+        requiresAttribution: Bool,
+        isVerified: Bool,
+        verifiedAt: Date,
+        displayName: String? = nil,
+        objectName: String? = nil,
+        commonsPageURL: URL? = nil,
+        heroAssetName: String? = nil
+    ) {
+        self.targetID = targetID
+        self.assetName = assetName
+        self.thumbnailAssetName = thumbnailAssetName
+        self.heroAssetName = heroAssetName
+        self.sourceName = sourceName
+        self.sourceURL = sourceURL
+        self.credit = credit
+        self.licenseName = licenseName
+        self.licenseURL = licenseURL
+        self.requiresAttribution = requiresAttribution
+        self.isVerified = isVerified
+        self.verifiedAt = verifiedAt
+        self.displayName = displayName
+        self.objectName = objectName
+        self.commonsPageURL = commonsPageURL
+    }
+
+    public var attributionText: String {
+        "Image: \(credit) · \(licenseName)"
+    }
+
+    public var sourcePageURL: URL { sourceURL }
+    public var creditText: String { credit }
+
+    public var hasCompleteMetadata: Bool {
+        let requiredStrings = [targetID, assetName, sourceName, credit, licenseName]
+        return requiredStrings.allSatisfy { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            && sourceURL.scheme?.hasPrefix("http") == true
+            && licenseURL.scheme?.hasPrefix("http") == true
+    }
+}
+
 public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
     public let id: String
     public let name: String
@@ -71,6 +138,7 @@ public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
     public let difficulty: Double
     public let deepSkyObjectType: DeepSkyObjectType?
     public let moonInterferenceSensitivity: Double?
+    public let image: TargetImageCredit?
 
     public init(
         id: String,
@@ -79,7 +147,8 @@ public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
         preferredEquipment: TargetEquipmentType,
         difficulty: Double,
         deepSkyObjectType: DeepSkyObjectType? = nil,
-        moonInterferenceSensitivity: Double? = nil
+        moonInterferenceSensitivity: Double? = nil,
+        image: TargetImageCredit? = nil
     ) {
         self.id = id
         self.name = name
@@ -88,6 +157,7 @@ public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
         self.difficulty = min(max(difficulty, 0), 1)
         self.deepSkyObjectType = deepSkyObjectType
         self.moonInterferenceSensitivity = moonInterferenceSensitivity.map { min(max($0, 0), 1.5) }
+        self.image = image
     }
 
     public var displayTypeName: String {
