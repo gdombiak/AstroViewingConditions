@@ -55,7 +55,7 @@ final class DashboardViewModelTests: XCTestCase {
     }
 
     func testCuratedTargetImagesHaveCompleteAuditableMetadata() {
-        XCTAssertEqual(TargetImageManifest.imagesByTargetID.count, 16)
+        XCTAssertEqual(TargetImageManifest.imagesByTargetID.count, 21)
         for (targetID, image) in TargetImageManifest.imagesByTargetID {
             XCTAssertEqual(image.targetID, targetID)
             XCTAssertTrue(image.isVerified, targetID)
@@ -67,6 +67,21 @@ final class DashboardViewModelTests: XCTestCase {
             XCTAssertFalse(image.licenseName.isEmpty, targetID)
             XCTAssertFalse(image.licenseURL.absoluteString.isEmpty, targetID)
         }
+    }
+
+    func testNewVerifiedTargetImagesHaveCompleteMetadataAndLocalAssets() throws {
+        for id in ["m45", "m42", "m5", "m3", "m33"] {
+            let image = try XCTUnwrap(TargetImageManifest.image(for: id), id)
+            XCTAssertTrue(image.isVerified, id)
+            XCTAssertTrue(image.hasCompleteMetadata, id)
+            XCTAssertNotNil(UIImage(named: image.assetName), id)
+        }
+
+        XCTAssertEqual(TargetImageManifest.image(for: "m33")?.thumbnailAssetName, "target-m33-thumbnail")
+        XCTAssertNil(TargetImageManifest.image(for: "double-cluster"))
+        XCTAssertNil(TargetImageManifest.image(for: "m16"))
+        XCTAssertNil(TargetImageManifest.image(for: "m20"))
+        XCTAssertNil(TargetImageManifest.image(for: "m101"))
     }
 
     func testM27AndSaturnUseSelectedCompleteSourceMetadata() throws {
@@ -242,14 +257,60 @@ final class DashboardViewModelTests: XCTestCase {
             sections["Observing notes"],
             "Visually, M27 usually appears as a grayish fuzzy patch with a dumbbell or apple-core shape. Photos show much more color than you should expect at the eyepiece."
         )
-        XCTAssertTrue(sections["How to find it"]?.contains("Look south, in Vulpecula near Sagitta and Cygnus.") == true)
-        XCTAssertTrue(sections["How to find it"]?.contains("It is about 60° high.") == true)
-        XCTAssertTrue(sections["How to find it"]?.contains("Best from") == true)
+        XCTAssertEqual(
+            sections["Finding tips"],
+            "Look in Vulpecula near Sagitta and Cygnus. Use low power first, then increase magnification once found."
+        )
+        XCTAssertNil(sections["How to find it"])
         XCTAssertTrue(sections["Why recommended"]?.contains("large, bright planetary nebula") == true)
         XCTAssertTrue(sections["Why recommended"]?.contains("stand out") == true)
         XCTAssertTrue(sections["Observing notes"]?.contains("grayish fuzzy patch") == true)
         XCTAssertFalse(sections.values.contains(where: { $0.localizedCaseInsensitiveContains("small target") }))
         XCTAssertFalse(sections.values.contains(where: { $0.localizedCaseInsensitiveContains("small bright nebula") }))
+    }
+
+    func testFindingTipsUseCuratedAndTypeFallbackGuidanceWithoutRepeatingWhenAndWhere() {
+        let doubleCluster = Self.detailContent(
+            id: "double-cluster",
+            name: "NGC 869/884 Double Cluster",
+            type: .openCluster,
+            reasons: [.poorWeather],
+            direction: "NE",
+            altitude: 52
+        )
+        let clusterSections = Dictionary(uniqueKeysWithValues: doubleCluster.sections.map { ($0.title, $0.text) })
+        XCTAssertEqual(doubleCluster.displayType, "Open Cluster Pair")
+        XCTAssertNil(clusterSections["How to find it"])
+        XCTAssertEqual(
+            clusterSections["Finding tips"],
+            "Look in Perseus between Cassiopeia and the bright star Mirfak. Use binoculars or a low-power telescope so both clusters fit in the same view."
+        )
+        XCTAssertFalse(clusterSections["Finding tips"]?.contains("52°") == true)
+        XCTAssertFalse(clusterSections["Finding tips"]?.contains("Best from") == true)
+        XCTAssertEqual(
+            clusterSections["Why recommended"],
+            "The Double Cluster is a rewarding wide-field target during this observing window. Clouds may interfere, but if the sky clears, both clusters can fit beautifully in binoculars or a low-power telescope."
+        )
+        XCTAssertEqual(clusterSections["Best equipment"], "Use binoculars or a low-power telescope to keep both clusters in view.")
+        XCTAssertEqual(clusterSections["Observing notes"], "Both clusters can fit in a binocular or low-power telescope view, surrounded by a rich Milky Way star field.")
+
+        let globular = Self.detailContent(name: "Generic Globular", type: .globularCluster)
+        XCTAssertEqual(
+            globular.sections.first(where: { $0.title == "Finding tips" })?.text,
+            "Start with low power to locate the fuzzy core, then increase magnification to try resolving outer stars."
+        )
+    }
+
+    func testOnlyChallengeTargetsRequestIntentBadges() {
+        XCTAssertTrue(TargetIntentPresentation.showsBadge(for: .challenge))
+        XCTAssertEqual(TargetIntentPresentation.badgeText(for: .challenge), "Challenge")
+        XCTAssertNotNil(TargetIntentPresentation.detailGuidance(for: .challenge))
+        XCTAssertFalse(TargetIntentPresentation.showsBadge(for: .easy))
+        XCTAssertFalse(TargetIntentPresentation.showsBadge(for: .standard))
+        XCTAssertNil(TargetIntentPresentation.badgeText(for: .easy))
+        XCTAssertNil(TargetIntentPresentation.badgeText(for: .standard))
+        XCTAssertNil(TargetIntentPresentation.detailGuidance(for: .easy))
+        XCTAssertNil(TargetIntentPresentation.detailGuidance(for: .standard))
     }
 
     func testTargetDetailsExposeImageAttributionWhenPresent() {
@@ -592,6 +653,7 @@ final class DashboardViewModelTests: XCTestCase {
         name: String,
         targetType: ObservableTargetType = .deepSky,
         type: DeepSkyObjectType? = nil,
+        observingIntent: TargetObservingIntent = .standard,
         reasons: [TargetRecommendationReason] = [],
         summary: String = "Visible tonight.",
         direction: String? = "S",
@@ -607,6 +669,7 @@ final class DashboardViewModelTests: XCTestCase {
                 type: targetType,
                 preferredEquipment: .telescope,
                 difficulty: 0.5,
+                observingIntent: observingIntent,
                 deepSkyObjectType: type,
                 image: image
             ),

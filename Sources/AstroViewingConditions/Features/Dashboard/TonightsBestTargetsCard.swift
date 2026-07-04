@@ -28,6 +28,39 @@ enum TargetScoreColorProvider {
     }
 }
 
+enum TargetIntentPresentation {
+    static func showsBadge(for intent: TargetObservingIntent) -> Bool {
+        intent == .challenge
+    }
+
+    static func badgeText(for intent: TargetObservingIntent) -> String? {
+        showsBadge(for: intent) ? "Challenge" : nil
+    }
+
+    static func detailGuidance(for intent: TargetObservingIntent) -> String? {
+        showsBadge(for: intent)
+            ? "Challenge target: best from darker skies; low surface brightness may make it difficult from suburbs."
+            : nil
+    }
+}
+
+private struct TargetIntentBadge: View {
+    let intent: TargetObservingIntent
+
+    var body: some View {
+        if let text = TargetIntentPresentation.badgeText(for: intent) {
+            Text(text)
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundStyle(.orange)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(.orange.opacity(0.12), in: Capsule())
+                .accessibilityLabel("Challenge target")
+        }
+    }
+}
+
 struct TonightsBestTargetsCard: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     let recommendations: [TargetRecommendation]
@@ -183,6 +216,8 @@ struct TargetRecommendationRow: View {
                     .font(.caption2)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
+
+                TargetIntentBadge(intent: recommendation.target.observingIntent)
 
                 Spacer(minLength: 8)
 
@@ -347,7 +382,7 @@ struct TargetDetailContentBuilder {
             imageAttribution: target.image?.attributionText,
             sections: [
                 .init(title: "Why recommended", text: whyRecommended(recommendation)),
-                .init(title: "How to find it", text: howToFind(target, window: window, windowText: windowText)),
+                .init(title: "Finding tips", text: findingTips(for: target)),
                 .init(title: "Best equipment", text: equipment(for: target)),
                 .init(title: "Observing notes", text: observingNotes(for: target))
             ]
@@ -362,6 +397,17 @@ struct TargetDetailContentBuilder {
         let hasBrightMoonImpact = reasons.contains(.moonInterference)
             || reasons.contains(.brightFullMoonDeepSkyImpact)
             || summaryLower.contains("bright moon")
+
+        if target.id.lowercased() == "double-cluster" {
+            return "The Double Cluster is a rewarding wide-field target during this observing window. Clouds may interfere, but if the sky clears, both clusters can fit beautifully in binoculars or a low-power telescope."
+        }
+
+        if target.id.lowercased() == "m33" || target.id.lowercased() == "m101" {
+            return Self.joinSentences(
+                "This is a rewarding dark-sky challenge with low surface brightness, and it can be difficult from suburban skies.",
+                placementSentence(reasons: reasons)
+            )
+        }
 
         if target.type == .moon, reasons.contains(.brightFullMoonDeepSkyImpact) {
             return "The bright full Moon is a good lunar target for this night, though it will make faint deep-sky objects harder to see."
@@ -437,36 +483,56 @@ struct TargetDetailContentBuilder {
         return clause.map { "\($0)." }
     }
 
-    private func howToFind(
-        _ target: ObservableTarget,
-        window: TargetVisibilityWindow,
-        windowText: String
-    ) -> String {
-        var instructions: [String] = []
-        if target.id.lowercased() == "m27" {
-            if let direction = window.direction {
-                instructions.append("Look \(Self.directionName(direction)), in Vulpecula near Sagitta and Cygnus.")
-            } else {
-                instructions.append("Look in Vulpecula near Sagitta and Cygnus.")
-            }
-        } else if let direction = window.direction {
-            instructions.append(Self.directionText(direction))
+    private func findingTips(for target: ObservableTarget) -> String {
+        switch target.id.lowercased() {
+        case "double-cluster":
+            return "Look in Perseus between Cassiopeia and the bright star Mirfak. Use binoculars or a low-power telescope so both clusters fit in the same view."
+        case "m27":
+            return "Look in Vulpecula near Sagitta and Cygnus. Use low power first, then increase magnification once found."
+        default:
+            break
         }
-        if let altitude = window.maxAltitude {
-            if target.id.lowercased() == "m27" {
-                instructions.append("It is about \(Int(round(altitude)))° high.")
-            } else {
-                instructions.append(Self.altitudeText(altitude))
-            }
+
+        switch (target.type, target.deepSkyObjectType) {
+        case (.moon, _):
+            return "Use low to moderate magnification. A Moon filter can make the view more comfortable."
+        case (.planet, _):
+            return "Use moderate to high magnification when the air is steady."
+        case (.deepSky, .openCluster):
+            return "Use binoculars or low power first to keep the surrounding star field in view."
+        case (.deepSky, .globularCluster):
+            return "Start with low power to locate the fuzzy core, then increase magnification to try resolving outer stars."
+        case (.deepSky, .planetaryNebula):
+            return "Use low power to locate the field, then increase magnification. A nebula filter may help."
+        case (.deepSky, .galaxy):
+            return "Use low power and averted vision. Darker skies help reveal more of the galaxy."
+        case (.deepSky, .doubleStar):
+            return "Use moderate magnification and steady moments of seeing to separate the stars."
+        case (.deepSky, .diffuseNebula):
+            return "Start with low power under dark skies. A nebula filter may improve contrast."
+        default:
+            return "Start with low power to locate the target, then adjust magnification for the best view."
         }
-        if target.id.lowercased() == "m27" {
-            instructions.append("Use low power first, then increase magnification once found.")
-        }
-        instructions.append("Best from \(windowText.replacingOccurrences(of: " – ", with: " to ")).")
-        return instructions.joined(separator: " ")
     }
 
     private func equipment(for target: ObservableTarget) -> String {
+        switch target.id.lowercased() {
+        case "m45":
+            return "Use binoculars or a low-power telescope to keep the whole cluster in view."
+        case "double-cluster":
+            return "Use binoculars or a low-power telescope to keep both clusters in view."
+        case "m42":
+            return "Use binoculars or a telescope. Low to moderate magnification frames the nebula well."
+        case "m5", "m3":
+            return "Use a telescope; higher magnification may begin to resolve stars around the edges."
+        case "m16", "m20":
+            return "Use a telescope. A nebula filter may help under dark skies."
+        case "m33", "m101":
+            return "Use low power under dark skies and try averted vision."
+        default:
+            break
+        }
+
         if target.id.lowercased() == "m27" {
             return "Use a telescope at low to moderate magnification. A nebula filter may help if available."
         }
@@ -494,6 +560,27 @@ struct TargetDetailContentBuilder {
     }
 
     private func observingNotes(for target: ObservableTarget) -> String {
+        switch target.id.lowercased() {
+        case "m31":
+            return "Easy to locate, but suburban views may show mostly the bright core rather than the broad, photo-like disk."
+        case "m45":
+            return "Excellent beginner target. Its broad star pattern is best framed with binoculars or very low power."
+        case "m42":
+            return "Look for a fuzzy gray or gray-green glow in Orion's Sword. Photographs show much more color and detail than the eyepiece view."
+        case "double-cluster":
+            return "Both clusters can fit in a binocular or low-power telescope view, surrounded by a rich Milky Way star field."
+        case "m5", "m3":
+            return "A bright fuzzy ball at low power; moderate or high magnification may resolve some outer stars in good conditions."
+        case "m16":
+            return "The open cluster is the easiest part. Faint surrounding nebulosity may appear under dark skies, but the Pillars of Creation are mainly an imaging and Hubble target."
+        case "m20":
+            return "Look for faint gray nebulosity. Dark lanes may appear under good dark skies, but do not expect the vivid colors seen in photographs."
+        case "m33", "m101":
+            return "Low surface brightness makes this galaxy a dark-sky challenge. Use low power, averted vision, and realistic expectations for subtle structure."
+        default:
+            break
+        }
+
         if target.id.lowercased() == "m27" {
             return "Visually, M27 usually appears as a grayish fuzzy patch with a dumbbell or apple-core shape. Photos show much more color than you should expect at the eyepiece."
         }
@@ -589,7 +676,16 @@ struct TargetDetailView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(content.name).font(.title2.bold())
-                        Text(content.displayType).foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Text(content.displayType).foregroundStyle(.secondary)
+                            TargetIntentBadge(intent: recommendation.target.observingIntent)
+                        }
+                        if let guidance = TargetIntentPresentation.detailGuidance(for: recommendation.target.observingIntent) {
+                            Text(guidance)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                         Label("\(content.score) / 100", systemImage: "star.fill")
                             .foregroundStyle(TargetScoreColorProvider.color(for: content.score))
                             .accessibilityLabel("Score \(content.score) out of 100")

@@ -115,6 +115,57 @@ final class TargetRecommendationScorerTests: XCTestCase {
         ].allSatisfy(ids.contains))
     }
 
+    func testCuratedCatalogContainsNineNewTargets() {
+        let ids = Set(CuratedDeepSkyCatalogProvider().entries().map(\.id))
+        XCTAssertTrue([
+            "m45", "m42", "double-cluster", "m5", "m3", "m16", "m20", "m33", "m101"
+        ].allSatisfy(ids.contains))
+    }
+
+    func testCatalogAwareNamesKeepIdentifiersInPrimaryTitles() {
+        let entries = Dictionary(uniqueKeysWithValues: CuratedDeepSkyCatalogProvider().entries().map { ($0.id, $0) })
+        XCTAssertEqual(entries["double-cluster"]?.commonName, "NGC 869/884 Double Cluster")
+        XCTAssertEqual(entries["double-cluster"]?.objectType, .openCluster)
+        XCTAssertEqual(catalogTarget(id: "double-cluster").displayTypeName, "Open Cluster Pair")
+        XCTAssertFalse(catalogTarget(id: "double-cluster").displayTypeName.contains("NGC"))
+        XCTAssertEqual(entries["m16"]?.commonName, "M16 Eagle Nebula")
+        XCTAssertEqual(entries["m42"]?.commonName, "M42 Orion Nebula")
+        XCTAssertEqual(entries["m45"]?.commonName, "M45 Pleiades")
+        XCTAssertEqual(entries["m33"]?.commonName, "M33 Triangulum Galaxy")
+        XCTAssertEqual(entries["m101"]?.commonName, "M101 Pinwheel Galaxy")
+    }
+
+    func testCatalogObservingIntentAssignments() {
+        let context = makeContext(hourlyScore: 0.2, moonIllumination: 0, moonAltitude: -5)
+        let targets = Dictionary(uniqueKeysWithValues: DefaultTargetCatalogProvider().targets(for: context).map { ($0.id, $0) })
+        let easy = ["moon", "venus", "jupiter", "saturn", "m13", "m31", "m11", "albireo", "m45", "m42", "double-cluster"]
+        let standard = ["mars", "m2", "m30", "m52", "m57", "m27", "ngc7009", "m81", "m82", "m92", "epsilon-lyrae", "m5", "m3", "m16", "m20"]
+        let challenge = ["ngc7293", "m51", "m64", "m33", "m101"]
+
+        for id in easy { XCTAssertEqual(targets[id]?.observingIntent, .easy, id) }
+        for id in standard { XCTAssertEqual(targets[id]?.observingIntent, .standard, id) }
+        for id in challenge { XCTAssertEqual(targets[id]?.observingIntent, .challenge, id) }
+        XCTAssertEqual(targets.count, easy.count + standard.count + challenge.count)
+    }
+
+    func testNewTargetDescriptionsSetRealisticVisualExpectations() throws {
+        let entries = Dictionary(uniqueKeysWithValues: CuratedDeepSkyCatalogProvider().entries().map { ($0.id, $0) })
+        let m16 = try XCTUnwrap(entries["m16"])
+        let m20 = try XCTUnwrap(entries["m20"])
+        let m33 = try XCTUnwrap(entries["m33"])
+        let m101 = try XCTUnwrap(entries["m101"])
+        let m31 = try XCTUnwrap(entries["m31"])
+
+        XCTAssertTrue(m16.notes.contains("mainly an imaging target"))
+        XCTAssertFalse(m16.notes.localizedCaseInsensitiveContains("visible Pillars"))
+        XCTAssertTrue(m20.notes.contains("do not expect photographic color"))
+        XCTAssertTrue(m33.notes.contains("low surface brightness"))
+        XCTAssertTrue(m33.notes.contains("Dark-sky challenge"))
+        XCTAssertTrue(m101.notes.contains("low surface brightness"))
+        XCTAssertTrue(m101.notes.contains("dark-sky challenge"))
+        XCTAssertTrue(m31.notes.contains("suburban views may show mostly its bright core"))
+    }
+
     func testCuratedTargetsExposeSpecificDisplayTypeNames() {
         let expectedLabels = [
             "epsilon-lyrae": "Double Star",

@@ -63,6 +63,20 @@ public enum DeepSkyObjectType: String, CaseIterable, Sendable, Codable, Hashable
     }
 }
 
+public enum TargetObservingIntent: String, CaseIterable, Sendable, Codable, Hashable {
+    case easy
+    case standard
+    case challenge
+
+    public var displayName: String {
+        switch self {
+        case .easy: return "Easy"
+        case .standard: return "Standard"
+        case .challenge: return "Challenge"
+        }
+    }
+}
+
 /// Auditable provenance for an image shipped with the app.
 public struct TargetImageCredit: Sendable, Codable, Hashable {
     public let targetID: String
@@ -136,6 +150,7 @@ public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
     public let type: ObservableTargetType
     public let preferredEquipment: TargetEquipmentType
     public let difficulty: Double
+    public let observingIntent: TargetObservingIntent
     public let deepSkyObjectType: DeepSkyObjectType?
     public let moonInterferenceSensitivity: Double?
     public let image: TargetImageCredit?
@@ -146,6 +161,7 @@ public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
         type: ObservableTargetType,
         preferredEquipment: TargetEquipmentType,
         difficulty: Double,
+        observingIntent: TargetObservingIntent = .standard,
         deepSkyObjectType: DeepSkyObjectType? = nil,
         moonInterferenceSensitivity: Double? = nil,
         image: TargetImageCredit? = nil
@@ -155,6 +171,7 @@ public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
         self.type = type
         self.preferredEquipment = preferredEquipment
         self.difficulty = min(max(difficulty, 0), 1)
+        self.observingIntent = observingIntent
         self.deepSkyObjectType = deepSkyObjectType
         self.moonInterferenceSensitivity = moonInterferenceSensitivity.map { min(max($0, 0), 1.5) }
         self.image = image
@@ -162,6 +179,10 @@ public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
 
     public var displayTypeName: String {
         guard type == .deepSky else { return type.displayName }
+
+        if id.lowercased() == "double-cluster" {
+            return "Open Cluster Pair"
+        }
 
         switch deepSkyObjectType {
         case .galaxy: return "Galaxy"
