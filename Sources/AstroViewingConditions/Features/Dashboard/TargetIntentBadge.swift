@@ -9,6 +9,8 @@ struct TargetIntentBadge: View {
             Text(text)
                 .font(.caption2)
                 .fontWeight(.semibold)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(.orange)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
