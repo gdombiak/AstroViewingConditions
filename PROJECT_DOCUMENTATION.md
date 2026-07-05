@@ -7,7 +7,7 @@
 ## 1. Project Overview
 
 ### Goal
-Build an open-source iOS and watchOS app for astronomy enthusiasts to check nighttime viewing conditions. The app provides weather data, astronomical information, night-quality analysis, ISS pass predictions, widgets, and Apple Watch glanceable views to help users plan stargazing sessions.
+Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nighttime viewing conditions, choose worthwhile targets, and plan stargazing sessions. The app combines weather, astronomical information, night-quality analysis, target recommendations, ISS pass predictions, widgets, and Apple Watch glanceable views.
 
 ### Target Users
 - Amateur astronomers
@@ -35,16 +35,23 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to check nigh
 - **Weather Data**: Cloud cover, humidity, wind, temperature, visibility, dew point, and hourly forecasts via Open-Meteo
 - **Astronomical Data**: Sun/moon rise-set times, astronomical night timing, and moon phase via SunCalc
 - **Night Quality Analysis**: Observing assessment based on cloud cover, moonlight, fog, wind, and nighttime windows
-- **ISS Pass Predictions**: Visible ISS passes with duration and max elevation via N2YO when a user-provided API key is configured
+- **Best Targets**: Ranked Moon, planet, double-star, cluster, nebula, and galaxy recommendations for the selected location and forecast night
+  - Scores combine visibility, altitude, astronomical darkness, weather, moonlight, and observing difficulty
+  - Shows the observing window, direction, maximum altitude, and a concise recommendation rationale
+  - Full target details provide finding tips, equipment suggestions, observing notes, and difficulty guidance
+  - Curated target images are bundled locally with attribution and license metadata
+- **ISS Pass Predictions**: Visible ISS passes via N2YO with rise/set range, peak time and elevation, compass path, active-pass handling, and service error messages when a user-provided API key is configured
 - **Fog Score**: Risk calculated from humidity, temperature-dew point difference, visibility, and low cloud cover
 - **Location Management**:
   - Auto-detect current location
   - Save favorite observing locations
+  - Rename and reorder saved locations
   - Search by city name
   - Manual coordinate entry
   - Map-based location picker
 - **Unit Preferences**: Toggle between Metric and Imperial
 - **3-Day Forecast**: Today, tomorrow, and day after
+- **Location-Local Dates**: Forecast tabs and displayed times follow the selected observing site's time zone
 - **iOS Widgets**: Home screen widgets backed by shared cached conditions and selected location data
 - **watchOS App**: Apple Watch dashboard with location selection, night quality, current conditions, and astronomical night details
 - **watchOS Complications**: Inline, circular, corner, and rectangular complication views
@@ -65,6 +72,11 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to check nigh
 3. **N2YO API** (https://www.n2yo.com/)
    - Optional ISS pass predictions
    - Free API key required
+
+4. **Curated Local Target Catalog**
+   - Moon, naked-eye planets, double stars, star clusters, nebulae, and galaxies
+   - Local position and visibility calculations; no target API required at runtime
+   - Bundled reference images work offline and retain source/license attribution
 
 ---
 
@@ -87,7 +99,7 @@ AstroViewingConditions/
 │   ├── AstroViewingConditions/
 │   │   ├── App/                                # iOS app entry point and tab container
 │   │   ├── Features/
-│   │   │   ├── Dashboard/                      # iOS conditions dashboard
+│   │   │   ├── Dashboard/                      # Conditions, Best Targets, target details, ISS
 │   │   │   ├── Locations/                      # Saved/search/map/manual locations
 │   │   │   ├── BestSpot/                       # Best observing spot workflow
 │   │   │   └── Settings/                       # App preferences
@@ -98,7 +110,7 @@ AstroViewingConditions/
 │   ├── SharedCode/
 │   │   └── Core/
 │   │       ├── Models/                         # Codable/SwiftData-friendly domain models
-│   │       ├── Services/                       # Weather, astronomy, ISS, storage, cache, migration
+│   │       ├── Services/                       # Weather, astronomy, target recommendations, ISS, storage, cache
 │   │       └── Utilities/                      # Formatters, units, fog, night quality, time zones
 │   │
 │   ├── Widgets/                                # iOS WidgetKit extension
@@ -137,6 +149,7 @@ class SavedLocation {
     var elevation: Double?
     var isFavorite: Bool
     var dateAdded: Date
+    var sortPosition: Int?
 }
 ```
 
@@ -150,6 +163,10 @@ Important services:
 - `iCloudKeyValueStorage`: Supports lightweight cloud-backed preference/location state
 - `MigrationHelper`: Migrates older widget/cache storage into the newer shared storage approach
 - `WidgetReloadService`: Requests widget timeline refreshes after relevant data changes
+- `TargetRecommendationService`: Scores and ranks the curated targets for a forecast night
+- `MoonRecommendationService` and `PlanetRecommendationService`: Calculate useful visibility windows for solar-system targets
+- `DeepSkyCatalogService`: Supplies the curated deep-sky catalog and observing metadata
+- `AsyncTimeout`: Bounds weather, geocoding, location, time-zone, and ISS requests so a failed service does not wait indefinitely
 
 ---
 
@@ -200,6 +217,9 @@ Important services:
 - [x] UnitConverter
 - [x] Location time zone resolution
 - [x] Shared cache and app group storage helpers
+- [x] Curated deep-sky catalog and local Moon/planet position calculations
+- [x] Target scoring and observing-window calculation
+- [x] Timeouts for network and location-dependent requests
 
 ### Phase 3: iOS Dashboard UI - Complete
 - [x] DashboardViewModel with observable state
@@ -210,6 +230,10 @@ Important services:
 - [x] Night quality card
 - [x] Pull-to-refresh
 - [x] Offline/stale data handling
+- [x] Best Targets dashboard card and complete recommendations list
+- [x] Target detail sheets with observing guidance and credited offline imagery
+- [x] Detailed ISS paths, active passes, empty states, and service errors
+- [x] Consistent dashboard card styling and Light Mode cloud-symbol contrast
 
 ### Phase 4: Locations Management - Complete
 - [x] Favorites list with SwiftData-backed app storage
@@ -217,6 +241,8 @@ Important services:
 - [x] Map picker
 - [x] Manual coordinate entry
 - [x] Selected location snapshots for widgets and watchOS
+- [x] Rename saved locations
+- [x] Drag to reorder saved locations and preserve that order in the dashboard picker and watch sync
 
 ### Phase 5: Settings & Polish - Complete
 - [x] Unit system toggle
@@ -245,6 +271,15 @@ Important services:
 - [x] README
 - [x] LICENSE (AGPL-3.0)
 - [x] Project documentation
+- [x] Observer guide
+
+### Phase 9: Target Recommendations - Complete
+- [x] Moon and naked-eye planet recommendations
+- [x] Curated double stars, clusters, nebulae, and galaxies
+- [x] Easy, standard, and challenge observing-intent labels
+- [x] Moonlight-aware and poor-weather-aware ranking
+- [x] Interpolated visibility-window boundaries and corrected planetary epoch calculations
+- [x] Target image viewer with source and license attribution
 
 ---
 
@@ -255,6 +290,7 @@ Important services:
 2. **Map Picker Polish**: Validate map coordinate conversion and UX on current iOS simulator/device combinations.
 3. **Offline UX**: Improve messaging when the phone, watch, widgets, or network cannot provide fresh conditions.
 4. **Watch Sync Edge Cases**: Test first launch, unreachable phone, stale cache, and selection changes from both devices.
+5. **Recommendation Validation**: Continue field-checking observing windows and guidance across seasons, latitudes, polar day/night, and obstructed horizons.
 
 ### Nice-to-Have Features
 - [ ] Push notifications for optimal viewing conditions
@@ -269,6 +305,7 @@ Important services:
 ### Testing Needs
 - [x] Unit tests for key models and utilities
 - [x] Unit tests for weather, astronomy, ISS, best spot, and migration helpers
+- [x] Unit tests for target scoring, Moon and planet recommendations, catalog metadata, image manifests, and target-detail guidance
 - [ ] Widget timeline tests
 - [ ] WatchConnectivity tests or integration checklist
 - [ ] UI tests for critical iOS paths
@@ -279,6 +316,7 @@ Important services:
 - [ ] App icon design review across iOS and watchOS
 - [ ] Launch screen
 - [ ] Onboarding/tutorial for first-time users
+- [ ] In-app access to the observer guide or concise explanations of target scores and difficulty labels
 - [ ] Better empty states
 - [ ] Animation improvements
 
@@ -346,12 +384,18 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 ### Key Files to Understand
 - `Sources/AstroViewingConditions/Features/Dashboard/DashboardView.swift` - Main iOS conditions UI
 - `Sources/AstroViewingConditions/Features/Dashboard/DashboardViewModel.swift` - iOS dashboard state and loading flow
+- `Sources/AstroViewingConditions/Features/Dashboard/TonightsBestTargetsCard.swift` - Dashboard target recommendations
+- `Sources/AstroViewingConditions/Features/Dashboard/TargetDetailContentBuilder.swift` - Observer-facing target guidance
 - `Sources/AstroViewingConditions/Services/WatchConnectivityService.swift` - iPhone-side watch communication
 - `Sources/WatchApp/Features/Dashboard/WatchDashboardView.swift` - Main watchOS UI
 - `Sources/WatchApp/Services/WatchConnectivityManager.swift` - Watch-side communication
 - `Sources/SharedCode/Core/Services/WeatherService.swift` - Weather API integration
 - `Sources/SharedCode/Core/Services/CacheService.swift` - Shared condition cache
 - `Sources/SharedCode/Core/Services/LocationStorageService.swift` - Shared selected/saved location snapshots
+- `Sources/SharedCode/Core/Services/TargetRecommendationService.swift` - Deep-sky ranking and visibility windows
+- `Sources/SharedCode/Core/Services/MoonRecommendationService.swift` - Moon visibility and recommendation logic
+- `Sources/SharedCode/Core/Services/PlanetRecommendationService.swift` - Local planet position and recommendation logic
+- `Sources/SharedCode/Core/Services/DeepSkyCatalogService.swift` - Curated target catalog
 - `Sources/SharedCode/Core/Models/SavedLocation.swift` - Saved location model
 - `project.yml` - Target and scheme definitions
 
@@ -359,14 +403,16 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 
 ## 9. Project Status
 
-**Current Status**: MVP plus widgets and watchOS support complete.
+**Current Status**: Core observing planner, target recommendations, widgets, and watchOS support complete.
 
 Implemented:
 - Real-time weather data
 - Astronomical calculations
 - ISS pass predictions
 - Night quality analysis
-- Location management
+- Best Targets with scores, observing windows, practical guidance, and offline reference images
+- Detailed ISS pass paths and error states
+- Renameable and reorderable saved locations
 - Unit preferences
 - iOS widgets
 - watchOS app
@@ -374,7 +420,7 @@ Implemented:
 - Shared storage and iPhone/watch sync
 - Core unit test coverage
 
-**Next Milestone**: Hardening for release: concurrency audit, watch/widget edge-case testing, UI tests, and final App Store polish.
+**Next Milestone**: Validate target recommendations in more seasons and latitudes, harden watch/widget edge cases, add UI coverage, and complete final App Store polish.
 
 ---
 
