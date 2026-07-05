@@ -247,8 +247,9 @@ public struct DefaultMoonTargetRecommendationProvider: MoonTargetRecommendationP
             $0.time >= usefulWindow.start && $0.time <= usefulWindow.end
         }
         let visibleSamples = usefulSamples.filter { $0.altitude > 0 }
-        let bestSample = (visibleSamples.isEmpty ? usefulSamples : visibleSamples)
-            .max { $0.altitude < $1.altitude }
+        guard !visibleSamples.isEmpty else { return nil }
+
+        let bestSample = visibleSamples.max { $0.altitude < $1.altitude }
 
         let visibleWindow = visibilityWindow(
             usefulWindow: usefulWindow,
@@ -430,7 +431,7 @@ public struct DefaultMoonTargetRecommendationProvider: MoonTargetRecommendationP
             }
 
             if reasons.contains(.moonBelowUsefulWindow) {
-                return "Moon is below the horizon, and clouds may limit visibility."
+                return "Moon is only briefly visible, and clouds may limit visibility."
             }
 
             if reasons.contains(.excellentMoonCraterDetail) {

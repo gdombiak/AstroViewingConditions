@@ -32,20 +32,37 @@ final class MoonRecommendationTests: XCTestCase {
         XCTAssertTrue(newMoon.summary.contains("favorable for deep-sky darkness"))
     }
 
-    func testMoonVisibleScoresBetterThanNotVisibleDuringUsefulWindow() {
-        let visible = recommendation(
-            phase: 0.25,
-            illumination: 50,
-            samples: Self.samples(altitudes: [12, 24, 38, 30])
-        )
-        let notVisible = recommendation(
+    func testMoonBelowHorizonDuringUsefulWindowReturnsNoRecommendation() {
+        let result = optionalRecommendation(
             phase: 0.25,
             illumination: 50,
             samples: Self.samples(altitudes: [-18, -12, -8, -4])
         )
 
-        XCTAssertGreaterThan(visible.score, notVisible.score)
-        XCTAssertTrue(notVisible.reasons.contains(.moonBelowUsefulWindow))
+        XCTAssertNil(result)
+    }
+
+    func testMoonVisibleDuringUsefulWindowReturnsRecommendation() {
+        let result = optionalRecommendation(
+            phase: 0.25,
+            illumination: 50,
+            samples: Self.samples(altitudes: [12, 24, 38, 30])
+        )
+
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.visibilityWindow.bestTime, Self.date(hour: 23))
+    }
+
+    func testMoonVisibleForPartOfUsefulWindowReportsOnlyVisiblePortion() throws {
+        let result = try XCTUnwrap(optionalRecommendation(
+            phase: 0.25,
+            illumination: 50,
+            samples: Self.samples(altitudes: [-12, 18, 26, -8])
+        ))
+
+        XCTAssertEqual(result.visibilityWindow.start, Self.date(hour: 22))
+        XCTAssertEqual(result.visibilityWindow.end, Self.date(hour: 23).addingTimeInterval(30 * 60))
+        XCTAssertEqual(result.visibilityWindow.bestTime, Self.date(hour: 23))
     }
 
     func testPoorWeatherReducesMoonRecommendationScore() {
@@ -90,6 +107,20 @@ final class MoonRecommendationTests: XCTestCase {
         hourlyScore: Double = 0.2,
         samples: [MoonPositionSample]? = nil
     ) -> TargetRecommendation {
+        optionalRecommendation(
+            phase: phase,
+            illumination: illumination,
+            hourlyScore: hourlyScore,
+            samples: samples
+        )!
+    }
+
+    private func optionalRecommendation(
+        phase: Double,
+        illumination: Int,
+        hourlyScore: Double = 0.2,
+        samples: [MoonPositionSample]? = nil
+    ) -> TargetRecommendation? {
         let samples = samples ?? Self.samples(altitudes: [18, 35, 48, 30])
         let provider = DefaultMoonTargetRecommendationProvider(
             moonAstronomyProvider: FakeMoonAstronomyProvider(
@@ -105,7 +136,7 @@ final class MoonRecommendationTests: XCTestCase {
         return provider.recommendation(
             for: Self.moonTarget,
             context: Self.context(hourlyScore: hourlyScore)
-        )!
+        )
     }
 
     private static let moonTarget = ObservableTarget(

@@ -281,7 +281,7 @@ public enum TargetRecommendationReason: String, CaseIterable, Sendable, Codable,
         case .moonSetsEarlyDarkSkyLater:
             return "Moon sets early, leaving a darker deep-sky window later."
         case .moonBelowUsefulWindow:
-            return "Moon is below the horizon during most of the useful observing window."
+            return "Moon is only briefly visible during the useful observing window."
         case .moonVisibleUsefulWindow:
             return "Moon is visible during the useful observing window."
         case .convenientPlanetWindow:
