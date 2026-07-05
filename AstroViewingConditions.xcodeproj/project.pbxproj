@@ -10,6 +10,7 @@
 		00D51AF4BD8F22021A04BA4E /* NightConditionsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B872AA385AC9045A589D491 /* NightConditionsWidget.swift */; };
 		02021BB7A13ACDE5B6DB98C5 /* WatchAstronomicalNightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E52A423875A101AEE2944EE /* WatchAstronomicalNightCard.swift */; };
 		03C85DB587BEACC839C4FE44 /* WeatherServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81B52C3C0FB94395C6A64BAF /* WeatherServiceTests.swift */; };
+		AA0000000000000000000004 /* LocationTimeZoneResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000005 /* LocationTimeZoneResolverTests.swift */; };
 		0410E380341C44EDA61FBC49 /* FogCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABB23E856EFE612481F9FE0 /* FogCalculator.swift */; };
 		04962FE44AEEE5EAA8EF0069 /* ObservableTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A824729BC4996F8398678D4 /* ObservableTarget.swift */; };
 		058D8220DE082064C83E7D76 /* ISSServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED98556427C84CC4F6481E34 /* ISSServiceTests.swift */; };
@@ -352,6 +353,7 @@
 		7DE13674996F9DC96D419E3F /* SharedCode.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = SharedCode.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		81725D08FFF40AF5BB964C7F /* WatchNightQualityCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchNightQualityCard.swift; sourceTree = "<group>"; };
 		81B52C3C0FB94395C6A64BAF /* WeatherServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherServiceTests.swift; sourceTree = "<group>"; };
+		AA0000000000000000000005 /* LocationTimeZoneResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTimeZoneResolverTests.swift; sourceTree = "<group>"; };
 		879F03F8C617DFEC39D869FB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8CBDCF16F4D14350927A1B9D /* AstroViewingConditionsTests.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AstroViewingConditionsTests.entitlements; sourceTree = "<group>"; };
 		8E60051D87F4042845731A75 /* HourlyForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HourlyForecastTests.swift; sourceTree = "<group>"; };
@@ -476,6 +478,7 @@
 				8E60051D87F4042845731A75 /* HourlyForecastTests.swift */,
 				ED98556427C84CC4F6481E34 /* ISSServiceTests.swift */,
 				4A4DB6ADB3475395B8E93A27 /* LocationScoreTests.swift */,
+				AA0000000000000000000005 /* LocationTimeZoneResolverTests.swift */,
 				9BDEE6998588C3B988DD4C4C /* MigrationHelperTests.swift */,
 				C1300C7F865DD29B3D36636D /* MoonRecommendationTests.swift */,
 				33A932544EBED47D8B540A33 /* NetworkErrorTests.swift */,
@@ -1148,6 +1151,7 @@
 				E85FB6F41303AC7AE4B46F60 /* HourlyForecastTests.swift in Sources */,
 				058D8220DE082064C83E7D76 /* ISSServiceTests.swift in Sources */,
 				9E5ED4D577419B78122BECF0 /* LocationScoreTests.swift in Sources */,
+				AA0000000000000000000004 /* LocationTimeZoneResolverTests.swift in Sources */,
 				F564B80110CA570FCB242F57 /* MigrationHelperTests.swift in Sources */,
 				E80E61BE22A9E844FB84A2F4 /* MoonRecommendationTests.swift in Sources */,
 				30BE2C52DF90E7EE61729347 /* NetworkErrorTests.swift in Sources */,
