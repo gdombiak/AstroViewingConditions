@@ -20,7 +20,8 @@ public enum TargetImageManifest {
             heroAssetName: String? = nil,
             displayName: String? = nil,
             objectName: String? = nil,
-            commonsPageURL: String? = nil
+            commonsPageURL: String? = nil,
+            originalSourceURL: String? = nil
         ) -> (String, TargetImageCredit) {
             (id, TargetImageCredit(
                 targetID: id,
@@ -37,7 +38,8 @@ public enum TargetImageManifest {
                 displayName: displayName,
                 objectName: objectName,
                 commonsPageURL: commonsPageURL.flatMap(URL.init(string:)),
-                heroAssetName: heroAssetName
+                heroAssetName: heroAssetName,
+                originalSourceURL: originalSourceURL.flatMap(URL.init(string:))
             ))
         }
 
@@ -62,7 +64,8 @@ public enum TargetImageManifest {
             image("m42", sourceName: "NASA Science / Hubble", sourceURL: "https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/messier-42/", credit: "NASA, ESA, M. Robberto (STScI/ESA) and the Hubble Space Telescope Orion Treasury Project Team", licenseName: "CC BY 4.0", licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/")!, requiresAttribution: true, displayName: "M42 Orion Nebula", objectName: "Orion Nebula, M42"),
             image("m5", sourceName: "NASA Science / Hubble", sourceURL: "https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/messier-5/", credit: "NASA, ESA, G. Piotto (Universita degli Studi di Padova); Image Processing: Gladys Kober (NASA/Catholic University of America)", licenseName: "CC BY 4.0", licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/")!, requiresAttribution: true, displayName: "M5 Globular Cluster", objectName: "Messier 5"),
             image("m3", sourceName: "NASA Science / Hubble", sourceURL: "https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/messier-3/", credit: "ESA/Hubble & NASA, G. Piotto et al.", licenseName: "CC BY 4.0", licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/")!, requiresAttribution: true, displayName: "M3 Globular Cluster", objectName: "Messier 3"),
-            image("m33", sourceName: "NASA Science / Hubble", sourceURL: "https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/messier-33/", credit: "NASA, ESA, and M. Durbin, J. Dalcanton and B. F. Williams (University of Washington)", licenseName: "CC BY 4.0", licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/")!, requiresAttribution: true, thumbnailAssetName: "target-m33-thumbnail", displayName: "M33 Triangulum Galaxy", objectName: "Messier 33, Triangulum Galaxy")
+            image("m33", sourceName: "NASA Science / Hubble", sourceURL: "https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/messier-33/", credit: "NASA, ESA, and M. Durbin, J. Dalcanton and B. F. Williams (University of Washington)", licenseName: "CC BY 4.0", licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/")!, requiresAttribution: true, thumbnailAssetName: "target-m33-thumbnail", displayName: "M33 Triangulum Galaxy", objectName: "Messier 33, Triangulum Galaxy"),
+            image("m101", sourceName: "NOIRLab / Wikimedia Commons", sourceURL: "https://commons.wikimedia.org/wiki/File:M101;_Pinwheel_Galaxy_(noao-m101ubviha).jpg", credit: "T.A. Rector (University of Alaska Anchorage) and H. Schweiker (WIYN and NOIRLab/NSF/AURA)", licenseName: "CC BY 4.0", licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/")!, requiresAttribution: true, thumbnailAssetName: "target-m101-thumbnail", displayName: "M101 Pinwheel Galaxy", objectName: "M101, Pinwheel Galaxy, NGC 5457", originalSourceURL: "https://noirlab.edu/public/images/noao-m101ubviha/")
         ])
     }()
 

@@ -55,7 +55,7 @@ final class DashboardViewModelTests: XCTestCase {
     }
 
     func testCuratedTargetImagesHaveCompleteAuditableMetadata() {
-        XCTAssertEqual(TargetImageManifest.imagesByTargetID.count, 21)
+        XCTAssertEqual(TargetImageManifest.imagesByTargetID.count, 22)
         for (targetID, image) in TargetImageManifest.imagesByTargetID {
             XCTAssertEqual(image.targetID, targetID)
             XCTAssertTrue(image.isVerified, targetID)
@@ -70,7 +70,7 @@ final class DashboardViewModelTests: XCTestCase {
     }
 
     func testNewVerifiedTargetImagesHaveCompleteMetadataAndLocalAssets() throws {
-        for id in ["m45", "m42", "m5", "m3", "m33"] {
+        for id in ["m45", "m42", "m5", "m3", "m33", "m101"] {
             let image = try XCTUnwrap(TargetImageManifest.image(for: id), id)
             XCTAssertTrue(image.isVerified, id)
             XCTAssertTrue(image.hasCompleteMetadata, id)
@@ -81,7 +81,30 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertNil(TargetImageManifest.image(for: "double-cluster"))
         XCTAssertNil(TargetImageManifest.image(for: "m16"))
         XCTAssertNil(TargetImageManifest.image(for: "m20"))
-        XCTAssertNil(TargetImageManifest.image(for: "m101"))
+    }
+
+    func testM101UsesVerifiedNOIRLabRecognitionImageAndSeparateThumbnail() throws {
+        let record = try XCTUnwrap(TargetImageManifest.image(for: "m101"))
+        XCTAssertTrue(record.isVerified)
+        XCTAssertTrue(record.hasCompleteMetadata)
+        XCTAssertTrue(record.requiresAttribution)
+        XCTAssertEqual(record.displayName, "M101 Pinwheel Galaxy")
+        XCTAssertEqual(record.objectName, "M101, Pinwheel Galaxy, NGC 5457")
+        XCTAssertEqual(record.sourceName, "NOIRLab / Wikimedia Commons")
+        XCTAssertEqual(record.sourcePageURL.absoluteString, "https://commons.wikimedia.org/wiki/File:M101;_Pinwheel_Galaxy_(noao-m101ubviha).jpg")
+        XCTAssertEqual(record.originalSourceURL?.absoluteString, "https://noirlab.edu/public/images/noao-m101ubviha/")
+        XCTAssertEqual(record.creditText, "T.A. Rector (University of Alaska Anchorage) and H. Schweiker (WIYN and NOIRLab/NSF/AURA)")
+        XCTAssertEqual(record.licenseName, "CC BY 4.0")
+        XCTAssertEqual(record.licenseURL.absoluteString, "https://creativecommons.org/licenses/by/4.0/")
+        XCTAssertEqual(record.assetName, "target-m101")
+        XCTAssertEqual(record.thumbnailAssetName, "target-m101-thumbnail")
+        XCTAssertNil(record.heroAssetName)
+
+        let repository = TargetImageRepository()
+        let resolved = try XCTUnwrap(repository.heroImage(for: "m101"))
+        XCTAssertNotNil(repository.thumbnailImage(for: "m101"))
+        XCTAssertEqual(resolved.record.assetName, "target-m101")
+        XCTAssertEqual(resolved.uiImage.size, resolved.displayUIImage.size)
     }
 
     func testM27AndSaturnUseSelectedCompleteSourceMetadata() throws {

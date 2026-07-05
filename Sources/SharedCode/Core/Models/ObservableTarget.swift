@@ -94,6 +94,7 @@ public struct TargetImageCredit: Sendable, Codable, Hashable {
     public let displayName: String?
     public let objectName: String?
     public let commonsPageURL: URL?
+    public let originalSourceURL: URL?
 
     public init(
         targetID: String,
@@ -110,7 +111,8 @@ public struct TargetImageCredit: Sendable, Codable, Hashable {
         displayName: String? = nil,
         objectName: String? = nil,
         commonsPageURL: URL? = nil,
-        heroAssetName: String? = nil
+        heroAssetName: String? = nil,
+        originalSourceURL: URL? = nil
     ) {
         self.targetID = targetID
         self.assetName = assetName
@@ -127,6 +129,7 @@ public struct TargetImageCredit: Sendable, Codable, Hashable {
         self.displayName = displayName
         self.objectName = objectName
         self.commonsPageURL = commonsPageURL
+        self.originalSourceURL = originalSourceURL
     }
 
     public var attributionText: String {
