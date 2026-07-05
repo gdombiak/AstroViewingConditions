@@ -24,24 +24,18 @@ struct TargetObservingGuide {
     let findingTips: String?
     let bestEquipment: String?
     let observingNotes: String?
-    let visualExpectationNote: String?
-    let challengeGuidance: String?
 
     init(
         targetID: String,
         whyRecommendedOverride: WhyRecommendedOverride? = nil,
         findingTips: String? = nil,
         bestEquipment: String? = nil,
-        observingNotes: String? = nil,
-        visualExpectationNote: String? = nil,
-        challengeGuidance: String? = nil
+        observingNotes: String? = nil
     ) {
         self.targetID = targetID
         self.whyRecommendedOverride = whyRecommendedOverride
         self.findingTips = findingTips
         self.bestEquipment = bestEquipment
         self.observingNotes = observingNotes
-        self.visualExpectationNote = visualExpectationNote
-        self.challengeGuidance = challengeGuidance
     }
 }

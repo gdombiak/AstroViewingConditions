@@ -13,8 +13,7 @@ enum TargetObservingGuideCatalog {
                 whyRecommendedOverride: .brightMoon("This large, bright planetary nebula is well placed during this observing window. The bright Moon may reduce contrast, but M27 is still worth trying because its dumbbell shape can stand out better than many faint nebulae."),
                 findingTips: "Look in Vulpecula near Sagitta and Cygnus. Use low power first, then increase magnification once found.",
                 bestEquipment: "Use a telescope at low to moderate magnification. A nebula filter may help if available.",
-                observingNotes: "Visually, M27 usually appears as a grayish fuzzy patch with a dumbbell or apple-core shape. Photos show much more color than you should expect at the eyepiece.",
-                visualExpectationNote: "Photos show much more color than you should expect at the eyepiece."
+                observingNotes: "Visually, M27 usually appears as a grayish fuzzy patch with a dumbbell or apple-core shape. Photos show much more color than you should expect at the eyepiece."
             ),
             TargetObservingGuide(
                 targetID: "ngc7009",
@@ -22,8 +21,7 @@ enum TargetObservingGuideCatalog {
             ),
             TargetObservingGuide(
                 targetID: "m31",
-                observingNotes: "Easy to locate, but suburban views may show mostly the bright core rather than the broad, photo-like disk.",
-                visualExpectationNote: "Suburban views may show mostly the bright core rather than the broad, photo-like disk."
+                observingNotes: "Easy to locate, but suburban views may show mostly the bright core rather than the broad, photo-like disk."
             ),
             TargetObservingGuide(
                 targetID: "m45",
@@ -33,8 +31,7 @@ enum TargetObservingGuideCatalog {
             TargetObservingGuide(
                 targetID: "m42",
                 bestEquipment: "Use binoculars or a telescope. Low to moderate magnification frames the nebula well.",
-                observingNotes: "Look for a fuzzy gray or gray-green glow in Orion's Sword. Photographs show much more color and detail than the eyepiece view.",
-                visualExpectationNote: "Photographs show much more color and detail than the eyepiece view."
+                observingNotes: "Look for a fuzzy gray or gray-green glow in Orion's Sword. Photographs show much more color and detail than the eyepiece view."
             ),
             TargetObservingGuide(
                 targetID: "m5",
@@ -49,28 +46,24 @@ enum TargetObservingGuideCatalog {
             TargetObservingGuide(
                 targetID: "m16",
                 bestEquipment: "Use a telescope. A nebula filter may help under dark skies.",
-                observingNotes: "The open cluster is the easiest part. Faint surrounding nebulosity may appear under dark skies, but the Pillars of Creation are mainly an imaging and Hubble target.",
-                visualExpectationNote: "The Pillars of Creation are mainly an imaging and Hubble target."
+                observingNotes: "The open cluster is the easiest part. Faint surrounding nebulosity may appear under dark skies, but the Pillars of Creation are mainly an imaging and Hubble target."
             ),
             TargetObservingGuide(
                 targetID: "m20",
                 bestEquipment: "Use a telescope. A nebula filter may help under dark skies.",
-                observingNotes: "Look for faint gray nebulosity. Dark lanes may appear under good dark skies, but do not expect the vivid colors seen in photographs.",
-                visualExpectationNote: "Do not expect the vivid colors seen in photographs."
+                observingNotes: "Look for faint gray nebulosity. Dark lanes may appear under good dark skies, but do not expect the vivid colors seen in photographs."
             ),
             TargetObservingGuide(
                 targetID: "m33",
                 whyRecommendedOverride: .withPlacement("This is a rewarding dark-sky challenge with low surface brightness, and it can be difficult from suburban skies."),
                 bestEquipment: "Use low power under dark skies and try averted vision.",
-                observingNotes: "Low surface brightness makes this galaxy a dark-sky challenge. Use low power, averted vision, and realistic expectations for subtle structure.",
-                challengeGuidance: "Challenge target: best from darker skies; low surface brightness may make it difficult from suburbs."
+                observingNotes: "Low surface brightness makes this galaxy a dark-sky challenge. Use low power, averted vision, and realistic expectations for subtle structure."
             ),
             TargetObservingGuide(
                 targetID: "m101",
                 whyRecommendedOverride: .withPlacement("This is a rewarding dark-sky challenge with low surface brightness, and it can be difficult from suburban skies."),
                 bestEquipment: "Use low power under dark skies and try averted vision.",
-                observingNotes: "Low surface brightness makes this galaxy a dark-sky challenge. Use low power, averted vision, and realistic expectations for subtle structure.",
-                challengeGuidance: "Challenge target: best from darker skies; low surface brightness may make it difficult from suburbs."
+                observingNotes: "Low surface brightness makes this galaxy a dark-sky challenge. Use low power, averted vision, and realistic expectations for subtle structure."
             )
         ]
         return Dictionary(uniqueKeysWithValues: guides.map { ($0.targetID, $0) })
