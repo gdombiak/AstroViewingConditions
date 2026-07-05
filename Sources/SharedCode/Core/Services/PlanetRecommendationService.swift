@@ -167,6 +167,9 @@ public struct LowPrecisionPlanetAstronomyProvider: PlanetAstronomyProviding {
 
 public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendationProviding {
     private static let minimumVisibleAltitude = 8.0
+    // Planets use a dedicated, altitude-heavy scoring model. Altitude quality intentionally
+    // saturates at 70°, independently of the generic deep-sky scorer's normalization.
+    private static let planetAltitudeNormalizationDegrees = 70.0
 
     private let planetAstronomyProvider: any PlanetAstronomyProviding
 
@@ -263,7 +266,7 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
         for sample: PlanetPositionSample,
         context: TargetRecommendationContext
     ) -> Double {
-        let altitude = min(max(sample.altitude / 70, 0), 1)
+        let altitude = min(max(sample.altitude / Self.planetAltitudeNormalizationDegrees, 0), 1)
         let darkness = sample.time >= context.astronomicalNightStart
             && sample.time <= context.astronomicalNightEnd ? 1.0 : 0.55
         let convenience = convenienceScore(for: sample.time, context: context)
@@ -328,7 +331,7 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
         darknessOverlap: Double,
         convenience: Double
     ) -> Int {
-        let altitudeQuality = min(max(altitude / 70, 0), 1)
+        let altitudeQuality = min(max(altitude / Self.planetAltitudeNormalizationDegrees, 0), 1)
         let lowAltitudePenalty = altitude < 15 ? 18.0 : 0
         let rawScore = altitudeQuality * 45
             + weatherQuality * 30
@@ -344,7 +347,7 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
         darknessOverlap: Double,
         convenience: Double
     ) -> [String] {
-        let altitudeQuality = min(max(altitude / 70, 0), 1)
+        let altitudeQuality = min(max(altitude / Self.planetAltitudeNormalizationDegrees, 0), 1)
         let lowAltitudePenalty = altitude < 15 ? 18.0 : 0
         let altitudeComponent = altitudeQuality * 45
         let weatherComponent = weatherQuality * 30

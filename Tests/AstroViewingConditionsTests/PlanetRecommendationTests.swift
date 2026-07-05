@@ -2,6 +2,45 @@ import SharedCode
 import XCTest
 
 final class PlanetRecommendationTests: XCTestCase {
+    func testAltitudeQualityReachesMaximumAtSeventyDegrees() {
+        let atNormalizationAltitude = recommendation(
+            samples: Self.samples(altitudes: [70], azimuths: [180])
+        )
+
+        XCTAssertEqual(atNormalizationAltitude.score, 97)
+    }
+
+    func testAltitudeQualityRemainsClampedAboveSeventyDegrees() {
+        let atNormalizationAltitude = recommendation(
+            samples: Self.samples(altitudes: [70], azimuths: [180])
+        )
+        let aboveNormalizationAltitude = recommendation(
+            samples: Self.samples(altitudes: [80], azimuths: [180])
+        )
+
+        XCTAssertEqual(atNormalizationAltitude.score, aboveNormalizationAltitude.score)
+    }
+
+    func testBelowNormalizationAltitudePreservesExistingScore() {
+        let recommendation = recommendation(
+            samples: Self.samples(altitudes: [35], azimuths: [180])
+        )
+
+        XCTAssertEqual(recommendation.score, 75)
+    }
+
+    func testBestSampleSelectionPreservesExistingAltitudeWeighting() {
+        let samples = [
+            PlanetPositionSample(time: Self.date(hour: 21), altitude: 35, azimuth: 150),
+            PlanetPositionSample(time: Self.date(hour: 24), altitude: 55, azimuth: 180)
+        ]
+
+        let recommendation = recommendation(samples: samples)
+
+        XCTAssertEqual(recommendation.visibilityWindow.bestTime, Self.date(hour: 24))
+        XCTAssertEqual(recommendation.visibilityWindow.maxAltitude, 55)
+    }
+
     func testAltitudeScoringImprovesPlanetRecommendation() {
         let low = recommendation(samples: Self.samples(altitudes: [12, 14, 16], azimuths: [160, 170, 180]))
         let high = recommendation(samples: Self.samples(altitudes: [35, 50, 62], azimuths: [160, 170, 180]))
