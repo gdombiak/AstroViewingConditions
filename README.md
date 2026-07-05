@@ -11,6 +11,9 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Real-time Weather Data**: Cloud cover, humidity, wind, temperature, visibility, and hourly forecasts
 - **Astronomical Information**: Sun and moon rise/set times, astronomical night timing, and moon phase
 - **Night Quality Analysis**: Clear, scan-friendly assessment of cloud cover, moonlight, wind, fog, and observing quality
+- **Best Targets**: Curated recommendations for the Moon, planets, double stars, star clusters, nebulae, and galaxies based on visibility, sky quality, moonlight, and observing difficulty
+- **Observing Intent**: Targets are curated as easy, standard, or challenge, with helpful challenge labels for dark-sky and low-surface-brightness objects
+- **Offline Target Images**: Verified local image assets include source, credit, and license metadata and require no network connection at runtime
 - **ISS Pass Predictions**: Track when the International Space Station will be visible with an optional N2YO API key
 - **Fog Score**: Calculated from humidity, temperature, dew point, visibility, and low cloud cover
 - **Location Management**: Use current location, save observing locations, search by city, enter coordinates, or pick from a map
@@ -25,6 +28,8 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Open-Meteo API**: Weather forecasts and geocoding (free, no API key required)
 - **SunCalc Swift Package**: Astronomical calculations (sun/moon positions and phases)
 - **N2YO API**: Optional ISS pass predictions (free API key required)
+
+Best Targets uses a curated local target catalog and verified local image assets with source and license metadata. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled-image attribution.
 
 ## Requirements
 

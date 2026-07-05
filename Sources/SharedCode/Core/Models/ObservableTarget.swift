@@ -151,6 +151,7 @@ public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
     public let preferredEquipment: TargetEquipmentType
     public let difficulty: Double
     public let observingIntent: TargetObservingIntent
+    public let displayTypeNameOverride: String?
     public let deepSkyObjectType: DeepSkyObjectType?
     public let moonInterferenceSensitivity: Double?
     public let image: TargetImageCredit?
@@ -162,6 +163,7 @@ public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
         preferredEquipment: TargetEquipmentType,
         difficulty: Double,
         observingIntent: TargetObservingIntent = .standard,
+        displayTypeNameOverride: String? = nil,
         deepSkyObjectType: DeepSkyObjectType? = nil,
         moonInterferenceSensitivity: Double? = nil,
         image: TargetImageCredit? = nil
@@ -172,17 +174,19 @@ public struct ObservableTarget: Identifiable, Sendable, Codable, Hashable {
         self.preferredEquipment = preferredEquipment
         self.difficulty = min(max(difficulty, 0), 1)
         self.observingIntent = observingIntent
+        self.displayTypeNameOverride = displayTypeNameOverride
         self.deepSkyObjectType = deepSkyObjectType
         self.moonInterferenceSensitivity = moonInterferenceSensitivity.map { min(max($0, 0), 1.5) }
         self.image = image
     }
 
     public var displayTypeName: String {
-        guard type == .deepSky else { return type.displayName }
-
-        if id.lowercased() == "double-cluster" {
-            return "Open Cluster Pair"
+        if let displayTypeNameOverride,
+           !displayTypeNameOverride.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return displayTypeNameOverride
         }
+
+        guard type == .deepSky else { return type.displayName }
 
         switch deepSkyObjectType {
         case .galaxy: return "Galaxy"

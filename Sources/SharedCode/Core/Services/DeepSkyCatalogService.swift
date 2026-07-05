@@ -13,6 +13,7 @@ public struct DeepSkyCatalogEntry: Identifiable, Sendable, Codable, Hashable {
     public let surfaceBrightness: Double?
     public let difficulty: Double
     public let observingIntent: TargetObservingIntent
+    public let displayTypeNameOverride: String?
     public let recommendedEquipment: TargetEquipmentType
     public let notes: String
     public let image: TargetImageCredit?
@@ -32,7 +33,8 @@ public struct DeepSkyCatalogEntry: Identifiable, Sendable, Codable, Hashable {
         observingIntent: TargetObservingIntent,
         recommendedEquipment: TargetEquipmentType,
         notes: String,
-        image: TargetImageCredit? = nil
+        image: TargetImageCredit? = nil,
+        displayTypeNameOverride: String? = nil
     ) {
         self.id = id
         self.commonName = commonName
@@ -46,6 +48,7 @@ public struct DeepSkyCatalogEntry: Identifiable, Sendable, Codable, Hashable {
         self.surfaceBrightness = surfaceBrightness
         self.difficulty = min(max(difficulty, 0), 1)
         self.observingIntent = observingIntent
+        self.displayTypeNameOverride = displayTypeNameOverride
         self.recommendedEquipment = recommendedEquipment
         self.notes = notes
         self.image = image
@@ -83,7 +86,7 @@ public struct CuratedDeepSkyCatalogProvider: DeepSkyCatalogProvider {
         entry("epsilon-lyrae", "Epsilon Lyrae", "Epsilon Lyrae", .doubleStar, "Lyra", 18.7380, 39.6701, 4.7, "208 arcsec", nil, 0.4, .smallTelescope, .standard, "The Double Double; higher power resolves both pairs.", image: TargetImageManifest.image(for: "epsilon-lyrae")),
         entry("m45", "M45 Pleiades", "M45", .openCluster, "Taurus", 3.7833, 24.1167, 1.6, "110 arcmin", nil, 0.15, .binoculars, .easy, "Excellent beginner target; best with binoculars or very low power.", image: TargetImageManifest.image(for: "m45")),
         entry("m42", "M42 Orion Nebula", "M42", .diffuseNebula, "Orion", 5.5881, -5.3911, 4.0, "85 x 60 arcmin", 13.0, 0.25, .binoculars, .easy, "Excellent beginner nebula; visually it is a gray-green fuzzy patch, not a colorful photograph.", image: TargetImageManifest.image(for: "m42")),
-        entry("double-cluster", "NGC 869/884 Double Cluster", "NGC 869/884", .openCluster, "Perseus", 2.3333, 57.1333, 3.7, "60 arcmin", nil, 0.2, .binoculars, .easy, "A rewarding pair of clusters for binoculars or low-power telescopes."),
+        entry("double-cluster", "NGC 869/884 Double Cluster", "NGC 869/884", .openCluster, "Perseus", 2.3333, 57.1333, 3.7, "60 arcmin", nil, 0.2, .binoculars, .easy, "A rewarding pair of clusters for binoculars or low-power telescopes.", displayTypeNameOverride: "Open Cluster Pair"),
         entry("m5", "M5 Globular Cluster", "M5", .globularCluster, "Serpens", 15.3092, 2.0810, 5.7, "23 arcmin", 12.0, 0.5, .smallTelescope, .standard, "Good telescope target; higher magnification may resolve outer stars.", image: TargetImageManifest.image(for: "m5")),
         entry("m3", "M3 Globular Cluster", "M3", .globularCluster, "Canes Venatici", 13.7031, 28.3773, 6.2, "18 arcmin", 12.1, 0.5, .smallTelescope, .standard, "Bright spring and summer globular cluster for a telescope.", image: TargetImageManifest.image(for: "m3")),
         entry("m16", "M16 Eagle Nebula", "M16", .diffuseNebula, "Serpens", 18.3133, -13.8067, 6.0, "35 x 28 arcmin", 12.0, 0.6, .telescope, .standard, "The cluster and faint nebulosity may be visible; the Pillars of Creation are mainly an imaging target."),
@@ -107,7 +110,8 @@ public struct CuratedDeepSkyCatalogProvider: DeepSkyCatalogProvider {
         _ equipment: TargetEquipmentType,
         _ observingIntent: TargetObservingIntent,
         _ notes: String,
-        image: TargetImageCredit? = nil
+        image: TargetImageCredit? = nil,
+        displayTypeNameOverride: String? = nil
     ) -> DeepSkyCatalogEntry {
         DeepSkyCatalogEntry(
             id: id,
@@ -124,7 +128,8 @@ public struct CuratedDeepSkyCatalogProvider: DeepSkyCatalogProvider {
             observingIntent: observingIntent,
             recommendedEquipment: equipment,
             notes: notes,
-            image: image
+            image: image,
+            displayTypeNameOverride: displayTypeNameOverride
         )
     }
 }
@@ -145,6 +150,7 @@ public struct DefaultTargetCatalogProvider: TargetCatalogProvider {
                 preferredEquipment: entry.recommendedEquipment,
                 difficulty: entry.difficulty,
                 observingIntent: entry.observingIntent,
+                displayTypeNameOverride: entry.displayTypeNameOverride,
                 deepSkyObjectType: entry.objectType,
                 moonInterferenceSensitivity: Self.moonInterferenceSensitivity(for: entry),
                 image: entry.image
@@ -160,6 +166,7 @@ public struct DefaultTargetCatalogProvider: TargetCatalogProvider {
         return 1
     }
 
+    // TODO: Consider adding Uranus and Neptune later as challenge planet targets once planet visibility support is verified.
     private static let solarSystemTargets = [
         ObservableTarget(id: "moon", name: "Moon", type: .moon, preferredEquipment: .nakedEye, difficulty: 0.1, observingIntent: .easy, image: TargetImageManifest.image(for: "moon")),
         ObservableTarget(id: "venus", name: "Venus", type: .planet, preferredEquipment: .nakedEye, difficulty: 0.1, observingIntent: .easy, image: TargetImageManifest.image(for: "venus")),

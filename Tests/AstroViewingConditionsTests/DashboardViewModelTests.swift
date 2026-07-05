@@ -274,6 +274,7 @@ final class DashboardViewModelTests: XCTestCase {
             id: "double-cluster",
             name: "NGC 869/884 Double Cluster",
             type: .openCluster,
+            displayTypeNameOverride: "Open Cluster Pair",
             reasons: [.poorWeather],
             direction: "NE",
             altitude: 52
@@ -299,6 +300,30 @@ final class DashboardViewModelTests: XCTestCase {
             globular.sections.first(where: { $0.title == "Finding tips" })?.text,
             "Start with low power to locate the fuzzy core, then increase magnification to try resolving outer stars."
         )
+    }
+
+    func testCuratedObservingGuideCatalogPreservesVisualExpectationCopy() throws {
+        let doubleCluster = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "double-cluster"))
+        XCTAssertTrue(doubleCluster.findingTips?.contains("Perseus") == true)
+        XCTAssertTrue(doubleCluster.findingTips?.contains("Cassiopeia") == true)
+        XCTAssertTrue(doubleCluster.findingTips?.contains("Mirfak") == true)
+
+        let m27 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "M27"))
+        XCTAssertTrue(m27.observingNotes?.contains("grayish fuzzy patch") == true)
+        XCTAssertTrue(m27.observingNotes?.contains("Photos show much more color") == true)
+
+        let m16 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m16"))
+        XCTAssertTrue(m16.observingNotes?.contains("mainly an imaging and Hubble target") == true)
+        XCTAssertFalse(m16.observingNotes?.localizedCaseInsensitiveContains("visible Pillars") == true)
+
+        let m20 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m20"))
+        XCTAssertTrue(m20.observingNotes?.contains("do not expect the vivid colors") == true)
+
+        for id in ["m33", "m101"] {
+            let guide = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: id))
+            XCTAssertTrue(guide.observingNotes?.contains("Low surface brightness") == true, id)
+            XCTAssertTrue(guide.observingNotes?.contains("dark-sky challenge") == true, id)
+        }
     }
 
     func testOnlyChallengeTargetsRequestIntentBadges() {
@@ -436,7 +461,7 @@ final class DashboardViewModelTests: XCTestCase {
             altitude: 9
         )
 
-        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("west"))
+        XCTAssertTrue(content.direction?.localizedCaseInsensitiveContains("west") == true)
         XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("low"))
         XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("trees, hills, or buildings"))
         XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("twilight"))
@@ -654,6 +679,7 @@ final class DashboardViewModelTests: XCTestCase {
         targetType: ObservableTargetType = .deepSky,
         type: DeepSkyObjectType? = nil,
         observingIntent: TargetObservingIntent = .standard,
+        displayTypeNameOverride: String? = nil,
         reasons: [TargetRecommendationReason] = [],
         summary: String = "Visible tonight.",
         direction: String? = "S",
@@ -670,6 +696,7 @@ final class DashboardViewModelTests: XCTestCase {
                 preferredEquipment: .telescope,
                 difficulty: 0.5,
                 observingIntent: observingIntent,
+                displayTypeNameOverride: displayTypeNameOverride,
                 deepSkyObjectType: type,
                 image: image
             ),

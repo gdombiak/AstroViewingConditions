@@ -30,6 +30,16 @@
 		1DD61581F608D45996278961 /* LocationTimeZoneResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC83B480A25464D37367FCE /* LocationTimeZoneResolver.swift */; };
 		1E6A725BF9F57F656EBAC213 /* BestSpotSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1DA95CCE7AC3B2926F6F78 /* BestSpotSettings.swift */; };
 		1EAB35011886AD28FDF5DE0A /* AdaptiveTargetSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35C6F6DA634C8883E7D2FB18 /* AdaptiveTargetSheet.swift */; };
+		B10000000000000000000001 /* BestTargetsListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* BestTargetsListView.swift */; };
+		B10000000000000000000002 /* TargetRecommendationRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* TargetRecommendationRow.swift */; };
+		B10000000000000000000003 /* TargetDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* TargetDetailView.swift */; };
+		B10000000000000000000004 /* TargetDetailContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* TargetDetailContent.swift */; };
+		B10000000000000000000005 /* TargetDetailContentBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* TargetDetailContentBuilder.swift */; };
+		B10000000000000000000006 /* TargetIntentBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* TargetIntentBadge.swift */; };
+		B10000000000000000000007 /* TargetIntentPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* TargetIntentPresentation.swift */; };
+		B10000000000000000000008 /* TargetScoreColorProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* TargetScoreColorProvider.swift */; };
+		B10000000000000000000009 /* TargetObservingGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* TargetObservingGuide.swift */; };
+		B1000000000000000000000A /* TargetObservingGuideCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* TargetObservingGuideCatalog.swift */; };
 		21A5125F77F04B36291E8D88 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 125974E80A94F54C0A34C1E1 /* DashboardViewModel.swift */; };
 		24910EE1672EF7B13F23E650 /* WatchDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52E6FDFDFD0F83CF07A6F8E0 /* WatchDashboardView.swift */; };
 		266A4637357058090BB1A989 /* RectangularComplicationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A95FBB1581285D4D9D0F4E1 /* RectangularComplicationView.swift */; };
@@ -289,6 +299,16 @@
 		30BE687AF9CFA3D567761843 /* NightConditionsEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightConditionsEntry.swift; sourceTree = "<group>"; };
 		33A932544EBED47D8B540A33 /* NetworkErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkErrorTests.swift; sourceTree = "<group>"; };
 		35C6F6DA634C8883E7D2FB18 /* AdaptiveTargetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveTargetSheet.swift; sourceTree = "<group>"; };
+		A10000000000000000000001 /* BestTargetsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestTargetsListView.swift; sourceTree = "<group>"; };
+		A10000000000000000000002 /* TargetRecommendationRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetRecommendationRow.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* TargetDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetDetailView.swift; sourceTree = "<group>"; };
+		A10000000000000000000004 /* TargetDetailContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetDetailContent.swift; sourceTree = "<group>"; };
+		A10000000000000000000005 /* TargetDetailContentBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetDetailContentBuilder.swift; sourceTree = "<group>"; };
+		A10000000000000000000006 /* TargetIntentBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetIntentBadge.swift; sourceTree = "<group>"; };
+		A10000000000000000000007 /* TargetIntentPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetIntentPresentation.swift; sourceTree = "<group>"; };
+		A10000000000000000000008 /* TargetScoreColorProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetScoreColorProvider.swift; sourceTree = "<group>"; };
+		A10000000000000000000009 /* TargetObservingGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetObservingGuide.swift; sourceTree = "<group>"; };
+		A1000000000000000000000A /* TargetObservingGuideCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetObservingGuideCatalog.swift; sourceTree = "<group>"; };
 		3705F74E4EEC82078143D834 /* BestSpotSearcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSearcher.swift; sourceTree = "<group>"; };
 		38D499FDBC2B800314836987 /* AstroViewingConditionsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AstroViewingConditionsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A206498C0EFB9959303437E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -691,6 +711,7 @@
 			isa = PBXGroup;
 			children = (
 				35C6F6DA634C8883E7D2FB18 /* AdaptiveTargetSheet.swift */,
+				A10000000000000000000001 /* BestTargetsListView.swift */,
 				1FFEAF115DA49831689C1CD2 /* DashboardView.swift */,
 				125974E80A94F54C0A34C1E1 /* DashboardViewModel.swift */,
 				3C311F73114D139D6EC3E022 /* HourlyForecastView.swift */,
@@ -699,7 +720,16 @@
 				E2381C486761759180B4D090 /* NightQualityCard.swift */,
 				082A7D1648D48B54E85F0EF3 /* SunMoonCard.swift */,
 				D45032363219CEC7896BF0F6 /* TargetAssetProvider.swift */,
+				A10000000000000000000004 /* TargetDetailContent.swift */,
+				A10000000000000000000005 /* TargetDetailContentBuilder.swift */,
+				A10000000000000000000003 /* TargetDetailView.swift */,
 				A1CDC2DE8DC8A9DB44BD3212 /* TargetImageViewer.swift */,
+				A10000000000000000000006 /* TargetIntentBadge.swift */,
+				A10000000000000000000007 /* TargetIntentPresentation.swift */,
+				A10000000000000000000009 /* TargetObservingGuide.swift */,
+				A1000000000000000000000A /* TargetObservingGuideCatalog.swift */,
+				A10000000000000000000002 /* TargetRecommendationRow.swift */,
+				A10000000000000000000008 /* TargetScoreColorProvider.swift */,
 				ADE06EBEFA2C9FF9F117C927 /* TodayCard.swift */,
 				C0F7548B7E04BEA85351CFDF /* TonightsBestTargetsCard.swift */,
 			);
@@ -995,6 +1025,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1EAB35011886AD28FDF5DE0A /* AdaptiveTargetSheet.swift in Sources */,
+				B10000000000000000000001 /* BestTargetsListView.swift in Sources */,
 				B571244AE8EAF85642F04100 /* AstroViewingConditionsApp.swift in Sources */,
 				17266FA86858825588CA64C0 /* BestSpotResultCard.swift in Sources */,
 				143EBE16CD71B3766BE1DED2 /* BestSpotView.swift in Sources */,
@@ -1012,7 +1043,16 @@
 				8B66200FD1CE9F3BE5E30DEA /* SettingsView.swift in Sources */,
 				5F194C9B2A33A2622A5D1612 /* SunMoonCard.swift in Sources */,
 				B1D6071736E2FD6F2459C428 /* TargetAssetProvider.swift in Sources */,
+				B10000000000000000000004 /* TargetDetailContent.swift in Sources */,
+				B10000000000000000000005 /* TargetDetailContentBuilder.swift in Sources */,
+				B10000000000000000000003 /* TargetDetailView.swift in Sources */,
 				45ABE0B72C64F4A2F52D4D32 /* TargetImageViewer.swift in Sources */,
+				B10000000000000000000006 /* TargetIntentBadge.swift in Sources */,
+				B10000000000000000000007 /* TargetIntentPresentation.swift in Sources */,
+				B10000000000000000000009 /* TargetObservingGuide.swift in Sources */,
+				B1000000000000000000000A /* TargetObservingGuideCatalog.swift in Sources */,
+				B10000000000000000000002 /* TargetRecommendationRow.swift in Sources */,
+				B10000000000000000000008 /* TargetScoreColorProvider.swift in Sources */,
 				ABB073C8D162C82D7DC53730 /* TodayCard.swift in Sources */,
 				4CF43843F6A47F265797D63D /* TonightsBestTargetsCard.swift in Sources */,
 				A2A352AFD613D0DA6E6FD0C7 /* WatchConnectivityService.swift in Sources */,

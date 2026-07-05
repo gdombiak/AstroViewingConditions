@@ -126,6 +126,7 @@ final class TargetRecommendationScorerTests: XCTestCase {
         let entries = Dictionary(uniqueKeysWithValues: CuratedDeepSkyCatalogProvider().entries().map { ($0.id, $0) })
         XCTAssertEqual(entries["double-cluster"]?.commonName, "NGC 869/884 Double Cluster")
         XCTAssertEqual(entries["double-cluster"]?.objectType, .openCluster)
+        XCTAssertEqual(entries["double-cluster"]?.displayTypeNameOverride, "Open Cluster Pair")
         XCTAssertEqual(catalogTarget(id: "double-cluster").displayTypeName, "Open Cluster Pair")
         XCTAssertFalse(catalogTarget(id: "double-cluster").displayTypeName.contains("NGC"))
         XCTAssertEqual(entries["m16"]?.commonName, "M16 Eagle Nebula")
@@ -133,6 +134,29 @@ final class TargetRecommendationScorerTests: XCTestCase {
         XCTAssertEqual(entries["m45"]?.commonName, "M45 Pleiades")
         XCTAssertEqual(entries["m33"]?.commonName, "M33 Triangulum Galaxy")
         XCTAssertEqual(entries["m101"]?.commonName, "M101 Pinwheel Galaxy")
+    }
+
+    func testDisplayTypeOverrideIsModelDrivenRatherThanTargetIDSpecific() {
+        let overridden = ObservableTarget(
+            id: "any-open-cluster",
+            name: "Any Cluster",
+            type: .deepSky,
+            preferredEquipment: .binoculars,
+            difficulty: 0.2,
+            displayTypeNameOverride: "Open Cluster Pair",
+            deepSkyObjectType: .openCluster
+        )
+        let ordinary = ObservableTarget(
+            id: "double-cluster",
+            name: "Same ID Without Override",
+            type: .deepSky,
+            preferredEquipment: .binoculars,
+            difficulty: 0.2,
+            deepSkyObjectType: .openCluster
+        )
+
+        XCTAssertEqual(overridden.displayTypeName, "Open Cluster Pair")
+        XCTAssertEqual(ordinary.displayTypeName, "Open Cluster")
     }
 
     func testCatalogObservingIntentAssignments() {
@@ -146,6 +170,14 @@ final class TargetRecommendationScorerTests: XCTestCase {
         for id in standard { XCTAssertEqual(targets[id]?.observingIntent, .standard, id) }
         for id in challenge { XCTAssertEqual(targets[id]?.observingIntent, .challenge, id) }
         XCTAssertEqual(targets.count, easy.count + standard.count + challenge.count)
+    }
+
+    func testUnsupportedOuterPlanetsAreNotImpliedByTheTargetCatalog() {
+        let context = makeContext(hourlyScore: 0.2, moonIllumination: 0, moonAltitude: -5)
+        let ids = Set(DefaultTargetCatalogProvider().targets(for: context).map(\.id))
+
+        XCTAssertFalse(ids.contains("uranus"))
+        XCTAssertFalse(ids.contains("neptune"))
     }
 
     func testNewTargetDescriptionsSetRealisticVisualExpectations() throws {
