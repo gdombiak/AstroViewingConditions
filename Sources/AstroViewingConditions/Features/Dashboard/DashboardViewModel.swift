@@ -209,14 +209,7 @@ public class DashboardViewModel {
     }
 
     public var issCardTitle: String {
-        switch selectedDay {
-        case .today:
-            return "ISS Passes Tonight"
-        case .tomorrow:
-            return "ISS Passes Tomorrow Night"
-        case .dayAfter:
-            return "ISS Passes \(titleForSelectedDay(.dayAfter)) Night"
-        }
+        "ISS Passes"
     }
 
     public var issEmptyMessage: String {

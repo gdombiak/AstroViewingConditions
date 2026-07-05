@@ -5,8 +5,6 @@ struct CurrentConditionsCard: View {
     let forecast: HourlyForecast?
     let unitConverter: AstroUnitConverter
     let timeZone: TimeZone?
-    @Environment(\.colorScheme) private var colorScheme
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -94,22 +92,7 @@ struct CurrentConditionsCard: View {
                     .padding()
             }
         }
-        .padding()
-        .background(cardBackground(for: forecast?.cloudCover ?? 0))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-    
-    private func cardBackground(for cloudCover: Int) -> Color {
-        #if os(iOS)
-        // Use darker background in light mode when clouds are high (>90%)
-        // to provide contrast for the whitish cloud icon
-        if colorScheme == .light && cloudCover > 90 {
-            return Color(.systemGray5)
-        }
-        return Color(.systemGray6)
-        #else
-        return Color.gray.opacity(0.1)
-        #endif
+        .dashboardCardStyle()
     }
     
     // Cloud background: dark blue (clear) to whitish (cloudy)

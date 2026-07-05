@@ -114,17 +114,7 @@ struct SunMoonCard: View {
                 }
             }
         }
-        .padding()
-        .background(cardBackgroundColor)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-    
-    private var cardBackgroundColor: Color {
-        #if os(iOS)
-        return Color(uiColor: .systemGray6)
-        #else
-        return Color.gray.opacity(0.1)
-        #endif
+        .dashboardCardStyle()
     }
     
     private func formatDuration(_ interval: TimeInterval) -> String {

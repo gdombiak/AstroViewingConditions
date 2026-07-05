@@ -96,11 +96,9 @@ public struct DateFormatters {
         to end: Date,
         in timeZone: TimeZone?
     ) -> String {
-        let formatter = DateIntervalFormatter()
-        formatter.dateStyle = .none
-        formatter.timeStyle = .short
-        formatter.timeZone = timeZone ?? TimeZone(secondsFromGMT: 0) ?? TimeZone.current
-        return formatter.string(from: start, to: end)
+        let startText = timeZoneTimeFormatterCache.string(from: start, in: timeZone)
+        let endText = timeZoneTimeFormatterCache.string(from: end, in: timeZone)
+        return "\(startText)–\(endText)"
     }
 
     public static func formatDashboardObservingTimeRange(

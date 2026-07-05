@@ -141,6 +141,7 @@
 		D0240EC80E56D7F92AFBD78C /* SavedLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B3A2113D1BA6BBCE0A60966 /* SavedLocation.swift */; };
 		D20FC86AB50741DEA538F333 /* SavedLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B3A2113D1BA6BBCE0A60966 /* SavedLocation.swift */; };
 		D685E944DC091A51F7D017C6 /* NightQualityCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2381C486761759180B4D090 /* NightQualityCard.swift */; };
+		DC0000000000000000000001 /* DashboardCardStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC0000000000000000000002 /* DashboardCardStyle.swift */; };
 		D84ECADB0E08A80E88E943E7 /* DeepSkyCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64F803294A626A887D3DAD9C /* DeepSkyCatalogService.swift */; };
 		DA549B8AA49C12F4CB65E68A /* AstroViewingConditionsWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 6DA60976B07F06290A162396 /* AstroViewingConditionsWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		DB237F5026AC6A3AE354B800 /* SharedCode.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DE13674996F9DC96D419E3F /* SharedCode.framework */; };
@@ -389,6 +390,7 @@
 		E091BB8BE5C0597F0ECD6457 /* AstronomyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstronomyService.swift; sourceTree = "<group>"; };
 		E1B9C8B5B17ED18A6A87CE28 /* ViewingConditionsModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewingConditionsModelTests.swift; sourceTree = "<group>"; };
 		E2381C486761759180B4D090 /* NightQualityCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightQualityCard.swift; sourceTree = "<group>"; };
+		DC0000000000000000000002 /* DashboardCardStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardCardStyle.swift; sourceTree = "<group>"; };
 		E51D30629F0FAE6A6F9ED28C /* AstroViewingConditionsWatchWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AstroViewingConditionsWatchWidget.entitlements; sourceTree = "<group>"; };
 		E6A755C891187E6768F11D9E /* DashboardViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModelTests.swift; sourceTree = "<group>"; };
 		E6CF7A2E41DE41511ED6A249 /* CircularComplicationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularComplicationView.swift; sourceTree = "<group>"; };
@@ -734,6 +736,7 @@
 			children = (
 				35C6F6DA634C8883E7D2FB18 /* AdaptiveTargetSheet.swift */,
 				A10000000000000000000001 /* BestTargetsListView.swift */,
+				DC0000000000000000000002 /* DashboardCardStyle.swift */,
 				1FFEAF115DA49831689C1CD2 /* DashboardView.swift */,
 				125974E80A94F54C0A34C1E1 /* DashboardViewModel.swift */,
 				3C311F73114D139D6EC3E022 /* HourlyForecastView.swift */,
@@ -1053,6 +1056,7 @@
 				143EBE16CD71B3766BE1DED2 /* BestSpotView.swift in Sources */,
 				8A337713E46661E3CDA11B10 /* BestSpotViewModel.swift in Sources */,
 				4E9BAF05442E452EE828A41B /* ContentView.swift in Sources */,
+				DC0000000000000000000001 /* DashboardCardStyle.swift in Sources */,
 				F93BC50136368EA515A88EA1 /* DashboardView.swift in Sources */,
 				21A5125F77F04B36291E8D88 /* DashboardViewModel.swift in Sources */,
 				4C0596C56E1142BDD5D7D955 /* HourlyForecastView.swift in Sources */,

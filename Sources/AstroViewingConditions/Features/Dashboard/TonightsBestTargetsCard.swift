@@ -80,9 +80,7 @@ struct TonightsBestTargetsCard: View {
                 }
             }
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .dashboardCardStyle()
         .sheet(item: $selectedRecommendation) { recommendation in
             TargetDetailView(recommendation: recommendation, timeZone: timeZone)
                 .adaptiveTargetSheet(

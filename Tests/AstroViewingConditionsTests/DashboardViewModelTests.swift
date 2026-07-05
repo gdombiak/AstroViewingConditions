@@ -54,6 +54,15 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertNil(TargetSheetLayout.preferredWidth(for: nil))
     }
 
+    func testISSCardTitleIsConsistentAcrossDaySelections() {
+        let viewModel = DashboardViewModel()
+
+        for day in DashboardViewModel.DaySelection.allCases {
+            viewModel.selectedDay = day
+            XCTAssertEqual(viewModel.issCardTitle, "ISS Passes")
+        }
+    }
+
     func testBestTargetsPoorConditionsNoteThreshold() {
         XCTAssertTrue(TonightsBestTargetsCard.showsPoorConditionsNote(for: 29))
         XCTAssertFalse(TonightsBestTargetsCard.showsPoorConditionsNote(for: 30))

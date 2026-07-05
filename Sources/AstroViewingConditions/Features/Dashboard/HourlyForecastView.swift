@@ -82,17 +82,7 @@ struct HourlyForecastView: View {
                 .padding(.vertical, 8)
             }
         }
-        .padding()
-        .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-    
-    private var cardBackground: some View {
-        #if os(iOS)
-        return Color(.systemGray6)
-        #else
-        return Color.gray.opacity(0.1)
-        #endif
+        .dashboardCardStyle()
     }
     
     private var locationCalendar: Calendar {

@@ -67,9 +67,7 @@ struct ISSCard: View {
                 }
             }
         }
-        .padding()
-        .background(Color.gray.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .dashboardCardStyle()
     }
 }
 
@@ -86,10 +84,10 @@ struct ISSPassRow: View {
     }
 
     private var peakDescription: String {
-        let direction = pass.maxDirection.map { "\($0), " } ?? ""
-        let peak = "Peak: \(direction)\(Int(pass.maxElevation))°"
+        let direction = pass.maxDirection.map { "\($0) " } ?? ""
+        let peak = "\(direction)\(Int(pass.maxElevation))°"
         guard let maxTime = pass.maxTime else { return peak }
-        return "\(peak) at \(DateFormatters.formatTime(maxTime, in: timeZone))"
+        return "\(peak) · \(DateFormatters.formatTime(maxTime, in: timeZone))"
     }
 
     private var timeColumn: some View {
@@ -103,7 +101,7 @@ struct ISSPassRow: View {
                 .fontWeight(.semibold)
 
             Text(DateFormatters.formatShortDate(pass.riseTime, in: timeZone))
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(.secondary)
         }
     }
@@ -119,7 +117,7 @@ struct ISSPassRow: View {
 
             if let pathDescription {
                 Text(pathDescription)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
         }
@@ -141,6 +139,7 @@ struct ISSPassRow: View {
                 peakColumn(alignment: .leading, textAlignment: .leading)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 4)
     }
 }
@@ -156,7 +155,7 @@ struct ISSPassRow: View {
         passes: samplePasses,
         timeZone: nil,
         errorMessage: nil,
-        title: "ISS Passes Tonight",
+        title: "ISS Passes",
         emptyMessage: "No visible ISS passes tonight"
     )
         .padding()

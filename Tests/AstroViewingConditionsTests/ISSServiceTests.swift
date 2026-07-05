@@ -158,6 +158,27 @@ final class ISSServiceTests: XCTestCase {
             [active.id, future.id]
         )
     }
+
+    func testCrossMidnightPassTimeRangeUsesTimesWithoutDates() throws {
+        let timeZone = try XCTUnwrap(TimeZone(identifier: "America/Los_Angeles"))
+        let calendar = Calendar(identifier: .gregorian)
+        let start = try XCTUnwrap(calendar.date(from: DateComponents(
+            timeZone: timeZone,
+            year: 2026,
+            month: 7,
+            day: 5,
+            hour: 23,
+            minute: 59
+        )))
+        let end = start.addingTimeInterval(10 * 60)
+
+        let range = DateFormatters.formatTimeRange(from: start, to: end, in: timeZone)
+        XCTAssertTrue(range.contains("11:59"))
+        XCTAssertTrue(range.contains("12:09"))
+        XCTAssertFalse(range.contains("2026"))
+        XCTAssertFalse(range.contains("7/5"))
+        XCTAssertFalse(range.contains("7/6"))
+    }
     
     func testISSPassIdGeneration() {
         let riseTime = Date(timeIntervalSince1970: 1_700_000_000)
