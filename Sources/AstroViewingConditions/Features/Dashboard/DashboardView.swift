@@ -214,11 +214,13 @@ public struct DashboardView: View {
                     onViewAll: { showingAllBestTargets = true }
                 )
                 
-                if viewModel.selectedDay == .today {
-                    CurrentConditionsCard(
-                        forecast: viewModel.currentHourForecast,
-                        unitConverter: unitConverter,
-                        timeZone: viewModel.displayTimeZone
+                if viewModel.hasISSConfigured {
+                    ISSCard(
+                        passes: viewModel.currentISSPasses,
+                        timeZone: viewModel.displayTimeZone,
+                        errorMessage: viewModel.issError?.localizedDescription,
+                        title: viewModel.issCardTitle,
+                        emptyMessage: viewModel.issEmptyMessage
                     )
                 }
                 
@@ -238,13 +240,11 @@ public struct DashboardView: View {
                     )
                 }
                 
-                if viewModel.hasISSConfigured {
-                    ISSCard(
-                        passes: viewModel.currentISSPasses,
-                        timeZone: viewModel.displayTimeZone,
-                        errorMessage: viewModel.issError?.localizedDescription,
-                        title: viewModel.issCardTitle,
-                        emptyMessage: viewModel.issEmptyMessage
+                if viewModel.selectedDay == .today {
+                    CurrentConditionsCard(
+                        forecast: viewModel.currentHourForecast,
+                        unitConverter: unitConverter,
+                        timeZone: viewModel.displayTimeZone
                     )
                 }
                 
