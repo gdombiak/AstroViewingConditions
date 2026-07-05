@@ -49,7 +49,7 @@ final class TargetImageManifestTests: XCTestCase {
     }
 
     func testCuratedTargetImagesHaveCompleteAuditableMetadata() {
-        XCTAssertEqual(TargetImageManifest.imagesByTargetID.count, 23)
+        XCTAssertEqual(TargetImageManifest.imagesByTargetID.count, 31)
         for (targetID, image) in TargetImageManifest.imagesByTargetID {
             XCTAssertEqual(image.targetID, targetID)
             XCTAssertTrue(image.isVerified, targetID)
@@ -72,8 +72,6 @@ final class TargetImageManifestTests: XCTestCase {
         }
 
         XCTAssertEqual(TargetImageManifest.image(for: "m33")?.thumbnailAssetName, "target-m33-thumbnail")
-        XCTAssertNil(TargetImageManifest.image(for: "m16"))
-        XCTAssertNil(TargetImageManifest.image(for: "m20"))
     }
 
     func testDoubleClusterUsesVerifiedESOWideFieldImageAndSeparateThumbnail() throws {
@@ -101,6 +99,79 @@ final class TargetImageManifestTests: XCTestCase {
         XCTAssertEqual(resolved.uiImage.size, resolved.displayUIImage.size)
         XCTAssertEqual(thumbnail.size.width, thumbnail.size.height)
         XCTAssertNotEqual(thumbnail.size, resolved.uiImage.size)
+    }
+
+    func testRemainingCatalogTargetsUseVerifiedRecognitionImages() throws {
+        let ids = ["ngc7293", "m51", "m64", "m81", "m82", "m16", "m20"]
+        let repository = TargetImageRepository()
+
+        for id in ids {
+            let record = try XCTUnwrap(TargetImageManifest.image(for: id), id)
+            XCTAssertTrue(record.isVerified, id)
+            XCTAssertTrue(record.hasCompleteMetadata, id)
+            XCTAssertTrue(record.requiresAttribution, id)
+            XCTAssertEqual(record.thumbnailAssetName, "target-\(id)-thumbnail", id)
+            XCTAssertNil(record.heroAssetName, id)
+            XCTAssertNotNil(repository.thumbnailImage(for: id), id)
+
+            let resolved = try XCTUnwrap(repository.heroImage(for: id), id)
+            XCTAssertEqual(resolved.record.assetName, "target-\(id)", id)
+            XCTAssertEqual(resolved.uiImage.size, resolved.displayUIImage.size, id)
+            XCTAssertNotEqual(resolved.uiImage.size, .zero, id)
+        }
+
+        XCTAssertEqual(TargetImageManifest.image(for: "ngc7293")?.sourcePageURL.absoluteString, "https://www.eso.org/public/images/eso0907a/")
+        XCTAssertEqual(TargetImageManifest.image(for: "m51")?.creditText, "NASA, ESA, S. Beckwith (STScI) and the Hubble Heritage Team (STScI/AURA)")
+        XCTAssertEqual(TargetImageManifest.image(for: "m64")?.licenseName, "NASA Media Usage Guidelines")
+        XCTAssertEqual(TargetImageManifest.image(for: "m81")?.sourceName, "NASA Science / Hubble")
+        XCTAssertEqual(TargetImageManifest.image(for: "m82")?.objectName, "Cigar Galaxy, M82, NGC 3034")
+        XCTAssertEqual(TargetImageManifest.image(for: "m16")?.sourcePageURL.absoluteString, "https://www.eso.org/public/images/eso0926a/")
+        XCTAssertEqual(TargetImageManifest.image(for: "m20")?.sourcePageURL.absoluteString, "https://www.eso.org/public/images/eso0930a/")
+    }
+
+    func testNewImageNoticesIncludeEverySourceAndCredit() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let notices = try String(contentsOf: repositoryRoot.appendingPathComponent("THIRD_PARTY_NOTICES.md"), encoding: .utf8)
+
+        for id in ["ngc7293", "m51", "m64", "m81", "m82", "m16", "m20"] {
+            let record = try XCTUnwrap(TargetImageManifest.image(for: id))
+            XCTAssertTrue(notices.contains("`\(id)`"), id)
+            XCTAssertTrue(notices.contains(record.creditText), id)
+        }
+    }
+
+    func testM30UsesVerifiedHubbleImageWithSeparateRecognitionThumbnail() throws {
+        let record = try XCTUnwrap(TargetImageManifest.image(for: "m30"))
+        XCTAssertTrue(record.isVerified)
+        XCTAssertTrue(record.hasCompleteMetadata)
+        XCTAssertTrue(record.requiresAttribution)
+        XCTAssertEqual(record.displayName, "M30 Globular Cluster")
+        XCTAssertEqual(record.objectName, "M30, Messier 30, NGC 7099")
+        XCTAssertEqual(record.sourceName, "NASA Science / Hubble Messier Catalog")
+        XCTAssertEqual(record.sourcePageURL.absoluteString, "https://science.nasa.gov/mission/hubble/science/explore-the-night-sky/hubble-messier-catalog/messier-30/")
+        XCTAssertEqual(record.creditText, "NASA/ESA")
+        XCTAssertEqual(record.licenseName, "NASA Media Usage Guidelines")
+        XCTAssertEqual(record.licenseURL.absoluteString, "https://www.nasa.gov/nasa-brand-center/images-and-media/")
+        XCTAssertEqual(record.assetName, "target-m30")
+        XCTAssertEqual(record.thumbnailAssetName, "target-m30-thumbnail")
+        XCTAssertNil(record.heroAssetName)
+
+        let repository = TargetImageRepository()
+        XCTAssertNotNil(repository.thumbnailImage(for: "m30"))
+        let resolved = try XCTUnwrap(repository.heroImage(for: "m30"))
+        XCTAssertEqual(resolved.record.assetName, "target-m30")
+        XCTAssertEqual(resolved.uiImage.size, resolved.displayUIImage.size)
+
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let notices = try String(contentsOf: repositoryRoot.appendingPathComponent("THIRD_PARTY_NOTICES.md"), encoding: .utf8)
+        XCTAssertTrue(notices.contains("`m30`"))
+        XCTAssertTrue(notices.contains("NASA/ESA"))
     }
 
     func testM101UsesVerifiedNOIRLabRecognitionImageAndSeparateThumbnail() throws {
