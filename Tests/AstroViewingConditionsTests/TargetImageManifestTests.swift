@@ -49,7 +49,7 @@ final class TargetImageManifestTests: XCTestCase {
     }
 
     func testCuratedTargetImagesHaveCompleteAuditableMetadata() {
-        XCTAssertEqual(TargetImageManifest.imagesByTargetID.count, 22)
+        XCTAssertEqual(TargetImageManifest.imagesByTargetID.count, 23)
         for (targetID, image) in TargetImageManifest.imagesByTargetID {
             XCTAssertEqual(image.targetID, targetID)
             XCTAssertTrue(image.isVerified, targetID)
@@ -64,7 +64,7 @@ final class TargetImageManifestTests: XCTestCase {
     }
 
     func testNewVerifiedTargetImagesHaveCompleteMetadataAndLocalAssets() throws {
-        for id in ["m45", "m42", "m5", "m3", "m33", "m101"] {
+        for id in ["m45", "m42", "m5", "m3", "m33", "m101", "double-cluster"] {
             let image = try XCTUnwrap(TargetImageManifest.image(for: id), id)
             XCTAssertTrue(image.isVerified, id)
             XCTAssertTrue(image.hasCompleteMetadata, id)
@@ -72,9 +72,35 @@ final class TargetImageManifestTests: XCTestCase {
         }
 
         XCTAssertEqual(TargetImageManifest.image(for: "m33")?.thumbnailAssetName, "target-m33-thumbnail")
-        XCTAssertNil(TargetImageManifest.image(for: "double-cluster"))
         XCTAssertNil(TargetImageManifest.image(for: "m16"))
         XCTAssertNil(TargetImageManifest.image(for: "m20"))
+    }
+
+    func testDoubleClusterUsesVerifiedESOWideFieldImageAndSeparateThumbnail() throws {
+        let record = try XCTUnwrap(TargetImageManifest.image(for: "double-cluster"))
+        XCTAssertTrue(record.isVerified)
+        XCTAssertTrue(record.hasCompleteMetadata)
+        XCTAssertTrue(record.requiresAttribution)
+        XCTAssertEqual(record.displayName, "NGC 869/884 Double Cluster")
+        XCTAssertEqual(record.objectName, "NGC 869, NGC 884, h and Chi Persei, Caldwell 14")
+        XCTAssertEqual(record.sourceName, "ESO")
+        XCTAssertEqual(record.sourcePageURL.absoluteString, "https://www.eso.org/public/images/b02/")
+        XCTAssertEqual(record.creditText, "ESO/S. Brunier")
+        XCTAssertEqual(record.licenseName, "CC BY 4.0")
+        XCTAssertEqual(record.licenseURL.absoluteString, "https://creativecommons.org/licenses/by/4.0/")
+        XCTAssertEqual(record.assetName, "target-double-cluster")
+        XCTAssertEqual(record.thumbnailAssetName, "target-double-cluster-thumbnail")
+        XCTAssertNil(record.heroAssetName)
+        XCTAssertEqual(record.attributionText, "Image: ESO/S. Brunier · CC BY 4.0")
+
+        let repository = TargetImageRepository()
+        let resolved = try XCTUnwrap(repository.heroImage(for: "double-cluster"))
+        XCTAssertNotNil(repository.thumbnailImage(for: "double-cluster"))
+        let thumbnail = try XCTUnwrap(UIImage(named: "target-double-cluster-thumbnail"))
+        XCTAssertEqual(resolved.record.assetName, "target-double-cluster")
+        XCTAssertEqual(resolved.uiImage.size, resolved.displayUIImage.size)
+        XCTAssertEqual(thumbnail.size.width, thumbnail.size.height)
+        XCTAssertNotEqual(thumbnail.size, resolved.uiImage.size)
     }
 
     func testM101UsesVerifiedNOIRLabRecognitionImageAndSeparateThumbnail() throws {
@@ -237,4 +263,3 @@ final class TargetImageManifestTests: XCTestCase {
     }
 
 }
-
