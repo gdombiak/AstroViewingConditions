@@ -97,11 +97,6 @@ struct CurrentConditionsCard: View {
         .dashboardCardStyle()
     }
     
-    // Cloud background: dark blue (clear) to whitish (cloudy)
-    private func cloudBackgroundColor(for percentage: Int) -> Color {
-        ConditionColorPalette.astronomyRiskBackground(for: percentage)
-    }
-    
     // Keep very high cloud cover visible against the shared card background in light mode.
     private func cloudIconColor(for percentage: Int) -> Color {
         if colorScheme == .light && percentage > 90 {
@@ -110,10 +105,6 @@ struct CurrentConditionsCard: View {
         return ConditionColorPalette.astronomyRiskBackground(for: percentage)
     }
 
-    private func cloudTextColor(for percentage: Int) -> Color {
-        ConditionColorPalette.astronomyRiskText(for: percentage)
-    }
-    
     // Fog background: same gradient as clouds
     private func fogBackgroundColor(for percentage: Int) -> Color {
         ConditionColorPalette.astronomyRiskBackground(for: percentage)
