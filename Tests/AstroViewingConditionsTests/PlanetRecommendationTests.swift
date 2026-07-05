@@ -147,7 +147,11 @@ final class PlanetRecommendationTests: XCTestCase {
 
         XCTAssertNotNil(recommendation)
         XCTAssertEqual(recommendation?.visibilityWindow.start, Self.date(hour: 18))
-        XCTAssertEqual(recommendation?.visibilityWindow.end, Self.date(hour: 19).addingTimeInterval(15 * 60))
+        XCTAssertEqual(
+            recommendation!.visibilityWindow.end.timeIntervalSince(Self.date(hour: 19)),
+            3_600 * (4 / 4.1),
+            accuracy: 0.001
+        )
         XCTAssertEqual(recommendation?.visibilityWindow.bestTime, Self.date(hour: 18))
     }
 
@@ -163,7 +167,7 @@ final class PlanetRecommendationTests: XCTestCase {
         )
 
         XCTAssertNotNil(recommendation)
-        XCTAssertEqual(recommendation?.visibilityWindow.start, Self.date(hour: 27))
+        XCTAssertEqual(recommendation?.visibilityWindow.start, Self.date(hour: 25).addingTimeInterval(30 * 60))
         XCTAssertEqual(recommendation?.visibilityWindow.end, Self.date(hour: 28).addingTimeInterval(15 * 60))
         XCTAssertEqual(recommendation?.visibilityWindow.bestTime, Self.date(hour: 28))
     }
@@ -209,8 +213,46 @@ final class PlanetRecommendationTests: XCTestCase {
         )
 
         XCTAssertEqual(recommendation?.visibilityWindow.start, Self.date(hour: 20))
-        XCTAssertEqual(recommendation?.visibilityWindow.end, Self.date(hour: 21).addingTimeInterval(15 * 60))
+        XCTAssertEqual(recommendation?.visibilityWindow.end, Self.date(hour: 21).addingTimeInterval(6 * 60))
         XCTAssertEqual(recommendation?.visibilityWindow.bestTime, Self.date(hour: 21))
+    }
+
+    func testVisibilityWindowInterpolatesStartBeforeFirstVisibleSample() {
+        let recommendation = recommendation(samples: [
+            PlanetPositionSample(time: Self.date(hour: 20), altitude: 6, azimuth: 120),
+            PlanetPositionSample(time: Self.date(hour: 20).addingTimeInterval(15 * 60), altitude: 10, azimuth: 125),
+            PlanetPositionSample(time: Self.date(hour: 20).addingTimeInterval(30 * 60), altitude: 12, azimuth: 130)
+        ])
+
+        XCTAssertEqual(
+            recommendation.visibilityWindow.start,
+            Self.date(hour: 20).addingTimeInterval(7.5 * 60)
+        )
+        XCTAssertLessThan(
+            recommendation.visibilityWindow.start,
+            Self.date(hour: 20).addingTimeInterval(15 * 60)
+        )
+    }
+
+    func testVisibilityWindowInterpolatesEndAfterLastVisibleSample() {
+        let recommendation = recommendation(samples: [
+            PlanetPositionSample(time: Self.date(hour: 20), altitude: 12, azimuth: 120),
+            PlanetPositionSample(time: Self.date(hour: 20).addingTimeInterval(15 * 60), altitude: 10, azimuth: 125),
+            PlanetPositionSample(time: Self.date(hour: 20).addingTimeInterval(30 * 60), altitude: 4, azimuth: 130)
+        ])
+
+        XCTAssertEqual(
+            recommendation.visibilityWindow.end,
+            Self.date(hour: 20).addingTimeInterval(20 * 60)
+        )
+        XCTAssertGreaterThan(
+            recommendation.visibilityWindow.end,
+            Self.date(hour: 20).addingTimeInterval(15 * 60)
+        )
+        XCTAssertLessThan(
+            recommendation.visibilityWindow.end,
+            Self.date(hour: 20).addingTimeInterval(30 * 60)
+        )
     }
 
     func testLowPrecisionProviderMapsSupportedPlanetTargetsAndReturnsHorizontalCoordinates() {
@@ -236,6 +278,18 @@ final class PlanetRecommendationTests: XCTestCase {
                 "\(target.name) samples should be topocentric horizontal coordinates with solar elongation"
             )
         }
+    }
+
+    func testLowPrecisionProviderUsesSchlyterDayNumberConvention() throws {
+        let provider = LowPrecisionPlanetAstronomyProvider(sampleInterval: 2 * 3600)
+        let observation = try XCTUnwrap(
+            provider.planetObservation(for: Self.jupiterTarget, context: Self.cupertinoJune2026Context())
+        )
+        let sample = try XCTUnwrap(observation.samples.first)
+
+        XCTAssertEqual(sample.time, Self.date(year: 2026, month: 6, day: 30, hour: 1, minute: 26))
+        XCTAssertEqual(sample.altitude, 39.532_328_397_078_97, accuracy: 0.001)
+        XCTAssertEqual(sample.azimuth, 266.782_421_342_379_17, accuracy: 0.001)
     }
 
     func testUnknownPlanetTargetDoesNotMapToConcreteProviderBody() {

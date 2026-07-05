@@ -85,9 +85,11 @@ public struct LowPrecisionPlanetAstronomyProvider: PlanetAstronomyProviding {
         longitude: Double
     ) -> PlanetPositionSample {
         let jd = Self.julianDate(from: date)
+        // These low-precision orbital elements use Schlyter's day-number convention:
+        // d = JD - 2451543.5 (rather than the J2000.0 epoch JD 2451545.0).
         let d = jd - 2_451_543.5
-        let sunGeocentric = PlanetOrbitalElements.elements(for: .earth, daysSinceJ2000: d).heliocentricCoordinates()
-        let planetCoordinates = PlanetOrbitalElements.elements(for: planet, daysSinceJ2000: d).heliocentricCoordinates()
+        let sunGeocentric = PlanetOrbitalElements.elements(for: .earth, schlyterDayNumber: d).heliocentricCoordinates()
+        let planetCoordinates = PlanetOrbitalElements.elements(for: planet, schlyterDayNumber: d).heliocentricCoordinates()
 
         let x = planetCoordinates.x + sunGeocentric.x
         let y = planetCoordinates.y + sunGeocentric.y
@@ -187,7 +189,11 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
             return nil
         }
 
-        let window = visibilityWindow(from: visibleSamples, bestSample: bestSample)
+        let window = visibilityWindow(
+            from: observation.samples,
+            visibleSamples: visibleSamples,
+            bestSample: bestSample
+        )
         let weatherQuality = weatherQuality(in: window, context: context)
         let darknessOverlap = overlapFraction(
             windowStart: window.start,
@@ -265,17 +271,55 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
     }
 
     private func visibilityWindow(
-        from visibleSamples: [PlanetPositionSample],
+        from samples: [PlanetPositionSample],
+        visibleSamples: [PlanetPositionSample],
         bestSample: PlanetPositionSample
     ) -> TargetVisibilityWindow {
-        TargetVisibilityWindow(
-            start: visibleSamples.first?.time ?? bestSample.time,
-            end: visibleSamples.last?.time.addingTimeInterval(15 * 60) ?? bestSample.time.addingTimeInterval(15 * 60),
+        let firstVisible = visibleSamples.first
+        let lastVisible = visibleSamples.last
+        let firstVisibleIndex = firstVisible.flatMap { sample in
+            samples.firstIndex(where: { $0.time == sample.time })
+        }
+        let lastVisibleIndex = lastVisible.flatMap { sample in
+            samples.lastIndex(where: { $0.time == sample.time })
+        }
+
+        let start: Date
+        if let firstVisible, let firstVisibleIndex, firstVisibleIndex > samples.startIndex {
+            start = thresholdCrossing(between: samples[firstVisibleIndex - 1], and: firstVisible)
+        } else {
+            start = firstVisible?.time ?? bestSample.time
+        }
+
+        let end: Date
+        if let lastVisible, let lastVisibleIndex, lastVisibleIndex < samples.index(before: samples.endIndex) {
+            end = thresholdCrossing(between: lastVisible, and: samples[lastVisibleIndex + 1])
+        } else {
+            end = lastVisible?.time.addingTimeInterval(15 * 60)
+                ?? bestSample.time.addingTimeInterval(15 * 60)
+        }
+
+        return TargetVisibilityWindow(
+            start: start,
+            end: end,
             bestTime: bestSample.time,
             maxAltitude: bestSample.altitude,
             direction: Self.userFacingCompassDirection(for: bestSample.azimuth),
             azimuth: bestSample.azimuth
         )
+    }
+
+    private func thresholdCrossing(
+        between first: PlanetPositionSample,
+        and second: PlanetPositionSample
+    ) -> Date {
+        let altitudeChange = second.altitude - first.altitude
+        guard abs(altitudeChange) > 0.0001 else { return first.time }
+        let fraction = min(
+            max((Self.minimumVisibleAltitude - first.altitude) / altitudeChange, 0),
+            1
+        )
+        return first.time.addingTimeInterval(second.time.timeIntervalSince(first.time) * fraction)
     }
 
     private func score(
@@ -512,7 +556,7 @@ private struct PlanetOrbitalElements {
     let eccentricity: Double
     let meanAnomaly: Double
 
-    static func elements(for planet: Planet, daysSinceJ2000 d: Double) -> PlanetOrbitalElements {
+    static func elements(for planet: Planet, schlyterDayNumber d: Double) -> PlanetOrbitalElements {
         switch planet {
         case .earth:
             return PlanetOrbitalElements(
