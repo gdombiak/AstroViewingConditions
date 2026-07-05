@@ -81,6 +81,16 @@ final class CuratedDeepSkyCatalogTests: XCTestCase {
         XCTAssertTrue(m31.notes.contains("suburban views may show mostly its bright core"))
     }
 
+    func testCatalogUsesIntegratedVisualMagnitudeAndCorrectedM20Center() throws {
+        let m20 = try XCTUnwrap(entriesByID["m20"])
+        XCTAssertEqual(m20.rightAscension, 18.0433, accuracy: 0.0001)
+        XCTAssertEqual(m20.declination, -23.0297, accuracy: 0.0001)
+        XCTAssertEqual(m20.magnitude, 6.3, "Keep the curated integrated/apparent visual convention")
+
+        let m64 = try XCTUnwrap(entriesByID["m64"])
+        XCTAssertEqual(m64.magnitude, 8.5, "M64's integrated visual magnitude must not be replaced by NASA's 9.8 value")
+    }
+
     private var entriesByID: [String: DeepSkyCatalogEntry] {
         Dictionary(uniqueKeysWithValues: CuratedDeepSkyCatalogProvider().entries().map { ($0.id, $0) })
     }

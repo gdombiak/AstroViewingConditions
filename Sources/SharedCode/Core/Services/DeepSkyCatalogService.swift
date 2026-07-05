@@ -8,9 +8,12 @@ public struct DeepSkyCatalogEntry: Identifiable, Sendable, Codable, Hashable {
     public let constellation: String
     public let rightAscension: Double
     public let declination: Double
+    /// Integrated visual magnitude when available; extended-object values are source-dependent.
     public let magnitude: Double
     public let apparentSize: String
+    /// Approximate visual surface brightness in magnitudes per square arcminute, when available.
     public let surfaceBrightness: Double?
+    /// App-specific observing difficulty heuristic on a 0...1 scale, not a catalog measurement.
     public let difficulty: Double
     public let observingIntent: TargetObservingIntent
     public let displayTypeNameOverride: String?
@@ -90,7 +93,7 @@ public struct CuratedDeepSkyCatalogProvider: DeepSkyCatalogProvider {
         entry("m5", "M5 Globular Cluster", "M5", .globularCluster, "Serpens", 15.3092, 2.0810, 5.7, "23 arcmin", 12.0, 0.5, .smallTelescope, .standard, "Good telescope target; higher magnification may resolve outer stars.", image: TargetImageManifest.image(for: "m5")),
         entry("m3", "M3 Globular Cluster", "M3", .globularCluster, "Canes Venatici", 13.7031, 28.3773, 6.2, "18 arcmin", 12.1, 0.5, .smallTelescope, .standard, "Bright spring and summer globular cluster for a telescope.", image: TargetImageManifest.image(for: "m3")),
         entry("m16", "M16 Eagle Nebula", "M16", .diffuseNebula, "Serpens", 18.3133, -13.8067, 6.0, "35 x 28 arcmin", 12.0, 0.6, .telescope, .standard, "The cluster and faint nebulosity may be visible; the Pillars of Creation are mainly an imaging target.", image: TargetImageManifest.image(for: "m16")),
-        entry("m20", "M20 Trifid Nebula", "M20", .diffuseNebula, "Sagittarius", 18.0347, -23.0297, 6.3, "28 arcmin", 12.4, 0.65, .telescope, .standard, "Look for faint gray nebulosity and possible dark lanes under good dark skies; do not expect photographic color.", image: TargetImageManifest.image(for: "m20")),
+        entry("m20", "M20 Trifid Nebula", "M20", .diffuseNebula, "Sagittarius", 18.0433, -23.0297, 6.3, "28 arcmin", 12.4, 0.65, .telescope, .standard, "Look for faint gray nebulosity and possible dark lanes under good dark skies; do not expect photographic color.", image: TargetImageManifest.image(for: "m20")),
         entry("m33", "M33 Triangulum Galaxy", "M33", .galaxy, "Triangulum", 1.5641, 30.6602, 5.7, "70 x 42 arcmin", 14.2, 0.8, .binoculars, .challenge, "Dark-sky challenge with low surface brightness; difficult from suburban skies.", image: TargetImageManifest.image(for: "m33")),
         entry("m101", "M101 Pinwheel Galaxy", "M101", .galaxy, "Ursa Major", 14.0535, 54.3488, 7.9, "29 x 27 arcmin", 14.8, 0.85, .telescope, .challenge, "Rewarding dark-sky challenge with low surface brightness; difficult from suburban skies.", image: TargetImageManifest.image(for: "m101"))
     ]
