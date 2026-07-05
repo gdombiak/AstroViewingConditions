@@ -100,6 +100,68 @@ final class WeatherServiceTests: XCTestCase {
         XCTAssertTrue(WeatherError.invalidResponse.localizedDescription.isEmpty == false)
         XCTAssertTrue(WeatherError.decodingError.localizedDescription.isEmpty == false)
     }
+
+    func testFetchForecastTimesOutWhenLoaderNeverReturns() async {
+        let service = WeatherService(forecastTimeout: 0.01) { _ in
+            await withUnsafeContinuation { (_: UnsafeContinuation<Void, Never>) in }
+            throw CancellationError()
+        }
+
+        do {
+            _ = try await service.fetchForecast(latitude: 45, longitude: -122, days: 1)
+            XCTFail("Expected timeout")
+        } catch let error as WeatherError {
+            guard case .timeout = error else { return XCTFail("Unexpected error: \(error)") }
+            XCTAssertEqual(error.localizedDescription, "Weather request timed out. Please try again.")
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testAsyncTimeoutReturnsWithoutWaitingForUncooperativeOperation() async {
+        let start = Date()
+        do {
+            let _: Void = try await AsyncTimeout.run(seconds: 0.01) {
+                await withUnsafeContinuation { (_: UnsafeContinuation<Void, Never>) in }
+            }
+            XCTFail("Expected timeout")
+        } catch is TimeoutError {
+            XCTAssertLessThan(Date().timeIntervalSince(start), 0.5)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testConditionsProviderKeepsWeatherWhenISSTimesOut() async throws {
+        let weatherData = try XCTUnwrap(mockOpenMeteoResponse.data(using: .utf8))
+        let weather = WeatherService { url in
+            let response = try XCTUnwrap(HTTPURLResponse(
+                url: url,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            ))
+            return (weatherData, response)
+        }
+        let provider = ConditionsProvider(
+            weatherService: weather,
+            issServiceFactory: { apiKey in
+                ISSService(apiKey: apiKey, timeout: 0.01) { _ in
+                    await withUnsafeContinuation { (_: UnsafeContinuation<Void, Never>) in }
+                    throw CancellationError()
+                }
+            }
+        )
+
+        let result = try await provider.fetchConditionsWithDiagnostics(
+            for: CachedLocation(name: "Test", latitude: 45, longitude: -122),
+            days: 1,
+            apiKey: "key"
+        )
+
+        XCTAssertEqual(result.conditions.hourlyForecasts.count, 2)
+        XCTAssertEqual(result.issError, .timeout)
+    }
     
     func testOpenMeteoResponseDecoding() throws {
         let data = mockOpenMeteoResponse.data(using: .utf8)!

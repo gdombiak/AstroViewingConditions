@@ -34,6 +34,7 @@ public enum LocationError: Error, LocalizedError {
 @MainActor
 public class LocationManager: NSObject {
     private let manager = CLLocationManager()
+    private var timeoutTask: Task<Void, Never>?
     
     public var authorizationStatus: CLAuthorizationStatus = .notDetermined
     public var currentLocation: CLLocation?
@@ -60,10 +61,22 @@ public class LocationManager: NSObject {
         return try await withCheckedThrowingContinuation { continuation in
             self.locationContinuation = continuation
             manager.requestLocation()
+            timeoutTask = Task { @MainActor [weak self] in
+                do { try await Task.sleep(for: .seconds(10)) } catch { return }
+                self?.finishLocationRequest(.failure(LocationError.timeout))
+            }
         }
     }
     
     private var locationContinuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
+
+    private func finishLocationRequest(_ result: Result<CLLocationCoordinate2D, Error>) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        guard let continuation = locationContinuation else { return }
+        locationContinuation = nil
+        continuation.resume(with: result)
+    }
     
     public func reverseGeocode(coordinate: CLLocationCoordinate2D) async throws -> CLPlacemark? {
         let geocoder = CLGeocoder()
@@ -102,10 +115,7 @@ extension LocationManager: CLLocationManagerDelegate {
         Task { @MainActor in
             self.currentLocation = location
             
-            if let continuation = self.locationContinuation {
-                self.locationContinuation = nil
-                continuation.resume(returning: location.coordinate)
-            }
+            self.finishLocationRequest(.success(location.coordinate))
         }
     }
     
@@ -113,10 +123,7 @@ extension LocationManager: CLLocationManagerDelegate {
         Task { @MainActor in
             self.locationError = error
             
-            if let continuation = self.locationContinuation {
-                self.locationContinuation = nil
-                continuation.resume(throwing: error)
-            }
+            self.finishLocationRequest(.failure(error))
         }
     }
 }

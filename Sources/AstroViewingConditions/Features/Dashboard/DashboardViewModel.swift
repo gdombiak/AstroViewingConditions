@@ -398,6 +398,7 @@ public class DashboardViewModel {
     private func loadConditions(for location: SavedLocation) async -> Bool {
         isLoading = true
         error = nil
+        defer { isLoading = false }
         
         do {
             let result = try await conditionsProvider.fetchConditionsWithDiagnostics(
@@ -414,12 +415,16 @@ public class DashboardViewModel {
             }
             viewingConditions = newConditions
             lastSuccessfulFetch = newConditions.fetchedAt
-            isLoading = false
             return true
             
         } catch {
-            self.error = error
-            isLoading = false
+            let weatherTimedOut: Bool
+            if case .timeout? = error as? WeatherError { weatherTimedOut = true } else { weatherTimedOut = false }
+            if viewingConditions != nil, error is TimeoutError || weatherTimedOut {
+                self.error = TimeoutError("Refresh timed out. Showing saved data.")
+            } else {
+                self.error = error
+            }
             return false
         }
     }

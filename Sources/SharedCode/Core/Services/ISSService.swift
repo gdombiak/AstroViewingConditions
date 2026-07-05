@@ -5,14 +5,24 @@ public actor ISSService {
     private let baseURL = "https://api.n2yo.com/rest/v1/satellite"
     private let issNoradId = 25544
     private let apiKey: String
+    private let timeout: TimeInterval
+    private let dataLoader: @Sendable (URL) async throws -> (Data, URLResponse)
     private static let apiKeyQueryValueAllowed: CharacterSet = {
         var allowed = CharacterSet.urlQueryAllowed
         allowed.remove(charactersIn: ":#[]@!$&'()*+,;=/?")
         return allowed
     }()
     
-    public init(apiKey: String) {
+    public init(
+        apiKey: String,
+        timeout: TimeInterval = 9,
+        dataLoader: @escaping @Sendable (URL) async throws -> (Data, URLResponse) = { url in
+            try await URLSession.shared.data(from: url)
+        }
+    ) {
         self.apiKey = apiKey
+        self.timeout = timeout
+        self.dataLoader = dataLoader
     }
     
     public static func visualPassesURL(
@@ -56,7 +66,9 @@ public actor ISSService {
             throw ISSError.invalidURL
         }
         
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await AsyncTimeout.run(seconds: timeout, error: ISSError.timeout) { [dataLoader] in
+            try await dataLoader(url)
+        }
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw ISSError.invalidResponse
@@ -110,6 +122,7 @@ public enum ISSError: Error, Sendable, Equatable, LocalizedError {
     case invalidURL
     case invalidResponse
     case apiError(statusCode: Int?, message: String?)
+    case timeout
 
     public var errorDescription: String? {
         switch self {
@@ -131,6 +144,8 @@ public enum ISSError: Error, Sendable, Equatable, LocalizedError {
                 return "The ISS service returned HTTP \(statusCode)."
             }
             return "ISS passes could not be loaded."
+        case .timeout:
+            return "ISS request timed out. Please try again."
         }
     }
 }

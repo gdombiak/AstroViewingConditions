@@ -7,7 +7,24 @@ public actor WeatherService {
     private let baseURL = "https://api.open-meteo.com/v1/forecast"
     private let geocodingURL = "https://geocoding-api.open-meteo.com/v1/search"
     
-    public init() {}
+    private let dataLoader: @Sendable (URL) async throws -> (Data, URLResponse)
+    private let forecastTimeout: TimeInterval
+    private let searchTimeout: TimeInterval
+    private let batchTimeout: TimeInterval
+
+    public init(
+        forecastTimeout: TimeInterval = 15,
+        searchTimeout: TimeInterval = 10,
+        batchTimeout: TimeInterval = 20,
+        dataLoader: @escaping @Sendable (URL) async throws -> (Data, URLResponse) = { url in
+            try await URLSession.shared.data(from: url)
+        }
+    ) {
+        self.forecastTimeout = forecastTimeout
+        self.searchTimeout = searchTimeout
+        self.batchTimeout = batchTimeout
+        self.dataLoader = dataLoader
+    }
     
     public func fetchForecast(
         latitude: Double,
@@ -42,7 +59,9 @@ public actor WeatherService {
             throw WeatherError.invalidURL
         }
         
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await weatherRequest(timeout: forecastTimeout) { [dataLoader] in
+            try await dataLoader(url)
+        }
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -70,7 +89,9 @@ public actor WeatherService {
             throw WeatherError.invalidURL
         }
         
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await weatherRequest(timeout: searchTimeout) { [dataLoader] in
+            try await dataLoader(url)
+        }
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -93,6 +114,18 @@ public actor WeatherService {
             return [:]
         }
         
+        return try await AsyncTimeout.run(
+            seconds: batchTimeout,
+            error: WeatherError.timeout
+        ) { [self] in
+            try await fetchForecastBatches(coordinates: coordinates, days: days)
+        }
+    }
+
+    private func fetchForecastBatches(
+        coordinates: [Coordinate],
+        days: Int
+    ) async throws -> [Coordinate: [HourlyForecast]] {
         // Open-Meteo API has a limit of ~50 locations per request
         let batchSize = 50
         var allResults: [Coordinate: [HourlyForecast]] = [:]
@@ -154,7 +187,7 @@ public actor WeatherService {
             throw WeatherError.invalidURL
         }
         
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await dataLoader(url)
         
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
@@ -215,14 +248,31 @@ public actor WeatherService {
         
         return forecasts
     }
+
+    private func weatherRequest<T: Sendable>(
+        timeout: TimeInterval,
+        operation: @escaping @Sendable () async throws -> T
+    ) async throws -> T {
+        try await AsyncTimeout.run(seconds: timeout, error: WeatherError.timeout, operation: operation)
+    }
 }
 
 // MARK: - Errors
 
-public enum WeatherError: Error {
+public enum WeatherError: Error, Sendable, LocalizedError {
     case invalidURL
     case invalidResponse
     case decodingError
+    case timeout
+
+    public var errorDescription: String? {
+        switch self {
+        case .timeout: return "Weather request timed out. Please try again."
+        case .invalidURL: return "The weather service URL could not be created."
+        case .invalidResponse: return "The weather service returned an invalid response."
+        case .decodingError: return "The weather response could not be read."
+        }
+    }
 }
 
 // MARK: - Open-Meteo Response Models

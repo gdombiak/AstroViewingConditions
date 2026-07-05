@@ -144,7 +144,12 @@ struct WatchDashboardView: View {
     }
 
     private var refreshErrorMessage: String? {
-        guard conditionsManager.error != nil else { return nil }
+        guard let error = conditionsManager.error else { return nil }
+        if let conditionsError = error as? ConditionsError, case .timeout = conditionsError {
+            return conditionsManager.conditions == nil
+                ? "Unable to load conditions."
+                : "Refresh timed out. Showing saved data."
+        }
         return conditionsManager.conditions == nil
             ? "Unable to load conditions."
             : "Refresh failed. Showing saved data."

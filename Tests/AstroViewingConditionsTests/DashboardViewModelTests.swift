@@ -6,6 +6,48 @@ import Foundation
 @MainActor
 final class DashboardViewModelTests: XCTestCase {
 
+    func testTimeoutStopsInitialLoadingAndShowsError() async {
+        let viewModel = makeTimeoutViewModel()
+        let location = SavedLocation(name: "Test", latitude: 45, longitude: -122)
+
+        let succeeded = await viewModel.refresh(for: location)
+
+        XCTAssertFalse(succeeded)
+        XCTAssertFalse(viewModel.isLoading)
+        XCTAssertNil(viewModel.viewingConditions)
+        XCTAssertEqual(viewModel.error?.localizedDescription, "Weather request timed out. Please try again.")
+    }
+
+    func testRefreshTimeoutKeepsExistingConditionsAndShowsSavedDataWarning() async {
+        let viewModel = makeTimeoutViewModel()
+        let location = SavedLocation(name: "Test", latitude: 45, longitude: -122)
+        let existing = ViewingConditions(
+            fetchedAt: Date(),
+            location: CachedLocation(from: location),
+            hourlyForecasts: [],
+            dailySunEvents: [],
+            dailyMoonInfo: [],
+            issPasses: [],
+            fogScore: FogScore(score: 0, factors: [])
+        )
+        viewModel.viewingConditions = existing
+
+        let succeeded = await viewModel.refresh(for: location)
+
+        XCTAssertFalse(succeeded)
+        XCTAssertFalse(viewModel.isLoading)
+        XCTAssertEqual(viewModel.viewingConditions?.fetchedAt, existing.fetchedAt)
+        XCTAssertEqual(viewModel.error?.localizedDescription, "Refresh timed out. Showing saved data.")
+    }
+
+    private func makeTimeoutViewModel() -> DashboardViewModel {
+        let weather = WeatherService(forecastTimeout: 0.01) { _ in
+            await withUnsafeContinuation { (_: UnsafeContinuation<Void, Never>) in }
+            throw CancellationError()
+        }
+        return DashboardViewModel(conditionsProvider: ConditionsProvider(weatherService: weather))
+    }
+
     func testTargetSheetWidthOnlyExpandsForRegularSizeClass() {
         XCTAssertEqual(TargetSheetLayout.preferredWidth(for: .regular), 720)
         XCTAssertNil(TargetSheetLayout.preferredWidth(for: .compact))

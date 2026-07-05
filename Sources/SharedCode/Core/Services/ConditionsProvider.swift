@@ -3,13 +3,16 @@ import Foundation
 public actor ConditionsProvider {
     private let weatherService: WeatherService
     private let astronomyService: AstronomyService
+    private let issServiceFactory: @Sendable (String) -> ISSService
     
     public init(
         weatherService: WeatherService = WeatherService(),
-        astronomyService: AstronomyService = AstronomyService()
+        astronomyService: AstronomyService = AstronomyService(),
+        issServiceFactory: @escaping @Sendable (String) -> ISSService = { ISSService(apiKey: $0) }
     ) {
         self.weatherService = weatherService
         self.astronomyService = astronomyService
+        self.issServiceFactory = issServiceFactory
     }
     
     public func fetchConditions(
@@ -64,7 +67,7 @@ public actor ConditionsProvider {
         let issPasses: [ISSPass]
         let issError: ISSError?
         if let apiKey, !apiKey.isEmpty {
-            let issService = ISSService(apiKey: apiKey)
+            let issService = issServiceFactory(apiKey)
             do {
                 issPasses = try await issService.fetchPasses(
                     latitude: location.latitude,

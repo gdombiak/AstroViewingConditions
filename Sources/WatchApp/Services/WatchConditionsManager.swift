@@ -6,11 +6,13 @@ import WidgetKit
 enum ConditionsError: Error, LocalizedError {
     case noLocationSelected
     case fetchFailed(String)
+    case timeout
     
     var errorDescription: String? {
         switch self {
         case .noLocationSelected: return "No location selected"
         case .fetchFailed(let msg): return msg
+        case .timeout: return "Refresh timed out. Showing saved data."
         }
     }
 }
@@ -178,11 +180,13 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         } catch {
             print("WatchConditionsManager: Watch connectivity failed: \(error.localizedDescription), computing locally")
             let coordinate = try await locationManager.getCurrentCoordinate()
-            return try await computeConditionsLocally(
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude,
-                locationName: selectedLocation.name
-            )
+            return try await AsyncTimeout.run(seconds: 20, error: ConditionsError.timeout) { [self] in
+                try await computeConditionsLocally(
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude,
+                    locationName: selectedLocation.name
+                )
+            }
         }
     }
 
