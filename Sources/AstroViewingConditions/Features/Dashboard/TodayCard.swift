@@ -5,6 +5,8 @@ struct CurrentConditionsCard: View {
     let forecast: HourlyForecast?
     let unitConverter: AstroUnitConverter
     let timeZone: TimeZone?
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -100,11 +102,14 @@ struct CurrentConditionsCard: View {
         ConditionColorPalette.astronomyRiskBackground(for: percentage)
     }
     
-    // Cloud icon color: dark blue (clear) to whitish (cloudy)
+    // Keep very high cloud cover visible against the shared card background in light mode.
     private func cloudIconColor(for percentage: Int) -> Color {
-        ConditionColorPalette.astronomyRiskBackground(for: percentage)
+        if colorScheme == .light && percentage > 90 {
+            return Color(uiColor: .systemGray)
+        }
+        return ConditionColorPalette.astronomyRiskBackground(for: percentage)
     }
-    
+
     private func cloudTextColor(for percentage: Int) -> Color {
         ConditionColorPalette.astronomyRiskText(for: percentage)
     }
