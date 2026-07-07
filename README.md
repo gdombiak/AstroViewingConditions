@@ -4,6 +4,8 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 
 > New to this project? Check out [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) for architecture, implementation notes, and how to resume development.
 >
+> Planning the next release? See the canonical [Product Roadmap](FEATURES/FEATURE_ROADMAP.md).
+>
 > Using the app at the telescope? See the [Observer Guide](OBSERVER_GUIDE.md) for help interpreting conditions, Best Targets, observing windows, and ISS passes.
 
 ---

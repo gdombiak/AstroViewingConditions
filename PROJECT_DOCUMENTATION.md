@@ -285,6 +285,8 @@ Important services:
 
 ## 6. Remaining Work
 
+Product priority, next-release sequencing, and future feature direction are centralized in [FEATURES/FEATURE_ROADMAP.md](FEATURES/FEATURE_ROADMAP.md). This section keeps engineering follow-up notes only.
+
 ### Known Issues to Address
 1. **Concurrency Review**: Continue auditing Swift concurrency, `@unchecked Sendable`, and main-actor boundaries before release.
 2. **Map Picker Polish**: Validate map coordinate conversion and UX on current iOS simulator/device combinations.
@@ -292,15 +294,9 @@ Important services:
 4. **Watch Sync Edge Cases**: Test first launch, unreachable phone, stale cache, and selection changes from both devices.
 5. **Recommendation Validation**: Continue field-checking observing windows and guidance across seasons, latitudes, polar day/night, and obstructed horizons.
 
-### Nice-to-Have Features
-- [ ] Push notifications for optimal viewing conditions
-- [ ] Light pollution map integration
-- [ ] Dark sky places database
-- [ ] Aurora forecast integration
-- [ ] Satellite pass predictions other than ISS
-- [ ] Custom location notes/photos
-- [ ] Export/share conditions report
-- [ ] More widget sizes or richer Lock Screen surfaces
+### Product Roadmap
+- [ ] Maintain product priority in `FEATURES/FEATURE_ROADMAP.md`
+- [ ] Keep detailed feature plans, such as `FEATURES/SEEING_AND_TRANSPARENCY_PLAN.md`, aligned with the roadmap instead of creating separate priority lists
 
 ### Testing Needs
 - [x] Unit tests for key models and utilities
@@ -420,7 +416,7 @@ Implemented:
 - Shared storage and iPhone/watch sync
 - Core unit test coverage
 
-**Next Milestone**: Validate target recommendations in more seasons and latitudes, harden watch/widget edge cases, add UI coverage, and complete final App Store polish.
+**Next Milestone**: Follow the next-release sequence in [FEATURES/FEATURE_ROADMAP.md](FEATURES/FEATURE_ROADMAP.md), starting with Seeing & Transparency and Field Mode.
 
 ---
 
@@ -434,5 +430,5 @@ This is an open-source project. Contributions welcome.
 
 ---
 
-*Last Updated: May 27, 2026*
-*Document Version: 1.1*
+*Last Updated: July 7, 2026*
+*Document Version: 1.2*

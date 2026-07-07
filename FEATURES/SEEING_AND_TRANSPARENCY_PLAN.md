@@ -1,5 +1,7 @@
 # Seeing & Transparency Feature Plan
 
+> Technical implementation reference for the first item in the canonical product roadmap. Product priority and release sequencing live in `FEATURES/FEATURE_ROADMAP.md`.
+
 ## Overview
 
 Add atmospheric seeing and transparency factors to the night quality scoring algorithm. Currently the algorithm considers cloud cover, fog, moon, and wind — but misses two critical factors for telescope use: **seeing** (atmospheric stability) and **transparency** (how clearly light passes through the atmosphere).
