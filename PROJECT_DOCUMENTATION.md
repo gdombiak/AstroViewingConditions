@@ -39,7 +39,7 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
   - Weather-scores the full generated grid and preserves `allScoredLocations` for diagnostics and future weather-field views
   - Recommends only checked, suitable `topLocations`; unsuitable, water, unchecked, and weather-only estimates are not actionable destinations
   - The default map renders only the ranked recommended areas so map pins match the Top Areas list
-  - Suitability verification expands through ranked candidate bands but caps checks at 40 to avoid Apple reverse-geocoding throttling
+  - Suitability verification expands through ranked candidate bands but caps checks at 40, below the observed iOS/CoreLocation reverse-geocoding throttling threshold
   - If at least one suitable candidate is found before the cap, the app returns the available recommendations even when fewer than the requested count are available
 - **Best Targets**: Ranked Moon, planet, double-star, cluster, nebula, and galaxy recommendations for the selected location and forecast night
   - Scores combine visibility, altitude, astronomical darkness, weather, moonlight, and observing difficulty
@@ -204,7 +204,7 @@ Important services:
 ### Best Nearby Area Recommendation Safety
 - `BestSpotResult` keeps both `topLocations` and `allScoredLocations`; default UI uses `topLocations` for recommendation pins and keeps the full scored field available for diagnostics or a future heatmap/weather-field mode.
 - `LocationScore.canOpenInMaps` gates destination actions. UI selection and `BestSpotViewModel.openInMaps` both guard this so weather-only, unchecked, or unsuitable points are never presented as map destinations.
-- Candidate suitability checks expand through ranked weather candidates until enough recommendations are found, the ranked list is exhausted, or `BestSpotSearcher.maxSuitabilityCandidateChecks` is reached. The current cap is 40 checks, chosen to stay below Apple's short-window reverse-geocoding throttle.
+- Candidate suitability checks expand through ranked weather candidates until enough recommendations are found, the ranked list is exhausted, or `BestSpotSearcher.maxSuitabilityCandidateChecks` is reached. The current cap is 40 checks, chosen to stay below the observed iOS/CoreLocation reverse-geocoding throttling threshold and keep all-water/coastal searches responsive.
 - If no recommendable candidates are found before the cap, the search reports `noRecommendableLocations`. If some are found but fewer than requested, the available recommendations are returned.
 - The feature does not validate roads, parking, ownership, legal access, personal safety, elevation advantage, light pollution, or local horizon obstructions.
 

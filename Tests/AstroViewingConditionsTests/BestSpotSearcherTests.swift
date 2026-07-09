@@ -518,6 +518,7 @@ final class BestSpotSearcherTests: XCTestCase {
         }
 
         let callCount = await suitability.callCount
+        XCTAssertLessThanOrEqual(callCount, BestSpotSearcher.maxSuitabilityCandidateChecks)
         XCTAssertEqual(callCount, BestSpotSearcher.maxSuitabilityCandidateChecks)
         XCTAssertLessThan(callCount, expectedScoredCount)
     }

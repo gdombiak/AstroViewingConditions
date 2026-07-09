@@ -191,6 +191,9 @@ public actor LocationSuitabilityService: LocationSuitabilityProviding {
 public final class BestSpotSearcher: BestSpotSearching {
     public static let maxForecastDays = 16
     public static let minimumSuitabilityCandidateCount = 20
+    // Keep below the observed iOS/CoreLocation reverse-geocoding throttling threshold.
+    // Coastal searches can otherwise trigger many checks; 40 allows ranked expansion
+    // bands without the real-device slowdowns seen at higher caps.
     public static let maxSuitabilityCandidateChecks = 40
 
     private let weatherService: any WeatherForecastProviding
