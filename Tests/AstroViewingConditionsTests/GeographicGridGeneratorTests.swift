@@ -45,6 +45,79 @@ final class GeographicGridGeneratorTests: XCTestCase {
         XCTAssertEqual(centerPoint.distanceMiles, 0)
         XCTAssertEqual(centerPoint.bearing, 0)
     }
+
+    func testRequestedRadiusIsSampledWhenDivisibleBySpacing() {
+        let center = Coordinate(latitude: 40.7128, longitude: -74.0060)
+        let grid = GeographicGridGenerator.generateGrid(
+            around: center,
+            radiusMiles: 30,
+            spacingMiles: 5
+        )
+
+        XCTAssertTrue(grid.contains { abs($0.distanceMiles - 30) < 0.0001 })
+    }
+
+    func testRequestedRadiusIsSampledWhenNotDivisibleBySpacing() {
+        let center = Coordinate(latitude: 40.7128, longitude: -74.0060)
+        let grid = GeographicGridGenerator.generateGrid(
+            around: center,
+            radiusMiles: 30,
+            spacingMiles: 7
+        )
+
+        XCTAssertTrue(grid.contains { abs($0.distanceMiles - 30) < 0.0001 })
+    }
+
+    func testCenterPointIsAlwaysIncluded() throws {
+        let center = Coordinate(latitude: 40.7128, longitude: -74.0060)
+        let grid = GeographicGridGenerator.generateGrid(
+            around: center,
+            radiusMiles: 30,
+            spacingMiles: 7
+        )
+
+        let centerPoint = try XCTUnwrap(grid.first)
+        XCTAssertEqual(centerPoint.coordinate.latitude, center.latitude, accuracy: 0.0001)
+        XCTAssertEqual(centerPoint.coordinate.longitude, center.longitude, accuracy: 0.0001)
+        XCTAssertEqual(centerPoint.distanceMiles, 0)
+    }
+
+    func testGeneratedPointDoesNotExceedRequestedRadius() {
+        let center = Coordinate(latitude: 40.7128, longitude: -74.0060)
+        let radiusMiles: Double = 30
+        let grid = GeographicGridGenerator.generateGrid(
+            around: center,
+            radiusMiles: radiusMiles,
+            spacingMiles: 7
+        )
+
+        XCTAssertTrue(grid.allSatisfy { $0.distanceMiles <= radiusMiles + 0.0001 })
+    }
+
+    func testGridCoversInteriorAreas() {
+        let center = Coordinate(latitude: 40.7128, longitude: -74.0060)
+        let grid = GeographicGridGenerator.generateGrid(
+            around: center,
+            radiusMiles: 30,
+            spacingMiles: 10
+        )
+
+        XCTAssertTrue(grid.contains { $0.distanceMiles > 13 && $0.distanceMiles < 15 })
+    }
+
+    func testEstimatedPointCountMatchesGeneratedGrid() {
+        let center = Coordinate(latitude: 40.7128, longitude: -74.0060)
+        let generatedCount = GeographicGridGenerator.generateGrid(
+            around: center,
+            radiusMiles: 30,
+            spacingMiles: 7
+        ).count
+
+        XCTAssertEqual(
+            GeographicGridGenerator.estimatedPointCount(radiusMiles: 30, spacingMiles: 7),
+            generatedCount
+        )
+    }
     
     func testGenerateGridReturnsEmptyForInvalidParameters() {
         let center = Coordinate(latitude: 40.7128, longitude: -74.0060)

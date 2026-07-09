@@ -258,7 +258,7 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
     public let secondHalfScore: Double?
     
     public var calculatedScore: Int {
-        BestSpotSearcher.calculateScore(self, elevation: nil)
+        BestSpotSearcher.calculateScore(self)
     }
     
     public init(

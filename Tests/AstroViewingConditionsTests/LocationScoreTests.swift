@@ -62,6 +62,149 @@ final class LocationScoreTests: XCTestCase {
         XCTAssertEqual(locationScore.summary, "Mostly clear with light winds")
         XCTAssertEqual(locationScore.fogScore.score, 20)
     }
+
+    func testOnlyRecommendableLocationScoresCanOpenInMaps() {
+        let point = createGridPoint(distance: 10.5, bearing: 45)
+
+        let suitable = LocationScore(
+            point: point,
+            score: 75,
+            nightQuality: createNightQuality(),
+            fogScore: createFogScore(score: 20),
+            avgCloudCover: 15.5,
+            avgWindSpeed: 8.2,
+            suitability: .suitable,
+            summary: "Mostly clear with light winds"
+        )
+        let unchecked = suitable.with(suitability: .unchecked)
+        let unsuitable = suitable.with(suitability: .unsuitable(reason: "Water area"))
+
+        XCTAssertTrue(suitable.canOpenInMaps)
+        XCTAssertFalse(unchecked.canOpenInMaps)
+        XCTAssertFalse(unsuitable.canOpenInMaps)
+        XCTAssertEqual(unchecked.suitability.label, "Weather-only estimate. Access not checked.")
+    }
+
+    func testDefaultBestSpotMapAnnotationsUseTopLocationsOnly() {
+        let first = LocationScore(
+            point: createGridPoint(distance: 4, bearing: 90),
+            score: 88,
+            nightQuality: createNightQuality(),
+            fogScore: createFogScore(score: 5),
+            avgCloudCover: 4,
+            avgWindSpeed: 3,
+            suitability: .suitable,
+            summary: "Clear"
+        )
+        let second = LocationScore(
+            point: createGridPoint(distance: 6, bearing: 135),
+            score: 82,
+            nightQuality: createNightQuality(),
+            fogScore: createFogScore(score: 8),
+            avgCloudCover: 6,
+            avgWindSpeed: 4,
+            suitability: .suitable,
+            summary: "Clear"
+        )
+        let background = LocationScore(
+            point: createGridPoint(distance: 8, bearing: 180),
+            score: 78,
+            nightQuality: createNightQuality(),
+            fogScore: createFogScore(score: 10),
+            avgCloudCover: 8,
+            avgWindSpeed: 4,
+            suitability: .suitable,
+            summary: "Mostly clear"
+        )
+
+        let items = BestSpotMapView.annotationItems(
+            scoredLocations: [first, second, background],
+            topLocations: [first, second]
+        )
+
+        XCTAssertEqual(items.map(\.location), [first, second])
+        XCTAssertEqual(items.map(\.role), [.recommendation(rank: 1), .recommendation(rank: 2)])
+    }
+
+    func testWeatherFieldMapModeCanStillClassifyBackgroundContext() {
+        let top = LocationScore(
+            point: createGridPoint(distance: 4, bearing: 90),
+            score: 88,
+            nightQuality: createNightQuality(),
+            fogScore: createFogScore(score: 5),
+            avgCloudCover: 4,
+            avgWindSpeed: 3,
+            suitability: .suitable,
+            summary: "Clear"
+        )
+        let background = LocationScore(
+            point: createGridPoint(distance: 8, bearing: 180),
+            score: 78,
+            nightQuality: createNightQuality(),
+            fogScore: createFogScore(score: 10),
+            avgCloudCover: 8,
+            avgWindSpeed: 4,
+            suitability: .suitable,
+            summary: "Mostly clear"
+        )
+
+        XCTAssertEqual(
+            BestSpotMapView.markerRole(for: top, topLocations: [top]),
+            .recommendation(rank: 1)
+        )
+        XCTAssertEqual(
+            BestSpotMapView.markerRole(for: background, topLocations: [top]),
+            .context
+        )
+
+        let items = BestSpotMapView.annotationItems(
+            scoredLocations: [top, background],
+            topLocations: [top],
+            mode: .weatherField
+        )
+        XCTAssertEqual(items.map(\.role), [.recommendation(rank: 1), .context])
+    }
+
+    func testDefaultBestSpotMapExcludesUncheckedBackgroundLocations() {
+        let recommended = LocationScore(
+            point: createGridPoint(distance: 4, bearing: 90),
+            score: 88,
+            nightQuality: createNightQuality(),
+            fogScore: createFogScore(score: 5),
+            avgCloudCover: 4,
+            avgWindSpeed: 3,
+            suitability: .suitable,
+            summary: "Clear"
+        )
+        let uncheckedBackground = recommended.with(suitability: .unchecked)
+
+        let items = BestSpotMapView.annotationItems(
+            scoredLocations: [recommended, uncheckedBackground],
+            topLocations: [recommended]
+        )
+
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items.first?.location, recommended)
+        XCTAssertFalse(items.contains { $0.location.suitability == .unchecked })
+    }
+
+    func testSelectedBackgroundMapPointDoesNotExposeDestinationAction() {
+        let background = LocationScore(
+            point: createGridPoint(distance: 8, bearing: 180),
+            score: 78,
+            nightQuality: createNightQuality(),
+            fogScore: createFogScore(score: 10),
+            avgCloudCover: 8,
+            avgWindSpeed: 4,
+            suitability: .suitable,
+            summary: "Mostly clear"
+        )
+        let uncheckedRecommendation = background.with(suitability: .unchecked)
+
+        XCTAssertFalse(BestSpotSelectedMapLocationView.canOpenInMaps(location: background, rank: nil))
+        XCTAssertFalse(BestSpotSelectedMapLocationView.canOpenInMaps(location: uncheckedRecommendation, rank: 1))
+        XCTAssertTrue(BestSpotSelectedMapLocationView.canOpenInMaps(location: background, rank: 1))
+    }
     
     func testLocationScoreIdIsUnique() {
         let point = createGridPoint(distance: 10, bearing: 0)

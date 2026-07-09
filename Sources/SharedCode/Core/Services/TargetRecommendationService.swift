@@ -24,7 +24,7 @@ public struct TargetRecommendationContext: Sendable {
 
 extension TargetRecommendationContext {
     var hasPoorTargetRecommendationConditions: Bool {
-        BestSpotSearcher.calculateScore(nightQuality, elevation: location.elevation) < 30
+        BestSpotSearcher.calculateScore(nightQuality) < 30
             || nightQuality.details.cloudCoverScore >= 80
     }
 

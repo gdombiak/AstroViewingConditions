@@ -7,7 +7,7 @@ import CoreLocation
 @Observable
 public class BestSpotViewModel {
     // Services
-    private let searcher: BestSpotSearcher
+    private let searcher: any BestSpotSearching
     private var searchTask: Task<Void, Never>?
     private var activeSearchID: UUID?
     
@@ -27,8 +27,12 @@ public class BestSpotViewModel {
         BestSpotSettings.gridSpacing
     }
     
-    public init(fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate) {
-        self.searcher = BestSpotSearcher(fogScoreCalculator: fogScoreCalculator)
+    public convenience init(fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate) {
+        self.init(searcher: BestSpotSearcher(fogScoreCalculator: fogScoreCalculator))
+    }
+
+    public init(searcher: any BestSpotSearching) {
+        self.searcher = searcher
     }
 
     public func startSearch(
@@ -104,13 +108,15 @@ public class BestSpotViewModel {
         searchProgress = 0
     }
     
-    /// Opens a location in Apple Maps for navigation
+    /// Opens a candidate area in Apple Maps.
     public func openInMaps(location: LocationScore, centerName: String) {
+        guard location.canOpenInMaps else { return }
+
         let coordinate = location.point.coordinate
         let placemark = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
         
         let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: placemark.coordinate))
-        mapItem.name = "Best Spot (\(location.score)/100) - \(location.fullLocationString) from \(centerName)"
+        mapItem.name = "Best Nearby Area (\(location.score)/100) - \(location.fullLocationString) from \(centerName)"
         
         let launchOptions = [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving]
         mapItem.openInMaps(launchOptions: launchOptions)

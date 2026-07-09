@@ -44,11 +44,9 @@ struct BestSpotResultCard: View {
                             .font(.subheadline)
                             .fontWeight(.medium)
                         
-                        if let elevation = locationScore.point.elevation {
-                            Text("\(Int(elevation)) ft elevation")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+                        Text(locationScore.suitability.label)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 
@@ -76,11 +74,19 @@ struct BestSpotResultCard: View {
                     
                     ConditionPill(
                         icon: "eye.fill",
-                        label: "Fog",
+                        label: "Avg Fog",
                         value: "\(locationScore.fogScore.score)",
                         color: locationScore.nightQuality.fogColor(locationScore.fogScore.score)
                     )
                 }
+
+                HStack(spacing: 8) {
+                    Text(locationScore.improvementSummary)
+                    Spacer()
+                    Text(locationScore.moonImpactSummary)
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             }
             .padding()
             .background(cardBackgroundColor)

@@ -4,7 +4,12 @@ import SunCalc
 
 private let astronomyLogger = Logger(subsystem: "com.astroviewing.conditions", category: "AstronomyService")
 
-public actor AstronomyService {
+public protocol AstronomyProviding: Sendable {
+    func calculateSunEvents(latitude: Double, longitude: Double, on date: Date) async -> SunEvents
+    func calculateMoonInfo(latitude: Double, longitude: Double, on date: Date) async -> MoonInfo
+}
+
+public actor AstronomyService: AstronomyProviding {
     public init() {}
     
     public func calculateSunEvents(

@@ -3,7 +3,14 @@ import os
 
 private let weatherLogger = Logger(subsystem: "com.astroviewing.conditions", category: "WeatherService")
 
-public actor WeatherService {
+public protocol WeatherForecastProviding: Sendable {
+    func fetchForecastForMultipleLocations(
+        coordinates: [Coordinate],
+        days: Int
+    ) async throws -> [Coordinate: [HourlyForecast]]
+}
+
+public actor WeatherService: WeatherForecastProviding {
     private let baseURL = "https://api.open-meteo.com/v1/forecast"
     private let geocodingURL = "https://geocoding-api.open-meteo.com/v1/search"
     

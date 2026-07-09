@@ -46,7 +46,7 @@ struct BestSpotView: View {
                     initialView
                 }
             }
-            .navigationTitle("Find Best Spot")
+            .navigationTitle("Find Best Nearby Area")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -176,33 +176,56 @@ struct BestSpotView: View {
                 // Map
                 BestSpotMapView(
                     centerLocation: centerLocation,
-                    scoredLocations: result.scoredLocations,
+                    scoredLocations: result.allScoredLocations,
+                    topLocations: result.topLocations,
                     selectedLocation: $selectedLocation,
                     position: $mapPosition
                 )
                 .frame(height: 250)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                if let selectedLocation {
+                    BestSpotSelectedMapLocationView(
+                        location: selectedLocation,
+                        rank: result.rank(of: selectedLocation),
+                        centerName: centerLocation.name,
+                        openInMaps: {
+                            viewModel.openInMaps(location: selectedLocation, centerName: centerLocation.name)
+                        }
+                    )
+                    .padding(.horizontal)
+                }
                 
                 // Results list
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Top Locations")
-                        .font(.headline)
-                        .padding(.horizontal)
-                    
-                    ForEach(Array(result.scoredLocations.enumerated()), id: \.element.id) { index, location in
-                        BestSpotResultCard(
-                            locationScore: location,
-                            rank: index + 1,
-                            isSelected: selectedLocation?.id == location.id,
-                            onTap: {
-                                withAnimation {
-                                    selectedLocation = location
-                                    updateMapRegion(for: location)
+                if !result.topLocations.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Top Areas")
+                            .font(.headline)
+                            .padding(.horizontal)
+                        
+                        ForEach(Array(result.topLocations.enumerated()), id: \.element.id) { index, location in
+                            BestSpotResultCard(
+                                locationScore: location,
+                                rank: index + 1,
+                                isSelected: selectedLocation?.id == location.id,
+                                onTap: {
+                                    withAnimation {
+                                        selectedLocation = location
+                                        updateMapRegion(for: location)
+                                    }
                                 }
-                            }
-                        )
-                        .padding(.horizontal)
+                            )
+                            .padding(.horizontal)
+                        }
                     }
+                }
+
+                if let suitabilityWarning = result.suitabilityWarning {
+                    Text(suitabilityWarning)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .padding(.horizontal)
                 }
                 
                 // Moon info
@@ -228,7 +251,7 @@ struct BestSpotView: View {
                         .foregroundStyle(.yellow)
                     
                     VStack(alignment: .leading) {
-                        Text("Best Spot Found!")
+                        Text("Best Nearby Area Found")
                             .font(.headline)
                         Text("\(bestSpot.fullLocationString) from \(centerLocation.name)")
                             .font(.subheadline)
@@ -243,12 +266,17 @@ struct BestSpotView: View {
                         .foregroundStyle(scoreColor(bestSpot.score))
                 }
                 
-                Button("Navigate to Best Spot") {
-                    if let best = result.bestSpot {
-                        viewModel.openInMaps(location: best, centerName: centerLocation.name)
+                if bestSpot.canOpenInMaps {
+                    Button("Open Area in Maps") {
+                        viewModel.openInMaps(location: bestSpot, centerName: centerLocation.name)
                     }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
+
+                Text("This checks sky and weather conditions only. Verify access, safety, parking, local rules, and horizon obstructions before traveling.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
             }
         }
         .padding()
@@ -322,8 +350,26 @@ struct BestSpotView: View {
 struct BestSpotMapView: View {
     let centerLocation: SavedLocation
     let scoredLocations: [LocationScore]
+    let topLocations: [LocationScore]
+    let mode: BestSpotMapMode
     @Binding var selectedLocation: LocationScore?
     @Binding var position: MapCameraPosition
+
+    init(
+        centerLocation: SavedLocation,
+        scoredLocations: [LocationScore],
+        topLocations: [LocationScore],
+        mode: BestSpotMapMode = .recommendedOnly,
+        selectedLocation: Binding<LocationScore?>,
+        position: Binding<MapCameraPosition>
+    ) {
+        self.centerLocation = centerLocation
+        self.scoredLocations = scoredLocations
+        self.topLocations = topLocations
+        self.mode = mode
+        _selectedLocation = selectedLocation
+        _position = position
+    }
     
     var body: some View {
         Map(position: $position) {
@@ -335,13 +381,19 @@ struct BestSpotMapView: View {
             }
             
             // Grid point annotations
-            ForEach(scoredLocations) { location in
-                Annotation("\(location.score)", coordinate: coordinate(for: location)) {
-                    BestSpotMapAnnotation(
-                        score: location.score,
-                        rank: rank(of: location),
-                        isSelected: selectedLocation?.id == location.id
-                    )
+            ForEach(annotationItems) { item in
+                Annotation(annotationTitle(for: item.location), coordinate: coordinate(for: item.location)) {
+                    Button {
+                        selectedLocation = item.location
+                    } label: {
+                        BestSpotMapAnnotation(
+                            score: item.location.score,
+                            role: item.role,
+                            isSelected: selectedLocation?.id == item.location.id
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(accessibilityLabel(for: item))
                 }
             }
         }
@@ -362,47 +414,212 @@ struct BestSpotMapView: View {
         )
     }
     
-    private func rank(of location: LocationScore) -> Int {
-        scoredLocations.firstIndex { $0.id == location.id }.map { $0 + 1 } ?? 0
+    private func rank(of location: LocationScore) -> Int? {
+        topLocations.firstIndex { $0.id == location.id }.map { $0 + 1 }
+    }
+
+    private func annotationTitle(for _: LocationScore) -> String {
+        ""
+    }
+
+    private func accessibilityLabel(for item: BestSpotMapAnnotationItem) -> String {
+        if let rank = item.role.rank {
+            let location = item.location
+            return "Recommended area \(rank), score \(location.score)"
+        }
+
+        let location = item.location
+        return "Weather estimate, score \(location.score). \(location.suitability.label)"
+    }
+
+    private var annotationItems: [BestSpotMapAnnotationItem] {
+        Self.annotationItems(
+            scoredLocations: scoredLocations,
+            topLocations: topLocations,
+            mode: mode
+        )
+    }
+
+    static func annotationItems(
+        scoredLocations: [LocationScore],
+        topLocations: [LocationScore],
+        mode: BestSpotMapMode = .recommendedOnly
+    ) -> [BestSpotMapAnnotationItem] {
+        switch mode {
+        case .recommendedOnly:
+            return topLocations.enumerated().map { index, location in
+                BestSpotMapAnnotationItem(
+                    location: location,
+                    role: .recommendation(rank: index + 1)
+                )
+            }
+        case .weatherField:
+            return scoredLocations.map { location in
+                BestSpotMapAnnotationItem(
+                    location: location,
+                    role: markerRole(for: location, topLocations: topLocations)
+                )
+            }
+        }
+    }
+
+    static func markerRole(for location: LocationScore, topLocations: [LocationScore]) -> BestSpotMapMarkerRole {
+        topLocations.firstIndex(where: { $0.id == location.id })
+            .map { .recommendation(rank: $0 + 1) } ?? .context
+    }
+}
+
+enum BestSpotMapMode {
+    case recommendedOnly
+    case weatherField
+}
+
+struct BestSpotMapAnnotationItem: Identifiable, Equatable {
+    let location: LocationScore
+    let role: BestSpotMapMarkerRole
+
+    var id: LocationScore.ID {
+        location.id
+    }
+}
+
+enum BestSpotMapMarkerRole: Equatable {
+    case recommendation(rank: Int)
+    case context
+
+    var isRecommendation: Bool {
+        if case .recommendation = self { return true }
+        return false
+    }
+
+    var rank: Int? {
+        if case .recommendation(let rank) = self { return rank }
+        return nil
     }
 }
 
 struct BestSpotMapAnnotation: View {
     let score: Int
-    let rank: Int
+    let role: BestSpotMapMarkerRole
     let isSelected: Bool
-    
+
     var body: some View {
         ZStack {
             Circle()
                 .fill(backgroundColor)
-                .frame(width: isSelected ? 44 : 36, height: isSelected ? 44 : 36)
+                .frame(width: markerSize, height: markerSize)
                 .overlay(
                     Circle()
-                        .stroke(isSelected ? Color.blue : Color.white, lineWidth: isSelected ? 3 : 2)
+                        .stroke(borderColor, lineWidth: isSelected ? 3 : borderWidth)
                 )
             
-            if rank <= 3 {
+            if let rank = role.rank {
                 Text("\(rank)")
                     .font(.caption)
                     .fontWeight(.bold)
-                    .foregroundStyle(.white)
-            } else {
-                Text("\(score)")
-                    .font(.caption2)
-                    .fontWeight(.medium)
                     .foregroundStyle(.white)
             }
         }
     }
     
     private var backgroundColor: Color {
+        switch role {
+        case .context:
+            return scoreTint.opacity(isSelected ? 0.55 : 0.28)
+        case .recommendation:
+            return scoreTint
+        }
+    }
+
+    private var scoreTint: Color {
         switch score {
         case 80...100: return .green
         case 60..<80: return .blue
         case 40..<60: return .orange
         default: return .red
         }
+    }
+
+    private var markerSize: CGFloat {
+        switch role {
+        case .context:
+            return isSelected ? 14 : 9
+        case .recommendation:
+            return isSelected ? 44 : 36
+        }
+    }
+
+    private var borderColor: Color {
+        if isSelected { return .blue }
+        return role.isRecommendation ? Color.white : Color.clear
+    }
+
+    private var borderWidth: CGFloat {
+        role.isRecommendation ? 2 : 0
+    }
+}
+
+struct BestSpotSelectedMapLocationView: View {
+    let location: LocationScore
+    let rank: Int?
+    let centerName: String
+    let openInMaps: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: rank == nil ? "circle.grid.cross" : "mappin.circle.fill")
+                .foregroundStyle(rank == nil ? .secondary : location.color)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            if Self.canOpenInMaps(location: location, rank: rank) {
+                Button("Open Area in Maps", action: openInMaps)
+                    .font(.caption)
+                    .buttonStyle(.bordered)
+            }
+        }
+        .padding(10)
+        .background(cardBackgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var title: String {
+        if let rank {
+            return "Recommended area #\(rank) - \(location.score)/100"
+        }
+
+        return "Weather estimate - \(location.score)/100"
+    }
+
+    private var detail: String {
+        if rank == nil {
+            return location.suitability.label
+        }
+
+        return "\(location.fullLocationString) from \(centerName) - \(location.suitability.label)"
+    }
+
+    static func canOpenInMaps(location: LocationScore, rank: Int?) -> Bool {
+        location.canOpenInMaps && rank != nil
+    }
+
+    private var cardBackgroundColor: Color {
+        #if os(iOS)
+        return Color(uiColor: .systemGray6)
+        #else
+        return Color.gray.opacity(0.1)
+        #endif
     }
 }
 
@@ -463,7 +680,10 @@ struct BestSpotSettingsView: View {
                 }
                 
                 Section("Estimated Search Points") {
-                    let estimatedPoints = calculateEstimatedPoints()
+                    let estimatedPoints = GeographicGridGenerator.estimatedPointCount(
+                        radiusMiles: searchRadius,
+                        spacingMiles: gridSpacing
+                    )
                     HStack {
                         Text("Points to check")
                         Spacer()
@@ -488,17 +708,4 @@ struct BestSpotSettingsView: View {
         }
     }
     
-    private func calculateEstimatedPoints() -> Int {
-        let numRings = Int(ceil(searchRadius / gridSpacing))
-        var total = 1 // Center point
-        
-        for ring in 1...numRings {
-            let ringRadius = Double(ring) * gridSpacing
-            let circumference = 2 * .pi * ringRadius
-            let numPoints = max(6, Int(round(circumference / gridSpacing)))
-            total += numPoints
-        }
-        
-        return total
-    }
 }
