@@ -35,6 +35,12 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
 - **Weather Data**: Cloud cover, humidity, wind, temperature, visibility, dew point, and hourly forecasts via Open-Meteo
 - **Astronomical Data**: Sun/moon rise-set times, astronomical night timing, and moon phase via SunCalc
 - **Night Quality Analysis**: Observing assessment based on cloud cover, moonlight, fog, wind, and nighttime windows
+- **Best Nearby Area**: Ranked nearby observing-area recommendations based on sampled weather forecasts and candidate suitability checks
+  - Weather-scores the full generated grid and preserves `allScoredLocations` for diagnostics and future weather-field views
+  - Recommends only checked, suitable `topLocations`; unsuitable, water, unchecked, and weather-only estimates are not actionable destinations
+  - The default map renders only the ranked recommended areas so map pins match the Top Areas list
+  - Suitability verification expands through ranked candidate bands but caps checks at 40 to avoid Apple reverse-geocoding throttling
+  - If at least one suitable candidate is found before the cap, the app returns the available recommendations even when fewer than the requested count are available
 - **Best Targets**: Ranked Moon, planet, double-star, cluster, nebula, and galaxy recommendations for the selected location and forecast night
   - Scores combine visibility, altitude, astronomical darkness, weather, moonlight, and observing difficulty
   - Shows the observing window, direction, maximum altitude, and a concise recommendation rationale
@@ -164,6 +170,8 @@ Important services:
 - `MigrationHelper`: Migrates older widget/cache storage into the newer shared storage approach
 - `WidgetReloadService`: Requests widget timeline refreshes after relevant data changes
 - `TargetRecommendationService`: Scores and ranks the curated targets for a forecast night
+- `BestSpotSearcher`: Scores nearby areas, preserves all sampled scores, verifies ranked candidate suitability, and returns recommendable top locations
+- `LocationSuitabilityService`: Wraps Apple reverse geocoding for land/water/suitability checks with cached batch lookup support
 - `MoonRecommendationService` and `PlanetRecommendationService`: Calculate useful visibility windows for solar-system targets
 - `DeepSkyCatalogService`: Supplies the curated deep-sky catalog and observing metadata
 - `AsyncTimeout`: Bounds weather, geocoding, location, time-zone, and ISS requests so a failed service does not wait indefinitely
@@ -192,6 +200,13 @@ Important services:
 - Keeps the project simpler to run and maintain
 - Avoids server costs and backend account setup
 - Allows widgets and watchOS to use recent cached snapshots when the phone app is not active
+
+### Best Nearby Area Recommendation Safety
+- `BestSpotResult` keeps both `topLocations` and `allScoredLocations`; default UI uses `topLocations` for recommendation pins and keeps the full scored field available for diagnostics or a future heatmap/weather-field mode.
+- `LocationScore.canOpenInMaps` gates destination actions. UI selection and `BestSpotViewModel.openInMaps` both guard this so weather-only, unchecked, or unsuitable points are never presented as map destinations.
+- Candidate suitability checks expand through ranked weather candidates until enough recommendations are found, the ranked list is exhausted, or `BestSpotSearcher.maxSuitabilityCandidateChecks` is reached. The current cap is 40 checks, chosen to stay below Apple's short-window reverse-geocoding throttle.
+- If no recommendable candidates are found before the cap, the search reports `noRecommendableLocations`. If some are found but fewer than requested, the available recommendations are returned.
+- The feature does not validate roads, parking, ownership, legal access, personal safety, elevation advantage, light pollution, or local horizon obstructions.
 
 ### Why AGPL-3.0 License?
 - Prevents commercial apps from taking the code
@@ -382,6 +397,8 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 - `Sources/AstroViewingConditions/Features/Dashboard/DashboardViewModel.swift` - iOS dashboard state and loading flow
 - `Sources/AstroViewingConditions/Features/Dashboard/TonightsBestTargetsCard.swift` - Dashboard target recommendations
 - `Sources/AstroViewingConditions/Features/Dashboard/TargetDetailContentBuilder.swift` - Observer-facing target guidance
+- `Sources/AstroViewingConditions/Features/BestSpot/BestSpotView.swift` - Best Nearby Area UI, map annotations, and selected-area presentation
+- `Sources/AstroViewingConditions/Features/BestSpot/BestSpotViewModel.swift` - Best Nearby Area state, search flow, and guarded Maps actions
 - `Sources/AstroViewingConditions/Services/WatchConnectivityService.swift` - iPhone-side watch communication
 - `Sources/WatchApp/Features/Dashboard/WatchDashboardView.swift` - Main watchOS UI
 - `Sources/WatchApp/Services/WatchConnectivityManager.swift` - Watch-side communication
@@ -389,6 +406,8 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 - `Sources/SharedCode/Core/Services/CacheService.swift` - Shared condition cache
 - `Sources/SharedCode/Core/Services/LocationStorageService.swift` - Shared selected/saved location snapshots
 - `Sources/SharedCode/Core/Services/TargetRecommendationService.swift` - Deep-sky ranking and visibility windows
+- `Sources/SharedCode/Core/Services/BestSpotSearcher.swift` - Nearby-area weather scoring, suitability expansion, and recommendation selection
+- `Sources/SharedCode/Core/Services/LocationSuitabilityService.swift` - Reverse-geocoded suitability checks used by Best Nearby Area
 - `Sources/SharedCode/Core/Services/MoonRecommendationService.swift` - Moon visibility and recommendation logic
 - `Sources/SharedCode/Core/Services/PlanetRecommendationService.swift` - Local planet position and recommendation logic
 - `Sources/SharedCode/Core/Services/DeepSkyCatalogService.swift` - Curated target catalog
@@ -406,6 +425,7 @@ Implemented:
 - Astronomical calculations
 - ISS pass predictions
 - Night quality analysis
+- Best Nearby Area with checked ranked recommendations and a recommended-only default map
 - Best Targets with scores, observing windows, practical guidance, and offline reference images
 - Detailed ISS pass paths and error states
 - Renameable and reorderable saved locations
@@ -430,5 +450,5 @@ This is an open-source project. Contributions welcome.
 
 ---
 
-*Last Updated: July 7, 2026*
-*Document Version: 1.2*
+*Last Updated: July 9, 2026*
+*Document Version: 1.3*

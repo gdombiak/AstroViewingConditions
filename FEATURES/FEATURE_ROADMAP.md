@@ -22,7 +22,7 @@ The strategic path for the next product work is:
 - [x] Night-quality assessment using cloud cover, moonlight, fog risk, wind, and nighttime windows
 - [x] Sunset, sunrise, astronomical darkness, moonrise/moonset, lunar phase, and illumination
 - [x] Today, Tomorrow, and Day After anchored to the selected location's local date
-- [x] Best observing spot search
+- [x] Best observing spot search with ranked nearby recommendations, suitability checks, and a clean recommended-only default map
 - [x] Shared condition fetching and local-midnight cache expiration across the app and companion surfaces
 - [x] Timeouts and useful fallback behavior for weather, geocoding, location, time-zone, and ISS requests
 

@@ -16,6 +16,7 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Astronomical Information**: Sun and moon rise/set times, astronomical night timing, and moon phase
 - **Night Quality Analysis**: Clear, scan-friendly assessment of cloud cover, moonlight, wind, fog, and observing quality
 - **Best Targets**: Ranked recommendations for the Moon, visible planets, double stars, star clusters, nebulae, and galaxies based on the selected location and night, target altitude, darkness, weather, moonlight, and observing difficulty
+- **Best Nearby Area**: Weather-scores nearby grid points, checks candidate suitability before recommending destinations, and shows a clean ranked map of the best nearby observing areas
 - **Practical Observing Guidance**: See each target's best observing window, compass direction, altitude, suitability score, finding tips, recommended equipment, and observing notes
 - **Observing Difficulty**: Easy, standard, and challenge labels help set expectations; challenge targets may require darker skies, more aperture, or careful observing techniques
 - **Offline Target Images**: Reference images with source and license credits are bundled for many targets and require no network connection
@@ -35,6 +36,8 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **N2YO API**: Optional ISS pass predictions (free API key required)
 
 Best Targets uses a curated local target catalog and verified local image assets with source and license metadata. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled-image attribution.
+
+Best Nearby Area uses weather forecasts plus Apple reverse geocoding to avoid recommending obvious water or unsuitable unchecked points. It does not validate roads, parking, land ownership, legal access, personal safety, or local horizon obstructions, so observers should confirm access and conditions before traveling.
 
 Forecast dates and times are shown in the selected observing location's local time zone. Saved-location names and ordering are also shared with the paired Apple Watch.
 
