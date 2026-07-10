@@ -148,9 +148,10 @@ final class BestSpotSearcherTests: XCTestCase {
         private var resolvedCoordinates: [Coordinate] = []
         private var expansionLookupStarted = false
         private var expansionWaiters: [CheckedContinuation<Void, Never>] = []
-        private var expansionLookupRelease: CheckedContinuation<Void, Never>?
+        private var expansionLookupRelease: CheckedContinuation<Void, Error>?
 
-        func resolveSuitability(for coordinate: Coordinate) async -> LocationSuitabilityStatus {
+        func resolveSuitability(for coordinate: Coordinate) async throws -> LocationSuitabilityStatus {
+            try Task.checkCancellation()
             resolvedCoordinates.append(coordinate)
 
             if resolvedCoordinates.count <= BestSpotSearcher.suitabilityCandidateCount(topN: 5) {
@@ -162,7 +163,11 @@ final class BestSpotSearcherTests: XCTestCase {
                 let waiters = expansionWaiters
                 expansionWaiters.removeAll()
                 waiters.forEach { $0.resume() }
-                await withCheckedContinuation { expansionLookupRelease = $0 }
+                try await withTaskCancellationHandler {
+                    try await withCheckedThrowingContinuation { expansionLookupRelease = $0 }
+                } onCancel: {
+                    Task { await self.cancelExpansionLookup() }
+                }
             }
 
             return .suitable
@@ -173,8 +178,8 @@ final class BestSpotSearcherTests: XCTestCase {
             await withCheckedContinuation { expansionWaiters.append($0) }
         }
 
-        func releaseExpansionLookup() {
-            expansionLookupRelease?.resume()
+        private func cancelExpansionLookup() {
+            expansionLookupRelease?.resume(throwing: CancellationError())
             expansionLookupRelease = nil
         }
 
@@ -706,7 +711,7 @@ final class BestSpotSearcherTests: XCTestCase {
         let resolver = MockSuitabilityResolver { _ in .unknown(reason: .geocodingFailed) }
         let service = LocationSuitabilityService(resolver: resolver)
 
-        let status = await service.suitability(for: GridPoint(
+        let status = try await service.suitability(for: GridPoint(
             coordinate: Coordinate(latitude: 40.7128, longitude: -74.0060),
             distanceMiles: 0,
             bearing: 0,
@@ -721,7 +726,7 @@ final class BestSpotSearcherTests: XCTestCase {
         let resolver = MockSuitabilityResolver { _ in .unknown(reason: .temporarilyUnavailable) }
         let service = LocationSuitabilityService(resolver: resolver)
 
-        let status = await service.suitability(for: GridPoint(
+        let status = try await service.suitability(for: GridPoint(
             coordinate: Coordinate(latitude: 40.7128, longitude: -74.0060),
             distanceMiles: 0,
             bearing: 0,
@@ -751,8 +756,8 @@ final class BestSpotSearcherTests: XCTestCase {
             isCenter: true
         )
 
-        _ = await session.suitability(for: point)
-        _ = await session.suitability(for: point)
+        _ = try await session.suitability(for: point)
+        _ = try await session.suitability(for: point)
 
         let callCount = await resolver.callCount
         XCTAssertEqual(callCount, 1)
@@ -763,12 +768,12 @@ final class BestSpotSearcherTests: XCTestCase {
         let service = LocationSuitabilityService(resolver: resolver)
         let session = service.makeSearchSession()
 
-        _ = await session.suitability(for: GridPoint(
+        _ = try await session.suitability(for: GridPoint(
             coordinate: Coordinate(latitude: 40.71281, longitude: -74.00601),
             distanceMiles: 0,
             bearing: 0
         ))
-        _ = await session.suitability(for: GridPoint(
+        _ = try await session.suitability(for: GridPoint(
             coordinate: Coordinate(latitude: 40.71284, longitude: -74.00604),
             distanceMiles: 0,
             bearing: 0
@@ -788,8 +793,8 @@ final class BestSpotSearcherTests: XCTestCase {
             bearing: 0
         )
 
-        _ = await session.suitability(for: [cachedPoint])
-        let batchResults = await session.suitability(for: [
+        _ = try await session.suitability(for: [cachedPoint])
+        let batchResults = try await session.suitability(for: [
             cachedPoint,
             GridPoint(
                 coordinate: Coordinate(latitude: 40.7148, longitude: -74.0080),
@@ -813,9 +818,9 @@ final class BestSpotSearcherTests: XCTestCase {
         )
 
         let firstSearch = service.makeSearchSession()
-        _ = await firstSearch.suitability(for: point)
+        _ = try await firstSearch.suitability(for: point)
         let secondSearch = service.makeSearchSession()
-        _ = await secondSearch.suitability(for: point)
+        _ = try await secondSearch.suitability(for: point)
 
         let callCount = await resolver.callCount
         XCTAssertEqual(callCount, 2)
@@ -831,10 +836,10 @@ final class BestSpotSearcherTests: XCTestCase {
         )
 
         let firstSearch = service.makeSearchSession()
-        _ = await firstSearch.suitability(for: point)
-        _ = await firstSearch.suitability(for: point)
+        _ = try await firstSearch.suitability(for: point)
+        _ = try await firstSearch.suitability(for: point)
         let secondSearch = service.makeSearchSession()
-        _ = await secondSearch.suitability(for: point)
+        _ = try await secondSearch.suitability(for: point)
 
         let callCount = await resolver.callCount
         XCTAssertEqual(callCount, 2)
@@ -900,7 +905,6 @@ final class BestSpotSearcherTests: XCTestCase {
         // search session's cache before the expansion lookup reaches this gate.
         await resolver.waitForExpansionLookupToStart()
         cancelledSearch.cancel()
-        await resolver.releaseExpansionLookup()
 
         do {
             _ = try await cancelledSearch.value
@@ -910,6 +914,11 @@ final class BestSpotSearcherTests: XCTestCase {
         }
 
         let callsBeforeRetry = await resolver.callCount
+        XCTAssertGreaterThan(callsBeforeRetry, BestSpotSearcher.suitabilityCandidateCount(topN: 5))
+        XCTAssertLessThanOrEqual(
+            callsBeforeRetry,
+            BestSpotSearcher.suitabilityCandidateCount(topN: 5) + LocationSuitabilityService.defaultMaxConcurrentLookups
+        )
         let secondResult = try await searcher.findBestSpots(
             around: center,
             radiusMiles: 50,
@@ -943,7 +952,7 @@ final class BestSpotSearcherTests: XCTestCase {
             )
         ]
 
-        let results = await session.suitability(for: points)
+        let results = try await session.suitability(for: points)
 
         XCTAssertEqual(results.count, 2)
         let callCount = await resolver.callCount
@@ -959,7 +968,7 @@ final class BestSpotSearcherTests: XCTestCase {
         let service = LocationSuitabilityService(resolver: resolver)
         let session = service.makeSearchSession()
 
-        _ = await session.suitability(for: [
+        _ = try await session.suitability(for: [
             GridPoint(
                 coordinate: Coordinate(latitude: 40.7128, longitude: -74.0060),
                 distanceMiles: 0,
@@ -1351,8 +1360,9 @@ final class BestSpotSearcherTests: XCTestCase {
             spacingMiles: 5
         )
         
-        // With radius smaller than spacing, should only have center
-        XCTAssertEqual(grid.count, 1)
+        XCTAssertEqual(grid.count, 9)
+        XCTAssertTrue(grid.contains { $0.isCenter })
+        XCTAssertEqual(grid.filter { abs($0.distanceMiles - 3) < 0.0001 }.count, 8)
     }
     
     func testGridGenerationWithLargeRadius() {

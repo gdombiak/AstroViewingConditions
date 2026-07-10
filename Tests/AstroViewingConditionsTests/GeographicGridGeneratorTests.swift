@@ -7,7 +7,7 @@ final class GeographicGridGeneratorTests: XCTestCase {
     
     // MARK: - Grid Generation Tests
     
-    func testGenerateGridWithCenterOnly() {
+    func testGenerateGridWithRadiusSmallerThanSpacingIncludesCenterAndBoundary() {
         let center = Coordinate(latitude: 40.7128, longitude: -74.0060)
         let grid = GeographicGridGenerator.generateGrid(
             around: center,
@@ -15,11 +15,14 @@ final class GeographicGridGeneratorTests: XCTestCase {
             spacingMiles: 10
         )
         
-        XCTAssertEqual(grid.count, 1)
+        XCTAssertEqual(grid.count, 9)
         XCTAssertEqual(grid[0].coordinate.latitude, center.latitude)
         XCTAssertEqual(grid[0].coordinate.longitude, center.longitude)
         XCTAssertEqual(grid[0].distanceMiles, 0)
         XCTAssertEqual(grid[0].bearing, 0)
+        XCTAssertEqual(grid.filter { abs($0.distanceMiles - 5) < 0.0001 }.count, 8)
+        XCTAssertTrue(grid.allSatisfy { $0.distanceMiles <= 5.0001 })
+        XCTAssertEqual(Set(grid.map(\.coordinate)).count, grid.count)
     }
     
     func testGenerateGridWithMultipleRings() {

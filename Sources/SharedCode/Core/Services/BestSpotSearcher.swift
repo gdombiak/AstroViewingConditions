@@ -41,8 +41,8 @@ public protocol BestSpotSearching: Sendable {
 }
 
 public protocol LocationSuitabilityProviding: Sendable {
-    func suitability(for point: GridPoint) async -> LocationSuitabilityStatus
-    func suitability(for points: [GridPoint]) async -> [GridPoint: LocationSuitabilityStatus]
+    func suitability(for point: GridPoint) async throws -> LocationSuitabilityStatus
+    func suitability(for points: [GridPoint]) async throws -> [GridPoint: LocationSuitabilityStatus]
     func makeSearchSession() -> any LocationSuitabilityProviding
 }
 
@@ -54,13 +54,14 @@ public extension LocationSuitabilityProviding {
 }
 
 public protocol LocationSuitabilityResolving: Sendable {
-    func resolveSuitability(for coordinate: Coordinate) async -> LocationSuitabilityStatus
+    func resolveSuitability(for coordinate: Coordinate) async throws -> LocationSuitabilityStatus
 }
 
 public actor CoreLocationSuitabilityResolver: LocationSuitabilityResolving {
     public init() {}
 
-    public func resolveSuitability(for coordinate: Coordinate) async -> LocationSuitabilityStatus {
+    public func resolveSuitability(for coordinate: Coordinate) async throws -> LocationSuitabilityStatus {
+        try Task.checkCancellation()
         let geocoder = CLGeocoder()
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
 
@@ -80,6 +81,9 @@ public actor CoreLocationSuitabilityResolver: LocationSuitabilityResolving {
 
             return .unknown(reason: .notChecked)
         } catch {
+            if error is CancellationError || Task.isCancelled {
+                throw CancellationError()
+            }
             return Self.suitabilityStatus(for: error)
         }
     }
@@ -133,14 +137,14 @@ public final class LocationSuitabilityService: LocationSuitabilityProviding {
 
     /// Direct callers get an isolated one-call session. Searches should create one
     /// session and reuse it across their candidate bands.
-    public func suitability(for point: GridPoint) async -> LocationSuitabilityStatus {
+    public func suitability(for point: GridPoint) async throws -> LocationSuitabilityStatus {
         let session = makeSearchSession()
-        return await session.suitability(for: point)
+        return try await session.suitability(for: point)
     }
 
-    public func suitability(for points: [GridPoint]) async -> [GridPoint: LocationSuitabilityStatus] {
+    public func suitability(for points: [GridPoint]) async throws -> [GridPoint: LocationSuitabilityStatus] {
         let session = makeSearchSession()
-        return await session.suitability(for: points)
+        return try await session.suitability(for: points)
     }
 
     public static func cacheKey(for coordinate: Coordinate, precision: Double = defaultCoordinatePrecision) -> CacheKey {
@@ -168,18 +172,20 @@ private actor LocationSuitabilitySession: LocationSuitabilityProviding {
         self.maxConcurrentLookups = maxConcurrentLookups
     }
 
-    func suitability(for point: GridPoint) async -> LocationSuitabilityStatus {
+    func suitability(for point: GridPoint) async throws -> LocationSuitabilityStatus {
+        try Task.checkCancellation()
         let key = LocationSuitabilityService.cacheKey(for: point.coordinate, precision: coordinatePrecision)
         if let cached = cache[key] {
             return cached
         }
 
-        let status = await resolver.resolveSuitability(for: point.coordinate)
+        let status = try await resolver.resolveSuitability(for: point.coordinate)
         cache[key] = status
         return status
     }
 
-    func suitability(for points: [GridPoint]) async -> [GridPoint: LocationSuitabilityStatus] {
+    func suitability(for points: [GridPoint]) async throws -> [GridPoint: LocationSuitabilityStatus] {
+        try Task.checkCancellation()
         guard !points.isEmpty else { return [:] }
 
         var representativeByKey: [LocationSuitabilityService.CacheKey: GridPoint] = [:]
@@ -202,7 +208,7 @@ private actor LocationSuitabilitySession: LocationSuitabilityProviding {
             }
         }
 
-        let resolved = await resolveMissingSuitability(missing)
+        let resolved = try await resolveMissingSuitability(missing)
         for (key, status) in resolved {
             cache[key] = status
         }
@@ -217,10 +223,10 @@ private actor LocationSuitabilitySession: LocationSuitabilityProviding {
 
     private func resolveMissingSuitability(
         _ missing: [(key: LocationSuitabilityService.CacheKey, value: GridPoint)]
-    ) async -> [LocationSuitabilityService.CacheKey: LocationSuitabilityStatus] {
+    ) async throws -> [LocationSuitabilityService.CacheKey: LocationSuitabilityStatus] {
         guard !missing.isEmpty else { return [:] }
 
-        return await withTaskGroup(of: (LocationSuitabilityService.CacheKey, LocationSuitabilityStatus).self) { group in
+        return try await withThrowingTaskGroup(of: (LocationSuitabilityService.CacheKey, LocationSuitabilityStatus).self) { group in
             var nextIndex = 0
             var resolved: [LocationSuitabilityService.CacheKey: LocationSuitabilityStatus] = [:]
 
@@ -229,7 +235,8 @@ private actor LocationSuitabilitySession: LocationSuitabilityProviding {
                 let entry = missing[nextIndex]
                 nextIndex += 1
                 group.addTask { [resolver] in
-                    (entry.key, await resolver.resolveSuitability(for: entry.value.coordinate))
+                    try Task.checkCancellation()
+                    return (entry.key, try await resolver.resolveSuitability(for: entry.value.coordinate))
                 }
             }
 
@@ -237,7 +244,7 @@ private actor LocationSuitabilitySession: LocationSuitabilityProviding {
                 addNextTask()
             }
 
-            while let (key, status) = await group.next() {
+            while let (key, status) = try await group.next() {
                 resolved[key] = status
                 cache[key] = status
                 addNextTask()
@@ -438,7 +445,7 @@ public final class BestSpotSearcher: BestSpotSearching {
 
             guard !uncheckedBand.isEmpty else { continue }
 
-            let suitabilityByPoint = await suitabilitySession.suitability(for: uncheckedBand.map(\.point))
+            let suitabilityByPoint = try await suitabilitySession.suitability(for: uncheckedBand.map(\.point))
             try Task.checkCancellation()
             let checkedBand = uncheckedBand.map { location in
                 location.with(suitability: suitabilityByPoint[location.point] ?? .unknown(reason: .geocodingFailed))

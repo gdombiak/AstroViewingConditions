@@ -69,19 +69,19 @@ public struct GeographicGridGenerator {
         seenCoordinates.insert(center)
 
         let maxSteps = Int(floor(radiusMiles / spacingMiles))
-        guard maxSteps > 0 else { return points }
+        if maxSteps > 0 {
+            for northSouthStep in (-maxSteps)...maxSteps {
+                for eastWestStep in (-maxSteps)...maxSteps {
+                    guard northSouthStep != 0 || eastWestStep != 0 else { continue }
 
-        for northSouthStep in (-maxSteps)...maxSteps {
-            for eastWestStep in (-maxSteps)...maxSteps {
-                guard northSouthStep != 0 || eastWestStep != 0 else { continue }
+                    let northMiles = Double(northSouthStep) * spacingMiles
+                    let eastMiles = Double(eastWestStep) * spacingMiles
+                    let distance = hypot(northMiles, eastMiles)
+                    guard distance <= radiusMiles + 0.000_001 else { continue }
 
-                let northMiles = Double(northSouthStep) * spacingMiles
-                let eastMiles = Double(eastWestStep) * spacingMiles
-                let distance = hypot(northMiles, eastMiles)
-                guard distance <= radiusMiles + 0.000_001 else { continue }
-
-                let bearing = normalizedBearing(degrees: atan2(eastMiles, northMiles) * 180 / .pi)
-                appendPoint(distanceMiles: distance, bearing: bearing)
+                    let bearing = normalizedBearing(degrees: atan2(eastMiles, northMiles) * 180 / .pi)
+                    appendPoint(distanceMiles: distance, bearing: bearing)
+                }
             }
         }
 
