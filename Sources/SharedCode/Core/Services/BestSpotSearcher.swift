@@ -65,6 +65,11 @@ public actor CoreLocationSuitabilityResolver: LocationSuitabilityResolving {
         let geocoder = CLGeocoder()
         let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
 
+        // Do not capture CLGeocoder in a task cancellation handler.
+        // It is non-Sendable under Swift 6 strict concurrency.
+        // Structured cancellation stops queued work and propagates
+        // CancellationError; active geocoder requests unwind through
+        // Core Location's async API.
         do {
             let placemarks = try await geocoder.reverseGeocodeLocation(location)
             guard let placemark = placemarks.first else {

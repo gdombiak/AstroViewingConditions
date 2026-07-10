@@ -901,8 +901,6 @@ final class BestSpotSearcherTests: XCTestCase {
             )
         }
 
-        // The first all-unsuitable candidate band has completed and populated this
-        // search session's cache before the expansion lookup reaches this gate.
         await resolver.waitForExpansionLookupToStart()
         cancelledSearch.cancel()
 
