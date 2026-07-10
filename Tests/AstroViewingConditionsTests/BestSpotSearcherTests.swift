@@ -144,6 +144,45 @@ final class BestSpotSearcherTests: XCTestCase {
         }
     }
 
+    private actor CancellationGateSuitabilityResolver: LocationSuitabilityResolving {
+        private var resolvedCoordinates: [Coordinate] = []
+        private var expansionLookupStarted = false
+        private var expansionWaiters: [CheckedContinuation<Void, Never>] = []
+        private var expansionLookupRelease: CheckedContinuation<Void, Never>?
+
+        func resolveSuitability(for coordinate: Coordinate) async -> LocationSuitabilityStatus {
+            resolvedCoordinates.append(coordinate)
+
+            if resolvedCoordinates.count <= BestSpotSearcher.suitabilityCandidateCount(topN: 5) {
+                return .unsuitable(reason: "Water area")
+            }
+
+            if !expansionLookupStarted {
+                expansionLookupStarted = true
+                let waiters = expansionWaiters
+                expansionWaiters.removeAll()
+                waiters.forEach { $0.resume() }
+                await withCheckedContinuation { expansionLookupRelease = $0 }
+            }
+
+            return .suitable
+        }
+
+        func waitForExpansionLookupToStart() async {
+            guard !expansionLookupStarted else { return }
+            await withCheckedContinuation { expansionWaiters.append($0) }
+        }
+
+        func releaseExpansionLookup() {
+            expansionLookupRelease?.resume()
+            expansionLookupRelease = nil
+        }
+
+        var callCount: Int {
+            resolvedCoordinates.count
+        }
+    }
+
     private struct MockBestSpotSearching: BestSpotSearching {
         let error: Error
 
@@ -836,6 +875,55 @@ final class BestSpotSearcherTests: XCTestCase {
         XCTAssertEqual(secondResult.topLocations.count, 5)
         let callCount = await resolver.callCount
         XCTAssertEqual(callCount, BestSpotSearcher.maxSuitabilityCandidateChecks + BestSpotSearcher.suitabilityCandidateCount(topN: 5))
+    }
+
+    func testCancelledSearchDoesNotLeakSuitabilityCacheIntoNextSearch() async throws {
+        let date = currentSearchDate()
+        let resolver = CancellationGateSuitabilityResolver()
+        let searcher = searcher(
+            weather: MockWeatherProvider { _ in Self.nightForecasts(for: date, cloudCover: 5) },
+            suitability: LocationSuitabilityService(resolver: resolver)
+        )
+        let center = CachedLocation(from: createSavedLocation())
+
+        let cancelledSearch = Task {
+            try await searcher.findBestSpots(
+                around: center,
+                radiusMiles: 50,
+                spacingMiles: 5,
+                for: date,
+                topN: 5
+            )
+        }
+
+        // The first all-unsuitable candidate band has completed and populated this
+        // search session's cache before the expansion lookup reaches this gate.
+        await resolver.waitForExpansionLookupToStart()
+        cancelledSearch.cancel()
+        await resolver.releaseExpansionLookup()
+
+        do {
+            _ = try await cancelledSearch.value
+            XCTFail("Expected the cancelled search to throw")
+        } catch is CancellationError {
+            XCTAssertTrue(true)
+        }
+
+        let callsBeforeRetry = await resolver.callCount
+        let secondResult = try await searcher.findBestSpots(
+            around: center,
+            radiusMiles: 50,
+            spacingMiles: 5,
+            for: date,
+            topN: 5
+        )
+
+        XCTAssertEqual(secondResult.topLocations.count, 5)
+        let totalCallCount = await resolver.callCount
+        XCTAssertEqual(
+            totalCallCount,
+            callsBeforeRetry + BestSpotSearcher.suitabilityCandidateCount(topN: 5)
+        )
     }
 
     func testDuplicateRoundedCoordinatesInBatchTriggerOneResolverCall() async throws {

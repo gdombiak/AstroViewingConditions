@@ -152,9 +152,7 @@ public final class LocationSuitabilityService: LocationSuitabilityProviding {
 }
 
 /// Mutable suitability state owned by one Best Nearby Area search operation.
-/// BestSpotSearcher calls a session serially, so cache access stays single-owner
-/// without making the session itself an actor.
-private final class LocationSuitabilitySession: LocationSuitabilityProviding, @unchecked Sendable {
+private actor LocationSuitabilitySession: LocationSuitabilityProviding {
     private let resolver: any LocationSuitabilityResolving
     private let coordinatePrecision: Double
     private let maxConcurrentLookups: Int
@@ -241,6 +239,7 @@ private final class LocationSuitabilitySession: LocationSuitabilityProviding, @u
 
             while let (key, status) = await group.next() {
                 resolved[key] = status
+                cache[key] = status
                 addNextTask()
             }
 
@@ -440,6 +439,7 @@ public final class BestSpotSearcher: BestSpotSearching {
             guard !uncheckedBand.isEmpty else { continue }
 
             let suitabilityByPoint = await suitabilitySession.suitability(for: uncheckedBand.map(\.point))
+            try Task.checkCancellation()
             let checkedBand = uncheckedBand.map { location in
                 location.with(suitability: suitabilityByPoint[location.point] ?? .unknown(reason: .geocodingFailed))
             }
