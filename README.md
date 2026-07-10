@@ -37,7 +37,7 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 
 Best Targets uses a curated local target catalog and verified local image assets with source and license metadata. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled-image attribution.
 
-Best Nearby Area uses weather forecasts plus Apple reverse geocoding to avoid recommending obvious water or unsuitable unchecked points. It does not validate roads, parking, land ownership, legal access, personal safety, or local horizon obstructions, so observers should confirm access and conditions before traveling.
+Best Nearby Area uses weather forecasts plus Apple reverse geocoding to exclude known water, unsuitable, and unchecked candidates. Candidates whose suitability cannot be conclusively verified may still be recommended with a clear warning, so observers must confirm access and conditions before traveling. It does not validate roads, parking, land ownership, legal access, personal safety, or local horizon obstructions.
 
 Forecast dates and times are shown in the selected observing location's local time zone. Saved-location names and ordering are also shared with the paired Apple Watch.
 

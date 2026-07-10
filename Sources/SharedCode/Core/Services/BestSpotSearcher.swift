@@ -43,6 +43,14 @@ public protocol BestSpotSearching: Sendable {
 public protocol LocationSuitabilityProviding: Sendable {
     func suitability(for point: GridPoint) async -> LocationSuitabilityStatus
     func suitability(for points: [GridPoint]) async -> [GridPoint: LocationSuitabilityStatus]
+    func makeSearchSession() -> any LocationSuitabilityProviding
+}
+
+public extension LocationSuitabilityProviding {
+    /// Providers without mutable cache state can safely serve as their own session.
+    func makeSearchSession() -> any LocationSuitabilityProviding {
+        self
+    }
 }
 
 public protocol LocationSuitabilityResolving: Sendable {
@@ -90,7 +98,7 @@ public actor CoreLocationSuitabilityResolver: LocationSuitabilityResolving {
     }
 }
 
-public actor LocationSuitabilityService: LocationSuitabilityProviding {
+public final class LocationSuitabilityService: LocationSuitabilityProviding {
     public struct CacheKey: Sendable, Hashable {
         public let roundedLatitude: Double
         public let roundedLongitude: Double
@@ -103,7 +111,6 @@ public actor LocationSuitabilityService: LocationSuitabilityProviding {
     private let resolver: any LocationSuitabilityResolving
     private let coordinatePrecision: Double
     private let maxConcurrentLookups: Int
-    private var cache: [CacheKey: LocationSuitabilityStatus] = [:]
 
     public init(
         resolver: any LocationSuitabilityResolving = CoreLocationSuitabilityResolver(),
@@ -115,54 +122,116 @@ public actor LocationSuitabilityService: LocationSuitabilityProviding {
         self.maxConcurrentLookups = max(maxConcurrentLookups, 1)
     }
 
+    /// Creates the short-lived cache used by one Best Nearby Area search.
+    public func makeSearchSession() -> any LocationSuitabilityProviding {
+        LocationSuitabilitySession(
+            resolver: resolver,
+            coordinatePrecision: coordinatePrecision,
+            maxConcurrentLookups: maxConcurrentLookups
+        )
+    }
+
+    /// Direct callers get an isolated one-call session. Searches should create one
+    /// session and reuse it across their candidate bands.
     public func suitability(for point: GridPoint) async -> LocationSuitabilityStatus {
-        await suitability(for: [point])[point] ?? .unknown(reason: .geocodingFailed)
+        let session = makeSearchSession()
+        return await session.suitability(for: point)
     }
 
     public func suitability(for points: [GridPoint]) async -> [GridPoint: LocationSuitabilityStatus] {
+        let session = makeSearchSession()
+        return await session.suitability(for: points)
+    }
+
+    public static func cacheKey(for coordinate: Coordinate, precision: Double = defaultCoordinatePrecision) -> CacheKey {
+        CacheKey(
+            roundedLatitude: (coordinate.latitude / precision).rounded() * precision,
+            roundedLongitude: (coordinate.longitude / precision).rounded() * precision
+        )
+    }
+}
+
+/// Mutable suitability state owned by one Best Nearby Area search operation.
+/// BestSpotSearcher calls a session serially, so cache access stays single-owner
+/// without making the session itself an actor.
+private final class LocationSuitabilitySession: LocationSuitabilityProviding, @unchecked Sendable {
+    private let resolver: any LocationSuitabilityResolving
+    private let coordinatePrecision: Double
+    private let maxConcurrentLookups: Int
+    private var cache: [LocationSuitabilityService.CacheKey: LocationSuitabilityStatus] = [:]
+
+    init(
+        resolver: any LocationSuitabilityResolving,
+        coordinatePrecision: Double,
+        maxConcurrentLookups: Int
+    ) {
+        self.resolver = resolver
+        self.coordinatePrecision = coordinatePrecision
+        self.maxConcurrentLookups = maxConcurrentLookups
+    }
+
+    func suitability(for point: GridPoint) async -> LocationSuitabilityStatus {
+        let key = LocationSuitabilityService.cacheKey(for: point.coordinate, precision: coordinatePrecision)
+        if let cached = cache[key] {
+            return cached
+        }
+
+        let status = await resolver.resolveSuitability(for: point.coordinate)
+        cache[key] = status
+        return status
+    }
+
+    func suitability(for points: [GridPoint]) async -> [GridPoint: LocationSuitabilityStatus] {
         guard !points.isEmpty else { return [:] }
 
-        var results: [GridPoint: LocationSuitabilityStatus] = [:]
-        var representativeByKey: [CacheKey: GridPoint] = [:]
+        var representativeByKey: [LocationSuitabilityService.CacheKey: GridPoint] = [:]
 
         for point in points {
-            let key = Self.cacheKey(for: point.coordinate, precision: coordinatePrecision)
-            if let cached = cache[key] {
-                results[point] = cached
-            } else if representativeByKey[key] == nil {
+            let key = LocationSuitabilityService.cacheKey(for: point.coordinate, precision: coordinatePrecision)
+            if representativeByKey[key] == nil {
                 representativeByKey[key] = point
             }
         }
 
-        let missing = Array(representativeByKey)
-        let resolved = await resolveMissingSuitability(missing)
+        var results: [GridPoint: LocationSuitabilityStatus] = [:]
+        var missing: [(key: LocationSuitabilityService.CacheKey, value: GridPoint)] = []
 
+        for (key, representative) in representativeByKey {
+            if let cached = cache[key] {
+                results[representative] = cached
+            } else {
+                missing.append((key, representative))
+            }
+        }
+
+        let resolved = await resolveMissingSuitability(missing)
         for (key, status) in resolved {
             cache[key] = status
         }
 
-        for point in points where results[point] == nil {
-            let key = Self.cacheKey(for: point.coordinate, precision: coordinatePrecision)
-            results[point] = cache[key] ?? .unknown(reason: .geocodingFailed)
+        for point in points {
+            let key = LocationSuitabilityService.cacheKey(for: point.coordinate, precision: coordinatePrecision)
+            results[point] = results[point] ?? cache[key] ?? .unknown(reason: .geocodingFailed)
         }
 
         return results
     }
 
-    private func resolveMissingSuitability(_ missing: [(key: CacheKey, value: GridPoint)]) async -> [CacheKey: LocationSuitabilityStatus] {
+    private func resolveMissingSuitability(
+        _ missing: [(key: LocationSuitabilityService.CacheKey, value: GridPoint)]
+    ) async -> [LocationSuitabilityService.CacheKey: LocationSuitabilityStatus] {
         guard !missing.isEmpty else { return [:] }
 
-        return await withTaskGroup(of: (CacheKey, LocationSuitabilityStatus).self) { group in
+        return await withTaskGroup(of: (LocationSuitabilityService.CacheKey, LocationSuitabilityStatus).self) { group in
             var nextIndex = 0
-            var resolved: [CacheKey: LocationSuitabilityStatus] = [:]
+            var resolved: [LocationSuitabilityService.CacheKey: LocationSuitabilityStatus] = [:]
 
             func addNextTask() {
                 guard nextIndex < missing.count else { return }
                 let entry = missing[nextIndex]
                 nextIndex += 1
                 group.addTask { [resolver] in
-                    let status = await resolver.resolveSuitability(for: entry.value.coordinate)
-                    return (entry.key, status)
+                    (entry.key, await resolver.resolveSuitability(for: entry.value.coordinate))
                 }
             }
 
@@ -177,13 +246,6 @@ public actor LocationSuitabilityService: LocationSuitabilityProviding {
 
             return resolved
         }
-    }
-
-    public static func cacheKey(for coordinate: Coordinate, precision: Double = defaultCoordinatePrecision) -> CacheKey {
-        CacheKey(
-            roundedLatitude: (coordinate.latitude / precision).rounded() * precision,
-            roundedLongitude: (coordinate.longitude / precision).rounded() * precision
-        )
     }
 }
 
@@ -253,6 +315,10 @@ public final class BestSpotSearcher: BestSpotSearching {
     ) async throws -> BestSpotResult {
         let startTime = Date()
         try Task.checkCancellation()
+        // A search owns its suitability cache, including all expansion bands.
+        // Letting this local session go releases cached state on success, failure,
+        // or cancellation.
+        let suitabilitySession = suitabilityService.makeSearchSession()
         
         // Generate grid points
         progressHandler?(0.1)
@@ -373,7 +439,7 @@ public final class BestSpotSearcher: BestSpotSearching {
 
             guard !uncheckedBand.isEmpty else { continue }
 
-            let suitabilityByPoint = await suitabilityService.suitability(for: uncheckedBand.map(\.point))
+            let suitabilityByPoint = await suitabilitySession.suitability(for: uncheckedBand.map(\.point))
             let checkedBand = uncheckedBand.map { location in
                 location.with(suitability: suitabilityByPoint[location.point] ?? .unknown(reason: .geocodingFailed))
             }

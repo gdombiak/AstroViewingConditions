@@ -130,25 +130,17 @@ final class BestSpotSearcherTests: XCTestCase {
         }
     }
 
-    private actor TrackingSuitabilityResolver: LocationSuitabilityResolving {
-        private let status: LocationSuitabilityStatus
-        private let delayNanoseconds: UInt64
-        private var activeCount = 0
-        private(set) var maxActiveCount = 0
+    private actor SearchScopedResolver: LocationSuitabilityResolving {
+        private let unsuitableCallCount: Int
         private(set) var callCount = 0
 
-        init(status: LocationSuitabilityStatus, delayNanoseconds: UInt64 = 5_000_000) {
-            self.status = status
-            self.delayNanoseconds = delayNanoseconds
+        init(unsuitableCallCount: Int) {
+            self.unsuitableCallCount = unsuitableCallCount
         }
 
         func resolveSuitability(for coordinate: Coordinate) async -> LocationSuitabilityStatus {
-            activeCount += 1
             callCount += 1
-            maxActiveCount = max(maxActiveCount, activeCount)
-            try? await Task.sleep(nanoseconds: delayNanoseconds)
-            activeCount -= 1
-            return status
+            return callCount <= unsuitableCallCount ? .unsuitable(reason: "Water area") : .suitable
         }
     }
 
@@ -709,9 +701,10 @@ final class BestSpotSearcherTests: XCTestCase {
         XCTAssertEqual(status, .unknown(reason: .temporarilyUnavailable))
     }
 
-    func testRepeatedCoordinatesUseCachedSuitability() async throws {
+    func testRepeatedCoordinatesUseOneSearchSessionCache() async throws {
         let resolver = MockSuitabilityResolver { _ in .suitable }
         let service = LocationSuitabilityService(resolver: resolver)
+        let session = service.makeSearchSession()
         let point = GridPoint(
             coordinate: Coordinate(latitude: 40.7128, longitude: -74.0060),
             distanceMiles: 0,
@@ -719,23 +712,24 @@ final class BestSpotSearcherTests: XCTestCase {
             isCenter: true
         )
 
-        _ = await service.suitability(for: point)
-        _ = await service.suitability(for: point)
+        _ = await session.suitability(for: point)
+        _ = await session.suitability(for: point)
 
         let callCount = await resolver.callCount
         XCTAssertEqual(callCount, 1)
     }
 
-    func testNearbyCoordinatesThatRoundToSameKeyShareCachedSuitability() async throws {
+    func testNearbyCoordinatesThatRoundToSameKeyShareOneSearchSessionCache() async throws {
         let resolver = MockSuitabilityResolver { _ in .suitable }
         let service = LocationSuitabilityService(resolver: resolver)
+        let session = service.makeSearchSession()
 
-        _ = await service.suitability(for: GridPoint(
+        _ = await session.suitability(for: GridPoint(
             coordinate: Coordinate(latitude: 40.71281, longitude: -74.00601),
             distanceMiles: 0,
             bearing: 0
         ))
-        _ = await service.suitability(for: GridPoint(
+        _ = await session.suitability(for: GridPoint(
             coordinate: Coordinate(latitude: 40.71284, longitude: -74.00604),
             distanceMiles: 0,
             bearing: 0
@@ -745,17 +739,18 @@ final class BestSpotSearcherTests: XCTestCase {
         XCTAssertEqual(callCount, 1)
     }
 
-    func testBatchSuitabilityUsesCacheForKnownRoundedCoordinate() async throws {
+    func testDuplicateCoordinatesAcrossCandidateBandsResolveOnceWithinSearch() async throws {
         let resolver = MockSuitabilityResolver { _ in .suitable }
         let service = LocationSuitabilityService(resolver: resolver)
+        let session = service.makeSearchSession()
         let cachedPoint = GridPoint(
             coordinate: Coordinate(latitude: 40.7128, longitude: -74.0060),
             distanceMiles: 0,
             bearing: 0
         )
 
-        _ = await service.suitability(for: cachedPoint)
-        let batchResults = await service.suitability(for: [
+        _ = await session.suitability(for: [cachedPoint])
+        let batchResults = await session.suitability(for: [
             cachedPoint,
             GridPoint(
                 coordinate: Coordinate(latitude: 40.7148, longitude: -74.0080),
@@ -769,9 +764,84 @@ final class BestSpotSearcherTests: XCTestCase {
         XCTAssertEqual(callCount, 2)
     }
 
+    func testSecondSearchSessionResolvesSameCoordinateAgain() async throws {
+        let resolver = MockSuitabilityResolver { _ in .suitable }
+        let service = LocationSuitabilityService(resolver: resolver)
+        let point = GridPoint(
+            coordinate: Coordinate(latitude: 40.7128, longitude: -74.0060),
+            distanceMiles: 0,
+            bearing: 0
+        )
+
+        let firstSearch = service.makeSearchSession()
+        _ = await firstSearch.suitability(for: point)
+        let secondSearch = service.makeSearchSession()
+        _ = await secondSearch.suitability(for: point)
+
+        let callCount = await resolver.callCount
+        XCTAssertEqual(callCount, 2)
+    }
+
+    func testTransientFailureIsReusedWithinSearchButRetriedByNextSearch() async throws {
+        let resolver = MockSuitabilityResolver { _ in .unknown(reason: .temporarilyUnavailable) }
+        let service = LocationSuitabilityService(resolver: resolver)
+        let point = GridPoint(
+            coordinate: Coordinate(latitude: 40.7128, longitude: -74.0060),
+            distanceMiles: 0,
+            bearing: 0
+        )
+
+        let firstSearch = service.makeSearchSession()
+        _ = await firstSearch.suitability(for: point)
+        _ = await firstSearch.suitability(for: point)
+        let secondSearch = service.makeSearchSession()
+        _ = await secondSearch.suitability(for: point)
+
+        let callCount = await resolver.callCount
+        XCTAssertEqual(callCount, 2)
+    }
+
+    func testFailedSearchDoesNotLeakSuitabilityCacheIntoNextSearch() async throws {
+        let date = currentSearchDate()
+        let resolver = SearchScopedResolver(
+            unsuitableCallCount: BestSpotSearcher.maxSuitabilityCandidateChecks
+        )
+        let searcher = searcher(
+            weather: MockWeatherProvider { _ in Self.nightForecasts(for: date, cloudCover: 5) },
+            suitability: LocationSuitabilityService(resolver: resolver)
+        )
+        let center = CachedLocation(from: createSavedLocation())
+
+        do {
+            _ = try await searcher.findBestSpots(
+                around: center,
+                radiusMiles: 50,
+                spacingMiles: 5,
+                for: date,
+                topN: 5
+            )
+            XCTFail("Expected the first search to have no recommendable locations")
+        } catch BestSpotSearchError.noRecommendableLocations {
+            XCTAssertTrue(true)
+        }
+
+        let secondResult = try await searcher.findBestSpots(
+            around: center,
+            radiusMiles: 50,
+            spacingMiles: 5,
+            for: date,
+            topN: 5
+        )
+
+        XCTAssertEqual(secondResult.topLocations.count, 5)
+        let callCount = await resolver.callCount
+        XCTAssertEqual(callCount, BestSpotSearcher.maxSuitabilityCandidateChecks + BestSpotSearcher.suitabilityCandidateCount(topN: 5))
+    }
+
     func testDuplicateRoundedCoordinatesInBatchTriggerOneResolverCall() async throws {
         let resolver = MockSuitabilityResolver { _ in .suitable }
         let service = LocationSuitabilityService(resolver: resolver)
+        let session = service.makeSearchSession()
         let points = [
             GridPoint(
                 coordinate: Coordinate(latitude: 40.71281, longitude: -74.00601),
@@ -785,52 +855,34 @@ final class BestSpotSearcherTests: XCTestCase {
             )
         ]
 
-        let results = await service.suitability(for: points)
+        let results = await session.suitability(for: points)
 
         XCTAssertEqual(results.count, 2)
         let callCount = await resolver.callCount
         XCTAssertEqual(callCount, 1)
     }
 
-    func testBatchResolverRespectsMaximumConcurrency() async throws {
-        let resolver = TrackingSuitabilityResolver(status: .suitable)
-        let service = LocationSuitabilityService(
-            resolver: resolver,
-            maxConcurrentLookups: 3
-        )
-        let points = (0..<10).map { index in
-            GridPoint(
-                coordinate: Coordinate(
-                    latitude: 40.0 + Double(index) * 0.01,
-                    longitude: -74.0 - Double(index) * 0.01
-                ),
-                distanceMiles: Double(index),
-                bearing: 0
-            )
-        }
-
-        _ = await service.suitability(for: points)
-
-        let callCount = await resolver.callCount
-        let maxActiveCount = await resolver.maxActiveCount
-        XCTAssertEqual(callCount, 10)
-        XCTAssertLessThanOrEqual(maxActiveCount, 3)
+    func testDefaultMaximumSuitabilityLookupConcurrencyIsFour() {
+        XCTAssertEqual(LocationSuitabilityService.defaultMaxConcurrentLookups, 4)
     }
 
     func testCacheDoesNotMergeFarApartPoints() async throws {
         let resolver = MockSuitabilityResolver { _ in .suitable }
         let service = LocationSuitabilityService(resolver: resolver)
+        let session = service.makeSearchSession()
 
-        _ = await service.suitability(for: GridPoint(
-            coordinate: Coordinate(latitude: 40.7128, longitude: -74.0060),
-            distanceMiles: 0,
-            bearing: 0
-        ))
-        _ = await service.suitability(for: GridPoint(
-            coordinate: Coordinate(latitude: 40.7148, longitude: -74.0080),
-            distanceMiles: 0,
-            bearing: 0
-        ))
+        _ = await session.suitability(for: [
+            GridPoint(
+                coordinate: Coordinate(latitude: 40.7128, longitude: -74.0060),
+                distanceMiles: 0,
+                bearing: 0
+            ),
+            GridPoint(
+                coordinate: Coordinate(latitude: 40.7148, longitude: -74.0080),
+                distanceMiles: 0,
+                bearing: 0
+            )
+        ])
 
         let callCount = await resolver.callCount
         XCTAssertEqual(callCount, 2)

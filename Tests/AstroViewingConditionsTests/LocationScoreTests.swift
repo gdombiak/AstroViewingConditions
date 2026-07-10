@@ -3,6 +3,7 @@ import XCTest
 import Foundation
 @testable import AstroViewingConditions
 
+@MainActor
 final class LocationScoreTests: XCTestCase {
     
     // MARK: - Helper Methods
