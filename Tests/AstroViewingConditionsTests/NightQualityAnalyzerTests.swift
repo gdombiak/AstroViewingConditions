@@ -67,6 +67,21 @@ final class NightQualityAnalyzerTests: XCTestCase {
             )
         }
     }
+
+    private func createCloudIntervalForecasts(cloudCovers: [Int]) -> [HourlyForecast] {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let start = createDate(hour: 20)
+
+        return cloudCovers.enumerated().map { index, cloudCover in
+            HourlyForecast(
+                time: calendar.date(byAdding: .hour, value: index, to: start)!,
+                cloudCover: cloudCover, humidity: 40, windSpeed: 2,
+                windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000,
+                lowCloudCover: 0, midCloudCover: 0, highCloudCover: cloudCover, windSpeed200hPa: 50
+            )
+        }
+    }
     
     private func analyze(forecasts: [HourlyForecast], moonIllumination: Int, dayOffset: Int = 0) -> NightQualityAssessment {
         let sunEventsToday = createSunEvents(for: dayOffset)
@@ -246,6 +261,96 @@ final class NightQualityAnalyzerTests: XCTestCase {
                 $0.score < NightQualityAssessment.Rating.Thresholds.fairMax
             }
         )
+    }
+
+    func testClearEarlyWithHeavyCloudsLaterUsesTimingSummary() {
+        let result = analyze(
+            forecasts: createCloudIntervalForecasts(cloudCovers: [10, 10, 15, 90, 100]),
+            moonIllumination: 5
+        )
+
+        XCTAssertEqual(result.rating, .good)
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("heavy clouds"))
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("early"))
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("later"))
+        XCTAssertNotEqual(result.summary, "Decent conditions, but some clouds may be present.")
+    }
+
+    func testHeavyCloudsEarlyWithClearLaterUsesImprovementSummary() {
+        let result = analyze(
+            forecasts: createCloudIntervalForecasts(cloudCovers: [95, 90, 20, 10, 5]),
+            moonIllumination: 5
+        )
+
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("heavy clouds early"))
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("better conditions later"))
+    }
+
+    func testMiddleHeavyCloudsUseInterruptionSummary() {
+        let result = analyze(
+            forecasts: createCloudIntervalForecasts(cloudCovers: [10, 15, 95, 100, 20, 10]),
+            moonIllumination: 5
+        )
+
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("heavy clouds"))
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("interrupt"))
+        XCTAssertFalse(result.summary.localizedCaseInsensitiveContains("degrading after midnight"))
+    }
+
+    func testSingleHeavyCloudHourDoesNotUseSustainedCloudSummary() {
+        let result = analyze(
+            forecasts: createCloudIntervalForecasts(cloudCovers: [10, 10, 95, 10, 10]),
+            moonIllumination: 5
+        )
+
+        XCTAssertFalse(result.summary.localizedCaseInsensitiveContains("heavy clouds"))
+    }
+
+    func testEntireNightHeavyCloudsPreservesWholeNightSummary() {
+        let result = analyze(
+            forecasts: createCloudIntervalForecasts(cloudCovers: [90, 95, 100, 90]),
+            moonIllumination: 5
+        )
+
+        XCTAssertEqual(result.rating, .poor)
+        XCTAssertEqual(result.summary, "Poor conditions for stargazing. Heavy clouds are likely to block the view.")
+    }
+
+    func testNoHeavyCloudRunPreservesExistingSummary() {
+        let result = analyze(
+            forecasts: createCloudIntervalForecasts(cloudCovers: [60, 60, 60, 60]),
+            moonIllumination: 5
+        )
+
+        XCTAssertEqual(result.rating, .good)
+        XCTAssertEqual(result.summary, "Good overall conditions, but some clouds may affect the view.")
+    }
+
+    func testMultipleHeavyCloudIntervalsPreferLongestRun() {
+        let result = analyze(
+            forecasts: createCloudIntervalForecasts(cloudCovers: [90, 90, 10, 90, 90, 90]),
+            moonIllumination: 5
+        )
+
+        XCTAssertEqual(result.summary, "Decent early, with heavy clouds expected later tonight.")
+    }
+
+    func testMultipleHeavyCloudIntervalsPreferHigherAverageCloudCoverWhenLengthsTie() {
+        let result = analyze(
+            forecasts: createCloudIntervalForecasts(cloudCovers: [80, 80, 10, 95, 100]),
+            moonIllumination: 5
+        )
+
+        XCTAssertEqual(result.summary, "Decent early, with heavy clouds expected later tonight.")
+    }
+
+    func testMultipleHeavyCloudIntervalsPreferEarliestRunWhenLengthAndCloudCoverTie() {
+        let result = analyze(
+            forecasts: createCloudIntervalForecasts(cloudCovers: [90, 90, 10, 90, 90, 10]),
+            moonIllumination: 5
+        )
+
+        XCTAssertEqual(result.summary, "Heavy clouds early, with better conditions later.")
     }
 
     func testHighCloudCoverStableSummaryIncludesPoorSeeingWarning() {
@@ -762,7 +867,8 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertTrue(
             result.summary.contains("degrade") ||
             result.summary.contains("degrading") ||
-            result.summary.contains("may worsen later"),
+            result.summary.contains("may worsen later") ||
+            result.summary.localizedCaseInsensitiveContains("heavy clouds expected later"),
             "Summary should mention degrading conditions: \(result.summary)"
         )
     }
@@ -786,7 +892,12 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertNotNil(result.firstHalfScore)
         XCTAssertNotNil(result.secondHalfScore)
         XCTAssertGreaterThan(result.firstHalfScore!, result.secondHalfScore!)
-        XCTAssertTrue(result.summary.contains("improve") || result.summary.contains("improving"), "Summary should mention improving conditions: \(result.summary)")
+        XCTAssertTrue(
+            result.summary.contains("improve") ||
+            result.summary.contains("improving") ||
+            result.summary.localizedCaseInsensitiveContains("better conditions later"),
+            "Summary should mention improving conditions: \(result.summary)"
+        )
     }
     
     func testStableNight_AllClear() {

@@ -80,6 +80,14 @@ public struct NightQualityAnalyzer {
         
         static let goodRatingThreshold: Double = 1.0
     }
+
+    private struct HeavyCloudInterval {
+        let startIndex: Int
+        let hourCount: Int
+        let averageCloudCover: Double
+        let hasUsableHoursBefore: Bool
+        let hasUsableHoursAfter: Bool
+    }
     
     public static func analyzeNight(
         forecasts: [HourlyForecast],
@@ -171,9 +179,11 @@ public struct NightQualityAnalyzer {
             calendar: calendar
         )
         
-        let nightForecasts = forecasts.filter { forecast in
-            forecast.time >= nightStart && forecast.time < nightEnd
-        }
+        let nightForecasts = forecasts
+            .filter { forecast in
+                forecast.time >= nightStart && forecast.time < nightEnd
+            }
+            .sorted { $0.time < $1.time }
         
         guard !nightForecasts.isEmpty else {
             return createNoNighttimeDataAssessment(sunEvents: sunEventsToday, moonInfo: moonInfo)
@@ -278,13 +288,15 @@ public struct NightQualityAnalyzer {
         )
         
         let (trend, firstHalf, secondHalf) = calculateTrend(hourlyRatings: hourlyRatings)
+        let heavyCloudInterval = preferredHeavyCloudInterval(in: hourlyRatings)
         
         let summary = generateSummary(
             rating: rating,
             avgScore: avgScore,
             trend: trend,
             averageCloudCover: avgCloudCover,
-            seeingScoreAvg: details.seeingScoreAvg
+            seeingScoreAvg: details.seeingScoreAvg,
+            heavyCloudInterval: heavyCloudInterval
         )
         
         let bestWindowStart = hourlyRatings.first?.time ?? date
@@ -374,13 +386,89 @@ public struct NightQualityAnalyzer {
     private static func determineRating(_ avgScore: Double) -> NightQualityAssessment.Rating {
         NightQualityAssessment.Rating.from(score: avgScore)
     }
+
+    private static func preferredHeavyCloudInterval(
+        in hourlyRatings: [NightQualityAssessment.HourlyRating]
+    ) -> HeavyCloudInterval? {
+        sustainedHeavyCloudIntervals(in: hourlyRatings)
+            .filter { $0.hasUsableHoursBefore || $0.hasUsableHoursAfter }
+            .sorted { lhs, rhs in
+                if lhs.hourCount != rhs.hourCount {
+                    return lhs.hourCount > rhs.hourCount
+                }
+                if lhs.averageCloudCover != rhs.averageCloudCover {
+                    return lhs.averageCloudCover > rhs.averageCloudCover
+                }
+                return lhs.startIndex < rhs.startIndex
+            }
+            .first
+    }
+
+    private static func sustainedHeavyCloudIntervals(
+        in hourlyRatings: [NightQualityAssessment.HourlyRating]
+    ) -> [HeavyCloudInterval] {
+        var intervals: [HeavyCloudInterval] = []
+        var runStartIndex: Int?
+
+        func appendInterval(endingAt endIndex: Int) {
+            guard let startIndex = runStartIndex, endIndex - startIndex >= 1 else { return }
+
+            let hasUsableHoursBefore = hourlyRatings[..<startIndex].contains {
+                $0.score < NightQualityAssessment.Rating.Thresholds.fairMax
+            }
+            let hasUsableHoursAfter = hourlyRatings[(endIndex + 1)...].contains {
+                $0.score < NightQualityAssessment.Rating.Thresholds.fairMax
+            }
+            let heavyCloudRatings = hourlyRatings[startIndex...endIndex]
+            intervals.append(
+                HeavyCloudInterval(
+                    startIndex: startIndex,
+                    hourCount: heavyCloudRatings.count,
+                    averageCloudCover: Double(heavyCloudRatings.map(\.cloudCover).reduce(0, +)) /
+                        Double(heavyCloudRatings.count),
+                    hasUsableHoursBefore: hasUsableHoursBefore,
+                    hasUsableHoursAfter: hasUsableHoursAfter
+                )
+            )
+        }
+
+        for index in hourlyRatings.indices {
+            let isHeavyCloud = hourlyRatings[index].cloudCover >= 80
+            let followsPreviousHour = index > 0 &&
+                hourlyRatings[index].time.timeIntervalSince(hourlyRatings[index - 1].time) == 3_600
+
+            if isHeavyCloud && (runStartIndex == nil || followsPreviousHour) {
+                runStartIndex = runStartIndex ?? index
+            } else {
+                appendInterval(endingAt: index - 1)
+                runStartIndex = isHeavyCloud ? index : nil
+            }
+        }
+
+        appendInterval(endingAt: hourlyRatings.count - 1)
+        return intervals
+    }
+
+    private static func heavyCloudSummary(for interval: HeavyCloudInterval) -> String? {
+        switch (interval.hasUsableHoursBefore, interval.hasUsableHoursAfter) {
+        case (true, false):
+            return "Decent early, with heavy clouds expected later tonight."
+        case (false, true):
+            return "Heavy clouds early, with better conditions later."
+        case (true, true):
+            return "A period of heavy clouds may interrupt otherwise better conditions."
+        case (false, false):
+            return nil
+        }
+    }
     
     private static func generateSummary(
         rating: NightQualityAssessment.Rating,
         avgScore: Double,
         trend: NightQualityAssessment.Trend,
         averageCloudCover: Double,
-        seeingScoreAvg: Double?
+        seeingScoreAvg: Double?,
+        heavyCloudInterval: HeavyCloudInterval?
     ) -> String {
         let seeingWarning = seeingScoreAvg.map { NightQualityAssessment.Rating.from(score: $0) == .poor } == true
             ? " Poor seeing may limit fine detail."
@@ -395,6 +483,12 @@ public struct NightQualityAnalyzer {
             case .degrading:
                 return "Poor conditions for stargazing, with overall conditions worsening later." + seeingWarning
             }
+        }
+
+        if rating != .poor,
+           let heavyCloudInterval,
+           let summary = heavyCloudSummary(for: heavyCloudInterval) {
+            return summary + seeingWarning
         }
 
         let hasClearSkies = averageCloudCover <= 20
