@@ -10,7 +10,7 @@ struct ContentView: View {
         static let cornerRadius: CGFloat = 28
     }
 
-    private enum AppTab: Hashable, CaseIterable {
+    private enum AppTab: String, Hashable, CaseIterable {
         case dashboard
         case locations
         case settings
@@ -36,45 +36,33 @@ struct ContentView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.appPalette) private var palette
-    @State private var selectedTab: AppTab = .dashboard
+    @SceneStorage("selectedAppTab") private var selectedTab: AppTab = .dashboard
     
     @ViewBuilder
     var body: some View {
         let isLandscape = verticalSizeClass == .compact
         let isRegular = horizontalSizeClass == .regular
 
-        if palette.appearance == .field {
-            ZStack {
-                DashboardView()
-                    .opacity(selectedTab == .dashboard ? 1 : 0)
-                    .allowsHitTesting(selectedTab == .dashboard)
-                    .accessibilityHidden(selectedTab != .dashboard)
+        TabView(selection: $selectedTab) {
+            DashboardView()
+                .tabItem { Label("Dashboard", systemImage: "star.fill") }
+                .tag(AppTab.dashboard)
 
-                LocationsView()
-                    .opacity(selectedTab == .locations ? 1 : 0)
-                    .allowsHitTesting(selectedTab == .locations)
-                    .accessibilityHidden(selectedTab != .locations)
+            LocationsView()
+                .tabItem { Label("Locations", systemImage: "mappin.and.ellipse") }
+                .tag(AppTab.locations)
 
-                SettingsView()
-                    .opacity(selectedTab == .settings ? 1 : 0)
-                    .allowsHitTesting(selectedTab == .settings)
-                    .accessibilityHidden(selectedTab != .settings)
-            }
-            .safeAreaInset(edge: .bottom, spacing: 0) { fieldTabBar }
-            .dynamicTypeSize(isRegular ? .xxLarge : (isLandscape ? .large : .medium))
-        } else {
-            TabView {
-                DashboardView()
-                    .tabItem { Label("Dashboard", systemImage: "star.fill") }
-
-                LocationsView()
-                    .tabItem { Label("Locations", systemImage: "mappin.and.ellipse") }
-
-                SettingsView()
-                    .tabItem { Label("Settings", systemImage: "gear") }
-            }
-            .dynamicTypeSize(isRegular ? .xxLarge : (isLandscape ? .large : .medium))
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gear") }
+                .tag(AppTab.settings)
         }
+        .toolbar(palette.appearance == .field ? .hidden : .visible, for: .tabBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if palette.appearance == .field {
+                fieldTabBar
+            }
+        }
+        .dynamicTypeSize(isRegular ? .xxLarge : (isLandscape ? .large : .medium))
     }
 
     private var fieldTabBar: some View {
