@@ -235,6 +235,125 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertEqual(result.hourlyRatings.first?.cloudCover, 50)
     }
 
+    func testLegacyForecastDataPreservesExistingFormula() {
+        let forecasts = createForecasts(hours: [
+            (hour: 20, cloudCover: 0, humidity: 40, windSpeed: 4.0)
+        ])
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        let rating = try! XCTUnwrap(result.hourlyRatings.first)
+        let moonScore = rating.moonAltitude <= 0 ? 0 : (rating.moonIllumination <= 10 ? 0 : rating.moonIllumination <= 25 ? 0.5 : rating.moonIllumination <= 50 ? 1 : 2) * (0.5 + 0.5 * min(max(rating.moonAltitude / 90, 0), 1))
+        let expectedScore = Double(rating.fogScore) / 50 * 0.20 + moonScore * 0.15 + 0.5 * 0.10
+
+        XCTAssertEqual(rating.score, expectedScore, accuracy: 0.0001)
+        XCTAssertNil(rating.seeingScore)
+        XCTAssertNil(rating.transparencyScore)
+        XCTAssertNil(result.details.seeingScoreAvg)
+        XCTAssertNil(result.details.transparencyScoreAvg)
+    }
+
+    func testCompleteDataPopulatesScoresAndChangesOverallScore() {
+        let legacy = createForecasts(hours: [
+            (hour: 20, cloudCover: 0, humidity: 40, windSpeed: 2),
+            (hour: 21, cloudCover: 0, humidity: 40, windSpeed: 2)
+        ])
+        let enriched = legacy.enumerated().map { index, forecast in
+            HourlyForecast(
+                time: forecast.time,
+                cloudCover: forecast.cloudCover,
+                humidity: forecast.humidity,
+                windSpeed: forecast.windSpeed,
+                windDirection: forecast.windDirection,
+                temperature: index == 0 ? 10 : 16,
+                dewPoint: forecast.dewPoint,
+                visibility: 1_000,
+                lowCloudCover: 100,
+                midCloudCover: 100,
+                highCloudCover: 100,
+                windSpeed200hPa: 250
+            )
+        }
+
+        let legacyResult = analyze(forecasts: legacy, moonIllumination: 10)
+        let enrichedResult = analyze(forecasts: enriched, moonIllumination: 10)
+
+        XCTAssertNotNil(enrichedResult.details.seeingScoreAvg)
+        XCTAssertNotNil(enrichedResult.details.transparencyScoreAvg)
+        XCTAssertGreaterThan(enrichedResult.hourlyRatings[0].score, legacyResult.hourlyRatings[0].score)
+    }
+
+    func testTransparencyOnlyFallback() {
+        let forecasts = [HourlyForecast(
+            time: createDate(hour: 20), cloudCover: 100, humidity: 40, windSpeed: 2, windDirection: 180,
+            temperature: 10, dewPoint: 5, visibility: 20_000, lowCloudCover: 100, midCloudCover: 100, highCloudCover: 100
+        )]
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        XCTAssertNil(result.hourlyRatings[0].seeingScore)
+        XCTAssertEqual(result.hourlyRatings[0].transparencyScore, 1.5)
+    }
+
+    func testSeeingOnlyFallback() {
+        let forecasts = [HourlyForecast(
+            time: createDate(hour: 20), cloudCover: 100, humidity: 40, windSpeed: 2, windDirection: 180,
+            temperature: 10, dewPoint: 5, visibility: 20_000, lowCloudCover: nil, windSpeed200hPa: 250
+        )]
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        XCTAssertEqual(result.hourlyRatings[0].seeingScore, 2)
+        XCTAssertNil(result.hourlyRatings[0].transparencyScore)
+    }
+
+    func testDetailsAverageOnlyAvailableSeeingSamples() {
+        let forecasts = [
+            HourlyForecast(time: createDate(hour: 20), cloudCover: 0, humidity: 40, windSpeed: 2, windDirection: 180, temperature: 10, windSpeed200hPa: 50),
+            HourlyForecast(time: createDate(hour: 21), cloudCover: 0, humidity: 40, windSpeed: 2, windDirection: 180, temperature: 12, windSpeed200hPa: nil)
+        ]
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 10)
+        XCTAssertEqual(result.hourlyRatings[0].seeingScore, 0)
+        XCTAssertEqual(result.hourlyRatings[1].seeingScore, 0.5)
+        XCTAssertEqual(result.details.seeingScoreAvg, 0.25)
+        XCTAssertNil(result.details.transparencyScoreAvg)
+    }
+
+    func testGoodNightWithPoorSeeingAppendsSummaryWarning() {
+        let forecasts = (20...23).map { hour in
+            HourlyForecast(
+                time: createDate(hour: hour), cloudCover: 0, humidity: 40, windSpeed: 2,
+                windDirection: 180, temperature: 10, dewPoint: 5, visibility: 20_000,
+                windSpeed200hPa: 250
+            )
+        }
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 5)
+
+        XCTAssertEqual(result.rating, .good)
+        XCTAssertEqual(result.summary, "Good night for observing. Expect clear skies. Poor seeing may limit fine detail.")
+    }
+
+    func testGoodNightWithoutPoorSeeingPreservesSummary() {
+        let fairSeeingForecasts = (20...23).map { hour in
+            HourlyForecast(
+                time: createDate(hour: hour), cloudCover: 0, humidity: 40, windSpeed: 7,
+                windDirection: 180, temperature: 10, dewPoint: 5, visibility: 20_000,
+                windSpeed200hPa: 150
+            )
+        }
+        let missingSeeingForecasts = (20...23).map { hour in
+            HourlyForecast(
+                time: createDate(hour: hour), cloudCover: 20, humidity: 40, windSpeed: 4,
+                windDirection: 180, temperature: 10, dewPoint: 5, visibility: 20_000
+            )
+        }
+
+        let fairSeeingResult = analyze(forecasts: fairSeeingForecasts, moonIllumination: 5)
+        let missingSeeingResult = analyze(forecasts: missingSeeingForecasts, moonIllumination: 5)
+
+        XCTAssertEqual(fairSeeingResult.summary, "Good night for observing. Expect clear skies.")
+        XCTAssertEqual(missingSeeingResult.summary, "Good night for observing. Expect clear skies.")
+    }
+
     func testAnalyzeConditionsUsesLocationDayWhenUTCDateHasAdvanced() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!

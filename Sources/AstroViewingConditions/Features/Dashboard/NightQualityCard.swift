@@ -68,6 +68,17 @@ struct NightQualityCard: View {
                 FactorPill(label: "Moon", value: "\(assessment.details.moonIlluminationAvg)%", color: assessment.moonColor(assessment.details.moonIlluminationAvg))
                 FactorPill(label: "Wind", value: unitConverter.formatWindSpeed(assessment.details.windSpeedAvg), color: assessment.windColor(assessment.details.windSpeedAvg))
             }
+
+            if assessment.details.seeingScoreAvg != nil || assessment.details.transparencyScoreAvg != nil {
+                HStack(spacing: 16) {
+                    if let seeingScore = assessment.details.seeingScoreAvg {
+                        FactorPill(label: "Seeing", value: assessment.scoreLabel(seeingScore), color: assessment.scoreToColor(seeingScore))
+                    }
+                    if let transparencyScore = assessment.details.transparencyScoreAvg {
+                        FactorPill(label: "Transparency", value: assessment.scoreLabel(transparencyScore), color: assessment.scoreToColor(transparencyScore))
+                    }
+                }
+            }
         }
         .dashboardCardStyle()
     }

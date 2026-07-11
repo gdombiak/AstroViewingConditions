@@ -182,7 +182,7 @@ public struct NightQualityAnalyzer {
         var hourlyRatings: [NightQualityAssessment.HourlyRating] = []
         var totalScore: Double = 0
         
-        for forecast in nightForecasts {
+        for (index, forecast) in nightForecasts.enumerated() {
             let moonAltitude = moonCalculationCache.moonAltitude(
                 latitude: latitude,
                 longitude: longitude,
@@ -192,15 +192,34 @@ public struct NightQualityAnalyzer {
             
             let fogScore = FogCalculator.calculate(from: forecast)
             let cloudScore = calculateCloudCoverScore(forecast.cloudCover)
+            let seeingScore = SeeingCalculator.penalty(
+                currentTemperature: forecast.temperature,
+                previousTemperature: index > 0 ? nightForecasts[index - 1].temperature : nil,
+                windSpeed200hPa: forecast.windSpeed200hPa
+            )
+            let transparencyScore = TransparencyCalculator.penalty(
+                totalCloudCover: forecast.cloudCover,
+                lowCloudCover: forecast.lowCloudCover,
+                midCloudCover: forecast.midCloudCover,
+                highCloudCover: forecast.highCloudCover,
+                visibilityMeters: forecast.visibility
+            )
+            let hasTransparencyData = forecast.midCloudCover != nil || forecast.highCloudCover != nil
             let moonScore = calculateMoonScore(illumination: moonIllumination, altitude: moonAltitude)
             let windScore = calculateWindScore(forecast.windSpeed)
-            
-            let weightedScore = (
-                cloudScore * Constants.cloudCoverWeight +
-                Double(fogScore.score) / 50.0 * Constants.fogWeight +
-                moonScore * Constants.moonWeight +
-                windScore * Constants.windWeight
-            )
+            let fogPenalty = Double(fogScore.score) / 50.0
+            let weightedScore: Double
+
+            switch (hasTransparencyData ? transparencyScore : nil, seeingScore) {
+            case let (.some(transparency), .some(seeing)):
+                weightedScore = transparency * 0.40 + seeing * 0.20 + fogPenalty * 0.15 + moonScore * 0.15 + windScore * 0.10
+            case let (.some(transparency), nil):
+                weightedScore = transparency * 0.50 + fogPenalty * 0.20 + moonScore * 0.20 + windScore * 0.10
+            case let (nil, .some(seeing)):
+                weightedScore = cloudScore * 0.40 + seeing * 0.20 + fogPenalty * 0.15 + moonScore * 0.15 + windScore * 0.10
+            case (nil, nil):
+                weightedScore = cloudScore * Constants.cloudCoverWeight + fogPenalty * Constants.fogWeight + moonScore * Constants.moonWeight + windScore * Constants.windWeight
+            }
             
             let hourlyRating = NightQualityAssessment.HourlyRating(
                 time: forecast.time,
@@ -209,7 +228,9 @@ public struct NightQualityAnalyzer {
                 fogScore: fogScore.score,
                 moonIllumination: moonIllumination,
                 moonAltitude: moonAltitude,
-                windSpeed: forecast.windSpeed
+                windSpeed: forecast.windSpeed,
+                seeingScore: seeingScore,
+                transparencyScore: hasTransparencyData ? transparencyScore : nil
             )
             
             hourlyRatings.append(hourlyRating)
@@ -223,17 +244,26 @@ public struct NightQualityAnalyzer {
         let avgFogScore = hourlyRatings.map { $0.fogScore }.reduce(0, +) / hourlyRatings.count
         let avgMoonIllumination = hourlyRatings.map { $0.moonIllumination }.reduce(0, +) / hourlyRatings.count
         let avgWindSpeed = hourlyRatings.map { $0.windSpeed }.reduce(0, +) / Double(hourlyRatings.count)
+        let seeingScores = hourlyRatings.compactMap(\.seeingScore)
+        let transparencyScores = hourlyRatings.compactMap(\.transparencyScore)
         
         let details = NightQualityAssessment.Details(
             cloudCoverScore: Double(avgCloudCover),
             fogScoreAvg: Double(avgFogScore),
             moonIlluminationAvg: avgMoonIllumination,
-            windSpeedAvg: avgWindSpeed
+            windSpeedAvg: avgWindSpeed,
+            seeingScoreAvg: seeingScores.isEmpty ? nil : seeingScores.reduce(0, +) / Double(seeingScores.count),
+            transparencyScoreAvg: transparencyScores.isEmpty ? nil : transparencyScores.reduce(0, +) / Double(transparencyScores.count)
         )
         
         let (trend, firstHalf, secondHalf) = calculateTrend(hourlyRatings: hourlyRatings)
         
-        let summary = generateSummary(rating: rating, avgScore: avgScore, trend: trend)
+        let summary = generateSummary(
+            rating: rating,
+            avgScore: avgScore,
+            trend: trend,
+            seeingScoreAvg: details.seeingScoreAvg
+        )
         
         let bestWindowStart = hourlyRatings.first?.time ?? date
         let bestWindowEnd = hourlyRatings.last?.time ?? date
@@ -323,19 +353,28 @@ public struct NightQualityAnalyzer {
         NightQualityAssessment.Rating.from(score: avgScore)
     }
     
-    private static func generateSummary(rating: NightQualityAssessment.Rating, avgScore: Double, trend: NightQualityAssessment.Trend) -> String {
+    private static func generateSummary(
+        rating: NightQualityAssessment.Rating,
+        avgScore: Double,
+        trend: NightQualityAssessment.Trend,
+        seeingScoreAvg: Double?
+    ) -> String {
+        let seeingWarning = seeingScoreAvg.map { NightQualityAssessment.Rating.from(score: $0) == .poor } == true
+            ? " Poor seeing may limit fine detail."
+            : ""
+
         switch rating {
         case .excellent:
             switch trend {
-            case .improving: return "Excellent conditions, improving through the night!"
-            case .stable: return "Perfect conditions for stargazing this night!"
-            case .degrading: return "Excellent early, degrading after midnight."
+            case .improving: return "Excellent conditions, improving through the night!" + seeingWarning
+            case .stable: return "Perfect conditions for stargazing this night!" + seeingWarning
+            case .degrading: return "Excellent early, degrading after midnight." + seeingWarning
             }
         case .good:
             switch trend {
-            case .improving: return "Good conditions, improving through the night."
-            case .stable: return "Good night for observing. Expect clear skies."
-            case .degrading: return "Good early, conditions degrade after midnight."
+            case .improving: return "Good conditions, improving through the night." + seeingWarning
+            case .stable: return "Good night for observing. Expect clear skies." + seeingWarning
+            case .degrading: return "Good early, conditions degrade after midnight." + seeingWarning
             }
         case .fair:
             switch trend {

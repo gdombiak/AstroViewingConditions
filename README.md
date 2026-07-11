@@ -12,9 +12,9 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 
 ## Features
 
-- **Real-time Weather Data**: Cloud cover, humidity, wind, temperature, visibility, and hourly forecasts
+- **Real-time Weather Data**: Cloud cover including mid/high layers, humidity, wind including upper-atmosphere wind for observing estimates, temperature, visibility, and hourly forecasts
 - **Astronomical Information**: Sun and moon rise/set times, astronomical night timing, and moon phase
-- **Night Quality Analysis**: Clear, scan-friendly assessment of cloud cover, moonlight, wind, fog, and observing quality
+- **Night Quality Analysis**: Clear, scan-friendly assessment of transparency, seeing, cloud cover, moonlight, fog, wind, and observing quality
 - **Best Targets**: Ranked recommendations for the Moon, visible planets, double stars, star clusters, nebulae, and galaxies based on the selected location and night, target altitude, darkness, weather, moonlight, and observing difficulty
 - **Best Nearby Area**: Weather-scores nearby grid points, checks candidate suitability before recommending destinations, and shows a clean ranked map of the best nearby observing areas
 - **Practical Observing Guidance**: See each target's best observing window, compass direction, altitude, suitability score, finding tips, recommended equipment, and observing notes
@@ -24,6 +24,7 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Fog Score**: Calculated from humidity, temperature, dew point, visibility, and low cloud cover
 - **Location Management**: Use current location, save and rename observing locations, arrange them in your preferred order, search by city, enter coordinates, or pick from a map
 - **Unit Preferences**: Toggle between Metric and Imperial units
+- **Field Mode**: Persistent dim-red iOS appearance for telescope use, available from Settings and the Dashboard; widgets and watchOS retain their normal presentation
 - **iOS Widgets**: Home screen viewing-condition widgets backed by shared app data
 - **watchOS App**: Apple Watch dashboard with current conditions, night quality, astronomical timing, and location selection
 - **watchOS Complications**: Inline, circular, corner, and rectangular complication layouts

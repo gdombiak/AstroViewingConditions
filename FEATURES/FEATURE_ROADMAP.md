@@ -19,7 +19,8 @@ The strategic path for the next product work is:
 ### Conditions and Night Planning
 
 - [x] Three-day hourly weather forecast from Open-Meteo
-- [x] Night-quality assessment using cloud cover, moonlight, fog risk, wind, and nighttime windows
+- [x] Night-quality assessment using cloud cover, transparency, seeing, moonlight, fog risk, wind, and nighttime windows
+- [x] Seeing from hourly temperature stability and 200 hPa wind, plus transparency from cloud layers and visibility
 - [x] Sunset, sunrise, astronomical darkness, moonrise/moonset, lunar phase, and illumination
 - [x] Today, Tomorrow, and Day After anchored to the selected location's local date
 - [x] Best observing spot search with ranked nearby recommendations, suitability checks, and a clean recommended-only default map
@@ -73,72 +74,18 @@ The catalog is intentionally curated rather than a complete Messier/NGC database
 - [x] Clearer Moon illumination labeling
 - [x] Adaptive layouts for target details and narrow ISS pass rows
 - [x] Observer guide for scores, difficulty labels, observing windows, and ISS paths
+- [x] Persistent dim-red Field Mode for telescope use, available from Settings and the Dashboard while widgets and watchOS retain their normal presentation
 
 ## Next Release
 
 The next release should focus on making the app's core guidance more trustworthy and more useful at the telescope. The recommended sequence is:
 
-1. Finish Seeing & Transparency.
-2. Add Equipment Profile.
-3. Add equipment-aware Best Targets scoring.
-4. Add simple horizon constraints per saved location.
+1. Add Equipment Profile.
+2. Add equipment-aware Best Targets scoring.
+3. Add simple horizon constraints per saved location.
+4. Add Sky Darkness / Light Pollution after selecting a suitable modeled atlas and confirming redistribution terms.
 
-Seeing & Transparency is the strongest candidate for the immediate release. Items 2 through 4 can follow as the first personalization release; Field Mode is complete for the 2.0.1 milestone.
-
-### 1. Finish Seeing & Transparency
-
-**Goal**: Improve night-quality scoring with astronomy-specific atmospheric factors before building more features on top of the score.
-
-**User value**:
-
-- A cloudless night with poor upper-atmosphere stability should no longer look deceptively excellent.
-- High cloud or haze should affect transparency-sensitive observing.
-- Telescope users and astrophotographers get a more credible read on whether the night is worth using.
-
-**Scope**:
-
-- Add Open-Meteo hourly fields for pressure, mid-level clouds, high-level clouds, and upper-atmosphere wind.
-- Extend `HourlyForecast`, weather parsing, and batch fetching.
-- Add seeing and transparency calculators.
-- Integrate the new factors into `NightQualityAnalyzer`.
-- Expose seeing/transparency in the night-quality UI at least as concise labels.
-- Add unit tests for parsing, fallback behavior, calculator thresholds, and scoring integration.
-
-**Reference**: `FEATURES/SEEING_AND_TRANSPARENCY_PLAN.md` contains the detailed implementation plan.
-
-**Done when**:
-
-- Existing night-quality tests still pass.
-- Missing new Open-Meteo fields fall back safely.
-- The app explains the new factors without implying forecast certainty.
-- Best Targets uses the improved night-quality score through the existing scoring path.
-
-### 2. Field Mode - Complete ([#49](https://github.com/gdombiak/AstroViewingConditions/issues/49))
-
-**Goal**: Make the app comfortable to use at the telescope without damaging night vision.
-
-**User value**:
-
-- Observers can check conditions, targets, and timing outside without bright white UI glare.
-- The app feels credible as a field companion, not only a planning dashboard.
-
-**Scope**:
-
-- Add a persistent Field Mode setting.
-- Use a dim, dark, red-accented presentation for primary app surfaces.
-- Avoid bright flashes during navigation, refresh, sheets, and empty/loading states where practical.
-- Provide an easy toggle from Settings and a quick entry point from the dashboard.
-- Keep accessibility legible; do not rely on red alone for meaning.
-
-**Done when**:
-
-- [x] Dashboard, Settings, Locations, Best Targets, and target detail sheets are usable in Field Mode.
-- [x] The preference persists, Settings and the Dashboard expose it, and disabling it restores the original system Light/Dark presentation.
-- [x] Field-only semantic surfaces, controls, and the compact floating tab bar preserve readable hierarchy and accessible selected-state semantics.
-- [x] The app does not force Field Mode into widgets or watchOS.
-- [x] Simulator/manual verification covers normal-mode regression, primary Field surfaces, tab-bar clearance, and system-controlled limitations.
-
-### 3. Equipment Profile
+### 1. Equipment Profile
 
 **Goal**: Let the user describe what they observe with so recommendations can become personal.
 
@@ -160,7 +107,7 @@ Seeing & Transparency is the strongest candidate for the immediate release. Item
 - Existing users get a sensible default with no onboarding blocker.
 - The UI sets expectations that equipment improves ranking, not guaranteed visibility.
 
-### 4. Equipment-Aware Best Targets
+### 2. Equipment-Aware Best Targets
 
 **Goal**: Re-rank and explain Best Targets using the user's equipment profile.
 
@@ -183,7 +130,7 @@ Seeing & Transparency is the strongest candidate for the immediate release. Item
 - The app avoids hard "visible/not visible" claims.
 - Existing Best Targets behavior remains stable when the default profile is used.
 
-### 5. Simple Horizon Constraints
+### 3. Simple Horizon Constraints
 
 **Goal**: Account for trees, buildings, hills, and other site-specific obstructions.
 
@@ -204,6 +151,10 @@ Seeing & Transparency is the strongest candidate for the immediate release. Item
 - Saved locations can store and edit simple horizon constraints.
 - Best Targets can explain when a target may be blocked by the local horizon profile.
 - Existing locations behave as they do today until constraints are configured.
+
+### 4. Sky Darkness / Light Pollution
+
+Add location-specific modeled artificial sky brightness with target-specific impact, rather than changing the weather score. A manual Bortle/SQM override may be considered. Dataset selection and redistribution rights must be confirmed before implementation.
 
 ## Later Product Backlog
 
@@ -249,7 +200,7 @@ These remain valuable but are lower priority than the next-release foundation ab
 
 - [ ] Carefully expand the curated deep-sky catalog while retaining verified metadata and imagery rights
 - [ ] Add constellation and star-hopping context where it materially helps observers
-- [ ] Consider light-pollution context when a reliable data source and understandable presentation are available
+- [ ] Extend target context with modeled light pollution only after a suitable atlas and redistribution terms are confirmed
 - [ ] Shareable observing plan or conditions summary
 
 ## Reliability, Validation, and Release Polish
@@ -274,7 +225,6 @@ These remain valuable but are lower priority than the next-release foundation ab
 - Aurora forecast integration
 - Satellite predictions beyond the ISS
 - Dark-sky site discovery
-- Light-pollution map or data integration
 - Additional widget sizes and richer Lock Screen surfaces
 - Exportable observing history
 

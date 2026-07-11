@@ -13,6 +13,20 @@ public protocol WeatherForecastProviding: Sendable {
 public actor WeatherService: WeatherForecastProviding {
     private let baseURL = "https://api.open-meteo.com/v1/forecast"
     private let geocodingURL = "https://geocoding-api.open-meteo.com/v1/search"
+    private static let hourlyParameters = [
+        "cloudcover",
+        "cloudcover_low",
+        "cloud_cover_mid",
+        "cloud_cover_high",
+        "relativehumidity_2m",
+        "windspeed_10m",
+        "wind_speed_200hPa",
+        "winddirection_10m",
+        "temperature_2m",
+        "dewpoint_2m",
+        "precipitation",
+        "visibility"
+    ].joined(separator: ",")
     
     private let dataLoader: @Sendable (URL) async throws -> (Data, URLResponse)
     private let forecastTimeout: TimeInterval
@@ -42,22 +56,10 @@ public actor WeatherService: WeatherForecastProviding {
             throw WeatherError.invalidURL
         }
         
-        let hourlyParams = [
-            "cloudcover",
-            "cloudcover_low",
-            "relativehumidity_2m",
-            "windspeed_10m",
-            "winddirection_10m",
-            "temperature_2m",
-            "dewpoint_2m",
-            "precipitation",
-            "visibility"
-        ].joined(separator: ",")
-        
         components.queryItems = [
             URLQueryItem(name: "latitude", value: String(latitude)),
             URLQueryItem(name: "longitude", value: String(longitude)),
-            URLQueryItem(name: "hourly", value: hourlyParams),
+            URLQueryItem(name: "hourly", value: Self.hourlyParameters),
             URLQueryItem(name: "timezone", value: "auto"),
             URLQueryItem(name: "forecast_days", value: String(days))
         ]
@@ -167,25 +169,13 @@ public actor WeatherService: WeatherForecastProviding {
             throw WeatherError.invalidURL
         }
         
-        let hourlyParams = [
-            "cloudcover",
-            "cloudcover_low",
-            "relativehumidity_2m",
-            "windspeed_10m",
-            "winddirection_10m",
-            "temperature_2m",
-            "dewpoint_2m",
-            "precipitation",
-            "visibility"
-        ].joined(separator: ",")
-        
         let latitudes = coordinates.map { String($0.latitude) }.joined(separator: ",")
         let longitudes = coordinates.map { String($0.longitude) }.joined(separator: ",")
         
         components.queryItems = [
             URLQueryItem(name: "latitude", value: latitudes),
             URLQueryItem(name: "longitude", value: longitudes),
-            URLQueryItem(name: "hourly", value: hourlyParams),
+            URLQueryItem(name: "hourly", value: Self.hourlyParameters),
             URLQueryItem(name: "timezone", value: "auto"),
             URLQueryItem(name: "forecast_days", value: String(days))
         ]
@@ -248,7 +238,10 @@ public actor WeatherService: WeatherForecastProviding {
                 temperature: hourly.temperature2M[safe: index] ?? 0,
                 dewPoint: hourly.dewpoint2M?[safe: index],
                 visibility: hourly.visibility?[safe: index],
-                lowCloudCover: hourly.cloudcoverLow?[safe: index]
+                lowCloudCover: hourly.cloudcoverLow?[safe: index],
+                midCloudCover: hourly.midCloudCover?[safe: index],
+                highCloudCover: hourly.highCloudCover?[safe: index],
+                windSpeed200hPa: hourly.windSpeed200hPa?[safe: index]
             )
             forecasts.append(forecast)
         }
@@ -306,6 +299,8 @@ public struct HourlyData: Codable {
     public let time: [String]
     public let cloudcover: [Int]
     public let cloudcoverLow: [Int]?
+    public let midCloudCover: [Int]?
+    public let highCloudCover: [Int]?
     public let relativehumidity2M: [Int]
     public let windspeed10M: [Double]
     public let winddirection10M: [Int]
@@ -313,11 +308,14 @@ public struct HourlyData: Codable {
     public let dewpoint2M: [Double]?
     public let precipitation: [Double]?
     public let visibility: [Double]?
+    public let windSpeed200hPa: [Double]?
     
     public enum CodingKeys: String, CodingKey {
         case time
         case cloudcover
         case cloudcoverLow = "cloudcover_low"
+        case midCloudCover = "cloud_cover_mid"
+        case highCloudCover = "cloud_cover_high"
         case relativehumidity2M = "relativehumidity_2m"
         case windspeed10M = "windspeed_10m"
         case winddirection10M = "winddirection_10m"
@@ -325,23 +323,29 @@ public struct HourlyData: Codable {
         case dewpoint2M = "dewpoint_2m"
         case precipitation
         case visibility
+        case windSpeed200hPa = "wind_speed_200hPa"
     }
     
     public init(
         time: [String],
         cloudcover: [Int],
         cloudcoverLow: [Int]?,
+        midCloudCover: [Int]? = nil,
+        highCloudCover: [Int]? = nil,
         relativehumidity2M: [Int],
         windspeed10M: [Double],
         winddirection10M: [Int],
         temperature2M: [Double],
         dewpoint2M: [Double]?,
         precipitation: [Double]?,
-        visibility: [Double]?
+        visibility: [Double]?,
+        windSpeed200hPa: [Double]? = nil
     ) {
         self.time = time
         self.cloudcover = cloudcover
         self.cloudcoverLow = cloudcoverLow
+        self.midCloudCover = midCloudCover
+        self.highCloudCover = highCloudCover
         self.relativehumidity2M = relativehumidity2M
         self.windspeed10M = windspeed10M
         self.winddirection10M = winddirection10M
@@ -349,6 +353,7 @@ public struct HourlyData: Codable {
         self.dewpoint2M = dewpoint2M
         self.precipitation = precipitation
         self.visibility = visibility
+        self.windSpeed200hPa = windSpeed200hPa
     }
 }
 

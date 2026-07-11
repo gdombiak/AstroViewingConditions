@@ -65,6 +65,9 @@ final class WeatherServiceTests: XCTestCase {
         XCTAssertEqual(forecasts.count, 1)
         XCTAssertNil(forecasts[0].dewPoint)
         XCTAssertNil(forecasts[0].visibility)
+        XCTAssertNil(forecasts[0].midCloudCover)
+        XCTAssertNil(forecasts[0].highCloudCover)
+        XCTAssertNil(forecasts[0].windSpeed200hPa)
     }
     
     func testParseHourlyForecastsNegativeValues() throws {
@@ -199,5 +202,58 @@ final class WeatherServiceTests: XCTestCase {
         let response = try decoder.decode(OpenMeteoResponse.self, from: data)
         
         XCTAssertEqual(response.hourly.cloudcoverLow?[0], 30)
+    }
+
+    func testParseHourlyForecastsIncludesSeeingAndTransparencyFields() throws {
+        let json = """
+        {
+          "utc_offset_seconds": 0,
+          "hourly": {
+            "time": ["2026-02-19T00:00"],
+            "cloudcover": [50],
+            "cloud_cover_mid": [40],
+            "cloud_cover_high": [30],
+            "relativehumidity_2m": [80],
+            "windspeed_10m": [5.5],
+            "wind_speed_200hPa": [120],
+            "winddirection_10m": [180],
+            "temperature_2m": [12.5]
+          }
+        }
+        """
+
+        let response = try JSONDecoder().decode(OpenMeteoResponse.self, from: json.data(using: .utf8)!)
+        let forecast = try XCTUnwrap(WeatherService().parseHourlyForecasts(from: response).first)
+
+        XCTAssertEqual(forecast.midCloudCover, 40)
+        XCTAssertEqual(forecast.highCloudCover, 30)
+        XCTAssertEqual(forecast.windSpeed200hPa, 120)
+    }
+
+    func testParseHourlyForecastsHandlesShortOptionalArrays() throws {
+        let json = """
+        {
+          "utc_offset_seconds": 0,
+          "hourly": {
+            "time": ["2026-02-19T00:00", "2026-02-19T01:00"],
+            "cloudcover": [50, 50],
+            "cloud_cover_mid": [40],
+            "cloud_cover_high": [30],
+            "relativehumidity_2m": [80, 80],
+            "windspeed_10m": [5.5, 5.5],
+            "wind_speed_200hPa": [120],
+            "winddirection_10m": [180, 180],
+            "temperature_2m": [12.5, 12.5]
+          }
+        }
+        """
+
+        let response = try JSONDecoder().decode(OpenMeteoResponse.self, from: json.data(using: .utf8)!)
+        let forecasts = WeatherService().parseHourlyForecasts(from: response)
+
+        XCTAssertEqual(forecasts.count, 2)
+        XCTAssertNil(forecasts[1].midCloudCover)
+        XCTAssertNil(forecasts[1].highCloudCover)
+        XCTAssertNil(forecasts[1].windSpeed200hPa)
     }
 }

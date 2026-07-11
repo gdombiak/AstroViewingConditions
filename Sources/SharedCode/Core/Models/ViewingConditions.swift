@@ -120,6 +120,9 @@ public struct HourlyForecast: Identifiable, Sendable, Codable {
     public let dewPoint: Double?
     public let visibility: Double?
     public let lowCloudCover: Int?
+    public let midCloudCover: Int?
+    public let highCloudCover: Int?
+    public let windSpeed200hPa: Double?
     
     public init(
         id: UUID = UUID(),
@@ -131,7 +134,10 @@ public struct HourlyForecast: Identifiable, Sendable, Codable {
         temperature: Double,
         dewPoint: Double? = nil,
         visibility: Double? = nil,
-        lowCloudCover: Int? = nil
+        lowCloudCover: Int? = nil,
+        midCloudCover: Int? = nil,
+        highCloudCover: Int? = nil,
+        windSpeed200hPa: Double? = nil
     ) {
         self.id = id
         self.time = time
@@ -143,6 +149,9 @@ public struct HourlyForecast: Identifiable, Sendable, Codable {
         self.dewPoint = dewPoint
         self.visibility = visibility
         self.lowCloudCover = lowCloudCover
+        self.midCloudCover = midCloudCover
+        self.highCloudCover = highCloudCover
+        self.windSpeed200hPa = windSpeed200hPa
     }
 }
 
@@ -350,17 +359,23 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
         public let fogScoreAvg: Double
         public let moonIlluminationAvg: Int
         public let windSpeedAvg: Double
+        public let seeingScoreAvg: Double?
+        public let transparencyScoreAvg: Double?
         
         public init(
             cloudCoverScore: Double,
             fogScoreAvg: Double,
             moonIlluminationAvg: Int,
-            windSpeedAvg: Double
+            windSpeedAvg: Double,
+            seeingScoreAvg: Double? = nil,
+            transparencyScoreAvg: Double? = nil
         ) {
             self.cloudCoverScore = cloudCoverScore
             self.fogScoreAvg = fogScoreAvg
             self.moonIlluminationAvg = moonIlluminationAvg
             self.windSpeedAvg = windSpeedAvg
+            self.seeingScoreAvg = seeingScoreAvg
+            self.transparencyScoreAvg = transparencyScoreAvg
         }
     }
     
@@ -373,6 +388,8 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
         public let moonIllumination: Int
         public let moonAltitude: Double
         public let windSpeed: Double
+        public let seeingScore: Double?
+        public let transparencyScore: Double?
         
         public init(
             id: UUID = UUID(),
@@ -382,7 +399,9 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
             fogScore: Int,
             moonIllumination: Int,
             moonAltitude: Double,
-            windSpeed: Double
+            windSpeed: Double,
+            seeingScore: Double? = nil,
+            transparencyScore: Double? = nil
         ) {
             self.id = id
             self.time = time
@@ -392,6 +411,8 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
             self.moonIllumination = moonIllumination
             self.moonAltitude = moonAltitude
             self.windSpeed = windSpeed
+            self.seeingScore = seeingScore
+            self.transparencyScore = transparencyScore
         }
         
         public var rating: Rating {

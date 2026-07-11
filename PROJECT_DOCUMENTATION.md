@@ -32,9 +32,12 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
 ## 2. Core Features
 
 ### Implemented
-- **Weather Data**: Cloud cover, humidity, wind, temperature, visibility, dew point, and hourly forecasts via Open-Meteo
+- **Weather Data**: Low/mid/high cloud information, humidity, surface wind, 200 hPa wind used by seeing estimation, temperature, visibility, dew point, and hourly forecasts via Open-Meteo
 - **Astronomical Data**: Sun/moon rise-set times, astronomical night timing, and moon phase via SunCalc
-- **Night Quality Analysis**: Observing assessment based on cloud cover, moonlight, fog, wind, and nighttime windows
+- **Night Quality Analysis**: Observing assessment based on transparency, seeing, cloud cover, moonlight, fog, wind, and nighttime windows
+  - `SeeingCalculator` uses temperature stability and 200 hPa wind; `TransparencyCalculator` uses weighted low/mid/high clouds and visibility.
+  - Missing new inputs fall back safely to the previous scoring behavior.
+  - Summary generation remains centralized in SharedCode for iPhone, widgets, and Watch.
 - **Best Nearby Area**: Ranked nearby observing-area recommendations based on sampled weather forecasts and candidate suitability checks
   - Weather-scores the full generated grid and preserves `allScoredLocations` for diagnostics and future weather-field views
   - Excludes known water/unsuitable and unchecked candidates. Candidates whose suitability cannot be conclusively verified may be recommended with clear verification warnings; observers must confirm access before traveling.
@@ -177,6 +180,9 @@ Important services:
 - `MoonRecommendationService` and `PlanetRecommendationService`: Calculate useful visibility windows for solar-system targets
 - `DeepSkyCatalogService`: Supplies the curated deep-sky catalog and observing metadata
 - `AsyncTimeout`: Bounds weather, geocoding, location, time-zone, and ISS requests so a failed service does not wait indefinitely
+- `NightQualityAnalyzer`: Combines observing factors into hourly and nightly assessments
+- `SeeingCalculator`: Produces the optional temperature-stability and 200 hPa wind penalty
+- `TransparencyCalculator`: Produces the optional cloud-layer and visibility penalty
 
 ---
 
@@ -364,7 +370,7 @@ GET https://api.open-meteo.com/v1/forecast
 Parameters:
   - latitude: Double
   - longitude: Double
-  - hourly: cloudcover,cloudcover_low,relativehumidity_2m,windspeed_10m,...
+  - hourly: cloudcover,cloudcover_low,cloud_cover_mid,cloud_cover_high,relativehumidity_2m,windspeed_10m,wind_speed_200hPa,...
   - timezone: auto
   - forecast_days: 3
 ```
@@ -448,6 +454,7 @@ Implemented:
 - Astronomical calculations
 - ISS pass predictions
 - Night quality analysis
+- Seeing & Transparency
 - Best Nearby Area with checked ranked recommendations and a recommended-only default map
 - Best Targets with scores, observing windows, practical guidance, and offline reference images
 - Detailed ISS pass paths and error states
@@ -460,7 +467,7 @@ Implemented:
 - Shared storage and iPhone/watch sync
 - Core unit test coverage
 
-**Next Milestone**: Follow the next-release sequence in [FEATURES/FEATURE_ROADMAP.md](FEATURES/FEATURE_ROADMAP.md), starting with Seeing & Transparency and Equipment Profile.
+**Next Milestone**: Equipment Profile, followed by equipment-aware Best Targets scoring and simple horizon constraints per saved location. See [FEATURES/FEATURE_ROADMAP.md](FEATURES/FEATURE_ROADMAP.md) for the full sequence.
 
 ---
 
@@ -474,5 +481,5 @@ This is an open-source project. Contributions welcome.
 
 ---
 
-*Last Updated: July 10, 2026*
-*Document Version: 1.4*
+*Last Updated: July 11, 2026*
+*Document Version: 1.5*
