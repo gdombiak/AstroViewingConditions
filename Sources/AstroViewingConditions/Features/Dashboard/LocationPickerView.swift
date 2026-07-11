@@ -78,8 +78,8 @@ struct LocationPickerView: View {
                     }
                 }
             }
-            .navigationTitle("Select Location")
-            .navigationBarTitleDisplayMode(.inline)
+            .appListBackground()
+            .appNavigationTitle("Select Location", displayMode: .inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

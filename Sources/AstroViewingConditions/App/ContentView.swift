@@ -2,31 +2,128 @@ import SharedCode
 import SwiftUI
 
 struct ContentView: View {
+    private enum FieldTabBarLayout {
+        static let maxWidth: CGFloat = 300
+        static let horizontalInset: CGFloat = 16
+        static let verticalInset: CGFloat = 0
+        static let height: CGFloat = 56
+        static let cornerRadius: CGFloat = 28
+    }
+
+    private enum AppTab: Hashable, CaseIterable {
+        case dashboard
+        case locations
+        case settings
+
+        var title: String {
+            switch self {
+            case .dashboard: "Dashboard"
+            case .locations: "Locations"
+            case .settings: "Settings"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .dashboard: "star.fill"
+            case .locations: "mappin.and.ellipse"
+            case .settings: "gear"
+            }
+        }
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.appPalette) private var palette
+    @State private var selectedTab: AppTab = .dashboard
     
+    @ViewBuilder
     var body: some View {
         let isLandscape = verticalSizeClass == .compact
         let isRegular = horizontalSizeClass == .regular
-        
-        return TabView {
-            DashboardView()
-                .tabItem {
-                    Label("Dashboard", systemImage: "star.fill")
-                }
-            
-            LocationsView()
-                .tabItem {
-                    Label("Locations", systemImage: "mappin.and.ellipse")
-                }
-            
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
+
+        if palette.appearance == .field {
+            ZStack {
+                DashboardView()
+                    .opacity(selectedTab == .dashboard ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .dashboard)
+                    .accessibilityHidden(selectedTab != .dashboard)
+
+                LocationsView()
+                    .opacity(selectedTab == .locations ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .locations)
+                    .accessibilityHidden(selectedTab != .locations)
+
+                SettingsView()
+                    .opacity(selectedTab == .settings ? 1 : 0)
+                    .allowsHitTesting(selectedTab == .settings)
+                    .accessibilityHidden(selectedTab != .settings)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) { fieldTabBar }
+            .dynamicTypeSize(isRegular ? .xxLarge : (isLandscape ? .large : .medium))
+        } else {
+            TabView {
+                DashboardView()
+                    .tabItem { Label("Dashboard", systemImage: "star.fill") }
+
+                LocationsView()
+                    .tabItem { Label("Locations", systemImage: "mappin.and.ellipse") }
+
+                SettingsView()
+                    .tabItem { Label("Settings", systemImage: "gear") }
+            }
+            .dynamicTypeSize(isRegular ? .xxLarge : (isLandscape ? .large : .medium))
         }
-        .dynamicTypeSize(isRegular ? .xxLarge : (isLandscape ? .large : .medium))
+    }
+
+    private var fieldTabBar: some View {
+        HStack(spacing: 8) {
+            ForEach(AppTab.allCases, id: \.self) { tab in
+                let isSelected = selectedTab == tab
+                Button {
+                    selectedTab = tab
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: tab.systemImage)
+                            .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
+                        Text(tab.title)
+                            .font(.caption2)
+                            .fontWeight(isSelected ? .semibold : .regular)
+                    }
+                    .foregroundStyle(
+                        isSelected ? palette.selectedControlText : palette.unselectedControlText
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .background(isSelected ? palette.selectedControlBackground : Color.clear)
+                    .clipShape(Capsule())
+                    .overlay {
+                        if isSelected {
+                            Capsule().stroke(palette.accent.opacity(0.55), lineWidth: 1)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
+                .accessibilityValue(isSelected ? "Selected tab" : "Tab")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .padding(2)
+        .frame(maxWidth: FieldTabBarLayout.maxWidth)
+        .frame(height: FieldTabBarLayout.height)
+        .background(palette.tabBarBackground)
+        .clipShape(RoundedRectangle(cornerRadius: FieldTabBarLayout.cornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: FieldTabBarLayout.cornerRadius)
+                .stroke(palette.border, lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.28), radius: 12, y: 5)
+        .padding(.horizontal, FieldTabBarLayout.horizontalInset)
+        .padding(.vertical, FieldTabBarLayout.verticalInset)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Tab Bar")
     }
 }
 

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct TargetDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appPalette) private var palette
     @State private var viewerPresentation = TargetImageViewerPresentationState()
     let recommendation: TargetRecommendation
     let timeZone: TimeZone?
@@ -46,7 +47,7 @@ struct TargetDetailView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         Label("\(content.score) / 100", systemImage: "star.fill")
-                            .foregroundStyle(TargetScoreColorProvider.color(for: content.score))
+                            .foregroundStyle(TargetScoreColorProvider.color(for: content.score, palette: palette))
                             .accessibilityLabel("Score \(content.score) out of 100")
                     }
                     .padding(.vertical, 4)
@@ -62,10 +63,8 @@ struct TargetDetailView: View {
                     Section(section.title) { Text(section.text) }
                 }
             }
-            .scrollContentBackground(.hidden)
-            .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("Target Details")
-            .navigationBarTitleDisplayMode(.inline)
+            .appListBackground()
+            .appNavigationTitle("Target Details", displayMode: .inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }

@@ -7,6 +7,7 @@ public struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
+    @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
     @State private var selectedLocation: SelectedLocation?
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
     @State private var viewModel = DashboardViewModel(
@@ -63,7 +64,7 @@ public struct DashboardView: View {
                     initialView
                 }
             }
-            .navigationTitle(selectedLocationName)
+            .appNavigationTitle(selectedLocationName)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: { showingLocationPicker = true }) {
@@ -83,6 +84,17 @@ public struct DashboardView: View {
                     }
                 }
                 
+                ToolbarItem(placement: toolbarPlacement) {
+                    Button {
+                        fieldModeEnabled.toggle()
+                    } label: {
+                        Image(systemName: fieldModeEnabled ? "flashlight.on.fill" : "flashlight.off.fill")
+                    }
+                    .accessibilityLabel("Field Mode")
+                    .accessibilityValue(fieldModeEnabled ? "On" : "Off")
+                    .accessibilityHint("Toggles a dim red appearance for observing in darkness.")
+                }
+
                 ToolbarItem(placement: toolbarPlacement) {
                     if viewModel.isLoading {
                         ProgressView()
@@ -124,6 +136,7 @@ public struct DashboardView: View {
                 .adaptiveTargetSheet(horizontalSizeClass: horizontalSizeClass)
             }
         }
+        .appScreenBackground()
         .task {
             viewModel.updateAPIKey(n2yoApiKey)
             await loadCurrentLocation()
@@ -312,7 +325,7 @@ public struct DashboardView: View {
                 Button("Enable Location") {
                     locationManager.requestAuthorization()
                 }
-                .buttonStyle(.borderedProminent)
+                .appPrimaryActionStyle()
             } else {
                 Text("Loading location...")
                     .font(.headline)
@@ -337,12 +350,13 @@ public struct DashboardView: View {
     }
     
     private var daySelector: some View {
-        Picker("Day", selection: $viewModel.selectedDay) {
-            ForEach(DashboardViewModel.DaySelection.allCases, id: \.self) { day in
-                Text(viewModel.titleForSelectedDay(day)).tag(day)
-            }
+        AppSegmentedPicker(
+            selection: $viewModel.selectedDay,
+            options: DashboardViewModel.DaySelection.allCases,
+            pickerLabel: "Day"
+        ) { day in
+            Text(viewModel.titleForSelectedDay(day))
         }
-        .pickerStyle(.segmented)
         .scaleEffect(isIPad ? 1.2 : 1.0)
     }
     
@@ -384,4 +398,16 @@ public struct DashboardView: View {
 
 #Preview {
     DashboardView()
+        .appAppearance(fieldModeEnabled: false)
+}
+
+#Preview("Dashboard Dark") {
+    DashboardView()
+        .appAppearance(fieldModeEnabled: false)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Dashboard Field Mode") {
+    DashboardView()
+        .appAppearance(fieldModeEnabled: true)
 }

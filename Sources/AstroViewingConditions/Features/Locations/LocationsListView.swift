@@ -5,6 +5,7 @@ import SwiftData
 
 public struct LocationsView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.appPalette) private var palette
     @Query private var savedLocations: [SavedLocation]
     
     @State private var showingAddLocation = false
@@ -45,22 +46,25 @@ public struct LocationsView: View {
                                         locationToDelete = location
                                         showingDeleteConfirmation = true
                                     } label: {
-                                        Label("Delete", systemImage: "trash")
+                                        swipeActionLabel("Delete", systemImage: "trash", destructive: true)
                                     }
+                                    .tint(deleteActionTint)
 
                                     Button {
                                         beginRenaming(location)
                                     } label: {
-                                        Label("Rename", systemImage: "pencil")
+                                        swipeActionLabel("Rename", systemImage: "pencil", destructive: false)
                                     }
-                                    .tint(.blue)
+                                    .tint(renameActionTint)
                                 }
                         }
                         .onMove(perform: moveLocations)
                     }
                 }
+                .appListRowSurface()
             }
-            .navigationTitle("Locations")
+            .appListBackground()
+            .appNavigationTitle("Locations")
             .task {
                 persistCurrentOrderIfNeeded()
             }
@@ -68,12 +72,14 @@ public struct LocationsView: View {
                 if !orderedLocations.isEmpty {
                     ToolbarItem(placement: .topBarLeading) {
                         EditButton()
+                            .appToolbarButtonStyle()
                     }
                 }
                 ToolbarItem(placement: toolbarPlacement) {
                     Button(action: { showingAddLocation = true }) {
                         Image(systemName: "plus")
                     }
+                    .appToolbarButtonStyle()
                 }
             }
             .sheet(isPresented: $showingAddLocation) {
@@ -90,7 +96,7 @@ public struct LocationsView: View {
             } message: { location in
                 Text("Are you sure you want to delete \"\(location.name)\"?")
             }
-            .alert("Rename Location", isPresented: $showingRenamePrompt, presenting: locationToRename) { location in
+            .alert("Rename Location", isPresented: systemRenamePrompt, presenting: locationToRename) { location in
                 TextField("Location name", text: $editedLocationName)
                 Button("Cancel", role: .cancel) {}
                 Button("Save") {
@@ -99,6 +105,21 @@ public struct LocationsView: View {
                 .disabled(trimmedLocationName.isEmpty)
             } message: { _ in
                 Text("Enter a new name for this saved location.")
+            }
+            .overlay {
+                if palette.appearance == .field,
+                   showingRenamePrompt,
+                   let location = locationToRename {
+                    FieldRenameLocationDialog(
+                        name: $editedLocationName,
+                        canSave: !trimmedLocationName.isEmpty,
+                        cancel: dismissRenamePrompt,
+                        save: {
+                            renameLocation(location)
+                            dismissRenamePrompt()
+                        }
+                    )
+                }
             }
         }
     }
@@ -113,6 +134,35 @@ public struct LocationsView: View {
 
     private var orderedLocations: [SavedLocation] {
         SavedLocation.ordered(savedLocations)
+    }
+
+    private var systemRenamePrompt: Binding<Bool> {
+        Binding(
+            get: { palette.appearance != .field && showingRenamePrompt },
+            set: { showingRenamePrompt = $0 }
+        )
+    }
+
+    private var renameActionTint: Color {
+        palette.appearance == .field ? palette.secondaryActionBackground : .blue
+    }
+
+    private var deleteActionTint: Color {
+        palette.appearance == .field ? palette.destructiveActionBackground : .red
+    }
+
+    @ViewBuilder
+    private func swipeActionLabel(
+        _ title: String,
+        systemImage: String,
+        destructive: Bool
+    ) -> some View {
+        if palette.appearance == .field {
+            Label(title, systemImage: systemImage)
+                .foregroundStyle(destructive ? palette.primaryActionLabel : palette.secondaryText)
+        } else {
+            Label(title, systemImage: systemImage)
+        }
     }
 
     private func persistCurrentOrderIfNeeded() {
@@ -161,6 +211,11 @@ public struct LocationsView: View {
         showingRenamePrompt = true
     }
 
+    private func dismissRenamePrompt() {
+        showingRenamePrompt = false
+        locationToRename = nil
+    }
+
     private func renameLocation(_ location: SavedLocation) {
         let newName = trimmedLocationName
         guard !newName.isEmpty else { return }
@@ -185,6 +240,77 @@ public struct LocationsView: View {
     }
 }
 
+private struct FieldRenameLocationDialog: View {
+    @Environment(\.appPalette) private var palette
+    @Binding var name: String
+    let canSave: Bool
+    let cancel: () -> Void
+    let save: () -> Void
+    @FocusState private var isNameFocused: Bool
+
+    var body: some View {
+        ZStack {
+            palette.appBackground.opacity(0.82)
+                .ignoresSafeArea()
+                .onTapGesture { }
+
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Rename Location")
+                    .font(.headline)
+                    .foregroundStyle(palette.primaryText)
+                    .accessibilityAddTraits(.isHeader)
+
+                Text("Enter a new name for this saved location.")
+                    .font(.subheadline)
+                    .foregroundStyle(palette.secondaryText)
+
+                TextField(
+                    "",
+                    text: $name,
+                    prompt: Text("Location name").foregroundStyle(palette.tertiaryText)
+                )
+                .textFieldStyle(.plain)
+                .foregroundStyle(palette.primaryText)
+                .tint(palette.accent)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .background(palette.controlBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isNameFocused ? palette.accent.opacity(0.8) : palette.border, lineWidth: isNameFocused ? 2 : 1)
+                }
+                .focused($isNameFocused)
+                .submitLabel(.done)
+                .onSubmit {
+                    if canSave { save() }
+                }
+
+                HStack(spacing: 12) {
+                    Button("Cancel", role: .cancel, action: cancel)
+                        .appSecondaryActionStyle()
+                        .frame(maxWidth: .infinity)
+
+                    Button("Save", action: save)
+                        .appPrimaryActionStyle()
+                        .disabled(!canSave)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(20)
+            .background(palette.elevatedBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(palette.border, lineWidth: 1)
+            }
+            .padding(.horizontal, 28)
+            .accessibilityElement(children: .contain)
+        }
+        .onAppear { isNameFocused = true }
+    }
+}
+
 struct LocationRow: View {
     let location: SavedLocation
     
@@ -196,12 +322,12 @@ struct LocationRow: View {
                 
                 Text(CoordinateFormatters.format(location.coordinate))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .appSecondaryForeground()
                 
                 if let elevation = location.elevation {
                     Text("Elevation: \(Int(elevation))m")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .appTertiaryForeground()
                 }
             }
             
@@ -244,16 +370,14 @@ struct LocationMapView: View {
                 Marker(location.name, coordinate: coordinate)
                 UserAnnotation()
             }
-            .mapStyle(.standard)
+            .appScreenBackground()
+            .appMapStyle()
             .mapControls {
                 MapCompass()
                 MapScaleView()
                 MapUserLocationButton()
             }
-            .navigationTitle(location.name)
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
+            .appNavigationTitle(location.name, displayMode: .inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
@@ -268,4 +392,5 @@ struct LocationMapView: View {
 #Preview {
     LocationsView()
         .modelContainer(for: SavedLocation.self, inMemory: true)
+        .appAppearance(fieldModeEnabled: true)
 }

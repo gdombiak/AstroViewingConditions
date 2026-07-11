@@ -122,6 +122,7 @@
 		AFF6272BEA680D98E48434AB /* SharedCode.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7DE13674996F9DC96D419E3F /* SharedCode.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		B1D6071736E2FD6F2459C428 /* TargetAssetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D45032363219CEC7896BF0F6 /* TargetAssetProvider.swift */; };
 		B571244AE8EAF85642F04100 /* AstroViewingConditionsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAE2FB1C99BE13E2DAC757D /* AstroViewingConditionsApp.swift */; };
+		B571244AE8EAF85642F04101 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAE2FB1C99BE13E2DAC757E /* AppAppearance.swift */; };
 		B72E301DBC70B746208E3737 /* AdaptiveFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1993647566ECC08937BF07 /* AdaptiveFont.swift */; };
 		B8EDE465A8A4073DD286EBF0 /* NightConditionsWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7549069C120C6495548EE838 /* NightConditionsWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B99415F8A5E97794DBD10A86 /* AdaptiveFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1993647566ECC08937BF07 /* AdaptiveFont.swift */; };
@@ -398,6 +399,7 @@
 		EC32FC6F5F3B891865BE3D35 /* NightConditionsWidgetSmallEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightConditionsWidgetSmallEntryView.swift; sourceTree = "<group>"; };
 		EC8842E9A843939026144263 /* MigrationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationHelper.swift; sourceTree = "<group>"; };
 		ECAE2FB1C99BE13E2DAC757D /* AstroViewingConditionsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstroViewingConditionsApp.swift; sourceTree = "<group>"; };
+		ECAE2FB1C99BE13E2DAC757E /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
 		ED12614074F110C4C95D4AAA /* DashboardCardStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardCardStyle.swift; sourceTree = "<group>"; };
 		ED98556427C84CC4F6481E34 /* ISSServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISSServiceTests.swift; sourceTree = "<group>"; };
 		F278F46B63CAE4FD9E8F5E5A /* SharedCode.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = SharedCode.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -536,6 +538,7 @@
 		2F6E87BE2F798C232A4FCEC9 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				ECAE2FB1C99BE13E2DAC757E /* AppAppearance.swift */,
 				ECAE2FB1C99BE13E2DAC757D /* AstroViewingConditionsApp.swift */,
 				44B13AC1E745AF0480A32328 /* ContentView.swift */,
 			);
@@ -1050,6 +1053,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1EAB35011886AD28FDF5DE0A /* AdaptiveTargetSheet.swift in Sources */,
+				B571244AE8EAF85642F04101 /* AppAppearance.swift in Sources */,
 				B571244AE8EAF85642F04100 /* AstroViewingConditionsApp.swift in Sources */,
 				17266FA86858825588CA64C0 /* BestSpotResultCard.swift in Sources */,
 				143EBE16CD71B3766BE1DED2 /* BestSpotView.swift in Sources */,

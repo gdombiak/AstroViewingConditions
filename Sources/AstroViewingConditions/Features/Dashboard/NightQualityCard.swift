@@ -2,6 +2,7 @@ import SharedCode
 import SwiftUI
 
 struct NightQualityCard: View {
+    @Environment(\.appPalette) private var palette
     let assessment: NightQualityAssessment
     
     private var unitConverter: AstroUnitConverter {
@@ -73,23 +74,19 @@ struct NightQualityCard: View {
     
     private var ratingColor: Color {
         switch assessment.rating {
-        case .excellent:
-            return .green
-        case .good:
-            return .blue
-        case .fair:
-            return .orange
-        case .poor:
-            return .red
+        case .excellent: return palette.statusColor(.positive)
+        case .good: return palette.statusColor(.informational)
+        case .fair: return palette.statusColor(.caution)
+        case .poor: return palette.statusColor(.negative)
         }
     }
     
     private func scoreColor(for score: Int) -> Color {
         switch score {
-        case 80...100: return .green
-        case 60..<80: return .blue
-        case 40..<60: return .orange
-        default: return .red
+        case 80...100: return palette.statusColor(.positive)
+        case 60..<80: return palette.statusColor(.informational)
+        case 40..<60: return palette.statusColor(.caution)
+        default: return palette.statusColor(.negative)
         }
     }
 }

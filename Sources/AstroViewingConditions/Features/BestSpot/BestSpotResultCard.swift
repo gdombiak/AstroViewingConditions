@@ -2,6 +2,7 @@ import SharedCode
 import SwiftUI
 
 struct BestSpotResultCard: View {
+    @Environment(\.appPalette) private var palette
     let locationScore: LocationScore
     let rank: Int
     let isSelected: Bool
@@ -23,18 +24,18 @@ struct BestSpotResultCard: View {
                         Text("\(rank)")
                             .font(.subheadline)
                             .fontWeight(.bold)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(palette.appearance == .field ? palette.primaryActionLabel : .white)
                     }
                     
                     // Score badge
                     Text("\(locationScore.score)")
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundStyle(locationScore.color)
+                        .foregroundStyle(TargetScoreColorProvider.color(for: locationScore.score, palette: palette))
                     
                     Text("/100")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .appTertiaryForeground()
                     
                     Spacer()
                     
@@ -46,7 +47,7 @@ struct BestSpotResultCard: View {
                         
                         Text(locationScore.suitability.label)
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .appSecondaryForeground()
                     }
                 }
                 
@@ -86,20 +87,34 @@ struct BestSpotResultCard: View {
                     Text(locationScore.moonImpactSummary)
                 }
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .appTertiaryForeground()
             }
             .padding()
             .background(cardBackgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
+                    .stroke(
+                        isSelected
+                            ? (palette.appearance == .field ? palette.accent : .blue)
+                            : Color.clear,
+                        lineWidth: 2
+                    )
             )
         }
         .buttonStyle(.plain)
     }
     
     private var rankBadgeColor: Color {
+        if palette.appearance == .field {
+            switch rank {
+            case 1: return palette.statusColor(.caution)
+            case 2: return palette.secondaryText.opacity(0.8)
+            case 3: return palette.statusColor(.caution).opacity(0.65)
+            default: return palette.subduedFill
+            }
+        }
+
         switch rank {
         case 1: return .yellow
         case 2: return Color.gray.opacity(0.6)
@@ -109,15 +124,12 @@ struct BestSpotResultCard: View {
     }
     
     private var cardBackgroundColor: Color {
-        #if os(iOS)
-        return Color(uiColor: .systemGray6)
-        #else
-        return Color.gray.opacity(0.1)
-        #endif
+        palette.elevatedBackground
     }
 }
 
 struct ConditionPill: View {
+    @Environment(\.appPalette) private var palette
     let icon: String
     let label: String
     let value: String
@@ -127,10 +139,10 @@ struct ConditionPill: View {
         HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.caption2)
-                .foregroundStyle(color)
+                .foregroundStyle(palette.appearance == .field ? color.opacity(0.62) : color)
             Text(label)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .appSecondaryForeground()
             Text(value)
                 .font(.caption)
                 .fontWeight(.medium)

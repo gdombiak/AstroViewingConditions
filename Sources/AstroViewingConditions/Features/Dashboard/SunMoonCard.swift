@@ -2,6 +2,7 @@ import SharedCode
 import SwiftUI
 
 struct SunMoonCard: View {
+    @Environment(\.appPalette) private var palette
     let sunEvents: SunEvents
     let tomorrowSunEvents: SunEvents?
     let moonInfo: MoonInfo
@@ -43,7 +44,7 @@ struct SunMoonCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Image(systemName: "moon.stars.fill")
-                            .foregroundStyle(.indigo)
+                            .foregroundStyle(palette.appearance == .field ? palette.accent : .indigo)
                         Text("Astronomical Night")
                             .font(.subheadline)
                             .fontWeight(.medium)
@@ -70,7 +71,7 @@ struct SunMoonCard: View {
                             Text(formatDuration(sunEvents.astronomicalNightDuration(using: tomorrowSunEvents)))
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
-                                .foregroundStyle(.indigo)
+                                .foregroundStyle(palette.appearance == .field ? palette.accent : .indigo)
                         }
                     }
                 }

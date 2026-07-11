@@ -112,6 +112,7 @@ struct ZoomableImageView: UIViewRepresentable {
 
 struct TargetImageViewer: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appPalette) private var palette
     let resolvedImage: ResolvedTargetImage
     let targetName: String
 
@@ -139,7 +140,7 @@ struct TargetImageViewer: View {
         ZStack {
             Text(targetName)
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(palette.appearance == .field ? palette.primaryText : .white)
                 .lineLimit(1)
                 .padding(.horizontal, 72)
 
@@ -147,7 +148,7 @@ struct TargetImageViewer: View {
                 Spacer()
                 Button("Done") { dismiss() }
                     .fontWeight(.semibold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(palette.appearance == .field ? palette.primaryText : .white)
                     .accessibilityIdentifier("targetImageViewerDoneButton")
             }
             .padding(.horizontal, 20)

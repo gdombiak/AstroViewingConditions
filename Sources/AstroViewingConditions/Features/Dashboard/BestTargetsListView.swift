@@ -48,8 +48,8 @@ struct BestTargetsListView: View {
                     }
                 }
             }
-            .navigationTitle("Best Targets")
-            .navigationBarTitleDisplayMode(.inline)
+            .appListBackground()
+            .appNavigationTitle("Best Targets", displayMode: .inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
@@ -64,4 +64,33 @@ struct BestTargetsListView: View {
             }
         }
     }
+}
+
+#Preview("Best Targets Field Mode") {
+    BestTargetsListView(
+        presentation: BestTargetsListPresentation(recommendations: [
+            TargetRecommendation(
+                target: ObservableTarget(
+                    id: "m13",
+                    name: "M13 Hercules Cluster",
+                    type: .deepSky,
+                    preferredEquipment: .smallTelescope,
+                    difficulty: 0.5,
+                    observingIntent: .standard
+                ),
+                score: 84,
+                visibilityWindow: TargetVisibilityWindow(
+                    start: Date(),
+                    end: Date().addingTimeInterval(7_200),
+                    bestTime: Date().addingTimeInterval(3_600),
+                    maxAltitude: 68,
+                    direction: "S"
+                ),
+                reasons: [.highAltitude, .astronomicalDarkness],
+                summary: "High in the sky during astronomical darkness."
+            )
+        ]),
+        timeZone: .current
+    )
+    .appAppearance(fieldModeEnabled: true)
 }

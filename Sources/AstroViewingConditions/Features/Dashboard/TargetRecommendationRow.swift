@@ -2,6 +2,7 @@ import SharedCode
 import SwiftUI
 
 struct TargetRecommendationRow: View {
+    @Environment(\.appPalette) private var palette
     let recommendation: TargetRecommendation
     let timeZone: TimeZone?
     var showsThumbnail = false
@@ -53,7 +54,7 @@ struct TargetRecommendationRow: View {
 
                 Text(recommendation.summary)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .appSecondaryForeground()
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -64,7 +65,7 @@ struct TargetRecommendationRow: View {
                     if let positionText {
                         Text(positionText)
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .appTertiaryForeground()
                     }
 
                     Spacer(minLength: 0)
@@ -88,7 +89,7 @@ struct TargetRecommendationRow: View {
             Text(recommendation.target.displayTypeName)
                 .font(.caption2)
                 .fontWeight(.medium)
-                .foregroundStyle(.secondary)
+                .appSecondaryForeground()
                 .lineLimit(1)
 
             TargetIntentBadge(intent: recommendation.target.observingIntent)
@@ -100,10 +101,10 @@ struct TargetRecommendationRow: View {
             Text("\(recommendation.score)")
                 .font(.subheadline)
                 .fontWeight(.bold)
-                .foregroundStyle(TargetScoreColorProvider.color(for: recommendation.score))
+                .foregroundStyle(TargetScoreColorProvider.color(for: recommendation.score, palette: palette))
             Text("/100")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .appTertiaryForeground()
         }
         .fixedSize(horizontal: true, vertical: false)
         .accessibilityLabel("Score \(recommendation.score) out of 100")

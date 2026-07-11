@@ -79,12 +79,11 @@ The catalog is intentionally curated rather than a complete Messier/NGC database
 The next release should focus on making the app's core guidance more trustworthy and more useful at the telescope. The recommended sequence is:
 
 1. Finish Seeing & Transparency.
-2. Add Field Mode.
-3. Add Equipment Profile.
-4. Add equipment-aware Best Targets scoring.
-5. Add simple horizon constraints per saved location.
+2. Add Equipment Profile.
+3. Add equipment-aware Best Targets scoring.
+4. Add simple horizon constraints per saved location.
 
-Items 1 and 2 are the strongest candidates for the immediate release if scope needs to stay small. Items 3 through 5 can follow as the first personalization release.
+Seeing & Transparency is the strongest candidate for the immediate release. Items 2 through 4 can follow as the first personalization release; Field Mode is complete for the 2.0.1 milestone.
 
 ### 1. Finish Seeing & Transparency
 
@@ -114,7 +113,7 @@ Items 1 and 2 are the strongest candidates for the immediate release if scope ne
 - The app explains the new factors without implying forecast certainty.
 - Best Targets uses the improved night-quality score through the existing scoring path.
 
-### 2. Field Mode
+### 2. Field Mode - Complete ([#49](https://github.com/gdombiak/AstroViewingConditions/issues/49))
 
 **Goal**: Make the app comfortable to use at the telescope without damaging night vision.
 
@@ -133,9 +132,11 @@ Items 1 and 2 are the strongest candidates for the immediate release if scope ne
 
 **Done when**:
 
-- Dashboard, Settings, Locations, Best Targets, and target detail sheets are usable in Field Mode.
-- The app does not force Field Mode into widgets or watchOS unless explicitly designed for those surfaces.
-- Basic Light/Dark/Field Mode previews or manual checks are documented.
+- [x] Dashboard, Settings, Locations, Best Targets, and target detail sheets are usable in Field Mode.
+- [x] The preference persists, Settings and the Dashboard expose it, and disabling it restores the original system Light/Dark presentation.
+- [x] Field-only semantic surfaces, controls, and the compact floating tab bar preserve readable hierarchy and accessible selected-state semantics.
+- [x] The app does not force Field Mode into widgets or watchOS.
+- [x] Simulator/manual verification covers normal-mode regression, primary Field surfaces, tab-bar clearance, and system-controlled limitations.
 
 ### 3. Equipment Profile
 

@@ -99,6 +99,7 @@ struct TargetHeroImage: View {
 }
 
 struct TargetImageAttributionView: View {
+    @Environment(\.appPalette) private var palette
     let info: TargetImageCredit
     var viewerOverlay = false
 
@@ -106,7 +107,7 @@ struct TargetImageAttributionView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(info.attributionText)
                 .font(.footnote)
-                .foregroundStyle(viewerOverlay ? Color.white.opacity(0.82) : Color.secondary)
+                .foregroundStyle(attributionColor)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityLabel("Image credit: \(info.credit). License: \(info.licenseName)")
 
@@ -125,8 +126,18 @@ struct TargetImageAttributionView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .font(.footnote)
-            .tint(viewerOverlay ? Color.white : Color.accentColor)
+            .tint(linkColor)
         }
+    }
+
+    private var attributionColor: Color {
+        guard viewerOverlay else { return palette.secondaryText }
+        return palette.appearance == .field ? palette.secondaryText : Color.white.opacity(0.82)
+    }
+
+    private var linkColor: Color {
+        guard viewerOverlay else { return palette.accent }
+        return palette.appearance == .field ? palette.accent : .white
     }
 
     private var sourceLink: some View {

@@ -97,8 +97,8 @@ public struct LocationSearchView: View {
                     Text("Map")
                 }
             }
-            .navigationTitle("Add Location")
-            .navigationBarTitleDisplayMode(.inline)
+            .appListBackground()
+            .appNavigationTitle("Add Location", displayMode: .inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") {

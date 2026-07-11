@@ -6,6 +6,7 @@ struct CurrentConditionsCard: View {
     let unitConverter: AstroUnitConverter
     let timeZone: TimeZone?
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appPalette) private var palette
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -99,6 +100,7 @@ struct CurrentConditionsCard: View {
     
     // Keep very high cloud cover visible against the shared card background in light mode.
     private func cloudIconColor(for percentage: Int) -> Color {
+        if palette.appearance == .field { return palette.accent }
         if colorScheme == .light && percentage > 90 {
             return Color(uiColor: .systemGray)
         }
@@ -107,29 +109,32 @@ struct CurrentConditionsCard: View {
 
     // Fog background: same gradient as clouds
     private func fogBackgroundColor(for percentage: Int) -> Color {
-        ConditionColorPalette.astronomyRiskBackground(for: percentage)
+        if palette.appearance == .field { return palette.subduedFill }
+        return ConditionColorPalette.astronomyRiskBackground(for: percentage)
     }
     
     private func fogTextColor(for percentage: Int) -> Color {
-        ConditionColorPalette.astronomyRiskText(for: percentage)
+        if palette.appearance == .field { return palette.primaryText }
+        return ConditionColorPalette.astronomyRiskText(for: percentage)
     }
 
     // Visibility color: green for good (>10km), yellow for moderate (5-10km), orange/red for poor
     private func visibilityColor(for meters: Double) -> Color {
         switch meters {
         case 0..<1000:
-            return .red
+            return palette.statusColor(.negative)
         case 1000..<5000:
-            return .orange
+            return palette.statusColor(.caution)
         case 5000..<10000:
-            return .yellow
+            return palette.statusColor(.informational)
         default:
-            return .green
+            return palette.statusColor(.positive)
         }
     }
 }
 
 struct ConditionItem: View {
+    @Environment(\.appPalette) private var palette
     let icon: String
     let iconColor: Color
     let value: String
@@ -139,7 +144,7 @@ struct ConditionItem: View {
         VStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundStyle(iconColor)
+                .foregroundStyle(palette.appearance == .field ? palette.accent : iconColor)
             Text(value)
                 .font(.subheadline)
                 .fontWeight(.semibold)

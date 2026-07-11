@@ -23,6 +23,7 @@ struct BestSpotView: View {
     
     @State private var viewModel: BestSpotViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appPalette) private var palette
     @State private var selectedLocation: LocationScore?
     @State private var mapPosition: MapCameraPosition
     @State private var showingSettings = false
@@ -46,14 +47,14 @@ struct BestSpotView: View {
                     initialView
                 }
             }
-            .navigationTitle("Find Best Nearby Area")
-            .navigationBarTitleDisplayMode(.large)
+            .appNavigationTitle("Find Best Nearby Area", displayMode: .large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         viewModel.cancelSearch()
                         dismiss()
                     }
+                    .appToolbarButtonStyle()
                 }
                 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -65,6 +66,8 @@ struct BestSpotView: View {
                     }) {
                         Image(systemName: "gear")
                     }
+                    .accessibilityLabel("Search Settings")
+                    .accessibilityHint("Adjusts the nearby-area search radius and spacing.")
                 }
             }
             .sheet(isPresented: $showingSettings, onDismiss: {
@@ -76,6 +79,7 @@ struct BestSpotView: View {
                 BestSpotSettingsView()
             }
         }
+        .appScreenBackground()
         .task {
             centerTimeZone = await LocationTimeZoneResolver.resolve(
                 latitude: centerLocation.latitude,
@@ -94,7 +98,7 @@ struct BestSpotView: View {
         VStack(spacing: 20) {
             Image(systemName: "binoculars")
                 .font(.system(size: 60))
-                .foregroundStyle(.blue)
+                .foregroundStyle(palette.appearance == .field ? palette.accent : .blue)
             
             Text("Searching \(viewModel.searchRadiusDisplay) around \(centerLocation.name)")
                 .font(.headline)
@@ -102,12 +106,12 @@ struct BestSpotView: View {
             
             Text("For \(DateFormatters.formatShortDate(searchDate, in: centerTimeZone)) night")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .appSecondaryForeground()
             
             Button("Start Search") {
                 viewModel.startSearch(around: centerLocation, for: searchDate, topN: 5)
             }
-            .buttonStyle(.borderedProminent)
+            .appPrimaryActionStyle()
             .padding(.top)
         }
         .padding()
@@ -125,12 +129,12 @@ struct BestSpotView: View {
             
             Text("Checking \(Int(viewModel.searchProgress * 100))% complete")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .appSecondaryForeground()
             
             if viewModel.searchProgress > 0.5 {
                 Text("Analyzing viewing conditions...")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .appSecondaryForeground()
             }
             
             Button("Cancel") {
@@ -144,16 +148,16 @@ struct BestSpotView: View {
     
     private func errorView(error: Error) -> some View {
         VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 50))
-                .foregroundStyle(.orange)
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 50))
+                .foregroundStyle(palette.appearance == .field ? palette.statusColor(.caution) : .orange)
             
             Text("Search Failed")
                 .font(.headline)
             
             Text(error.localizedDescription)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .appSecondaryForeground()
                 .multilineTextAlignment(.center)
             
             Button("Try Again") {
@@ -161,7 +165,7 @@ struct BestSpotView: View {
                     await viewModel.search(around: centerLocation, for: searchDate, topN: 5)
                 }
             }
-            .buttonStyle(.borderedProminent)
+            .appPrimaryActionStyle()
             .padding(.top)
         }
         .padding()
@@ -183,6 +187,10 @@ struct BestSpotView: View {
                 )
                 .frame(height: 250)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(palette.border, lineWidth: palette.appearance == .field ? 1 : 0)
+                }
 
                 if let selectedLocation {
                     BestSpotSelectedMapLocationView(
@@ -223,7 +231,7 @@ struct BestSpotView: View {
                 if let suitabilityWarning = result.suitabilityWarning {
                     Text(suitabilityWarning)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .appSecondaryForeground()
                         .multilineTextAlignment(.leading)
                         .padding(.horizontal)
                 }
@@ -235,7 +243,7 @@ struct BestSpotView: View {
                 if let duration = viewModel.searchDurationDisplay {
                     Text("Search completed in \(duration)")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .appSecondaryForeground()
                 }
             }
             .padding(.vertical)
@@ -248,14 +256,14 @@ struct BestSpotView: View {
                 HStack {
                     Image(systemName: "star.fill")
                         .font(.title2)
-                        .foregroundStyle(.yellow)
+                        .foregroundStyle(palette.appearance == .field ? palette.statusColor(.caution) : .yellow)
                     
                     VStack(alignment: .leading) {
                         Text("Best Nearby Area Found")
                             .font(.headline)
                         Text("\(bestSpot.fullLocationString) from \(centerLocation.name)")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .appSecondaryForeground()
                     }
                     
                     Spacer()
@@ -263,24 +271,32 @@ struct BestSpotView: View {
                     Text("\(bestSpot.score)")
                         .font(.largeTitle)
                         .fontWeight(.bold)
-                        .foregroundStyle(scoreColor(bestSpot.score))
+                        .foregroundStyle(TargetScoreColorProvider.color(for: bestSpot.score, palette: palette))
                 }
                 
                 if bestSpot.canOpenInMaps {
                     Button("Open Area in Maps") {
                         viewModel.openInMaps(location: bestSpot, centerName: centerLocation.name)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .appPrimaryActionStyle()
                 }
 
                 Text("This checks sky and weather conditions only. Verify access, safety, parking, local rules, and horizon obstructions before traveling.")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .appSecondaryForeground()
                     .multilineTextAlignment(.leading)
             }
         }
         .padding()
-        .background(Color.blue.opacity(0.1))
+        .background(
+            palette.appearance == .field
+                ? palette.subduedFill
+                : Color.blue.opacity(0.1)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(palette.border, lineWidth: palette.appearance == .field ? 1 : 0)
+        }
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
     }
@@ -300,7 +316,7 @@ struct BestSpotView: View {
                         .fontWeight(.medium)
                     Text("\(moonInfo.illumination)% illuminated")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .appSecondaryForeground()
                 }
                 
                 Spacer()
@@ -313,15 +329,6 @@ struct BestSpotView: View {
     }
     
     // MARK: - Helper Methods
-    
-    private func scoreColor(_ score: Int) -> Color {
-        switch score {
-        case 80...100: return .green
-        case 60..<80: return .blue
-        case 40..<60: return .orange
-        default: return .red
-        }
-    }
     
     private func updateMapRegion(for location: LocationScore) {
         let coordinate = CLLocationCoordinate2D(
@@ -337,17 +344,14 @@ struct BestSpotView: View {
     }
     
     private var cardBackgroundColor: Color {
-        #if os(iOS)
-        return Color(uiColor: .systemGray6)
-        #else
-        return Color.gray.opacity(0.1)
-        #endif
+        palette.elevatedBackground
     }
 }
 
 // MARK: - Map View
 
 struct BestSpotMapView: View {
+    @Environment(\.appPalette) private var palette
     let centerLocation: SavedLocation
     let scoredLocations: [LocationScore]
     let topLocations: [LocationScore]
@@ -377,7 +381,7 @@ struct BestSpotMapView: View {
             Annotation(centerLocation.name, coordinate: centerCoordinate) {
                 Image(systemName: "location.circle.fill")
                     .font(.title)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(palette.appearance == .field ? palette.accent : .blue)
             }
             
             // Grid point annotations
@@ -397,7 +401,7 @@ struct BestSpotMapView: View {
                 }
             }
         }
-        .mapStyle(.standard)
+        .appMapStyle()
     }
     
     private var centerCoordinate: CLLocationCoordinate2D {
@@ -499,6 +503,7 @@ enum BestSpotMapMarkerRole: Equatable {
 }
 
 struct BestSpotMapAnnotation: View {
+    @Environment(\.appPalette) private var palette
     let score: Int
     let role: BestSpotMapMarkerRole
     let isSelected: Bool
@@ -517,7 +522,7 @@ struct BestSpotMapAnnotation: View {
                 Text("\(rank)")
                     .font(.caption)
                     .fontWeight(.bold)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(palette.appearance == .field ? palette.primaryActionLabel : .white)
             }
         }
     }
@@ -532,12 +537,7 @@ struct BestSpotMapAnnotation: View {
     }
 
     private var scoreTint: Color {
-        switch score {
-        case 80...100: return .green
-        case 60..<80: return .blue
-        case 40..<60: return .orange
-        default: return .red
-        }
+        TargetScoreColorProvider.color(for: score, palette: palette)
     }
 
     private var markerSize: CGFloat {
@@ -550,8 +550,10 @@ struct BestSpotMapAnnotation: View {
     }
 
     private var borderColor: Color {
-        if isSelected { return .blue }
-        return role.isRecommendation ? Color.white : Color.clear
+        if isSelected { return palette.appearance == .field ? palette.accent : .blue }
+        return role.isRecommendation
+            ? (palette.appearance == .field ? palette.primaryText : .white)
+            : .clear
     }
 
     private var borderWidth: CGFloat {
@@ -560,6 +562,7 @@ struct BestSpotMapAnnotation: View {
 }
 
 struct BestSpotSelectedMapLocationView: View {
+    @Environment(\.appPalette) private var palette
     let location: LocationScore
     let rank: Int?
     let centerName: String
@@ -568,7 +571,11 @@ struct BestSpotSelectedMapLocationView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: rank == nil ? "circle.grid.cross" : "mappin.circle.fill")
-                .foregroundStyle(rank == nil ? .secondary : location.color)
+                .foregroundStyle(
+                    rank == nil
+                        ? palette.secondaryText
+                        : TargetScoreColorProvider.color(for: location.score, palette: palette)
+                )
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -577,7 +584,7 @@ struct BestSpotSelectedMapLocationView: View {
 
                 Text(detail)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .appSecondaryForeground()
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -615,11 +622,7 @@ struct BestSpotSelectedMapLocationView: View {
     }
 
     private var cardBackgroundColor: Color {
-        #if os(iOS)
-        return Color(uiColor: .systemGray6)
-        #else
-        return Color.gray.opacity(0.1)
-        #endif
+        palette.elevatedBackground
     }
 }
 
@@ -639,7 +642,7 @@ struct BestSpotSettingsView: View {
                             Text("Search Radius")
                             Spacer()
                             Text("\(Int(searchRadius)) miles")
-                                .foregroundStyle(.secondary)
+                                .appSecondaryForeground()
                         }
                         
                         Slider(
@@ -653,7 +656,7 @@ struct BestSpotSettingsView: View {
                         
                         Text("Searches up to \(Int(searchRadius)) miles from your location")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .appSecondaryForeground()
                     }
                     
                     VStack(alignment: .leading, spacing: 8) {
@@ -661,7 +664,7 @@ struct BestSpotSettingsView: View {
                             Text("Grid Spacing")
                             Spacer()
                             Text("\(Int(gridSpacing)) miles")
-                                .foregroundStyle(.secondary)
+                                .appSecondaryForeground()
                         }
                         
                         Slider(
@@ -675,7 +678,7 @@ struct BestSpotSettingsView: View {
                         
                         Text("Checks a point every \(Int(gridSpacing)) miles")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .appSecondaryForeground()
                     }
                 }
                 
@@ -688,16 +691,16 @@ struct BestSpotSettingsView: View {
                         Text("Points to check")
                         Spacer()
                         Text("~\(estimatedPoints)")
-                            .foregroundStyle(.secondary)
+                            .appSecondaryForeground()
                     }
                     
                     Text("Fewer points = faster search, more points = better coverage")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .appSecondaryForeground()
                 }
             }
-            .navigationTitle("Search Settings")
-            .navigationBarTitleDisplayMode(.inline)
+            .appListBackground()
+            .appNavigationTitle("Search Settings", displayMode: .inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
@@ -708,4 +711,17 @@ struct BestSpotSettingsView: View {
         }
     }
     
+}
+
+#Preview("Best Nearby Area Field Mode") {
+    BestSpotView(
+        centerLocation: SavedLocation(
+            name: "Mount Diablo",
+            latitude: 37.8816,
+            longitude: -121.9142,
+            elevation: 1_173
+        ),
+        searchDate: Date()
+    )
+    .appAppearance(fieldModeEnabled: true)
 }

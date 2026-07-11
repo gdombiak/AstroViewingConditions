@@ -4,6 +4,7 @@ import MapKit
 
 struct MapPickerView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.appPalette) private var palette
     
     let onSelect: (String, CLLocationCoordinate2D) -> Void
     
@@ -23,7 +24,7 @@ struct MapPickerView: View {
                         
                         UserAnnotation()
                     }
-                    .mapStyle(.standard)
+                    .appMapStyle()
                     .mapControls {
                         MapCompass()
                         MapScaleView()
@@ -61,18 +62,22 @@ struct MapPickerView: View {
                                 dismiss()
                             }
                         }
-                        .buttonStyle(.borderedProminent)
+                        .appPrimaryActionStyle()
                         .disabled(selectedCoordinate == nil)
                     }
                 }
                 .padding()
-                .background(.ultraThinMaterial)
+                .background {
+                    if palette.appearance == .field {
+                        palette.elevatedBackground.opacity(0.96)
+                    } else {
+                        Rectangle().fill(.ultraThinMaterial)
+                    }
+                }
             }
-            .navigationTitle("Select Location")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
+            .appNavigationTitle("Select Location", displayMode: .inline)
         }
+        .appScreenBackground()
     }
     
     private func centerOnUserLocation() {
