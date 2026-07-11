@@ -15,6 +15,33 @@ final class TransparencyCalculatorTests: XCTestCase {
         XCTAssertLessThan(highCloud!, lowCloud!)
     }
 
+    func testTotalCloudCoverIsAnObstructionFloor() {
+        XCTAssertEqual(
+            TransparencyCalculator.penalty(totalCloudCover: 100, lowCloudCover: 0, midCloudCover: 0, highCloudCover: 100, visibilityMeters: 20_000),
+            2
+        )
+    }
+
+    func testGoodVisibilityDoesNotReduceOvercastPenalty() {
+        XCTAssertEqual(
+            TransparencyCalculator.penalty(totalCloudCover: 100, lowCloudCover: 100, midCloudCover: 100, highCloudCover: 100, visibilityMeters: 20_000),
+            2
+        )
+    }
+
+    func testPoorVisibilityWorsensClearConditions() {
+        let result = TransparencyCalculator.penalty(
+            totalCloudCover: 0,
+            lowCloudCover: 0,
+            midCloudCover: 0,
+            highCloudCover: 0,
+            visibilityMeters: 1_000
+        )
+
+        XCTAssertGreaterThan(result!, 0)
+        XCTAssertEqual(result, 0.5)
+    }
+
     func testFullyCloudyResult() {
         XCTAssertEqual(
             TransparencyCalculator.penalty(totalCloudCover: 100, lowCloudCover: 100, midCloudCover: 100, highCloudCover: 100, visibilityMeters: nil),

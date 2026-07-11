@@ -112,6 +112,79 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertFalse(result.hourlyRatings.isEmpty)
         XCTAssertEqual(result.rating, .poor)
     }
+
+    func testMiamiLikeOvercastForecastsRemainPoorAndCloudAware() {
+        let overcastForecasts = (20...23).enumerated().map { index, hour in
+            HourlyForecast(
+                time: createDate(hour: hour),
+                cloudCover: 100,
+                humidity: 80,
+                windSpeed: Double(index + 2),
+                windDirection: 180,
+                temperature: 25,
+                dewPoint: 21,
+                visibility: 18_000,
+                lowCloudCover: 0,
+                midCloudCover: 0,
+                highCloudCover: 100,
+                windSpeed200hPa: 50
+            )
+        }
+        let clearForecasts = overcastForecasts.map { forecast in
+            HourlyForecast(
+                time: forecast.time,
+                cloudCover: 0,
+                humidity: forecast.humidity,
+                windSpeed: forecast.windSpeed,
+                windDirection: forecast.windDirection,
+                temperature: forecast.temperature,
+                dewPoint: forecast.dewPoint,
+                visibility: forecast.visibility,
+                lowCloudCover: 0,
+                midCloudCover: 0,
+                highCloudCover: 0,
+                windSpeed200hPa: forecast.windSpeed200hPa
+            )
+        }
+
+        let result = analyze(forecasts: overcastForecasts, moonIllumination: 5)
+        let clearResult = analyze(forecasts: clearForecasts, moonIllumination: 5)
+
+        XCTAssertEqual(result.details.cloudCoverScore, 100, accuracy: 0.1)
+        XCTAssertEqual(result.details.transparencyScoreAvg ?? -1, 2, accuracy: 0.0001)
+        XCTAssertFalse(result.summary.contains("Expect clear skies"))
+        XCTAssertFalse(result.summary.contains("Perfect conditions"))
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("cloud"))
+        XCTAssertGreaterThan(
+            result.hourlyRatings.map(\.score).reduce(0, +),
+            clearResult.hourlyRatings.map(\.score).reduce(0, +)
+        )
+        XCTAssertGreaterThan(result.rating.rawValue, clearResult.rating.rawValue)
+    }
+
+    func testHighCloudCoverStableSummaryIncludesPoorSeeingWarning() {
+        let forecasts = (20...23).map { hour in
+            HourlyForecast(
+                time: createDate(hour: hour),
+                cloudCover: 100,
+                humidity: 80,
+                windSpeed: 2,
+                windDirection: 180,
+                temperature: 25,
+                dewPoint: 21,
+                visibility: 18_000,
+                lowCloudCover: 0,
+                midCloudCover: 0,
+                highCloudCover: 100,
+                windSpeed200hPa: 250
+            )
+        }
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 5)
+
+        XCTAssertEqual(result.trend, .stable)
+        XCTAssertEqual(result.summary, "Clouds are likely to block the view. Poor seeing may limit fine detail.")
+    }
     
     func testPartialCloudsShouldBeFairOrPoor() {
         let forecasts = createForecasts(hours: [
@@ -290,7 +363,7 @@ final class NightQualityAnalyzerTests: XCTestCase {
 
         let result = analyze(forecasts: forecasts, moonIllumination: 10)
         XCTAssertNil(result.hourlyRatings[0].seeingScore)
-        XCTAssertEqual(result.hourlyRatings[0].transparencyScore, 1.5)
+        XCTAssertEqual(result.hourlyRatings[0].transparencyScore, 2)
     }
 
     func testMissingHighCloudDoesNotEnableTransparency() {

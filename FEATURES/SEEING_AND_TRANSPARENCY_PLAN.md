@@ -40,7 +40,7 @@ When both components are available, their penalties are averaged equally. When o
 
 ### Transparency
 
-`TransparencyCalculator` returns a 0.0–2.0 penalty. When all cloud layers are available, effective cloud cover is low cloud × 50%, mid cloud × 30%, and high cloud × 20%. Otherwise it falls back to total cloud cover.
+`TransparencyCalculator` returns a 0.0–2.0 penalty. Total cloud cover is the obstruction floor. When all cloud layers are available, their weighted value (low cloud × 50%, mid cloud × 30%, and high cloud × 20%) may increase, but never reduce, that obstruction. Otherwise it uses total cloud cover.
 
 | Effective cloud cover | Penalty |
 |---|---:|
@@ -58,7 +58,7 @@ When both components are available, their penalties are averaged equally. When o
 | >= 2,000 m | 1.5 |
 | below 2,000 m | 2.0 |
 
-When visibility exists, transparency uses cloud component × 75% plus visibility component × 25%. Without visibility, it uses the cloud component.
+When visibility exists, transparency combines cloud component × 75% plus visibility component × 25%, while never allowing good visibility to reduce the cloud-derived penalty. Poor visibility may worsen transparency. Without visibility, it uses the cloud component. This prevents overcast conditions from being described as clear.
 
 ### Night-quality scoring
 

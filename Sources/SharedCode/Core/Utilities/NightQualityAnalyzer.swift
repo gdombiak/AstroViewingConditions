@@ -265,6 +265,7 @@ public struct NightQualityAnalyzer {
             rating: rating,
             avgScore: avgScore,
             trend: trend,
+            averageCloudCover: avgCloudCover,
             seeingScoreAvg: details.seeingScoreAvg
         )
         
@@ -360,11 +361,23 @@ public struct NightQualityAnalyzer {
         rating: NightQualityAssessment.Rating,
         avgScore: Double,
         trend: NightQualityAssessment.Trend,
+        averageCloudCover: Int,
         seeingScoreAvg: Double?
     ) -> String {
         let seeingWarning = seeingScoreAvg.map { NightQualityAssessment.Rating.from(score: $0) == .poor } == true
             ? " Poor seeing may limit fine detail."
             : ""
+
+        if averageCloudCover >= 80 {
+            switch trend {
+            case .improving:
+                return "Cloudy early, improving through the night." + seeingWarning
+            case .stable:
+                return "Clouds are likely to block the view." + seeingWarning
+            case .degrading:
+                return "Cloud cover worsens through the night." + seeingWarning
+            }
+        }
 
         switch rating {
         case .excellent:

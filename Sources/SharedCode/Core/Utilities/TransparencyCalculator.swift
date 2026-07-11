@@ -8,18 +8,31 @@ public struct TransparencyCalculator {
         highCloudCover: Int?,
         visibilityMeters: Double?
     ) -> Double? {
-        let cloudCover: Double
+        let totalCloudCover = Double(
+            min(max(totalCloudCover, 0), 100)
+        )
+
+        let effectiveCloudCover: Double
         if let lowCloudCover, let midCloudCover, let highCloudCover {
-            cloudCover = Double(lowCloudCover) * 0.50 + Double(midCloudCover) * 0.30 + Double(highCloudCover) * 0.20
+            let layeredCloudCover =
+                Double(min(max(lowCloudCover, 0), 100)) * 0.50 +
+                Double(min(max(midCloudCover, 0), 100)) * 0.30 +
+                Double(min(max(highCloudCover, 0), 100)) * 0.20
+
+            effectiveCloudCover = max(totalCloudCover, layeredCloudCover)
         } else {
-            cloudCover = Double(totalCloudCover)
+            effectiveCloudCover = totalCloudCover
         }
 
-        let cloudComponent = component(forCloudCover: min(max(cloudCover, 0), 100))
+        let cloudComponent = component(forCloudCover: effectiveCloudCover)
         guard let visibilityMeters else { return cloudComponent }
 
         let visibilityComponent = component(forVisibility: max(visibilityMeters, 0))
-        return min(max(cloudComponent * 0.75 + visibilityComponent * 0.25, 0), 2)
+        let combinedPenalty =
+            cloudComponent * 0.75 +
+            visibilityComponent * 0.25
+
+        return min(max(cloudComponent, combinedPenalty), 2)
     }
 
     private static func component(forCloudCover cloudCover: Double) -> Double {
