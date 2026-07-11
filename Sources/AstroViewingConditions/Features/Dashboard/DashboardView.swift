@@ -6,6 +6,7 @@ import WidgetKit
 public struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.appPalette) private var palette
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
     @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
     @State private var selectedLocation: SelectedLocation?
@@ -62,6 +63,11 @@ public struct DashboardView: View {
                     errorView(error: error)
                 } else {
                     initialView
+                }
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if shouldShowNormalIPadLocationTitle {
+                    normalIPadLocationTitle
                 }
             }
             .appNavigationTitle(selectedLocationName)
@@ -362,6 +368,24 @@ public struct DashboardView: View {
     
     private var isIPad: Bool {
         horizontalSizeClass == .regular
+    }
+
+    private var shouldShowNormalIPadLocationTitle: Bool {
+        horizontalSizeClass == .regular &&
+        palette.appearance == .normal
+    }
+
+    private var normalIPadLocationTitle: some View {
+        Text(selectedLocationName)
+            .font(.title2.bold())
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .minimumScaleFactor(0.75)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .accessibilityAddTraits(.isHeader)
     }
     
     private func loadCurrentLocation() async {
