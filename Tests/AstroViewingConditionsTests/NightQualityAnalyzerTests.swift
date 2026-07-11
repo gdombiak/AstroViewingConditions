@@ -57,6 +57,16 @@ final class NightQualityAnalyzerTests: XCTestCase {
             )
         }
     }
+
+    private func createCompleteDataForecasts(cloudCovers: [Int]) -> [HourlyForecast] {
+        cloudCovers.enumerated().map { index, cloudCover in
+            HourlyForecast(
+                time: createDate(hour: 20 + index), cloudCover: cloudCover, humidity: 40, windSpeed: 2,
+                windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000,
+                lowCloudCover: 0, midCloudCover: 0, highCloudCover: 100, windSpeed200hPa: 50
+            )
+        }
+    }
     
     private func analyze(forecasts: [HourlyForecast], moonIllumination: Int, dayOffset: Int = 0) -> NightQualityAssessment {
         let sunEventsToday = createSunEvents(for: dayOffset)
@@ -196,6 +206,36 @@ final class NightQualityAnalyzerTests: XCTestCase {
                 NightQualityAssessment.Rating.Thresholds.fairMax
             )
         }
+    }
+
+    func testMixedHoursAtHeavyCloudAverageApplyNightlyPoorScoreFloor() {
+        let result = analyze(
+            forecasts: createCompleteDataForecasts(cloudCovers: [60, 60, 100, 100]),
+            moonIllumination: 5
+        )
+
+        XCTAssertEqual(result.details.cloudCoverScore, 80, accuracy: 0.0001)
+        XCTAssertEqual(result.rating, .poor)
+    }
+
+    func testMixedHoursBelowHeavyCloudAverageDoNotApplyNightlyPoorScoreFloor() {
+        let result = analyze(
+            forecasts: createCompleteDataForecasts(cloudCovers: [59, 60, 99, 100]),
+            moonIllumination: 5
+        )
+
+        XCTAssertEqual(result.details.cloudCoverScore, 79.5, accuracy: 0.0001)
+        XCTAssertNotEqual(result.rating, .poor)
+    }
+
+    func testMixedHoursAboveHeavyCloudAverageApplyNightlyPoorScoreFloor() {
+        let result = analyze(
+            forecasts: createCompleteDataForecasts(cloudCovers: [70, 80, 90, 100]),
+            moonIllumination: 5
+        )
+
+        XCTAssertEqual(result.details.cloudCoverScore, 85, accuracy: 0.0001)
+        XCTAssertEqual(result.rating, .poor)
     }
 
     func testCloudCoverBelowHeavyThresholdDoesNotApplyPoorScoreFloor() {

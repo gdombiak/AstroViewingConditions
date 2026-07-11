@@ -250,12 +250,18 @@ public struct NightQualityAnalyzer {
             totalScore += finalScore
         }
         
-        let avgScore = totalScore / Double(hourlyRatings.count)
-        let rating = determineRating(avgScore)
-        
+        let rawAverageScore = totalScore / Double(hourlyRatings.count)
         let avgCloudCover =
             Double(hourlyRatings.map(\.cloudCover).reduce(0, +))
             / Double(hourlyRatings.count)
+
+        let avgScore: Double
+        if avgCloudCover >= 80 {
+            avgScore = max(rawAverageScore, NightQualityAssessment.Rating.Thresholds.fairMax)
+        } else {
+            avgScore = rawAverageScore
+        }
+        let rating = determineRating(avgScore)
         let avgFogScore = hourlyRatings.map { $0.fogScore }.reduce(0, +) / hourlyRatings.count
         let avgMoonIllumination = hourlyRatings.map { $0.moonIllumination }.reduce(0, +) / hourlyRatings.count
         let avgWindSpeed = hourlyRatings.map { $0.windSpeed }.reduce(0, +) / Double(hourlyRatings.count)
