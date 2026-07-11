@@ -504,6 +504,85 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("cloud"))
     }
 
+    func testFractionalCloudAverageAboveClearThresholdUsesCloudAwareSummary() {
+        let forecasts = [20, 21, 21, 21].enumerated().map { index, cloudCover in
+            HourlyForecast(
+                time: createDate(hour: 20 + index), cloudCover: cloudCover, humidity: 40, windSpeed: 2,
+                windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000,
+                lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50
+            )
+        }
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 5)
+
+        XCTAssertEqual(result.details.cloudCoverScore, 20.75, accuracy: 0.0001)
+        XCTAssertFalse(result.summary.localizedCaseInsensitiveContains("clear skies"))
+        XCTAssertFalse(result.summary.contains("Perfect conditions"))
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("cloud"))
+    }
+
+    func testFractionalCloudAverageBelowHeavyThresholdDoesNotUseHeavyOverride() {
+        let forecasts = [79, 80, 80, 80].enumerated().map { index, cloudCover in
+            HourlyForecast(
+                time: createDate(hour: 20 + index), cloudCover: cloudCover, humidity: 40, windSpeed: 2,
+                windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000,
+                lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50
+            )
+        }
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 5)
+
+        XCTAssertEqual(result.trend, .stable)
+        XCTAssertEqual(result.details.cloudCoverScore, 79.75, accuracy: 0.0001)
+        XCTAssertNotEqual(result.summary, "Clouds are likely to block the view.")
+    }
+
+    func testExactHeavyCloudThresholdUsesStableOverride() {
+        let forecasts = (20...23).map { hour in
+            HourlyForecast(
+                time: createDate(hour: hour), cloudCover: 80, humidity: 40, windSpeed: 2,
+                windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000,
+                lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50
+            )
+        }
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 5)
+
+        XCTAssertEqual(result.trend, .stable)
+        XCTAssertEqual(result.summary, "Clouds are likely to block the view.")
+    }
+
+    func testImprovingConditionsWithConstantHeavyCloudsDoesNotClaimCloudsImprove() {
+        let forecasts = [
+            HourlyForecast(time: createDate(hour: 20), cloudCover: 100, humidity: 98, windSpeed: 20, windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000, lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 250),
+            HourlyForecast(time: createDate(hour: 21), cloudCover: 100, humidity: 98, windSpeed: 20, windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000, lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 250),
+            HourlyForecast(time: createDate(hour: 22), cloudCover: 100, humidity: 40, windSpeed: 2, windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000, lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50),
+            HourlyForecast(time: createDate(hour: 23), cloudCover: 100, humidity: 40, windSpeed: 2, windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000, lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50)
+        ]
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 5)
+
+        XCTAssertEqual(result.trend, .improving)
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("overall conditions improve"))
+        XCTAssertFalse(result.summary.localizedCaseInsensitiveContains("clouds improving"))
+        XCTAssertFalse(result.summary.localizedCaseInsensitiveContains("cloud cover improving"))
+    }
+
+    func testDegradingConditionsWithConstantModerateCloudsDoesNotClaimCloudCoverIncreases() {
+        let forecasts = [
+            HourlyForecast(time: createDate(hour: 20), cloudCover: 60, humidity: 40, windSpeed: 2, windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000, lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50),
+            HourlyForecast(time: createDate(hour: 21), cloudCover: 60, humidity: 40, windSpeed: 2, windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000, lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50),
+            HourlyForecast(time: createDate(hour: 22), cloudCover: 60, humidity: 98, windSpeed: 20, windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000, lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50),
+            HourlyForecast(time: createDate(hour: 23), cloudCover: 60, humidity: 98, windSpeed: 20, windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000, lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50)
+        ]
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 5)
+
+        XCTAssertEqual(result.trend, .degrading)
+        XCTAssertFalse(result.summary.localizedCaseInsensitiveContains("increasing cloud cover"))
+        XCTAssertFalse(result.summary.localizedCaseInsensitiveContains("cloud cover worsens"))
+    }
+
     func testAnalyzeConditionsUsesLocationDayWhenUTCDateHasAdvanced() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
@@ -598,7 +677,7 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertTrue(
             result.summary.contains("degrade") ||
             result.summary.contains("degrading") ||
-            result.summary.contains("cloud cover increasing"),
+            result.summary.contains("may worsen later"),
             "Summary should mention degrading conditions: \(result.summary)"
         )
     }

@@ -243,7 +243,9 @@ public struct NightQualityAnalyzer {
         let avgScore = totalScore / Double(hourlyRatings.count)
         let rating = determineRating(avgScore)
         
-        let avgCloudCover = hourlyRatings.map { $0.cloudCover }.reduce(0, +) / hourlyRatings.count
+        let avgCloudCover =
+            Double(hourlyRatings.map(\.cloudCover).reduce(0, +))
+            / Double(hourlyRatings.count)
         let avgFogScore = hourlyRatings.map { $0.fogScore }.reduce(0, +) / hourlyRatings.count
         let avgMoonIllumination = hourlyRatings.map { $0.moonIllumination }.reduce(0, +) / hourlyRatings.count
         let avgWindSpeed = hourlyRatings.map { $0.windSpeed }.reduce(0, +) / Double(hourlyRatings.count)
@@ -251,7 +253,7 @@ public struct NightQualityAnalyzer {
         let transparencyScores = hourlyRatings.compactMap(\.transparencyScore)
         
         let details = NightQualityAssessment.Details(
-            cloudCoverScore: Double(avgCloudCover),
+            cloudCoverScore: avgCloudCover,
             fogScoreAvg: Double(avgFogScore),
             moonIlluminationAvg: avgMoonIllumination,
             windSpeedAvg: avgWindSpeed,
@@ -361,7 +363,7 @@ public struct NightQualityAnalyzer {
         rating: NightQualityAssessment.Rating,
         avgScore: Double,
         trend: NightQualityAssessment.Trend,
-        averageCloudCover: Int,
+        averageCloudCover: Double,
         seeingScoreAvg: Double?
     ) -> String {
         let seeingWarning = seeingScoreAvg.map { NightQualityAssessment.Rating.from(score: $0) == .poor } == true
@@ -371,11 +373,11 @@ public struct NightQualityAnalyzer {
         if averageCloudCover >= 80 {
             switch trend {
             case .improving:
-                return "Cloudy early, improving through the night." + seeingWarning
+                return "Cloudy conditions, but overall conditions improve through the night." + seeingWarning
             case .stable:
                 return "Clouds are likely to block the view." + seeingWarning
             case .degrading:
-                return "Cloud cover worsens through the night." + seeingWarning
+                return "Cloudy conditions, with overall conditions worsening later." + seeingWarning
             }
         }
 
@@ -392,9 +394,9 @@ public struct NightQualityAnalyzer {
             }
 
             switch trend {
-            case .improving: return "Excellent overall conditions, with clouds improving through the night." + seeingWarning
+            case .improving: return "Excellent overall conditions, improving through the night despite some cloud cover." + seeingWarning
             case .stable: return "Excellent overall conditions, with some cloud cover." + seeingWarning
-            case .degrading: return "Excellent overall conditions early, with increasing cloud cover later." + seeingWarning
+            case .degrading: return "Excellent overall conditions early, but they may worsen later." + seeingWarning
             }
         case .good:
             if hasClearSkies {
@@ -406,9 +408,9 @@ public struct NightQualityAnalyzer {
             }
 
             switch trend {
-            case .improving: return "Good overall conditions, with cloud cover improving." + seeingWarning
+            case .improving: return "Good overall conditions, improving through the night despite some cloud cover." + seeingWarning
             case .stable: return "Good overall conditions, but some clouds may affect the view." + seeingWarning
-            case .degrading: return "Good conditions early, with cloud cover increasing later." + seeingWarning
+            case .degrading: return "Good overall conditions early, but they may worsen later." + seeingWarning
             }
         case .fair:
             switch trend {
