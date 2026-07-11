@@ -43,26 +43,55 @@ struct ContentView: View {
         let isLandscape = verticalSizeClass == .compact
         let isRegular = horizontalSizeClass == .regular
 
-        TabView(selection: $selectedTab) {
-            DashboardView()
-                .tabItem { Label("Dashboard", systemImage: "star.fill") }
-                .tag(AppTab.dashboard)
-
-            LocationsView()
-                .tabItem { Label("Locations", systemImage: "mappin.and.ellipse") }
-                .tag(AppTab.locations)
-
-            SettingsView()
-                .tabItem { Label("Settings", systemImage: "gear") }
-                .tag(AppTab.settings)
-        }
-        .toolbar(palette.appearance == .field ? .hidden : .visible, for: .tabBar)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        Group {
             if palette.appearance == .field {
-                fieldTabBar
+                fieldModeRoot
+            } else {
+                normalTabView
             }
         }
         .dynamicTypeSize(isRegular ? .xxLarge : (isLandscape ? .large : .medium))
+    }
+
+    private var normalTabView: some View {
+        TabView(selection: $selectedTab) {
+            DashboardView()
+                .tabItem {
+                    Label("Dashboard", systemImage: "star.fill")
+                }
+                .tag(AppTab.dashboard)
+
+            LocationsView()
+                .tabItem {
+                    Label("Locations", systemImage: "mappin.and.ellipse")
+                }
+                .tag(AppTab.locations)
+
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gear")
+                }
+                .tag(AppTab.settings)
+        }
+    }
+
+    private var fieldModeRoot: some View {
+        selectedFieldTabContent
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            fieldTabBar
+        }
+    }
+
+    @ViewBuilder
+    private var selectedFieldTabContent: some View {
+        switch selectedTab {
+        case .dashboard:
+            DashboardView()
+        case .locations:
+            LocationsView()
+        case .settings:
+            SettingsView()
+            }
     }
 
     private var fieldTabBar: some View {
