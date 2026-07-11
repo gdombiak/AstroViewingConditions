@@ -76,22 +76,32 @@ struct ContentView: View {
     }
 
     private var fieldModeRoot: some View {
-        selectedFieldTabContent
+        ZStack {
+            fieldTabContent(.dashboard) {
+                DashboardView()
+            }
+
+            fieldTabContent(.locations) {
+                LocationsView()
+            }
+
+            fieldTabContent(.settings) {
+                SettingsView()
+            }
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             fieldTabBar
         }
     }
 
-    @ViewBuilder
-    private var selectedFieldTabContent: some View {
-        switch selectedTab {
-        case .dashboard:
-            DashboardView()
-        case .locations:
-            LocationsView()
-        case .settings:
-            SettingsView()
-            }
+    private func fieldTabContent<Content: View>(
+        _ tab: AppTab,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .opacity(selectedTab == tab ? 1 : 0)
+            .allowsHitTesting(selectedTab == tab)
+            .accessibilityHidden(selectedTab != tab)
     }
 
     private var fieldTabBar: some View {
