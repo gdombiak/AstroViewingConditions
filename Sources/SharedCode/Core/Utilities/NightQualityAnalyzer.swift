@@ -379,18 +379,36 @@ public struct NightQualityAnalyzer {
             }
         }
 
+        let hasClearSkies = averageCloudCover <= 20
+
         switch rating {
         case .excellent:
+            if hasClearSkies {
+                switch trend {
+                case .improving: return "Excellent conditions, improving through the night!" + seeingWarning
+                case .stable: return "Perfect conditions for stargazing this night!" + seeingWarning
+                case .degrading: return "Excellent early, degrading after midnight." + seeingWarning
+                }
+            }
+
             switch trend {
-            case .improving: return "Excellent conditions, improving through the night!" + seeingWarning
-            case .stable: return "Perfect conditions for stargazing this night!" + seeingWarning
-            case .degrading: return "Excellent early, degrading after midnight." + seeingWarning
+            case .improving: return "Excellent overall conditions, with clouds improving through the night." + seeingWarning
+            case .stable: return "Excellent overall conditions, with some cloud cover." + seeingWarning
+            case .degrading: return "Excellent overall conditions early, with increasing cloud cover later." + seeingWarning
             }
         case .good:
+            if hasClearSkies {
+                switch trend {
+                case .improving: return "Good conditions, improving through the night." + seeingWarning
+                case .stable: return "Good night for observing. Expect clear skies." + seeingWarning
+                case .degrading: return "Good early, conditions degrade after midnight." + seeingWarning
+                }
+            }
+
             switch trend {
-            case .improving: return "Good conditions, improving through the night." + seeingWarning
-            case .stable: return "Good night for observing. Expect clear skies." + seeingWarning
-            case .degrading: return "Good early, conditions degrade after midnight." + seeingWarning
+            case .improving: return "Good overall conditions, with cloud cover improving." + seeingWarning
+            case .stable: return "Good overall conditions, but some clouds may affect the view." + seeingWarning
+            case .degrading: return "Good conditions early, with cloud cover increasing later." + seeingWarning
             }
         case .fair:
             switch trend {

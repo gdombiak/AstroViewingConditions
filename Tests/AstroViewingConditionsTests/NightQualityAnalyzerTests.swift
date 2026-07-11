@@ -94,6 +94,7 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertEqual(result.details.cloudCoverScore, 0)
         XCTAssertLessThan(result.details.moonIlluminationAvg, 100)
         XCTAssertGreaterThanOrEqual(result.details.moonIlluminationAvg, 0)
+        XCTAssertTrue(result.summary.contains("Perfect conditions"))
     }
     
     // MARK: - Cloud Cover Tests
@@ -468,6 +469,41 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertEqual(missingSeeingResult.summary, "Good night for observing. Expect clear skies.")
     }
 
+    func testExcellentNightWithModerateCloudsUsesCloudAwareSummary() {
+        let cloudCoverByHour = [(20, 30), (21, 30), (22, 10), (23, 30)]
+        let forecasts = cloudCoverByHour.map { hour, cloudCover in
+            HourlyForecast(
+                time: createDate(hour: hour),
+                cloudCover: cloudCover, humidity: 40, windSpeed: 2,
+                windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000,
+                lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50
+            )
+        }
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 5)
+
+        XCTAssertEqual(result.rating, .excellent)
+        XCTAssertFalse(result.summary.contains("Perfect conditions"))
+        XCTAssertFalse(result.summary.localizedCaseInsensitiveContains("clear skies"))
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("cloud"))
+    }
+
+    func testGoodNightWithSubstantialCloudsUsesCloudAwareSummary() {
+        let forecasts = (20...23).map { hour in
+            HourlyForecast(
+                time: createDate(hour: hour), cloudCover: 60, humidity: 40, windSpeed: 2,
+                windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000,
+                lowCloudCover: 0, midCloudCover: 0, highCloudCover: 0, windSpeed200hPa: 50
+            )
+        }
+
+        let result = analyze(forecasts: forecasts, moonIllumination: 5)
+
+        XCTAssertEqual(result.rating, .good)
+        XCTAssertFalse(result.summary.contains("Expect clear skies"))
+        XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("cloud"))
+    }
+
     func testAnalyzeConditionsUsesLocationDayWhenUTCDateHasAdvanced() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
@@ -559,7 +595,12 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertNotNil(result.firstHalfScore)
         XCTAssertNotNil(result.secondHalfScore)
         XCTAssertLessThan(result.firstHalfScore!, result.secondHalfScore!)
-        XCTAssertTrue(result.summary.contains("degrade") || result.summary.contains("degrading"), "Summary should mention degrading conditions: \(result.summary)")
+        XCTAssertTrue(
+            result.summary.contains("degrade") ||
+            result.summary.contains("degrading") ||
+            result.summary.contains("cloud cover increasing"),
+            "Summary should mention degrading conditions: \(result.summary)"
+        )
     }
     
     func testImprovingNight_CloudyThenClear() {
