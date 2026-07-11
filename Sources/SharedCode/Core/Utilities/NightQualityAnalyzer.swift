@@ -223,10 +223,20 @@ public struct NightQualityAnalyzer {
             case (nil, nil):
                 weightedScore = cloudScore * Constants.cloudCoverWeight + fogPenalty * Constants.fogWeight + moonScore * Constants.moonWeight + windScore * Constants.windWeight
             }
+
+            let finalScore: Double
+            if forecast.cloudCover >= 80 {
+                finalScore = max(
+                    weightedScore,
+                    NightQualityAssessment.Rating.Thresholds.fairMax
+                )
+            } else {
+                finalScore = weightedScore
+            }
             
             let hourlyRating = NightQualityAssessment.HourlyRating(
                 time: forecast.time,
-                score: weightedScore,
+                score: finalScore,
                 cloudCover: forecast.cloudCover,
                 fogScore: fogScore.score,
                 moonIllumination: moonIllumination,
@@ -237,7 +247,7 @@ public struct NightQualityAnalyzer {
             )
             
             hourlyRatings.append(hourlyRating)
-            totalScore += weightedScore
+            totalScore += finalScore
         }
         
         let avgScore = totalScore / Double(hourlyRatings.count)

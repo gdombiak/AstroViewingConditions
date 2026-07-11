@@ -71,6 +71,8 @@ When visibility exists, transparency combines cloud component × 75% plus visibi
 | Seeing only | raw cloud cover 40%, seeing 20%, fog 15%, moon 15%, surface wind 10% |
 | Neither | legacy cloud cover 55%, fog 20%, moon 15%, surface wind 10% |
 
+Hours with total cloud cover of at least 80% apply a Poor-score floor. This prevents excellent seeing or other favorable factors from compensating for an obstructed sky; normal weighted formulas still apply below 80%.
+
 ## Fallback behavior
 
 Missing new forecast inputs safely preserve prior scoring behavior. Best Targets receives the improved overall night-quality score through its existing path. Thresholds and weights remain candidates for field calibration.

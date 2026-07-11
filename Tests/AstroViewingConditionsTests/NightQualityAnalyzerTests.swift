@@ -47,6 +47,16 @@ final class NightQualityAnalyzerTests: XCTestCase {
             )
         }
     }
+
+    private func createCompleteDataForecasts(cloudCover: Int) -> [HourlyForecast] {
+        (20...23).map { hour in
+            HourlyForecast(
+                time: createDate(hour: hour), cloudCover: cloudCover, humidity: 40, windSpeed: 2,
+                windDirection: 180, temperature: 15, dewPoint: 5, visibility: 20_000,
+                lowCloudCover: 0, midCloudCover: 0, highCloudCover: 100, windSpeed200hPa: 50
+            )
+        }
+    }
     
     private func analyze(forecasts: [HourlyForecast], moonIllumination: Int, dayOffset: Int = 0) -> NightQualityAssessment {
         let sunEventsToday = createSunEvents(for: dayOffset)
@@ -153,6 +163,7 @@ final class NightQualityAnalyzerTests: XCTestCase {
 
         XCTAssertEqual(result.details.cloudCoverScore, 100, accuracy: 0.1)
         XCTAssertEqual(result.details.transparencyScoreAvg ?? -1, 2, accuracy: 0.0001)
+        XCTAssertEqual(result.rating, .poor)
         XCTAssertFalse(result.summary.contains("Expect clear skies"))
         XCTAssertFalse(result.summary.contains("Perfect conditions"))
         XCTAssertTrue(result.summary.localizedCaseInsensitiveContains("cloud"))
@@ -161,6 +172,40 @@ final class NightQualityAnalyzerTests: XCTestCase {
             clearResult.hourlyRatings.map(\.score).reduce(0, +)
         )
         XCTAssertGreaterThan(result.rating.rawValue, clearResult.rating.rawValue)
+    }
+
+    func testCompleteDataOvercastForecastIsPoor() {
+        let result = analyze(forecasts: createCompleteDataForecasts(cloudCover: 100), moonIllumination: 5)
+
+        XCTAssertEqual(result.rating, .poor)
+        for hourlyRating in result.hourlyRatings {
+            XCTAssertGreaterThanOrEqual(
+                hourlyRating.score,
+                NightQualityAssessment.Rating.Thresholds.fairMax
+            )
+        }
+    }
+
+    func testExactHeavyCloudThresholdAppliesPoorScoreFloor() {
+        let result = analyze(forecasts: createCompleteDataForecasts(cloudCover: 80), moonIllumination: 5)
+
+        XCTAssertEqual(result.rating, .poor)
+        for hourlyRating in result.hourlyRatings {
+            XCTAssertGreaterThanOrEqual(
+                hourlyRating.score,
+                NightQualityAssessment.Rating.Thresholds.fairMax
+            )
+        }
+    }
+
+    func testCloudCoverBelowHeavyThresholdDoesNotApplyPoorScoreFloor() {
+        let result = analyze(forecasts: createCompleteDataForecasts(cloudCover: 79), moonIllumination: 5)
+
+        XCTAssertTrue(
+            result.hourlyRatings.contains {
+                $0.score < NightQualityAssessment.Rating.Thresholds.fairMax
+            }
+        )
     }
 
     func testHighCloudCoverStableSummaryIncludesPoorSeeingWarning() {
