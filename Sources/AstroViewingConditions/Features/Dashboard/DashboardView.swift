@@ -4,11 +4,34 @@ import SwiftData
 import WidgetKit
 
 public struct DashboardView: View {
+    private enum DashboardSection: String {
+        case top
+        case nightQuality
+        case bestTargets
+        case iss
+        case hourlyForecast
+        case sunMoon
+        case currentConditions
+    }
+
+    private struct DashboardSectionPositionPreferenceKey: PreferenceKey {
+        static let defaultValue: [DashboardSection: CGFloat] = [:]
+
+        static func reduce(
+            value: inout [DashboardSection: CGFloat],
+            nextValue: () -> [DashboardSection: CGFloat]
+        ) {
+            value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+        }
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.appPalette) private var palette
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
     @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
+    @SceneStorage("dashboardSelectedDay") private var storedSelectedDayRawValue: Int = DashboardViewModel.DaySelection.today.rawValue
+    @SceneStorage("dashboardScrollSection") private var storedScrollSectionRawValue: String = DashboardSection.top.rawValue
     @State private var selectedLocation: SelectedLocation?
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
     @State private var viewModel = DashboardViewModel(
@@ -20,6 +43,8 @@ public struct DashboardView: View {
     @State private var showingLocationPicker = false
     @State private var showingBestSpotSearch = false
     @State private var showingAllBestTargets = false
+    @State private var hasRestoredSelectedDay = false
+    @State private var hasRestoredScrollSection = false
     
     public init() {
         _selectedLocation = State(initialValue: LocationStorageService.shared.loadSelectedLocation())
@@ -144,6 +169,8 @@ public struct DashboardView: View {
         }
         .appScreenBackground()
         .task {
+            restoreSelectedDay()
+            hasRestoredSelectedDay = true
             viewModel.updateAPIKey(n2yoApiKey)
             await loadCurrentLocation()
             if let location = selectedLocation, location.source == .saved, location.latitude == 0, location.longitude == 0, location.name.isEmpty {
@@ -174,6 +201,10 @@ public struct DashboardView: View {
                     await viewModel.refresh(for: location)
                 }
             }
+        }
+        .onChange(of: viewModel.selectedDay) { _, newDay in
+            guard hasRestoredSelectedDay else { return }
+            storedSelectedDayRawValue = newDay.rawValue
         }
         .onChange(of: selectedLocation) { _, newValue in
             if let location = newValue {
@@ -211,72 +242,116 @@ public struct DashboardView: View {
     private func conditionsContent(conditions: ViewingConditions) -> some View {
         let bestTargets = viewModel.currentBestTargetsPresentation
 
-        return ScrollView {
-            VStack(spacing: 16) {
-                if viewModel.isDataStale {
-                    staleDataBanner
-                }
-                
-                daySelector
-                
-                if let nightQuality = viewModel.currentNightQuality {
-                    NightQualityCard(
-                        assessment: nightQuality
-                    )
-                }
+        return ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 16) {
+                    if viewModel.isDataStale {
+                        staleDataBanner
+                    }
 
-                TonightsBestTargetsCard(
-                    recommendations: bestTargets.dashboardRecommendations,
-                    timeZone: viewModel.displayTimeZone,
-                    nightQualityScore: viewModel.currentNightQuality?.calculatedScore,
-                    hasAdditionalTargets: bestTargets.hasAdditionalTargets,
-                    onViewAll: { showingAllBestTargets = true }
-                )
-                
-                if viewModel.hasISSConfigured {
-                    ISSCard(
-                        passes: viewModel.currentISSPasses,
+                    dashboardSectionMarker(.top)
+                    daySelector
+                        .id(DashboardSection.top)
+
+                    if let nightQuality = viewModel.currentNightQuality {
+                        dashboardSectionMarker(.nightQuality)
+                        NightQualityCard(
+                            assessment: nightQuality
+                        )
+                        .id(DashboardSection.nightQuality)
+                    }
+
+                    dashboardSectionMarker(.bestTargets)
+                    TonightsBestTargetsCard(
+                        recommendations: bestTargets.dashboardRecommendations,
                         timeZone: viewModel.displayTimeZone,
-                        errorMessage: viewModel.issError?.localizedDescription,
-                        title: viewModel.issCardTitle,
-                        emptyMessage: viewModel.issEmptyMessage
+                        nightQualityScore: viewModel.currentNightQuality?.calculatedScore,
+                        hasAdditionalTargets: bestTargets.hasAdditionalTargets,
+                        onViewAll: { showingAllBestTargets = true }
                     )
-                }
-                
-                HourlyForecastView(
-                    forecasts: viewModel.currentHourlyForecasts,
-                    unitConverter: unitConverter,
-                    timeZone: viewModel.displayTimeZone
-                )
-                
-                if let sunEvents = viewModel.currentSunEvents,
-                   let moonInfo = viewModel.currentMoonInfo {
-                    SunMoonCard(
-                        sunEvents: sunEvents,
-                        tomorrowSunEvents: viewModel.nextSunEvents,
-                        moonInfo: moonInfo,
-                        timeZone: viewModel.displayTimeZone
-                    )
-                }
-                
-                if viewModel.selectedDay == .today {
-                    CurrentConditionsCard(
-                        forecast: viewModel.currentHourForecast,
+                    .id(DashboardSection.bestTargets)
+
+                    if viewModel.hasISSConfigured {
+                        dashboardSectionMarker(.iss)
+                        ISSCard(
+                            passes: viewModel.currentISSPasses,
+                            timeZone: viewModel.displayTimeZone,
+                            errorMessage: viewModel.issError?.localizedDescription,
+                            title: viewModel.issCardTitle,
+                            emptyMessage: viewModel.issEmptyMessage
+                        )
+                        .id(DashboardSection.iss)
+                    }
+
+                    dashboardSectionMarker(.hourlyForecast)
+                    HourlyForecastView(
+                        forecasts: viewModel.currentHourlyForecasts,
                         unitConverter: unitConverter,
                         timeZone: viewModel.displayTimeZone
                     )
-                }
-                
-                if let fetchedAt = viewModel.viewingConditions?.fetchedAt {
-                    TimelineView(.periodic(from: .now, by: 60)) { context in
-                        Text("Last updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: context.date))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.top)
+                    .id(DashboardSection.hourlyForecast)
+
+                    if let sunEvents = viewModel.currentSunEvents,
+                       let moonInfo = viewModel.currentMoonInfo {
+                        dashboardSectionMarker(.sunMoon)
+                        SunMoonCard(
+                            sunEvents: sunEvents,
+                            tomorrowSunEvents: viewModel.nextSunEvents,
+                            moonInfo: moonInfo,
+                            timeZone: viewModel.displayTimeZone
+                        )
+                        .id(DashboardSection.sunMoon)
+                    }
+
+                    if viewModel.selectedDay == .today {
+                        dashboardSectionMarker(.currentConditions)
+                        CurrentConditionsCard(
+                            forecast: viewModel.currentHourForecast,
+                            unitConverter: unitConverter,
+                            timeZone: viewModel.displayTimeZone
+                        )
+                        .id(DashboardSection.currentConditions)
+                    }
+
+                    if let fetchedAt = viewModel.viewingConditions?.fetchedAt {
+                        TimelineView(.periodic(from: .now, by: 60)) { context in
+                            Text("Last updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: context.date))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top)
+                        }
                     }
                 }
+                .padding()
             }
-            .padding()
+            .coordinateSpace(name: "dashboardScroll")
+            .onPreferenceChange(DashboardSectionPositionPreferenceKey.self) { positions in
+                guard hasRestoredScrollSection else { return }
+
+                let topThreshold: CGFloat = 24
+                let visibleSection = positions
+                    .filter { $0.value <= topThreshold }
+                    .max { $0.value < $1.value }?
+                    .key
+                    ?? positions.min { abs($0.value) < abs($1.value) }?.key
+
+                if let visibleSection,
+                   storedScrollSectionRawValue != visibleSection.rawValue {
+                    storedScrollSectionRawValue = visibleSection.rawValue
+                }
+            }
+            .task {
+                guard !hasRestoredScrollSection else { return }
+                hasRestoredScrollSection = true
+
+                guard let section = DashboardSection(rawValue: storedScrollSectionRawValue),
+                      section != .top else {
+                    return
+                }
+
+                await Task.yield()
+                proxy.scrollTo(section, anchor: .top)
+            }
         }
     }
 
@@ -368,6 +443,33 @@ public struct DashboardView: View {
     
     private var isIPad: Bool {
         horizontalSizeClass == .regular
+    }
+
+    private func dashboardSectionMarker(_ section: DashboardSection) -> some View {
+        GeometryReader { geometry in
+            Color.clear
+                .preference(
+                    key: DashboardSectionPositionPreferenceKey.self,
+                    value: [
+                        section: geometry.frame(in: .named("dashboardScroll")).minY
+                    ]
+                )
+        }
+        .frame(height: 0)
+    }
+
+    private func restoreSelectedDay() {
+        guard let storedDay = DashboardViewModel.DaySelection(
+            rawValue: storedSelectedDayRawValue
+        ) else {
+            storedSelectedDayRawValue = DashboardViewModel.DaySelection.today.rawValue
+            viewModel.selectedDay = .today
+            return
+        }
+
+        if viewModel.selectedDay != storedDay {
+            viewModel.selectedDay = storedDay
+        }
     }
 
     private var shouldShowNormalIPadLocationTitle: Bool {
