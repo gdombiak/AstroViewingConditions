@@ -293,6 +293,47 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertEqual(result.hourlyRatings[0].transparencyScore, 1.5)
     }
 
+    func testMissingHighCloudDoesNotEnableTransparency() {
+        let partialLayerForecast = HourlyForecast(
+            time: createDate(hour: 20), cloudCover: 100, humidity: 40, windSpeed: 2, windDirection: 180,
+            temperature: 10, dewPoint: 5, visibility: 20_000, lowCloudCover: 100, midCloudCover: 100,
+            highCloudCover: nil, windSpeed200hPa: nil
+        )
+        let legacyForecast = HourlyForecast(
+            time: partialLayerForecast.time, cloudCover: 100, humidity: 40, windSpeed: 2, windDirection: 180,
+            temperature: 10, dewPoint: 5, visibility: 20_000, lowCloudCover: 100,
+            midCloudCover: nil, highCloudCover: nil, windSpeed200hPa: nil
+        )
+
+        let result = analyze(forecasts: [partialLayerForecast], moonIllumination: 10)
+        let legacyResult = analyze(forecasts: [legacyForecast], moonIllumination: 10)
+
+        XCTAssertNil(result.hourlyRatings[0].transparencyScore)
+        XCTAssertNil(result.details.transparencyScoreAvg)
+        XCTAssertEqual(result.hourlyRatings[0].score, legacyResult.hourlyRatings[0].score, accuracy: 0.0001)
+    }
+
+    func testMissingMidCloudUsesSeeingOnlyFallback() {
+        let partialLayerForecast = HourlyForecast(
+            time: createDate(hour: 20), cloudCover: 100, humidity: 40, windSpeed: 2, windDirection: 180,
+            temperature: 10, dewPoint: 5, visibility: 20_000, lowCloudCover: 100, midCloudCover: nil,
+            highCloudCover: 100, windSpeed200hPa: 250
+        )
+        let seeingOnlyForecast = HourlyForecast(
+            time: partialLayerForecast.time, cloudCover: 100, humidity: 40, windSpeed: 2, windDirection: 180,
+            temperature: 10, dewPoint: 5, visibility: 20_000, lowCloudCover: 100,
+            midCloudCover: nil, highCloudCover: nil, windSpeed200hPa: 250
+        )
+
+        let result = analyze(forecasts: [partialLayerForecast], moonIllumination: 10)
+        let seeingOnlyResult = analyze(forecasts: [seeingOnlyForecast], moonIllumination: 10)
+
+        XCTAssertNil(result.hourlyRatings[0].transparencyScore)
+        XCTAssertNil(result.details.transparencyScoreAvg)
+        XCTAssertNotNil(result.hourlyRatings[0].seeingScore)
+        XCTAssertEqual(result.hourlyRatings[0].score, seeingOnlyResult.hourlyRatings[0].score, accuracy: 0.0001)
+    }
+
     func testSeeingOnlyFallback() {
         let forecasts = [HourlyForecast(
             time: createDate(hour: 20), cloudCover: 100, humidity: 40, windSpeed: 2, windDirection: 180,

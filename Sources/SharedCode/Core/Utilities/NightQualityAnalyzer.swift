@@ -204,7 +204,10 @@ public struct NightQualityAnalyzer {
                 highCloudCover: forecast.highCloudCover,
                 visibilityMeters: forecast.visibility
             )
-            let hasTransparencyData = forecast.midCloudCover != nil || forecast.highCloudCover != nil
+            let hasTransparencyData =
+                forecast.lowCloudCover != nil &&
+                forecast.midCloudCover != nil &&
+                forecast.highCloudCover != nil
             let moonScore = calculateMoonScore(illumination: moonIllumination, altitude: moonAltitude)
             let windScore = calculateWindScore(forecast.windSpeed)
             let fogPenalty = Double(fogScore.score) / 50.0
