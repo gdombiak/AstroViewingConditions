@@ -184,7 +184,7 @@ final class NightQualityAnalyzerTests: XCTestCase {
         let result = analyze(forecasts: forecasts, moonIllumination: 5)
 
         XCTAssertEqual(result.trend, .stable)
-        XCTAssertEqual(result.summary, "Clouds are likely to block the view. Poor seeing may limit fine detail.")
+        XCTAssertEqual(result.summary, "Poor conditions for stargazing. Heavy clouds are likely to block the view. Poor seeing may limit fine detail.")
     }
     
     func testPartialCloudsShouldBeFairOrPoor() {
@@ -534,7 +534,7 @@ final class NightQualityAnalyzerTests: XCTestCase {
 
         XCTAssertEqual(result.trend, .stable)
         XCTAssertEqual(result.details.cloudCoverScore, 79.75, accuracy: 0.0001)
-        XCTAssertNotEqual(result.summary, "Clouds are likely to block the view.")
+        XCTAssertNotEqual(result.summary, "Poor conditions for stargazing. Heavy clouds are likely to block the view.")
     }
 
     func testExactHeavyCloudThresholdUsesStableOverride() {
@@ -549,7 +549,7 @@ final class NightQualityAnalyzerTests: XCTestCase {
         let result = analyze(forecasts: forecasts, moonIllumination: 5)
 
         XCTAssertEqual(result.trend, .stable)
-        XCTAssertEqual(result.summary, "Clouds are likely to block the view.")
+        XCTAssertEqual(result.summary, "Poor conditions for stargazing. Heavy clouds are likely to block the view.")
     }
 
     func testImprovingConditionsWithConstantHeavyCloudsDoesNotClaimCloudsImprove() {

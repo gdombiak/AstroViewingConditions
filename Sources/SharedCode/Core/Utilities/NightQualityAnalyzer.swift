@@ -373,11 +373,11 @@ public struct NightQualityAnalyzer {
         if averageCloudCover >= 80 {
             switch trend {
             case .improving:
-                return "Cloudy conditions, but overall conditions improve through the night." + seeingWarning
+                return "Poor conditions early, but overall conditions improve through the night." + seeingWarning
             case .stable:
-                return "Clouds are likely to block the view." + seeingWarning
+                return "Poor conditions for stargazing. Heavy clouds are likely to block the view." + seeingWarning
             case .degrading:
-                return "Cloudy conditions, with overall conditions worsening later." + seeingWarning
+                return "Poor conditions for stargazing, with overall conditions worsening later." + seeingWarning
             }
         }
 
