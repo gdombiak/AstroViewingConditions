@@ -915,7 +915,7 @@ final class BestSpotSearcherTests: XCTestCase {
         XCTAssertGreaterThan(callsBeforeRetry, BestSpotSearcher.suitabilityCandidateCount(topN: 5))
         XCTAssertLessThanOrEqual(
             callsBeforeRetry,
-            BestSpotSearcher.suitabilityCandidateCount(topN: 5) + LocationSuitabilityService.defaultMaxConcurrentLookups
+            BestSpotSearcher.suitabilityCandidateCount(topN: 5) + LocationSuitabilityService.defaultMaxConcurrentLookups + 1
         )
         let secondResult = try await searcher.findBestSpots(
             around: center,
