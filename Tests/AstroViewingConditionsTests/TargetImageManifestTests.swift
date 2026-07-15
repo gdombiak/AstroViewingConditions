@@ -49,7 +49,7 @@ final class TargetImageManifestTests: XCTestCase {
     }
 
     func testCuratedTargetImagesHaveCompleteAuditableMetadata() {
-        XCTAssertEqual(TargetImageManifest.imagesByTargetID.count, 31)
+        XCTAssertEqual(TargetImageManifest.imagesByTargetID.count, 34)
         for (targetID, image) in TargetImageManifest.imagesByTargetID {
             XCTAssertEqual(image.targetID, targetID)
             XCTAssertTrue(image.isVerified, targetID)
@@ -102,7 +102,7 @@ final class TargetImageManifestTests: XCTestCase {
     }
 
     func testRemainingCatalogTargetsUseVerifiedRecognitionImages() throws {
-        let ids = ["ngc7293", "m51", "m64", "m81", "m82", "m16", "m20"]
+        let ids = ["m36", "m38", "ngc7293", "m51", "m64", "m77", "m81", "m82", "m16", "m20"]
         let repository = TargetImageRepository()
 
         for id in ids {
@@ -123,6 +123,9 @@ final class TargetImageManifestTests: XCTestCase {
         XCTAssertEqual(TargetImageManifest.image(for: "ngc7293")?.sourcePageURL.absoluteString, "https://www.eso.org/public/images/eso0907a/")
         XCTAssertEqual(TargetImageManifest.image(for: "m51")?.creditText, "NASA, ESA, S. Beckwith (STScI) and the Hubble Heritage Team (STScI/AURA)")
         XCTAssertEqual(TargetImageManifest.image(for: "m64")?.licenseName, "NASA Media Usage Guidelines")
+        XCTAssertEqual(TargetImageManifest.image(for: "m36")?.sourceName, "NOIRLab / Wikimedia Commons")
+        XCTAssertEqual(TargetImageManifest.image(for: "m38")?.licenseName, "CC BY 4.0")
+        XCTAssertEqual(TargetImageManifest.image(for: "m77")?.creditText, "NASA, ESA & A. van der Hoeven")
         XCTAssertEqual(TargetImageManifest.image(for: "m81")?.sourceName, "NASA Science / Hubble")
         XCTAssertEqual(TargetImageManifest.image(for: "m82")?.objectName, "Cigar Galaxy, M82, NGC 3034")
         XCTAssertEqual(TargetImageManifest.image(for: "m16")?.sourcePageURL.absoluteString, "https://www.eso.org/public/images/eso0926a/")
@@ -136,7 +139,7 @@ final class TargetImageManifestTests: XCTestCase {
             .deletingLastPathComponent()
         let notices = try String(contentsOf: repositoryRoot.appendingPathComponent("THIRD_PARTY_NOTICES.md"), encoding: .utf8)
 
-        for id in ["ngc7293", "m51", "m64", "m81", "m82", "m16", "m20"] {
+        for id in ["m36", "m38", "ngc7293", "m51", "m64", "m77", "m81", "m82", "m16", "m20"] {
             let record = try XCTUnwrap(TargetImageManifest.image(for: id))
             XCTAssertTrue(notices.contains("`\(id)`"), id)
             XCTAssertTrue(notices.contains(record.creditText), id)

@@ -6,8 +6,8 @@ final class CuratedDeepSkyCatalogTests: XCTestCase {
     func testCatalogContainsExpectedTargets() {
         let ids = Set(CuratedDeepSkyCatalogProvider().entries().map(\.id))
         XCTAssertTrue([
-            "m13", "m31", "m2", "m30", "m52", "m11", "m57", "m27",
-            "ngc7009", "ngc7293", "m51", "m64", "m81", "m82", "m92",
+            "m13", "m31", "m2", "m30", "m52", "m11", "m36", "m38", "m57", "m27",
+            "ngc7009", "ngc7293", "m51", "m64", "m77", "m81", "m82", "m92",
             "albireo", "epsilon-lyrae", "m45", "m42", "double-cluster", "m5",
             "m3", "m16", "m20", "m33", "m101"
         ].allSatisfy(ids.contains))
@@ -52,9 +52,9 @@ final class CuratedDeepSkyCatalogTests: XCTestCase {
 
     func testObservingIntentAssignments() {
         let targets = targetsByID
-        let easy = ["moon", "venus", "jupiter", "saturn", "m13", "m31", "m11", "albireo", "m45", "m42", "double-cluster"]
-        let standard = ["mars", "m2", "m30", "m52", "m57", "m27", "ngc7009", "m81", "m82", "m92", "epsilon-lyrae", "m5", "m3", "m16", "m20"]
-        let challenge = ["ngc7293", "m51", "m64", "m33", "m101"]
+        let easy = ["moon", "venus", "jupiter", "saturn", "m13", "m31", "m11", "m36", "albireo", "m45", "m42", "double-cluster"]
+        let standard = ["mars", "m2", "m30", "m52", "m38", "m57", "m27", "ngc7009", "m81", "m82", "m92", "epsilon-lyrae", "m5", "m3", "m16", "m20"]
+        let challenge = ["ngc7293", "m51", "m64", "m77", "m33", "m101"]
         for id in easy { XCTAssertEqual(targets[id]?.observingIntent, .easy, id) }
         for id in standard { XCTAssertEqual(targets[id]?.observingIntent, .standard, id) }
         for id in challenge { XCTAssertEqual(targets[id]?.observingIntent, .challenge, id) }
@@ -89,6 +89,37 @@ final class CuratedDeepSkyCatalogTests: XCTestCase {
 
         let m64 = try XCTUnwrap(entriesByID["m64"])
         XCTAssertEqual(m64.magnitude, 8.5, "M64's integrated visual magnitude must not be replaced by NASA's 9.8 value")
+    }
+
+    func testM36M38AndM77CatalogDefinitions() throws {
+        let entries = CuratedDeepSkyCatalogProvider().entries()
+        for id in ["m36", "m38", "m77"] {
+            XCTAssertEqual(entries.filter { $0.id == id }.count, 1, id)
+        }
+
+        let m36 = try XCTUnwrap(entriesByID["m36"])
+        XCTAssertEqual(m36.objectType, .openCluster)
+        XCTAssertEqual(m36.observingIntent, .easy)
+        XCTAssertEqual(m36.rightAscension, 5.6017, accuracy: 0.0001)
+        XCTAssertEqual(m36.declination, 34.1400, accuracy: 0.0001)
+        XCTAssertEqual(m36.magnitude, 6.3, accuracy: 0.0001)
+        XCTAssertEqual(m36.recommendedEquipment, .binoculars)
+
+        let m38 = try XCTUnwrap(entriesByID["m38"])
+        XCTAssertEqual(m38.objectType, .openCluster)
+        XCTAssertEqual(m38.observingIntent, .standard)
+        XCTAssertEqual(m38.rightAscension, 5.4783, accuracy: 0.0001)
+        XCTAssertEqual(m38.declination, 35.8333, accuracy: 0.0001)
+        XCTAssertEqual(m38.magnitude, 7.4, accuracy: 0.0001)
+        XCTAssertEqual(m38.recommendedEquipment, .binoculars)
+
+        let m77 = try XCTUnwrap(entriesByID["m77"])
+        XCTAssertEqual(m77.objectType, .galaxy)
+        XCTAssertEqual(m77.observingIntent, .challenge)
+        XCTAssertEqual(m77.rightAscension, 2.7113, accuracy: 0.0001)
+        XCTAssertEqual(m77.declination, -0.0133, accuracy: 0.0001)
+        XCTAssertEqual(m77.magnitude, 9.6, accuracy: 0.0001)
+        XCTAssertEqual(m77.recommendedEquipment, .telescope)
     }
 
     private var entriesByID: [String: DeepSkyCatalogEntry] {
