@@ -37,6 +37,10 @@ struct ContentView: View {
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.appPalette) private var palette
     @SceneStorage("selectedAppTab") private var selectedTab: AppTab = .dashboard
+    @State private var dashboardLocationSession = DashboardLocationSession()
+    @State private var dashboardViewModel = DashboardViewModel(
+        apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
+    )
     
     @ViewBuilder
     var body: some View {
@@ -55,7 +59,10 @@ struct ContentView: View {
 
     private var normalTabView: some View {
         TabView(selection: $selectedTab) {
-            DashboardView()
+            DashboardView(
+                viewModel: dashboardViewModel,
+                locationSession: dashboardLocationSession
+            )
                 .tabItem {
                     Label("Dashboard", systemImage: "star.fill")
                 }
@@ -78,7 +85,10 @@ struct ContentView: View {
     private var fieldModeRoot: some View {
         ZStack {
             fieldTabContent(.dashboard) {
-                DashboardView()
+                DashboardView(
+                    viewModel: dashboardViewModel,
+                    locationSession: dashboardLocationSession
+                )
             }
 
             fieldTabContent(.locations) {

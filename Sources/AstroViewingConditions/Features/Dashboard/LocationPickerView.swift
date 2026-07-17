@@ -3,8 +3,9 @@ import SwiftUI
 
 struct LocationPickerView: View {
     @Environment(\.dismiss) private var dismiss
-    @Binding var selectedLocation: SelectedLocation?
-    let currentLocation: SavedLocation?
+    let selectedLocation: SelectedLocation
+    let onSelect: (SelectedLocation) -> Void
+    let currentLocation: CachedLocation?
     let savedLocations: [SavedLocation]
     
     var body: some View {
@@ -30,7 +31,7 @@ struct LocationPickerView: View {
                             
                             Spacer()
                             
-                            if selectedLocation?.source == .currentGPS {
+                            if selectedLocation.source == .currentGPS {
                                 Image(systemName: "checkmark")
                                     .foregroundStyle(.blue)
                             }
@@ -61,7 +62,7 @@ struct LocationPickerView: View {
                                     
                                     Spacer()
                                     
-                                    if selectedLocation?.source == .saved, selectedLocation?.id == location.id {
+                                    if selectedLocation.source == .saved, selectedLocation.id == location.id {
                                         Image(systemName: "checkmark")
                                             .foregroundStyle(.blue)
                                     }
@@ -91,40 +92,25 @@ struct LocationPickerView: View {
     }
     
     private func selectCurrentLocation() {
-        if let currentLocation {
-            selectedLocation = SelectedLocation(
-                source: .currentGPS,
-                name: currentLocation.name,
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude
-            )
-        } else {
-            selectedLocation = SelectedLocation(
-                source: .currentGPS,
-                name: "My Current Location",
-                latitude: 0,
-                longitude: 0
-            )
-        }
+        onSelect(SelectedLocation(
+            source: .currentGPS,
+            name: "My Current Location",
+            latitude: 0,
+            longitude: 0
+        ))
         
-        if let selectedLocation {
-            LocationStorageService.shared.saveSelectedLocation(selectedLocation)
-        }
         dismiss()
     }
     
     private func selectSavedLocation(_ location: SavedLocation) {
-        selectedLocation = SelectedLocation(
+        onSelect(SelectedLocation(
             source: .saved,
             id: location.id,
             name: location.name,
             latitude: location.latitude,
             longitude: location.longitude
-        )
+        ))
         
-        if let selectedLocation {
-            LocationStorageService.shared.saveSelectedLocation(selectedLocation)
-        }
         dismiss()
     }
 }

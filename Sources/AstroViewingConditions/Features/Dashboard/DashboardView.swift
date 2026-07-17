@@ -32,32 +32,56 @@ public struct DashboardView: View {
     @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
     @SceneStorage("dashboardSelectedDay") private var storedSelectedDayRawValue: Int = DashboardViewModel.DaySelection.today.rawValue
     @SceneStorage("dashboardScrollSection") private var storedScrollSectionRawValue: String = DashboardSection.top.rawValue
-    @State private var selectedLocation: SelectedLocation?
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
-    @State private var viewModel = DashboardViewModel(
-        apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
-    )
-    @State private var locationManager = LocationManager()
-    
-    @State private var currentLocation: SavedLocation?
+    private let viewModel: DashboardViewModel
+    @State private var locationLoader: DashboardLocationLoader
     @State private var showingLocationPicker = false
     @State private var showingBestSpotSearch = false
     @State private var showingAllBestTargets = false
     @State private var hasRestoredSelectedDay = false
     @State private var hasRestoredScrollSection = false
+    private let locationSession: DashboardLocationSession
     
-    public init() {
-        _selectedLocation = State(initialValue: LocationStorageService.shared.loadSelectedLocation())
+    init(
+        viewModel: DashboardViewModel = DashboardViewModel(
+            apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
+        ),
+        locationSession: DashboardLocationSession = DashboardLocationSession()
+    ) {
+        self.viewModel = viewModel
+        self.locationSession = locationSession
+        _locationLoader = State(initialValue: DashboardLocationLoader(
+            persistedSelection: LocationStorageService.shared.loadSelectedLocation(),
+            provider: LocationManager(),
+            saveSelection: { LocationStorageService.shared.saveSelectedLocation($0) },
+            locationSession: locationSession
+        ))
     }
     
     private var unitConverter: AstroUnitConverter {
         AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
     }
     
+    private var selectedLocation: SelectedLocation {
+        locationLoader.selectedLocation
+    }
+
+    private var currentLocation: CachedLocation? {
+        locationLoader.currentLocation
+    }
+
+    private var activeLocation: CachedLocation? {
+        locationLoader.activeLocation
+    }
+
     private var activeSavedLocation: SavedLocation? {
-        guard let selectedLocation else { return currentLocation }
         if selectedLocation.source == .currentGPS {
-            return currentLocation
+            guard let currentLocation else { return nil }
+            return SavedLocation(
+                name: currentLocation.name,
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude
+            )
         }
         guard let id = selectedLocation.id else { return nil }
         return savedLocations.first { $0.id == id }
@@ -132,7 +156,7 @@ public struct DashboardView: View {
                     } else {
                         Button(action: {
                             Task {
-                                if let location = activeSavedLocation {
+                                if let location = activeLocation {
                                     await viewModel.refresh(for: location)
                                 }
                             }
@@ -145,7 +169,8 @@ public struct DashboardView: View {
             }
             .sheet(isPresented: $showingLocationPicker) {
                 LocationPickerView(
-                    selectedLocation: $selectedLocation,
+                    selectedLocation: selectedLocation,
+                    onSelect: locationLoader.select,
                     currentLocation: currentLocation,
                     savedLocations: orderedSavedLocations
                 )
@@ -172,32 +197,21 @@ public struct DashboardView: View {
             restoreSelectedDay()
             hasRestoredSelectedDay = true
             viewModel.updateAPIKey(n2yoApiKey)
-            await loadCurrentLocation()
-            if let location = selectedLocation, location.source == .saved, location.latitude == 0, location.longitude == 0, location.name.isEmpty {
-                if let id = location.id, let saved = savedLocations.first(where: { $0.id == id }) {
-                    let restoredLocation = SelectedLocation(
-                        source: .saved,
-                        id: saved.id,
-                        name: saved.name,
-                        latitude: saved.latitude,
-                        longitude: saved.longitude
-                    )
-                    selectedLocation = restoredLocation
-                    LocationStorageService.shared.saveSelectedLocation(restoredLocation)
-                }
-            }
+            locationLoader.restoreSelection(using: savedLocations.map(CachedLocation.init))
+            await resolveCurrentLocationIfNeeded()
             await loadActiveLocationConditionsIfNeeded()
         }
-        .onChange(of: locationManager.authorizationStatus) { _, _ in
+        .onChange(of: locationLoader.authorizationStatus) { _, _ in
+            guard selectedLocation.source == .currentGPS else { return }
             Task {
-                await loadCurrentLocation()
+                await resolveCurrentLocationIfNeeded()
                 await loadActiveLocationConditionsIfNeeded()
             }
         }
         .onChange(of: n2yoApiKey) { _, newKey in
             viewModel.updateAPIKey(newKey)
             Task {
-                if let location = activeSavedLocation {
+                if let location = activeLocation {
                     await viewModel.refresh(for: location)
                 }
             }
@@ -207,18 +221,28 @@ public struct DashboardView: View {
             storedSelectedDayRawValue = newDay.rawValue
         }
         .onChange(of: selectedLocation) { _, newValue in
-            if let location = newValue {
-                LocationStorageService.shared.saveSelectedLocation(location)
+            locationLoader.repairSelectionIfNeeded(using: savedLocations.map(CachedLocation.init))
+            guard locationLoader.selectedLocation == newValue else { return }
+
+            let internallyResolved = locationLoader.consumeInternallyResolvedSelectionUpdate(
+                matching: newValue
+            )
+            if !internallyResolved {
+                LocationStorageService.shared.saveSelectedLocation(newValue)
                 Task {
+                    await resolveCurrentLocationIfNeeded()
                     await loadActiveLocationConditionsIfNeeded()
                 }
-                WatchConnectivityService.shared.sendSelectedLocationToWatch(location)
             }
+            WatchConnectivityService.shared.sendSelectedLocationToWatch(newValue)
             let locations = LocationStorageService.shared.publishLocationsToWatch(context: modelContext)
             WatchConnectivityService.shared.sendLocationsToWatch(locations)
         }
+        .onChange(of: savedLocations.map(\.id)) { _, _ in
+            locationLoader.repairSelectionIfNeeded(using: savedLocations.map(CachedLocation.init))
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            if viewModel.isDataStale, !viewModel.isLoading, let location = activeSavedLocation {
+            if viewModel.isDataStale, !viewModel.isLoading, let location = activeLocation {
                 Task {
                     await viewModel.refresh(for: location)
                 }
@@ -226,7 +250,7 @@ public struct DashboardView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchLocationSelected)) { notification in
             if let location = notification.object as? SelectedLocation {
-                selectedLocation = location
+                locationLoader.select(location)
             }
         }
     }
@@ -380,7 +404,8 @@ public struct DashboardView: View {
             
             Button("Try Again") {
                 Task {
-                    await loadCurrentLocation()
+                    await resolveCurrentLocationIfNeeded()
+                    await loadActiveLocationConditionsIfNeeded()
                 }
             }
             .buttonStyle(.bordered)
@@ -394,7 +419,7 @@ public struct DashboardView: View {
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
             
-            if !locationManager.isAuthorized {
+            if selectedLocation.source == .currentGPS, !locationLoader.isAuthorized {
                 Text("Location Access Required")
                     .font(.headline)
                 
@@ -404,7 +429,7 @@ public struct DashboardView: View {
                     .multilineTextAlignment(.center)
                 
                 Button("Enable Location") {
-                    locationManager.requestAuthorization()
+                    locationLoader.requestAuthorization()
                 }
                 .appPrimaryActionStyle()
             } else {
@@ -432,7 +457,10 @@ public struct DashboardView: View {
     
     private var daySelector: some View {
         AppSegmentedPicker(
-            selection: $viewModel.selectedDay,
+            selection: Binding(
+                get: { viewModel.selectedDay },
+                set: { viewModel.selectedDay = $0 }
+            ),
             options: DashboardViewModel.DaySelection.allCases,
             pickerLabel: "Day"
         ) { day in
@@ -490,35 +518,34 @@ public struct DashboardView: View {
             .accessibilityAddTraits(.isHeader)
     }
     
-    private func loadCurrentLocation() async {
-        guard locationManager.isAuthorized else {
-            locationManager.requestAuthorization()
-            return
-        }
-        
+    private func resolveCurrentLocationIfNeeded() async {
         do {
-            let coordinate = try await locationManager.getCurrentLocation()
-            
-            let locationName: String
-            if let placemark = try? await locationManager.reverseGeocode(coordinate: coordinate) {
-                locationName = placemark.locality ?? placemark.administrativeArea ?? placemark.name ?? CoordinateFormatters.format(Coordinate(latitude: coordinate.latitude, longitude: coordinate.longitude))
-            } else {
-                locationName = CoordinateFormatters.format(Coordinate(latitude: coordinate.latitude, longitude: coordinate.longitude))
-            }
-            
-            currentLocation = SavedLocation(
-                name: locationName,
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude
-            )
+            _ = try await locationLoader.resolveCurrentLocationIfNeeded()
         } catch {
             viewModel.error = error
         }
     }
     
     private func loadActiveLocationConditionsIfNeeded() async {
-        guard let location = activeSavedLocation else { return }
+        guard let location = activeLocation else { return }
         await viewModel.loadConditionsIfNeeded(for: location)
+    }
+}
+
+extension LocationManager: DashboardCurrentLocationProviding {
+    func resolveCurrentLocation() async throws -> CachedLocation {
+        let coordinate = try await getCurrentLocation()
+        let fallbackName = CoordinateFormatters.format(
+            Coordinate(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        )
+        let placemark = try? await reverseGeocode(coordinate: coordinate)
+        let name = placemark?.locality ?? placemark?.administrativeArea ?? placemark?.name ?? fallbackName
+
+        return CachedLocation(
+            name: name,
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude
+        )
     }
 }
 

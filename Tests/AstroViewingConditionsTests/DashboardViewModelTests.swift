@@ -1,10 +1,619 @@
 import SharedCode
+import CoreLocation
 import XCTest
 import Foundation
 @testable import AstroViewingConditions
 
 @MainActor
 final class DashboardViewModelTests: XCTestCase {
+
+    func testFirstLaunchPersistsExplicitCurrentLocationSelection() {
+        let provider = LocationProviderSpy()
+        let recorder = SelectionRecorder()
+        let loader = DashboardLocationLoader(
+            persistedSelection: nil,
+            provider: provider,
+            saveSelection: recorder.record
+        )
+
+        loader.restoreSelection(using: [])
+
+        XCTAssertEqual(loader.selectedLocation.source, .currentGPS)
+        XCTAssertEqual(recorder.selections.map(\.source), [.currentGPS])
+    }
+
+    func testRestoresPersistedFixedLocation() {
+        let saved = makeCachedLocation()
+        let persisted = SelectedLocation(
+            source: .saved,
+            id: saved.id,
+            name: "Old name",
+            latitude: 0,
+            longitude: 0
+        )
+        let loader = DashboardLocationLoader(
+            persistedSelection: persisted,
+            provider: LocationProviderSpy(),
+            saveSelection: { _ in }
+        )
+
+        loader.restoreSelection(using: [saved])
+
+        XCTAssertEqual(loader.selectedLocation.source, .saved)
+        XCTAssertEqual(loader.activeLocation?.id, saved.id)
+        XCTAssertEqual(loader.activeLocation?.latitude, saved.latitude)
+        XCTAssertEqual(loader.activeLocation?.longitude, saved.longitude)
+    }
+
+    func testInvalidPersistedFixedLocationRepairsAndPersistsCurrentLocation() {
+        let recorder = SelectionRecorder()
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .saved,
+                id: UUID(),
+                name: "Deleted",
+                latitude: 12,
+                longitude: 34
+            ),
+            provider: LocationProviderSpy(),
+            saveSelection: recorder.record
+        )
+
+        loader.restoreSelection(using: [])
+
+        XCTAssertEqual(loader.selectedLocation.source, .currentGPS)
+        XCTAssertEqual(recorder.selections.last?.source, .currentGPS)
+    }
+
+    func testFixedSelectionDoesNotResolveCurrentLocationDuringInitialLoading() async {
+        let saved = makeCachedLocation()
+        let provider = LocationProviderSpy()
+        let loader = DashboardLocationLoader(
+            persistedSelection: savedSelection(for: saved),
+            provider: provider,
+            saveSelection: { _ in }
+        )
+
+        loader.restoreSelection(using: [saved])
+        try? await loader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(provider.resolveCallCount, 0)
+        XCTAssertEqual(provider.authorizationRequestCount, 0)
+    }
+
+    func testFixedSelectionIgnoresAuthorizationStatusChanges() async {
+        let saved = makeCachedLocation()
+        let provider = LocationProviderSpy(authorizationStatus: .notDetermined)
+        let loader = DashboardLocationLoader(
+            persistedSelection: savedSelection(for: saved),
+            provider: provider,
+            saveSelection: { _ in }
+        )
+
+        provider.authorizationStatus = .authorizedWhenInUse
+        try? await loader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(provider.resolveCallCount, 0)
+        XCTAssertEqual(provider.authorizationRequestCount, 0)
+    }
+
+    func testSwitchingFromFixedToCurrentLocationResolvesDeviceLocation() async {
+        let saved = makeCachedLocation()
+        let provider = LocationProviderSpy()
+        let loader = DashboardLocationLoader(
+            persistedSelection: savedSelection(for: saved),
+            provider: provider,
+            saveSelection: { _ in }
+        )
+        loader.restoreSelection(using: [saved])
+        loader.select(SelectedLocation(
+            source: .currentGPS,
+            name: "My Current Location",
+            latitude: 0,
+            longitude: 0
+        ))
+
+        try? await loader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(provider.resolveCallCount, 1)
+        XCTAssertEqual(loader.activeLocation?.latitude, provider.resolvedLocation.latitude)
+    }
+
+    func testSwitchingFromCurrentToFixedPreventsLaterGPSResolution() async {
+        let saved = makeCachedLocation()
+        let provider = LocationProviderSpy()
+        let loader = DashboardLocationLoader(
+            persistedSelection: nil,
+            provider: provider,
+            saveSelection: { _ in }
+        )
+        loader.restoreSelection(using: [saved])
+        loader.select(savedSelection(for: saved))
+
+        try? await loader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(provider.resolveCallCount, 0)
+        XCTAssertEqual(provider.authorizationRequestCount, 0)
+    }
+
+    func testFieldModeRecreationWithFixedLocationDoesNotResolveDeviceLocation() async {
+        let saved = makeCachedLocation()
+        let provider = LocationProviderSpy()
+        let session = DashboardLocationSession()
+        let firstLoader = DashboardLocationLoader(
+            persistedSelection: savedSelection(for: saved),
+            provider: provider,
+            saveSelection: { _ in },
+            locationSession: session
+        )
+        let recreatedLoader = DashboardLocationLoader(
+            persistedSelection: savedSelection(for: saved),
+            provider: provider,
+            saveSelection: { _ in },
+            locationSession: session
+        )
+
+        firstLoader.restoreSelection(using: [saved])
+        try? await firstLoader.resolveCurrentLocationIfNeeded()
+        recreatedLoader.restoreSelection(using: [saved])
+        try? await recreatedLoader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(provider.resolveCallCount, 0)
+    }
+
+    func testFieldModeRecreationWithResolvedCurrentLocationDoesNotResolveAgain() async {
+        let provider = LocationProviderSpy()
+        let session = DashboardLocationSession()
+        let firstLoader = DashboardLocationLoader(
+            persistedSelection: nil,
+            provider: provider,
+            saveSelection: { _ in },
+            locationSession: session
+        )
+        firstLoader.restoreSelection(using: [])
+        try? await firstLoader.resolveCurrentLocationIfNeeded()
+
+        let recreatedLoader = DashboardLocationLoader(
+            persistedSelection: firstLoader.selectedLocation,
+            provider: provider,
+            saveSelection: { _ in },
+            locationSession: session
+        )
+
+        recreatedLoader.restoreSelection(using: [])
+        try? await recreatedLoader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(provider.resolveCallCount, 1)
+        XCTAssertEqual(recreatedLoader.activeLocation?.latitude, provider.resolvedLocation.latitude)
+    }
+
+    func testNewSessionWithPersistedCurrentLocationCoordinatesResolvesAgain() async {
+        let provider = LocationProviderSpy()
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "Previous Session",
+                latitude: 45.52,
+                longitude: -122.68
+            ),
+            provider: provider,
+            saveSelection: { _ in },
+            locationSession: DashboardLocationSession()
+        )
+
+        XCTAssertNil(loader.activeLocation)
+        try? await loader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(provider.resolveCallCount, 1)
+        XCTAssertEqual(loader.activeLocation?.latitude, provider.resolvedLocation.latitude)
+    }
+
+    func testInFlightCurrentLocationResultDoesNotOverwriteLaterFixedSelection() async {
+        let fixedLocation = makeCachedLocation()
+        let provider = SuspendedLocationProvider()
+        let recorder = SelectionRecorder()
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "My Current Location",
+                latitude: 0,
+                longitude: 0
+            ),
+            provider: provider,
+            saveSelection: recorder.record
+        )
+
+        let resolution = Task { try? await loader.resolveCurrentLocationIfNeeded() }
+        await provider.waitForResolutionRequest()
+        loader.select(savedSelection(for: fixedLocation))
+        provider.completeResolution()
+        await resolution.value
+
+        XCTAssertEqual(loader.selectedLocation.source, .saved)
+        XCTAssertEqual(loader.selectedLocation.id, fixedLocation.id)
+        XCTAssertFalse(recorder.selections.contains { $0.source == .currentGPS })
+    }
+
+    func testStaleCurrentLocationFailureIsSuppressedAfterSwitchingToFixedLocation() async {
+        let fixedLocation = makeCachedLocation()
+        let provider = SuspendedLocationProvider()
+        let recorder = SelectionRecorder()
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "My Current Location",
+                latitude: 0,
+                longitude: 0
+            ),
+            provider: provider,
+            saveSelection: recorder.record
+        )
+
+        let resolution = Task { () -> Result<DashboardCurrentLocationResolutionResult, Error> in
+            do {
+                return .success(try await loader.resolveCurrentLocationIfNeeded())
+            } catch {
+                return .failure(error)
+            }
+        }
+        await provider.waitForResolutionRequest()
+        loader.select(savedSelection(for: fixedLocation))
+        provider.failResolution()
+
+        switch await resolution.value {
+        case .success:
+            break
+        case .failure(let error):
+            XCTFail("Stale request propagated \(error)")
+        }
+        XCTAssertEqual(loader.selectedLocation.source, .saved)
+        XCTAssertEqual(loader.activeLocation?.id, fixedLocation.id)
+        XCTAssertFalse(recorder.selections.contains { $0.source == .currentGPS })
+    }
+
+    func testResolvedCurrentLocationMarksInternalSelectionUpdateForSingleLoadPath() async {
+        let provider = LocationProviderSpy()
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "My Current Location",
+                latitude: 0,
+                longitude: 0
+            ),
+            provider: provider,
+            saveSelection: { _ in }
+        )
+
+        let result = try? await loader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(result, .resolvedSelectionUpdated)
+        XCTAssertTrue(loader.consumeInternallyResolvedSelectionUpdate(matching: loader.selectedLocation))
+        XCTAssertFalse(loader.consumeInternallyResolvedSelectionUpdate(matching: loader.selectedLocation))
+    }
+
+    func testFixedSelectionIsNotMarkedAsInternalResolutionUpdate() {
+        let fixedLocation = makeCachedLocation()
+        let loader = DashboardLocationLoader(
+            persistedSelection: nil,
+            provider: LocationProviderSpy(),
+            saveSelection: { _ in }
+        )
+
+        loader.select(savedSelection(for: fixedLocation))
+
+        XCTAssertFalse(loader.consumeInternallyResolvedSelectionUpdate(matching: loader.selectedLocation))
+    }
+
+    func testConcurrentSameLocationConditionLoadsCoalesce() async {
+        let gate = SuspendedWeatherRequestGate()
+        let weather = WeatherService { _ in
+            await gate.response()
+        }
+        let viewModel = DashboardViewModel(
+            conditionsProvider: ConditionsProvider(weatherService: weather)
+        )
+        let location = CachedLocation(name: "Coalesced", latitude: 11.123, longitude: 22.456)
+
+        let firstLoad = Task { await viewModel.loadConditionsIfNeeded(for: location) }
+        await gate.waitForRequestCount(1)
+        let secondLoad = Task { await viewModel.loadConditionsIfNeeded(for: location) }
+        await Task.yield()
+
+        let requestsWhileSuspended = await gate.requestCount
+        XCTAssertEqual(requestsWhileSuspended, 1)
+        await gate.completeRequest()
+        await firstLoad.value
+        await secondLoad.value
+
+        let finalRequestCount = await gate.requestCount
+        XCTAssertEqual(finalRequestCount, 1)
+    }
+
+    func testFieldModeRecreationSharesInFlightCurrentLocationResolution() async {
+        let session = DashboardLocationSession()
+        let provider = SuspendedLocationProvider()
+        let firstRecorder = SelectionRecorder()
+        let secondRecorder = SelectionRecorder()
+        let unresolvedCurrentLocation = SelectedLocation(
+            source: .currentGPS,
+            name: "My Current Location",
+            latitude: 0,
+            longitude: 0
+        )
+        let firstLoader = DashboardLocationLoader(
+            persistedSelection: unresolvedCurrentLocation,
+            provider: provider,
+            saveSelection: firstRecorder.record,
+            locationSession: session
+        )
+
+        let firstResolution = Task { try? await firstLoader.resolveCurrentLocationIfNeeded() }
+        await provider.waitForResolutionRequest()
+
+        let recreatedLoader = DashboardLocationLoader(
+            persistedSelection: unresolvedCurrentLocation,
+            provider: provider,
+            saveSelection: secondRecorder.record,
+            locationSession: session
+        )
+        let secondResolution = Task { try? await recreatedLoader.resolveCurrentLocationIfNeeded() }
+        await Task.yield()
+
+        XCTAssertEqual(provider.resolveCallCount, 1)
+        provider.completeResolution()
+        await firstResolution.value
+        await secondResolution.value
+
+        XCTAssertEqual(firstLoader.activeLocation?.latitude, provider.resolvedLocation.latitude)
+        XCTAssertEqual(recreatedLoader.activeLocation?.latitude, provider.resolvedLocation.latitude)
+        XCTAssertEqual(firstRecorder.selections.count, 1)
+        XCTAssertEqual(secondRecorder.selections.count, 1)
+        XCTAssertFalse(firstRecorder.selections.contains { $0.latitude == 0 && $0.longitude == 0 })
+        XCTAssertFalse(secondRecorder.selections.contains { $0.latitude == 0 && $0.longitude == 0 })
+    }
+
+    func testFailedSharedResolutionClearsSessionOperationForRetry() async {
+        let provider = FailingThenSucceedingLocationProvider()
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "My Current Location",
+                latitude: 0,
+                longitude: 0
+            ),
+            provider: provider,
+            saveSelection: { _ in },
+            locationSession: DashboardLocationSession()
+        )
+
+        do {
+            try await loader.resolveCurrentLocationIfNeeded()
+            XCTFail("Expected the first resolution to fail")
+        } catch {
+            // Expected.
+        }
+        try? await loader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(provider.resolveCallCount, 2)
+        XCTAssertEqual(loader.activeLocation?.latitude, provider.resolvedLocation.latitude)
+    }
+
+    func testPostInvalidationResolutionDoesNotReuseObsoleteSharedRequest() async {
+        let session = DashboardLocationSession()
+        let provider = MultiSuspendedLocationProvider()
+        let recorder = SelectionRecorder()
+        let fixedLocation = makeCachedLocation()
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "My Current Location",
+                latitude: 0,
+                longitude: 0
+            ),
+            provider: provider,
+            saveSelection: recorder.record,
+            locationSession: session
+        )
+
+        let requestA = Task { try? await loader.resolveCurrentLocationIfNeeded() }
+        await provider.waitForRequest(count: 1)
+
+        loader.select(savedSelection(for: fixedLocation))
+        loader.select(SelectedLocation(
+            source: .currentGPS,
+            name: "My Current Location",
+            latitude: 0,
+            longitude: 0
+        ))
+        let requestB = Task { try? await loader.resolveCurrentLocationIfNeeded() }
+        await provider.waitForRequest(count: 2)
+
+        XCTAssertEqual(provider.resolveCallCount, 2)
+        provider.completeRequest(at: 0, with: CachedLocation(
+            name: "Obsolete A",
+            latitude: 10,
+            longitude: 20
+        ))
+        await requestA.value
+
+        XCTAssertNil(loader.activeLocation)
+        XCTAssertFalse(recorder.selections.contains { $0.name == "Obsolete A" })
+
+        provider.completeRequest(at: 1, with: CachedLocation(
+            name: "Fresh B",
+            latitude: 30,
+            longitude: 40
+        ))
+        await requestB.value
+
+        XCTAssertEqual(loader.activeLocation?.name, "Fresh B")
+        XCTAssertEqual(loader.activeLocation?.latitude, 30)
+        XCTAssertEqual(loader.activeLocation?.longitude, 40)
+        XCTAssertEqual(recorder.selections.last?.name, "Fresh B")
+        XCTAssertEqual(provider.resolveCallCount, 2)
+    }
+
+    func testReturningFromFixedLocationToCurrentLocationResolvesAgain() async {
+        let fixedLocation = makeCachedLocation()
+        let provider = LocationProviderSpy()
+        let loader = DashboardLocationLoader(
+            persistedSelection: nil,
+            provider: provider,
+            saveSelection: { _ in }
+        )
+
+        loader.restoreSelection(using: [fixedLocation])
+        try? await loader.resolveCurrentLocationIfNeeded()
+        loader.select(savedSelection(for: fixedLocation))
+        loader.select(SelectedLocation(
+            source: .currentGPS,
+            name: "My Current Location",
+            latitude: 0,
+            longitude: 0
+        ))
+        try? await loader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(provider.resolveCallCount, 2)
+    }
+
+    func testRehydratedCurrentLocationAtEquatorIsResolved() {
+        let provider = LocationProviderSpy()
+        let session = DashboardLocationSession()
+        session.currentLocation = CachedLocation(name: "Equator", latitude: 0, longitude: 10)
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "Equator",
+                latitude: 0,
+                longitude: 10
+            ),
+            provider: provider,
+            saveSelection: { _ in },
+            locationSession: session
+        )
+
+        XCTAssertEqual(loader.activeLocation?.latitude, 0)
+        XCTAssertEqual(loader.activeLocation?.longitude, 10)
+        XCTAssertEqual(provider.resolveCallCount, 0)
+    }
+
+    func testRehydratedCurrentLocationOnPrimeMeridianIsResolved() {
+        let provider = LocationProviderSpy()
+        let session = DashboardLocationSession()
+        session.currentLocation = CachedLocation(name: "Prime Meridian", latitude: 10, longitude: 0)
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "Prime Meridian",
+                latitude: 10,
+                longitude: 0
+            ),
+            provider: provider,
+            saveSelection: { _ in },
+            locationSession: session
+        )
+
+        XCTAssertEqual(loader.activeLocation?.latitude, 10)
+        XCTAssertEqual(loader.activeLocation?.longitude, 0)
+        XCTAssertEqual(provider.resolveCallCount, 0)
+    }
+
+    func testPlaceholderCurrentLocationRemainsUnresolved() {
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "My Current Location",
+                latitude: 0,
+                longitude: 0
+            ),
+            provider: LocationProviderSpy(),
+            saveSelection: { _ in }
+        )
+
+        XCTAssertNil(loader.activeLocation)
+    }
+
+    func testReselectingCurrentLocationPreservesResolvedSelectionWithoutGPSRequest() async {
+        let provider = LocationProviderSpy()
+        let recorder = SelectionRecorder()
+        let session = DashboardLocationSession()
+        session.currentLocation = CachedLocation(name: "Portland", latitude: 45.52, longitude: -122.68)
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "Portland",
+                latitude: 45.52,
+                longitude: -122.68
+            ),
+            provider: provider,
+            saveSelection: recorder.record,
+            locationSession: session
+        )
+
+        loader.select(SelectedLocation(
+            source: .currentGPS,
+            name: "My Current Location",
+            latitude: 0,
+            longitude: 0
+        ))
+        try? await loader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(loader.selectedLocation.name, "Portland")
+        XCTAssertEqual(loader.selectedLocation.latitude, 45.52)
+        XCTAssertEqual(loader.selectedLocation.longitude, -122.68)
+        XCTAssertEqual(loader.activeLocation?.latitude, 45.52)
+        XCTAssertEqual(loader.activeLocation?.longitude, -122.68)
+        XCTAssertFalse(recorder.selections.contains { $0.latitude == 0 && $0.longitude == 0 })
+        XCTAssertEqual(provider.resolveCallCount, 0)
+    }
+
+    func testDeletingSelectedFixedLocationClearsCurrentCacheAndResolvesAgain() async {
+        let fixedLocation = makeCachedLocation()
+        let provider = LocationProviderSpy()
+        let recorder = SelectionRecorder()
+        let session = DashboardLocationSession()
+        session.currentLocation = CachedLocation(name: "Previous GPS Result", latitude: 40, longitude: -120)
+        let loader = DashboardLocationLoader(
+            persistedSelection: SelectedLocation(
+                source: .currentGPS,
+                name: "Previous GPS Result",
+                latitude: 40,
+                longitude: -120
+            ),
+            provider: provider,
+            saveSelection: recorder.record,
+            locationSession: session
+        )
+
+        loader.select(savedSelection(for: fixedLocation))
+        loader.repairSelectionIfNeeded(using: [])
+
+        XCTAssertEqual(loader.selectedLocation.source, .currentGPS)
+        XCTAssertNil(loader.activeLocation)
+
+        try? await loader.resolveCurrentLocationIfNeeded()
+
+        XCTAssertEqual(provider.resolveCallCount, 1)
+        XCTAssertEqual(loader.activeLocation?.latitude, provider.resolvedLocation.latitude)
+        XCTAssertEqual(loader.activeLocation?.longitude, provider.resolvedLocation.longitude)
+        XCTAssertEqual(recorder.selections.last?.source, .currentGPS)
+        XCTAssertEqual(recorder.selections.last?.latitude, provider.resolvedLocation.latitude)
+        XCTAssertEqual(recorder.selections.last?.longitude, provider.resolvedLocation.longitude)
+    }
+
+    private func makeCachedLocation() -> CachedLocation {
+        CachedLocation(id: UUID(), name: "Portland", latitude: 45.52, longitude: -122.68)
+    }
+
+    private func savedSelection(for location: CachedLocation) -> SelectedLocation {
+        SelectedLocation(
+            source: .saved,
+            id: location.id,
+            name: location.name,
+            latitude: location.latitude,
+            longitude: location.longitude
+        )
+    }
 
     func testTimeoutStopsInitialLoadingAndShowsError() async {
         let viewModel = makeTimeoutViewModel()
@@ -549,6 +1158,176 @@ final class DashboardViewModelTests: XCTestCase {
             XCTAssertEqual(forecastDate, refreshStartOfDay0,
                 "Tab 0 forecasts should be for refresh date")
         }
+    }
+}
+
+@MainActor
+private final class LocationProviderSpy: DashboardCurrentLocationProviding {
+    var authorizationStatus: CLAuthorizationStatus
+    var isAuthorized: Bool {
+        authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways
+    }
+    var authorizationRequestCount = 0
+    var resolveCallCount = 0
+    let resolvedLocation = CachedLocation(name: "Portland", latitude: 45.52, longitude: -122.68)
+
+    init(authorizationStatus: CLAuthorizationStatus = .authorizedWhenInUse) {
+        self.authorizationStatus = authorizationStatus
+    }
+
+    func requestAuthorization() {
+        authorizationRequestCount += 1
+    }
+
+    func resolveCurrentLocation() async throws -> CachedLocation {
+        resolveCallCount += 1
+        return resolvedLocation
+    }
+}
+
+@MainActor
+private final class SuspendedLocationProvider: DashboardCurrentLocationProviding {
+    var authorizationStatus: CLAuthorizationStatus = .authorizedWhenInUse
+    var isAuthorized: Bool { true }
+    private(set) var resolveCallCount = 0
+    let resolvedLocation = CachedLocation(name: "GPS Result", latitude: 45.52, longitude: -122.68)
+
+    private var requestStarted = false
+    private var requestStartContinuation: CheckedContinuation<Void, Never>?
+    private var resolutionContinuation: CheckedContinuation<CachedLocation, Never>?
+
+    func requestAuthorization() {}
+
+    func resolveCurrentLocation() async throws -> CachedLocation {
+        resolveCallCount += 1
+        requestStarted = true
+        requestStartContinuation?.resume()
+        requestStartContinuation = nil
+
+        return await withCheckedContinuation { continuation in
+            resolutionContinuation = continuation
+        }
+    }
+
+    func waitForResolutionRequest() async {
+        guard !requestStarted else { return }
+        await withCheckedContinuation { continuation in
+            requestStartContinuation = continuation
+        }
+    }
+
+    func completeResolution() {
+        resolutionContinuation?.resume(returning: resolvedLocation)
+        resolutionContinuation = nil
+    }
+
+    func failResolution() {
+        resolutionContinuation?.resume(throwing: LocationError.locationUnavailable)
+        resolutionContinuation = nil
+    }
+}
+
+@MainActor
+private final class FailingThenSucceedingLocationProvider: DashboardCurrentLocationProviding {
+    var authorizationStatus: CLAuthorizationStatus = .authorizedWhenInUse
+    var isAuthorized: Bool { true }
+    private(set) var resolveCallCount = 0
+    let resolvedLocation = CachedLocation(name: "Retry Result", latitude: 47.61, longitude: -122.33)
+
+    func requestAuthorization() {}
+
+    func resolveCurrentLocation() async throws -> CachedLocation {
+        resolveCallCount += 1
+        if resolveCallCount == 1 {
+            throw LocationError.locationUnavailable
+        }
+        return resolvedLocation
+    }
+}
+
+@MainActor
+private final class MultiSuspendedLocationProvider: DashboardCurrentLocationProviding {
+    var authorizationStatus: CLAuthorizationStatus = .authorizedWhenInUse
+    var isAuthorized: Bool { true }
+    private(set) var resolveCallCount = 0
+    private var requestCountContinuation: CheckedContinuation<Void, Never>?
+    private var resolutionContinuations: [CheckedContinuation<CachedLocation, Never>] = []
+
+    func requestAuthorization() {}
+
+    func resolveCurrentLocation() async throws -> CachedLocation {
+        resolveCallCount += 1
+        requestCountContinuation?.resume()
+        requestCountContinuation = nil
+
+        return await withCheckedContinuation { continuation in
+            resolutionContinuations.append(continuation)
+        }
+    }
+
+    func waitForRequest(count: Int) async {
+        guard resolveCallCount < count else { return }
+        await withCheckedContinuation { continuation in
+            requestCountContinuation = continuation
+        }
+    }
+
+    func completeRequest(at index: Int, with location: CachedLocation) {
+        resolutionContinuations[index].resume(returning: location)
+    }
+}
+
+private actor SuspendedWeatherRequestGate {
+    private var completed = false
+    private var requestContinuation: CheckedContinuation<Void, Never>?
+    private var completionContinuation: CheckedContinuation<Void, Never>?
+    private(set) var requestCount = 0
+
+    func response() async throws -> (Data, URLResponse) {
+        requestCount += 1
+        requestContinuation?.resume()
+        requestContinuation = nil
+
+        if !completed {
+            await withCheckedContinuation { continuation in
+                completionContinuation = continuation
+            }
+        }
+
+        let data = Data(
+            """
+            {"utc_offset_seconds":0,"timezone":"UTC","hourly":{"time":["2026-07-17T00:00"],"cloudcover":[0],"relativehumidity_2m":[50],"windspeed_10m":[1.0],"winddirection_10m":[0],"temperature_2m":[10.0]}}
+            """.utf8
+        )
+        let response = HTTPURLResponse(
+            url: URL(string: "https://example.com/forecast")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        return (data, response)
+    }
+
+    func waitForRequestCount(_ count: Int) async {
+        guard requestCount < count else { return }
+        await withCheckedContinuation { continuation in
+            requestContinuation = continuation
+        }
+    }
+
+    func completeRequest() {
+        completed = true
+        completionContinuation?.resume()
+        completionContinuation = nil
+    }
+}
+
+@MainActor
+private final class SelectionRecorder {
+    private(set) var selections: [SelectedLocation] = []
+
+    func record(_ selection: SelectedLocation) {
+        selections.append(selection)
     }
 }
 

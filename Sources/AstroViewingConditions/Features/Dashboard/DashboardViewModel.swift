@@ -1,4 +1,5 @@
 import SharedCode
+import CoreLocation
 import SwiftUI
 import WidgetKit
 
@@ -78,8 +79,279 @@ struct BestTargetsListPresentation {
 }
 
 @MainActor
+protocol DashboardCurrentLocationProviding: AnyObject, Sendable {
+    var authorizationStatus: CLAuthorizationStatus { get }
+    var isAuthorized: Bool { get }
+
+    func requestAuthorization()
+    func resolveCurrentLocation() async throws -> CachedLocation
+}
+
+enum DashboardCurrentLocationResolutionResult: Equatable {
+    case unchanged
+    case resolvedSelectionUpdated
+}
+
+/// App-scoped, in-memory GPS state. ContentView owns this for the lifetime of
+/// the running app, so it survives Field Mode's dashboard recreation but not a
+/// new process launch.
+@MainActor
+@Observable
+final class DashboardLocationSession {
+    private final class ResolutionOperation {
+        let generation: Int
+        let task: Task<CachedLocation, Error>
+
+        init(generation: Int, provider: any DashboardCurrentLocationProviding) {
+            self.generation = generation
+            task = Task { @MainActor in
+                try await provider.resolveCurrentLocation()
+            }
+        }
+    }
+
+    var currentLocation: CachedLocation?
+    private var resolutionOperation: ResolutionOperation?
+    private var resolutionGeneration = 0
+
+    func resolveCurrentLocation(
+        using provider: any DashboardCurrentLocationProviding
+    ) async throws -> CachedLocation? {
+        if let currentLocation {
+            return currentLocation
+        }
+
+        let requestGeneration = resolutionGeneration
+        let operation: ResolutionOperation
+        if let resolutionOperation,
+           resolutionOperation.generation == requestGeneration {
+            operation = resolutionOperation
+        } else {
+            operation = ResolutionOperation(generation: requestGeneration, provider: provider)
+            resolutionOperation = operation
+        }
+
+        do {
+            let resolved = try await operation.task.value
+            if resolutionOperation === operation {
+                resolutionOperation = nil
+            }
+            guard operation.generation == resolutionGeneration else { return nil }
+            currentLocation = resolved
+            return resolved
+        } catch {
+            if resolutionOperation === operation {
+                resolutionOperation = nil
+            }
+            guard operation.generation == resolutionGeneration else { return nil }
+            throw error
+        }
+    }
+
+    func invalidateCurrentLocation() {
+        resolutionGeneration += 1
+        currentLocation = nil
+    }
+}
+
+/// Owns the dashboard's explicit location selection and is the only route to
+/// device-location resolution. Keeping this state separate from the view's
+/// lifecycle makes repeated SwiftUI tasks harmless.
+@MainActor
+@Observable
+final class DashboardLocationLoader {
+    var selectedLocation: SelectedLocation
+    var currentLocation: CachedLocation? { locationSession.currentLocation }
+
+    private let provider: any DashboardCurrentLocationProviding
+    private let saveSelection: (SelectedLocation) -> Void
+    private let hadPersistedSelection: Bool
+    private let locationSession: DashboardLocationSession
+    private var selectionGeneration = 0
+    private var internallyResolvedSelection: SelectedLocation?
+
+    init(
+        persistedSelection: SelectedLocation?,
+        provider: any DashboardCurrentLocationProviding,
+        saveSelection: @escaping (SelectedLocation) -> Void,
+        locationSession: DashboardLocationSession = DashboardLocationSession()
+    ) {
+        let selection = persistedSelection ?? Self.currentLocationSelection
+        self.selectedLocation = selection
+        self.provider = provider
+        self.saveSelection = saveSelection
+        self.hadPersistedSelection = persistedSelection != nil
+        self.locationSession = locationSession
+    }
+
+    func restoreSelection(using savedLocations: [CachedLocation]) {
+        let restored = Self.validatedSelection(selectedLocation, savedLocations: savedLocations)
+        if restored != selectedLocation || !hadPersistedSelection {
+            applySelection(restored)
+            saveSelection(restored)
+        }
+    }
+
+    func repairSelectionIfNeeded(using savedLocations: [CachedLocation]) {
+        let repaired = Self.validatedSelection(selectedLocation, savedLocations: savedLocations)
+        guard repaired != selectedLocation else { return }
+        applySelection(repaired)
+        saveSelection(repaired)
+    }
+
+    /// Records an intentional user selection. Returning from a fixed location
+    /// to Current Location discards any runtime GPS result so it is resolved
+    /// afresh; rehydration uses the initializer instead and keeps its cache.
+    func select(_ selection: SelectedLocation) {
+        guard !(selectedLocation.source == .currentGPS && selection.source == .currentGPS) else {
+            return
+        }
+        guard selection != selectedLocation else { return }
+
+        applySelection(selection)
+    }
+
+    func resolveCurrentLocationIfNeeded() async throws -> DashboardCurrentLocationResolutionResult {
+        guard selectedLocation.source == .currentGPS, currentLocation == nil else { return .unchanged }
+
+        guard provider.isAuthorized else {
+            provider.requestAuthorization()
+            return .unchanged
+        }
+
+        let requestGeneration = selectionGeneration
+
+        do {
+            guard let resolved = try await locationSession.resolveCurrentLocation(using: provider) else {
+                if requestGeneration == selectionGeneration,
+                   selectedLocation.source == .currentGPS,
+                   currentLocation == nil {
+                    return try await resolveCurrentLocationIfNeeded()
+                }
+                return .unchanged
+            }
+
+            guard requestGeneration == selectionGeneration,
+                  selectedLocation.source == .currentGPS else {
+                if selectedLocation.source == .currentGPS, currentLocation == nil {
+                    return try await resolveCurrentLocationIfNeeded()
+                }
+                return .unchanged
+            }
+
+            let selection = SelectedLocation(
+                source: .currentGPS,
+                name: resolved.name,
+                latitude: resolved.latitude,
+                longitude: resolved.longitude
+            )
+            selectedLocation = selection
+            internallyResolvedSelection = selection
+            saveSelection(selection)
+            return .resolvedSelectionUpdated
+        } catch {
+            guard requestGeneration == selectionGeneration,
+                  selectedLocation.source == .currentGPS else {
+                return .unchanged
+            }
+            throw error
+        }
+    }
+
+    func consumeInternallyResolvedSelectionUpdate(matching selection: SelectedLocation) -> Bool {
+        guard internallyResolvedSelection == selection else { return false }
+        internallyResolvedSelection = nil
+        return true
+    }
+
+    var authorizationStatus: CLAuthorizationStatus {
+        provider.authorizationStatus
+    }
+
+    var isAuthorized: Bool {
+        provider.isAuthorized
+    }
+
+    func requestAuthorization() {
+        guard selectedLocation.source == .currentGPS else { return }
+        provider.requestAuthorization()
+    }
+
+    var activeLocation: CachedLocation? {
+        switch selectedLocation.source {
+        case .currentGPS:
+            return currentLocation
+        case .saved:
+            return CachedLocation(
+                id: selectedLocation.id,
+                name: selectedLocation.name,
+                latitude: selectedLocation.latitude,
+                longitude: selectedLocation.longitude
+            )
+        }
+    }
+
+    private static var currentLocationSelection: SelectedLocation {
+        SelectedLocation(
+            source: .currentGPS,
+            name: "My Current Location",
+            latitude: 0,
+            longitude: 0
+        )
+    }
+
+    private static func validatedSelection(
+        _ selection: SelectedLocation,
+        savedLocations: [CachedLocation]
+    ) -> SelectedLocation {
+        guard selection.source == .saved else { return selection }
+        guard let id = selection.id,
+              let savedLocation = savedLocations.first(where: { $0.id == id }) else {
+            return currentLocationSelection
+        }
+
+        return SelectedLocation(
+            source: .saved,
+            id: savedLocation.id,
+            name: savedLocation.name,
+            latitude: savedLocation.latitude,
+            longitude: savedLocation.longitude
+        )
+    }
+
+    private func applySelection(_ selection: SelectedLocation) {
+        let isFixedToCurrentLocation = selectedLocation.source == .saved
+            && selection.source == .currentGPS
+        selectionGeneration += 1
+        internallyResolvedSelection = nil
+        selectedLocation = isFixedToCurrentLocation ? Self.currentLocationSelection : selection
+        if isFixedToCurrentLocation {
+            locationSession.invalidateCurrentLocation()
+        }
+    }
+}
+
+@MainActor
 @Observable
 public class DashboardViewModel {
+    private struct ConditionsLoadKey: Hashable {
+        let id: UUID?
+        let latitude: Double
+        let longitude: Double
+        let elevation: Double?
+
+        init(location: CachedLocation) {
+            id = location.id
+            latitude = location.latitude
+            longitude = location.longitude
+            elevation = location.elevation
+        }
+    }
+
+    private final class ConditionsLoadOperation {
+        var task: Task<Void, Never>!
+    }
+
     // Services
     private let conditionsProvider: ConditionsProvider
     private let cacheService: CacheService
@@ -96,6 +368,7 @@ public class DashboardViewModel {
     
     private var apiKey: String
     public private(set) var locationTimeZone: TimeZone?
+    private var conditionsLoadOperations: [ConditionsLoadKey: ConditionsLoadOperation] = [:]
     
     private static let staleThresholdSeconds: TimeInterval = 60 * 60 // 1 hour
     
@@ -388,14 +661,14 @@ public class DashboardViewModel {
     }
     
     @discardableResult
-    private func loadConditions(for location: SavedLocation) async -> Bool {
+    private func loadConditions(for location: CachedLocation) async -> Bool {
         isLoading = true
         error = nil
         defer { isLoading = false }
         
         do {
             let result = try await conditionsProvider.fetchConditionsWithDiagnostics(
-                for: CachedLocation(from: location),
+                for: location,
                 days: 4,
                 apiKey: apiKey
             )
@@ -424,6 +697,11 @@ public class DashboardViewModel {
     
     @discardableResult
     public func refresh(for location: SavedLocation) async -> Bool {
+        await refresh(for: CachedLocation(from: location))
+    }
+
+    @discardableResult
+    public func refresh(for location: CachedLocation) async -> Bool {
         guard await loadConditions(for: location) else {
             return false
         }
@@ -468,11 +746,32 @@ public class DashboardViewModel {
     }
     
     public func loadConditionsIfNeeded(for location: SavedLocation) async {
-        let cachedLocation = CachedLocation(from: location)
-        await resolveTimeZone(for: cachedLocation)
+        await loadConditionsIfNeeded(for: CachedLocation(from: location))
+    }
 
-        let loadedFromCache = await loadFromCache(matching: cachedLocation)
-        if !loadedFromCache, !currentConditionsMatch(cachedLocation) {
+    public func loadConditionsIfNeeded(for location: CachedLocation) async {
+        let key = ConditionsLoadKey(location: location)
+        if let operation = conditionsLoadOperations[key] {
+            await operation.task.value
+            return
+        }
+
+        let operation = ConditionsLoadOperation()
+        conditionsLoadOperations[key] = operation
+        operation.task = Task { @MainActor [weak self] in
+            await self?.loadConditionsIfNeededUncoalesced(for: location)
+        }
+        await operation.task.value
+        if conditionsLoadOperations[key] === operation {
+            conditionsLoadOperations[key] = nil
+        }
+    }
+
+    private func loadConditionsIfNeededUncoalesced(for location: CachedLocation) async {
+        await resolveTimeZone(for: location)
+
+        let loadedFromCache = await loadFromCache(matching: location)
+        if !loadedFromCache, !currentConditionsMatch(location) {
             viewingConditions = nil
             lastSuccessfulFetch = nil
         }
