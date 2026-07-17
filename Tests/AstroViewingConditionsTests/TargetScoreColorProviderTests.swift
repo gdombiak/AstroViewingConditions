@@ -1,3 +1,4 @@
+import Combine
 import XCTest
 import UIKit
 import SwiftUI
@@ -32,6 +33,40 @@ final class TargetScoreColorProviderTests: XCTestCase {
         XCTAssertEqual(AppAppearance.normal.palette.appearance, .normal)
         XCTAssertEqual(AppAppearance.field.palette.appearance, .field)
         XCTAssertEqual(AppAppearance.resolve(fieldModeEnabled: false).palette.appearance, .normal)
+    }
+
+    @MainActor
+    func testTogglingFieldModeKeepsWrappedContentStateAlive() {
+        let controller = FieldModeController()
+        var observedLifetimeIDs: [UUID] = []
+        var updateExpectation = expectation(description: "Initial appearance")
+
+        let host = UIHostingController(
+            rootView: AppearanceLifetimeHarness(controller: controller) { lifetimeID in
+                observedLifetimeIDs.append(lifetimeID)
+                updateExpectation.fulfill()
+            }
+        )
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+
+        wait(for: [updateExpectation], timeout: 2)
+
+        updateExpectation = expectation(description: "Field Mode enabled")
+        controller.isFieldModeEnabled = true
+        wait(for: [updateExpectation], timeout: 2)
+
+        updateExpectation = expectation(description: "Field Mode disabled")
+        controller.isFieldModeEnabled = false
+        wait(for: [updateExpectation], timeout: 2)
+
+        XCTAssertEqual(observedLifetimeIDs.count, 3)
+        XCTAssertEqual(Set(observedLifetimeIDs).count, 1)
     }
 
     func testFieldPaletteUsesDimRedDominantCoreColors() throws {
@@ -129,4 +164,35 @@ final class TargetScoreColorProviderTests: XCTestCase {
             + 0.0722 * linearize(color.2)
     }
 
+}
+
+@MainActor
+private final class FieldModeController: ObservableObject {
+    @Published var isFieldModeEnabled = false
+}
+
+private struct AppearanceLifetimeHarness: View {
+    @ObservedObject var controller: FieldModeController
+    let reportLifetimeID: (UUID) -> Void
+
+    var body: some View {
+        AppearanceLifetimeProbe(
+            fieldModeEnabled: controller.isFieldModeEnabled,
+            reportLifetimeID: reportLifetimeID
+        )
+        .appAppearance(fieldModeEnabled: controller.isFieldModeEnabled)
+    }
+}
+
+private struct AppearanceLifetimeProbe: View {
+    @State private var lifetimeID = UUID()
+    let fieldModeEnabled: Bool
+    let reportLifetimeID: (UUID) -> Void
+
+    var body: some View {
+        Color.clear
+            .onChange(of: fieldModeEnabled, initial: true) { _, _ in
+                reportLifetimeID(lifetimeID)
+            }
+    }
 }

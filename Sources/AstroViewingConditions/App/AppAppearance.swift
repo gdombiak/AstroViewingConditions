@@ -146,16 +146,21 @@ private struct AppAppearanceModifier: ViewModifier {
     func body(content: Content) -> some View {
         let palette = appearance.palette
 
-        if fieldModeEnabled {
-            content
-                .environment(\.appPalette, palette)
-                .preferredColorScheme(.dark)
-                .tint(palette.accent)
-                .foregroundStyle(palette.primaryText, palette.secondaryText, palette.tertiaryText)
-                .background(palette.appBackground.ignoresSafeArea())
-        } else {
-            content.environment(\.appPalette, palette)
-        }
+        // Keep `content` in one structural position. Branching around it here causes
+        // SwiftUI to replace the wrapped subtree when Field Mode changes.
+        content
+            .environment(\.appPalette, palette)
+            .preferredColorScheme(fieldModeEnabled ? .dark : nil)
+            .tint(fieldModeEnabled ? palette.accent : nil)
+            .foregroundStyle(
+                fieldModeEnabled ? palette.primaryText : .primary,
+                fieldModeEnabled ? palette.secondaryText : .secondary,
+                fieldModeEnabled ? palette.tertiaryText : Color(uiColor: .tertiaryLabel)
+            )
+            .background(
+                (fieldModeEnabled ? palette.appBackground : .clear)
+                    .ignoresSafeArea()
+            )
     }
 }
 
