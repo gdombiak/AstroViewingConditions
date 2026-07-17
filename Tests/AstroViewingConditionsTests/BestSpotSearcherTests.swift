@@ -146,9 +146,10 @@ final class BestSpotSearcherTests: XCTestCase {
 
     private actor CancellationGateSuitabilityResolver: LocationSuitabilityResolving {
         private var resolvedCoordinates: [Coordinate] = []
-        private var expansionLookupStarted = false
-        private var expansionWaiters: [CheckedContinuation<Void, Never>] = []
-        private var expansionLookupRelease: CheckedContinuation<Void, Error>?
+        private var expansionLookupCount = 0
+        private var expansionStartWaiter: (count: Int, continuation: CheckedContinuation<Void, Never>)?
+        private var expansionLookupReleases: [CheckedContinuation<Void, Error>] = []
+        private var blocksExpansionLookups = true
 
         func resolveSuitability(for coordinate: Coordinate) async throws -> LocationSuitabilityStatus {
             try Task.checkCancellation()
@@ -158,29 +159,36 @@ final class BestSpotSearcherTests: XCTestCase {
                 return .unsuitable(reason: "Water area")
             }
 
-            if !expansionLookupStarted {
-                expansionLookupStarted = true
-                let waiters = expansionWaiters
-                expansionWaiters.removeAll()
-                waiters.forEach { $0.resume() }
-                try await withTaskCancellationHandler {
-                    try await withCheckedThrowingContinuation { expansionLookupRelease = $0 }
-                } onCancel: {
-                    Task { await self.cancelExpansionLookup() }
+            guard blocksExpansionLookups else { return .suitable }
+
+            expansionLookupCount += 1
+            try await withCheckedThrowingContinuation { continuation in
+                expansionLookupReleases.append(continuation)
+                if let waiter = expansionStartWaiter, expansionLookupCount >= waiter.count {
+                    expansionStartWaiter = nil
+                    waiter.continuation.resume()
                 }
             }
 
             return .suitable
         }
 
-        func waitForExpansionLookupToStart() async {
-            guard !expansionLookupStarted else { return }
-            await withCheckedContinuation { expansionWaiters.append($0) }
+        func waitForExpansionLookupsToStart(count: Int) async {
+            guard expansionLookupCount < count else { return }
+            await withCheckedContinuation { continuation in
+                expansionStartWaiter = (count, continuation)
+                if expansionLookupCount >= count {
+                    expansionStartWaiter = nil
+                    continuation.resume()
+                }
+            }
         }
 
-        private func cancelExpansionLookup() {
-            expansionLookupRelease?.resume(throwing: CancellationError())
-            expansionLookupRelease = nil
+        func cancelExpansionLookups() {
+            blocksExpansionLookups = false
+            let releases = expansionLookupReleases
+            expansionLookupReleases.removeAll()
+            releases.forEach { $0.resume(throwing: CancellationError()) }
         }
 
         var callCount: Int {
@@ -884,10 +892,14 @@ final class BestSpotSearcherTests: XCTestCase {
 
     func testCancelledSearchDoesNotLeakSuitabilityCacheIntoNextSearch() async throws {
         let date = currentSearchDate()
+        let maxConcurrentLookups = LocationSuitabilityService.defaultMaxConcurrentLookups
         let resolver = CancellationGateSuitabilityResolver()
         let searcher = searcher(
             weather: MockWeatherProvider { _ in Self.nightForecasts(for: date, cloudCover: 5) },
-            suitability: LocationSuitabilityService(resolver: resolver)
+            suitability: LocationSuitabilityService(
+                resolver: resolver,
+                maxConcurrentLookups: maxConcurrentLookups
+            )
         )
         let center = CachedLocation(from: createSavedLocation())
 
@@ -901,8 +913,9 @@ final class BestSpotSearcherTests: XCTestCase {
             )
         }
 
-        await resolver.waitForExpansionLookupToStart()
+        await resolver.waitForExpansionLookupsToStart(count: maxConcurrentLookups)
         cancelledSearch.cancel()
+        await resolver.cancelExpansionLookups()
 
         do {
             _ = try await cancelledSearch.value
@@ -912,10 +925,9 @@ final class BestSpotSearcherTests: XCTestCase {
         }
 
         let callsBeforeRetry = await resolver.callCount
-        XCTAssertGreaterThan(callsBeforeRetry, BestSpotSearcher.suitabilityCandidateCount(topN: 5))
-        XCTAssertLessThanOrEqual(
+        XCTAssertEqual(
             callsBeforeRetry,
-            BestSpotSearcher.suitabilityCandidateCount(topN: 5) + LocationSuitabilityService.defaultMaxConcurrentLookups + 1
+            BestSpotSearcher.suitabilityCandidateCount(topN: 5) + maxConcurrentLookups
         )
         let secondResult = try await searcher.findBestSpots(
             around: center,
