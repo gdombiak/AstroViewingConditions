@@ -162,6 +162,7 @@ public struct LocationsView: View {
                 .foregroundStyle(destructive ? palette.primaryActionLabel : palette.secondaryText)
         } else {
             Label(title, systemImage: systemImage)
+                .foregroundStyle(.white)
         }
     }
 

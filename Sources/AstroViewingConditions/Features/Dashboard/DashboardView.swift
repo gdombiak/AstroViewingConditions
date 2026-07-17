@@ -14,24 +14,12 @@ public struct DashboardView: View {
         case currentConditions
     }
 
-    private struct DashboardSectionPositionPreferenceKey: PreferenceKey {
-        static let defaultValue: [DashboardSection: CGFloat] = [:]
-
-        static func reduce(
-            value: inout [DashboardSection: CGFloat],
-            nextValue: () -> [DashboardSection: CGFloat]
-        ) {
-            value.merge(nextValue(), uniquingKeysWith: { _, new in new })
-        }
-    }
-
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.appPalette) private var palette
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
     @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
     @SceneStorage("dashboardSelectedDay") private var storedSelectedDayRawValue: Int = DashboardViewModel.DaySelection.today.rawValue
-    @SceneStorage("dashboardScrollSection") private var storedScrollSectionRawValue: String = DashboardSection.top.rawValue
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
     private let viewModel: DashboardViewModel
     @State private var locationLoader: DashboardLocationLoader
@@ -39,7 +27,8 @@ public struct DashboardView: View {
     @State private var showingBestSpotSearch = false
     @State private var showingAllBestTargets = false
     @State private var hasRestoredSelectedDay = false
-    @State private var hasRestoredScrollSection = false
+    @State private var dashboardScrollPosition = ScrollPosition(edge: .top)
+    @State private var dashboardScrollCoordinator = DashboardScrollCoordinator()
     private let locationSession: DashboardLocationSession
     
     init(
@@ -114,11 +103,6 @@ public struct DashboardView: View {
                     initialView
                 }
             }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if shouldShowNormalIPadLocationTitle {
-                    normalIPadLocationTitle
-                }
-            }
             .appNavigationTitle(selectedLocationName)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -141,6 +125,7 @@ public struct DashboardView: View {
                 
                 ToolbarItem(placement: toolbarPlacement) {
                     Button {
+                        freezeDashboardScrollOffsetForFieldModeToggle()
                         fieldModeEnabled.toggle()
                     } label: {
                         Image(systemName: fieldModeEnabled ? "flashlight.on.fill" : "flashlight.off.fill")
@@ -266,116 +251,116 @@ public struct DashboardView: View {
     private func conditionsContent(conditions: ViewingConditions) -> some View {
         let bestTargets = viewModel.currentBestTargetsPresentation
 
-        return ScrollViewReader { proxy in
-            ScrollView {
-                VStack(spacing: 16) {
-                    if viewModel.isDataStale {
-                        staleDataBanner
-                    }
+        return ScrollView {
+            VStack(spacing: 16) {
+                if viewModel.isDataStale {
+                    staleDataBanner
+                }
 
-                    dashboardSectionMarker(.top)
-                    daySelector
-                        .id(DashboardSection.top)
+                daySelector
+                    .id(DashboardSection.top)
 
-                    if let nightQuality = viewModel.currentNightQuality {
-                        dashboardSectionMarker(.nightQuality)
-                        NightQualityCard(
-                            assessment: nightQuality
-                        )
-                        .id(DashboardSection.nightQuality)
-                    }
-
-                    dashboardSectionMarker(.bestTargets)
-                    TonightsBestTargetsCard(
-                        recommendations: bestTargets.dashboardRecommendations,
-                        timeZone: viewModel.displayTimeZone,
-                        nightQualityScore: viewModel.currentNightQuality?.calculatedScore,
-                        hasAdditionalTargets: bestTargets.hasAdditionalTargets,
-                        onViewAll: { showingAllBestTargets = true }
+                if let nightQuality = viewModel.currentNightQuality {
+                    NightQualityCard(
+                        assessment: nightQuality
                     )
-                    .id(DashboardSection.bestTargets)
+                    .id(DashboardSection.nightQuality)
+                }
 
-                    if viewModel.hasISSConfigured {
-                        dashboardSectionMarker(.iss)
-                        ISSCard(
-                            passes: viewModel.currentISSPasses,
-                            timeZone: viewModel.displayTimeZone,
-                            errorMessage: viewModel.issError?.localizedDescription,
-                            title: viewModel.issCardTitle,
-                            emptyMessage: viewModel.issEmptyMessage
-                        )
-                        .id(DashboardSection.iss)
-                    }
+                TonightsBestTargetsCard(
+                    recommendations: bestTargets.dashboardRecommendations,
+                    timeZone: viewModel.displayTimeZone,
+                    nightQualityScore: viewModel.currentNightQuality?.calculatedScore,
+                    hasAdditionalTargets: bestTargets.hasAdditionalTargets,
+                    onViewAll: { showingAllBestTargets = true }
+                )
+                .id(DashboardSection.bestTargets)
 
-                    dashboardSectionMarker(.hourlyForecast)
-                    HourlyForecastView(
-                        forecasts: viewModel.currentHourlyForecasts,
+                if viewModel.hasISSConfigured {
+                    ISSCard(
+                        passes: viewModel.currentISSPasses,
+                        timeZone: viewModel.displayTimeZone,
+                        errorMessage: viewModel.issError?.localizedDescription,
+                        title: viewModel.issCardTitle,
+                        emptyMessage: viewModel.issEmptyMessage
+                    )
+                    .id(DashboardSection.iss)
+                }
+
+                HourlyForecastView(
+                    forecasts: viewModel.currentHourlyForecasts,
+                    unitConverter: unitConverter,
+                    timeZone: viewModel.displayTimeZone
+                )
+                .id(DashboardSection.hourlyForecast)
+
+                if let sunEvents = viewModel.currentSunEvents,
+                   let moonInfo = viewModel.currentMoonInfo {
+                    SunMoonCard(
+                        sunEvents: sunEvents,
+                        tomorrowSunEvents: viewModel.nextSunEvents,
+                        moonInfo: moonInfo,
+                        timeZone: viewModel.displayTimeZone
+                    )
+                    .id(DashboardSection.sunMoon)
+                }
+
+                if viewModel.selectedDay == .today {
+                    CurrentConditionsCard(
+                        forecast: viewModel.currentHourForecast,
                         unitConverter: unitConverter,
                         timeZone: viewModel.displayTimeZone
                     )
-                    .id(DashboardSection.hourlyForecast)
-
-                    if let sunEvents = viewModel.currentSunEvents,
-                       let moonInfo = viewModel.currentMoonInfo {
-                        dashboardSectionMarker(.sunMoon)
-                        SunMoonCard(
-                            sunEvents: sunEvents,
-                            tomorrowSunEvents: viewModel.nextSunEvents,
-                            moonInfo: moonInfo,
-                            timeZone: viewModel.displayTimeZone
-                        )
-                        .id(DashboardSection.sunMoon)
-                    }
-
-                    if viewModel.selectedDay == .today {
-                        dashboardSectionMarker(.currentConditions)
-                        CurrentConditionsCard(
-                            forecast: viewModel.currentHourForecast,
-                            unitConverter: unitConverter,
-                            timeZone: viewModel.displayTimeZone
-                        )
-                        .id(DashboardSection.currentConditions)
-                    }
-
-                    if let fetchedAt = viewModel.viewingConditions?.fetchedAt {
-                        TimelineView(.periodic(from: .now, by: 60)) { context in
-                            Text("Last updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: context.date))")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .padding(.top)
-                        }
-                    }
-                }
-                .padding()
-            }
-            .coordinateSpace(name: "dashboardScroll")
-            .onPreferenceChange(DashboardSectionPositionPreferenceKey.self) { positions in
-                guard hasRestoredScrollSection else { return }
-
-                let topThreshold: CGFloat = 24
-                let visibleSection = positions
-                    .filter { $0.value <= topThreshold }
-                    .max { $0.value < $1.value }?
-                    .key
-                    ?? positions.min { abs($0.value) < abs($1.value) }?.key
-
-                if let visibleSection,
-                   storedScrollSectionRawValue != visibleSection.rawValue {
-                    storedScrollSectionRawValue = visibleSection.rawValue
-                }
-            }
-            .task {
-                guard !hasRestoredScrollSection else { return }
-                hasRestoredScrollSection = true
-
-                guard let section = DashboardSection(rawValue: storedScrollSectionRawValue),
-                      section != .top else {
-                    return
+                    .id(DashboardSection.currentConditions)
                 }
 
-                await Task.yield()
-                proxy.scrollTo(section, anchor: .top)
+                if let fetchedAt = viewModel.viewingConditions?.fetchedAt {
+                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                        Text("Last updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: context.date))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.top)
+                    }
+                }
             }
+            .padding()
+        }
+        .scrollPosition($dashboardScrollPosition)
+        .onScrollGeometryChange(
+            for: DashboardScrollOffset.self,
+            of: { DashboardScrollOffset($0.contentOffset) }
+        ) { _, offset in
+            dashboardScrollCoordinator.receive(offset)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dashboardWillToggleFieldMode)) { _ in
+            dashboardScrollCoordinator.freezeCurrentOffset()
+        }
+        .task(id: dashboardScrollCoordinator.restoreRequestID) {
+            guard let target = dashboardScrollCoordinator.restoreTarget else { return }
+
+            await Task.yield()
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                dashboardScrollPosition.scrollTo(point: target)
+            }
+        }
+    }
+
+    private func freezeDashboardScrollOffsetForFieldModeToggle() {
+        dashboardScrollCoordinator.freezeCurrentOffset()
+    }
+
+    fileprivate struct DashboardScrollOffset: Equatable {
+        var point: CGPoint = .zero
+
+        init() {}
+
+        init(_ point: CGPoint) {
+            self.point = CGPoint(
+                x: point.x.roundedToHalfPoint,
+                y: point.y.roundedToHalfPoint
+            )
         }
     }
 
@@ -473,19 +458,6 @@ public struct DashboardView: View {
         horizontalSizeClass == .regular
     }
 
-    private func dashboardSectionMarker(_ section: DashboardSection) -> some View {
-        GeometryReader { geometry in
-            Color.clear
-                .preference(
-                    key: DashboardSectionPositionPreferenceKey.self,
-                    value: [
-                        section: geometry.frame(in: .named("dashboardScroll")).minY
-                    ]
-                )
-        }
-        .frame(height: 0)
-    }
-
     private func restoreSelectedDay() {
         guard let storedDay = DashboardViewModel.DaySelection(
             rawValue: storedSelectedDayRawValue
@@ -500,24 +472,6 @@ public struct DashboardView: View {
         }
     }
 
-    private var shouldShowNormalIPadLocationTitle: Bool {
-        horizontalSizeClass == .regular &&
-        palette.appearance == .normal
-    }
-
-    private var normalIPadLocationTitle: some View {
-        Text(selectedLocationName)
-            .font(.title2.bold())
-            .foregroundStyle(.primary)
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .minimumScaleFactor(0.75)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            .accessibilityAddTraits(.isHeader)
-    }
-    
     private func resolveCurrentLocationIfNeeded() async {
         do {
             _ = try await locationLoader.resolveCurrentLocationIfNeeded()
@@ -530,6 +484,111 @@ public struct DashboardView: View {
         guard let location = activeLocation else { return }
         await viewModel.loadConditionsIfNeeded(for: location)
     }
+}
+
+@MainActor
+@Observable
+private final class DashboardScrollCoordinator {
+    private static let layoutResetOffsetThreshold: CGFloat = 24
+
+    @ObservationIgnored
+    private var stableOffset = DashboardView.DashboardScrollOffset()
+    @ObservationIgnored
+    private var pendingOffset: DashboardView.DashboardScrollOffset?
+    @ObservationIgnored
+    private var geometryTask: Task<Void, Never>?
+    @ObservationIgnored
+    private var frozenOffset: CGPoint?
+    @ObservationIgnored
+    private var lastRestoreTarget: CGPoint?
+    private(set) var restoreTarget: CGPoint?
+    private(set) var restoreRequestID = UUID()
+
+    func receive(_ offset: DashboardView.DashboardScrollOffset) {
+        guard !offset.isApproximatelyEqual(to: pendingOffset ?? stableOffset) else {
+            return
+        }
+
+        pendingOffset = offset
+        guard geometryTask == nil else { return }
+
+        geometryTask = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self, !Task.isCancelled else { return }
+            processPendingGeometry()
+        }
+    }
+
+    func freezeCurrentOffset() {
+        if let pendingOffset {
+            stableOffset = pendingOffset
+            self.pendingOffset = nil
+            geometryTask?.cancel()
+            geometryTask = nil
+        }
+
+        frozenOffset = stableOffset.point
+        lastRestoreTarget = nil
+        restoreTarget = nil
+    }
+
+    private func processPendingGeometry() {
+        guard let offset = pendingOffset else {
+            geometryTask = nil
+            return
+        }
+
+        pendingOffset = nil
+        geometryTask = nil
+        stableOffset = offset
+
+        if let frozenOffset,
+           offset.point.isMateriallyDisplaced(from: frozenOffset, threshold: Self.layoutResetOffsetThreshold) {
+            scheduleRestoreIfNeeded()
+        }
+
+        if let frozenOffset,
+           offset.point.isApproximatelyEqual(to: frozenOffset) {
+            self.frozenOffset = nil
+            lastRestoreTarget = nil
+            restoreTarget = nil
+        }
+    }
+
+    private func scheduleRestoreIfNeeded() {
+        guard let target = frozenOffset else { return }
+
+        guard lastRestoreTarget.map({ !target.isApproximatelyEqual(to: $0) }) ?? true else { return }
+        lastRestoreTarget = target
+        restoreTarget = target
+        restoreRequestID = UUID()
+    }
+}
+
+private extension DashboardView.DashboardScrollOffset {
+    func isApproximatelyEqual(to other: DashboardView.DashboardScrollOffset) -> Bool {
+        point.isApproximatelyEqual(to: other.point)
+    }
+}
+
+private extension CGPoint {
+    func isApproximatelyEqual(to other: CGPoint) -> Bool {
+        abs(x - other.x) < 0.5 && abs(y - other.y) < 0.5
+    }
+
+    func isMateriallyDisplaced(from other: CGPoint, threshold: CGFloat) -> Bool {
+        abs(x - other.x) >= threshold || abs(y - other.y) >= threshold
+    }
+}
+
+private extension CGFloat {
+    var roundedToHalfPoint: CGFloat {
+        (self * 2).rounded() / 2
+    }
+}
+
+extension Notification.Name {
+    static let dashboardWillToggleFieldMode = Notification.Name("dashboardWillToggleFieldMode")
 }
 
 extension LocationManager: DashboardCurrentLocationProviding {
