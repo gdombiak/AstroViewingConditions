@@ -235,7 +235,8 @@ private actor LocationSuitabilitySession: LocationSuitabilityProviding {
             var nextIndex = 0
             var resolved: [LocationSuitabilityService.CacheKey: LocationSuitabilityStatus] = [:]
 
-            func addNextTask() {
+            func addNextTask() throws {
+                try Task.checkCancellation()
                 guard nextIndex < missing.count else { return }
                 let entry = missing[nextIndex]
                 nextIndex += 1
@@ -246,13 +247,14 @@ private actor LocationSuitabilitySession: LocationSuitabilityProviding {
             }
 
             for _ in 0..<min(maxConcurrentLookups, missing.count) {
-                addNextTask()
+                try addNextTask()
             }
 
             while let (key, status) = try await group.next() {
+                try Task.checkCancellation()
                 resolved[key] = status
                 cache[key] = status
-                addNextTask()
+                try addNextTask()
             }
 
             return resolved
