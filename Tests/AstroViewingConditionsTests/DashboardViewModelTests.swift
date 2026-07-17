@@ -75,7 +75,7 @@ final class DashboardViewModelTests: XCTestCase {
         )
 
         loader.restoreSelection(using: [saved])
-        try? await loader.resolveCurrentLocationIfNeeded()
+        _ = try? await loader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(provider.resolveCallCount, 0)
         XCTAssertEqual(provider.authorizationRequestCount, 0)
@@ -91,7 +91,7 @@ final class DashboardViewModelTests: XCTestCase {
         )
 
         provider.authorizationStatus = .authorizedWhenInUse
-        try? await loader.resolveCurrentLocationIfNeeded()
+        _ = try? await loader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(provider.resolveCallCount, 0)
         XCTAssertEqual(provider.authorizationRequestCount, 0)
@@ -113,7 +113,7 @@ final class DashboardViewModelTests: XCTestCase {
             longitude: 0
         ))
 
-        try? await loader.resolveCurrentLocationIfNeeded()
+        _ = try? await loader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(provider.resolveCallCount, 1)
         XCTAssertEqual(loader.activeLocation?.latitude, provider.resolvedLocation.latitude)
@@ -130,7 +130,7 @@ final class DashboardViewModelTests: XCTestCase {
         loader.restoreSelection(using: [saved])
         loader.select(savedSelection(for: saved))
 
-        try? await loader.resolveCurrentLocationIfNeeded()
+        _ = try? await loader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(provider.resolveCallCount, 0)
         XCTAssertEqual(provider.authorizationRequestCount, 0)
@@ -154,9 +154,9 @@ final class DashboardViewModelTests: XCTestCase {
         )
 
         firstLoader.restoreSelection(using: [saved])
-        try? await firstLoader.resolveCurrentLocationIfNeeded()
+        _ = try? await firstLoader.resolveCurrentLocationIfNeeded()
         recreatedLoader.restoreSelection(using: [saved])
-        try? await recreatedLoader.resolveCurrentLocationIfNeeded()
+        _ = try? await recreatedLoader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(provider.resolveCallCount, 0)
     }
@@ -171,7 +171,7 @@ final class DashboardViewModelTests: XCTestCase {
             locationSession: session
         )
         firstLoader.restoreSelection(using: [])
-        try? await firstLoader.resolveCurrentLocationIfNeeded()
+        _ = try? await firstLoader.resolveCurrentLocationIfNeeded()
 
         let recreatedLoader = DashboardLocationLoader(
             persistedSelection: firstLoader.selectedLocation,
@@ -181,7 +181,7 @@ final class DashboardViewModelTests: XCTestCase {
         )
 
         recreatedLoader.restoreSelection(using: [])
-        try? await recreatedLoader.resolveCurrentLocationIfNeeded()
+        _ = try? await recreatedLoader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(provider.resolveCallCount, 1)
         XCTAssertEqual(recreatedLoader.activeLocation?.latitude, provider.resolvedLocation.latitude)
@@ -202,7 +202,7 @@ final class DashboardViewModelTests: XCTestCase {
         )
 
         XCTAssertNil(loader.activeLocation)
-        try? await loader.resolveCurrentLocationIfNeeded()
+        _ = try? await loader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(provider.resolveCallCount, 1)
         XCTAssertEqual(loader.activeLocation?.latitude, provider.resolvedLocation.latitude)
@@ -227,7 +227,7 @@ final class DashboardViewModelTests: XCTestCase {
         await provider.waitForResolutionRequest()
         loader.select(savedSelection(for: fixedLocation))
         provider.completeResolution()
-        await resolution.value
+        _ = await resolution.value
 
         XCTAssertEqual(loader.selectedLocation.source, .saved)
         XCTAssertEqual(loader.selectedLocation.id, fixedLocation.id)
@@ -307,7 +307,7 @@ final class DashboardViewModelTests: XCTestCase {
     func testConcurrentSameLocationConditionLoadsCoalesce() async {
         let gate = SuspendedWeatherRequestGate()
         let weather = WeatherService { _ in
-            await gate.response()
+            try await gate.response()
         }
         let viewModel = DashboardViewModel(
             conditionsProvider: ConditionsProvider(weatherService: weather)
@@ -361,8 +361,8 @@ final class DashboardViewModelTests: XCTestCase {
 
         XCTAssertEqual(provider.resolveCallCount, 1)
         provider.completeResolution()
-        await firstResolution.value
-        await secondResolution.value
+        _ = await firstResolution.value
+        _ = await secondResolution.value
 
         XCTAssertEqual(firstLoader.activeLocation?.latitude, provider.resolvedLocation.latitude)
         XCTAssertEqual(recreatedLoader.activeLocation?.latitude, provider.resolvedLocation.latitude)
@@ -387,12 +387,12 @@ final class DashboardViewModelTests: XCTestCase {
         )
 
         do {
-            try await loader.resolveCurrentLocationIfNeeded()
+            _ = try await loader.resolveCurrentLocationIfNeeded()
             XCTFail("Expected the first resolution to fail")
         } catch {
             // Expected.
         }
-        try? await loader.resolveCurrentLocationIfNeeded()
+        _ = try? await loader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(provider.resolveCallCount, 2)
         XCTAssertEqual(loader.activeLocation?.latitude, provider.resolvedLocation.latitude)
@@ -434,7 +434,7 @@ final class DashboardViewModelTests: XCTestCase {
             latitude: 10,
             longitude: 20
         ))
-        await requestA.value
+        _ = await requestA.value
 
         XCTAssertNil(loader.activeLocation)
         XCTAssertFalse(recorder.selections.contains { $0.name == "Obsolete A" })
@@ -444,7 +444,7 @@ final class DashboardViewModelTests: XCTestCase {
             latitude: 30,
             longitude: 40
         ))
-        await requestB.value
+        _ = await requestB.value
 
         XCTAssertEqual(loader.activeLocation?.name, "Fresh B")
         XCTAssertEqual(loader.activeLocation?.latitude, 30)
@@ -463,7 +463,7 @@ final class DashboardViewModelTests: XCTestCase {
         )
 
         loader.restoreSelection(using: [fixedLocation])
-        try? await loader.resolveCurrentLocationIfNeeded()
+        _ = try? await loader.resolveCurrentLocationIfNeeded()
         loader.select(savedSelection(for: fixedLocation))
         loader.select(SelectedLocation(
             source: .currentGPS,
@@ -471,7 +471,7 @@ final class DashboardViewModelTests: XCTestCase {
             latitude: 0,
             longitude: 0
         ))
-        try? await loader.resolveCurrentLocationIfNeeded()
+        _ = try? await loader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(provider.resolveCallCount, 2)
     }
@@ -556,7 +556,7 @@ final class DashboardViewModelTests: XCTestCase {
             latitude: 0,
             longitude: 0
         ))
-        try? await loader.resolveCurrentLocationIfNeeded()
+        _ = try? await loader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(loader.selectedLocation.name, "Portland")
         XCTAssertEqual(loader.selectedLocation.latitude, 45.52)
@@ -591,7 +591,7 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertEqual(loader.selectedLocation.source, .currentGPS)
         XCTAssertNil(loader.activeLocation)
 
-        try? await loader.resolveCurrentLocationIfNeeded()
+        _ = try? await loader.resolveCurrentLocationIfNeeded()
 
         XCTAssertEqual(provider.resolveCallCount, 1)
         XCTAssertEqual(loader.activeLocation?.latitude, provider.resolvedLocation.latitude)
@@ -1194,7 +1194,7 @@ private final class SuspendedLocationProvider: DashboardCurrentLocationProviding
 
     private var requestStarted = false
     private var requestStartContinuation: CheckedContinuation<Void, Never>?
-    private var resolutionContinuation: CheckedContinuation<CachedLocation, Never>?
+    private var resolutionContinuation: CheckedContinuation<CachedLocation, Error>?
 
     func requestAuthorization() {}
 
@@ -1204,7 +1204,7 @@ private final class SuspendedLocationProvider: DashboardCurrentLocationProviding
         requestStartContinuation?.resume()
         requestStartContinuation = nil
 
-        return await withCheckedContinuation { continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             resolutionContinuation = continuation
         }
     }
