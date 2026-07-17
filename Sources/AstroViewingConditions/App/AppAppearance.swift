@@ -1,5 +1,8 @@
 import SwiftUI
 import MapKit
+#if canImport(UIKit)
+import UIKit
+#endif
 
 enum FieldModePreference {
     static let key = "fieldModeEnabled"
@@ -248,51 +251,65 @@ struct AppSegmentedPicker<Option: Hashable, Label: View>: View {
         self.label = label
     }
 
-    @ViewBuilder
     var body: some View {
-        if palette.appearance == .field {
-            HStack(spacing: 2) {
-                ForEach(options, id: \.self) { option in
-                    let isSelected = selection == option
-                    Button {
-                        selection = option
-                    } label: {
-                        label(option)
-                            .font(.subheadline)
-                            .fontWeight(isSelected ? .semibold : .regular)
-                            .foregroundStyle(
-                                isSelected ? palette.selectedControlText : palette.unselectedControlText
-                            )
-                            .frame(maxWidth: .infinity, minHeight: 32)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .background(isSelected ? palette.selectedControlBackground : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 7))
-                    .overlay {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: 7)
-                                .stroke(palette.accent.opacity(0.65), lineWidth: 1)
-                        }
-                    }
-                    .accessibilityAddTraits(isSelected ? .isSelected : [])
+        HStack(spacing: AppSegmentedPickerLayout.itemSpacing) {
+            ForEach(options, id: \.self) { option in
+                let isSelected = selection == option
+                Button {
+                    selection = option
+                } label: {
+                    label(option)
+                        .font(.subheadline)
+                        .fontWeight(isSelected ? .semibold : .regular)
+                        .foregroundStyle(textColor(isSelected: isSelected))
+                        .frame(maxWidth: .infinity, minHeight: AppSegmentedPickerLayout.itemMinHeight)
+                        .contentShape(Rectangle())
                 }
-            }
-            .padding(2)
-            .background(palette.controlBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 9))
-            .overlay {
-                RoundedRectangle(cornerRadius: 9)
-                    .stroke(palette.border, lineWidth: 1)
-            }
-        } else {
-            Picker(pickerLabel, selection: $selection) {
-                ForEach(options, id: \.self) { option in
-                    label(option).tag(option)
+                .buttonStyle(.plain)
+                .background(selectedBackground(isSelected: isSelected))
+                .clipShape(RoundedRectangle(cornerRadius: AppSegmentedPickerLayout.itemCornerRadius))
+                .overlay {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: AppSegmentedPickerLayout.itemCornerRadius)
+                            .stroke(selectedBorder, lineWidth: 1)
+                    }
                 }
+                .accessibilityLabel(accessibilityLabel(for: option))
+                .accessibilityValue(isSelected ? "Selected" : "")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
             }
-            .pickerStyle(.segmented)
         }
+        .padding(AppSegmentedPickerLayout.containerPadding)
+        .background(palette.controlBackground)
+        .clipShape(RoundedRectangle(cornerRadius: AppSegmentedPickerLayout.containerCornerRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: AppSegmentedPickerLayout.containerCornerRadius)
+                .stroke(containerBorder, lineWidth: 1)
+        }
+    }
+
+    private var selectedBorder: Color {
+        palette.appearance == .field ? palette.accent.opacity(0.65) : Color(uiColor: .separator).opacity(0.2)
+    }
+
+    private var containerBorder: Color {
+        palette.appearance == .field ? palette.border : Color(uiColor: .separator).opacity(0.35)
+    }
+
+    private func textColor(isSelected: Bool) -> Color {
+        if palette.appearance == .field {
+            return isSelected ? palette.selectedControlText : palette.unselectedControlText
+        }
+        return isSelected ? palette.selectedControlText : palette.unselectedControlText
+    }
+
+    private func selectedBackground(isSelected: Bool) -> Color {
+        guard isSelected else { return .clear }
+        return palette.selectedControlBackground
+    }
+
+    private func accessibilityLabel(for option: Option) -> String {
+        String(describing: option)
     }
 }
 
@@ -301,46 +318,218 @@ private struct AppNavigationTitleModifier: ViewModifier {
     let title: String
     let displayMode: NavigationBarItem.TitleDisplayMode
 
-    @ViewBuilder
     func body(content: Content) -> some View {
+        content
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(displayMode)
+            .background {
+                NavigationBarTitleColorConfigurator(palette: palette)
+            }
+    }
+}
+
+#if canImport(UIKit)
+private struct NavigationBarTitleColorConfigurator: UIViewControllerRepresentable {
+    let palette: AppPalette
+
+    func makeUIViewController(context: Context) -> NavigationBarTitleColorViewController {
+        NavigationBarTitleColorViewController()
+    }
+
+    func updateUIViewController(
+        _ viewController: NavigationBarTitleColorViewController,
+        context: Context
+    ) {
+        viewController.update(palette: palette)
+    }
+}
+
+private final class NavigationBarTitleColorViewController: UIViewController {
+    private var palette: AppPalette = .normal
+    private var isRetryScheduled = false
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        applyCurrentPalette()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        applyCurrentPalette()
+    }
+
+    func update(palette: AppPalette) {
+        self.palette = palette
+        applyCurrentPalette()
+    }
+
+    private func applyCurrentPalette() {
+        guard let navigationBar = navigationController?.navigationBar else {
+            guard !isRetryScheduled else { return }
+            isRetryScheduled = true
+            DispatchQueue.main.async { [weak self] in
+                self?.isRetryScheduled = false
+                self?.applyCurrentPalette()
+            }
+            return
+        }
+
+        isRetryScheduled = false
+        let navigationItem = navigationController?.topViewController?.navigationItem
+
         if palette.appearance == .field {
-            if displayMode == .large {
-                content
-                    .navigationTitle("")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .safeAreaInset(edge: .top, spacing: 0) {
-                        Text(title)
-                            .font(.largeTitle.bold())
-                            .foregroundStyle(palette.displayTitleText)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal)
-                            .padding(.bottom, 8)
-                            .background(palette.appBackground)
-                            .accessibilityAddTraits(.isHeader)
-                    }
-            } else {
-                content
-                    .navigationTitle("")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .principal) {
-                            Text(title)
-                                .font(.headline)
-                                .foregroundStyle(palette.primaryText)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                                .minimumScaleFactor(0.85)
-                                .accessibilityLabel(title)
-                                .accessibilityAddTraits(.isHeader)
-                        }
-                    }
+            applyFieldAppearances(to: navigationBar)
+            if let navigationItem {
+                applyFieldAppearances(to: navigationItem, using: navigationBar)
             }
         } else {
-            content
-                .navigationTitle(title)
-                .navigationBarTitleDisplayMode(displayMode)
+            clearTitleColorOverrides(from: navigationBar)
+            if let navigationItem {
+                clearTitleColorOverrides(from: navigationItem)
+            }
         }
     }
+
+    private func applyFieldAppearances(to navigationBar: UINavigationBar) {
+        let inlineTitleColor = UIColor(palette.primaryText)
+        let largeTitleColor = UIColor(palette.displayTitleText)
+
+        navigationBar.standardAppearance = fieldAppearance(
+            from: navigationBar.standardAppearance,
+            inlineTitleColor: inlineTitleColor,
+            largeTitleColor: largeTitleColor
+        )
+        navigationBar.scrollEdgeAppearance = fieldAppearance(
+            from: navigationBar.scrollEdgeAppearance ?? navigationBar.standardAppearance,
+            inlineTitleColor: inlineTitleColor,
+            largeTitleColor: largeTitleColor
+        )
+        navigationBar.compactAppearance = fieldAppearance(
+            from: navigationBar.compactAppearance ?? navigationBar.standardAppearance,
+            inlineTitleColor: inlineTitleColor,
+            largeTitleColor: largeTitleColor
+        )
+        navigationBar.compactScrollEdgeAppearance = fieldAppearance(
+            from: navigationBar.compactScrollEdgeAppearance ?? navigationBar.scrollEdgeAppearance ?? navigationBar.standardAppearance,
+            inlineTitleColor: inlineTitleColor,
+            largeTitleColor: largeTitleColor
+        )
+    }
+
+    private func applyFieldAppearances(
+        to navigationItem: UINavigationItem,
+        using navigationBar: UINavigationBar
+    ) {
+        let inlineTitleColor = UIColor(palette.primaryText)
+        let largeTitleColor = UIColor(palette.displayTitleText)
+
+        navigationItem.standardAppearance = fieldAppearance(
+            from: navigationItem.standardAppearance ?? navigationBar.standardAppearance,
+            inlineTitleColor: inlineTitleColor,
+            largeTitleColor: largeTitleColor
+        )
+        navigationItem.scrollEdgeAppearance = fieldAppearance(
+            from: navigationItem.scrollEdgeAppearance ?? navigationBar.scrollEdgeAppearance ?? navigationBar.standardAppearance,
+            inlineTitleColor: inlineTitleColor,
+            largeTitleColor: largeTitleColor
+        )
+        navigationItem.compactAppearance = fieldAppearance(
+            from: navigationItem.compactAppearance ?? navigationBar.compactAppearance ?? navigationBar.standardAppearance,
+            inlineTitleColor: inlineTitleColor,
+            largeTitleColor: largeTitleColor
+        )
+        navigationItem.compactScrollEdgeAppearance = fieldAppearance(
+            from: navigationItem.compactScrollEdgeAppearance ?? navigationBar.compactScrollEdgeAppearance ?? navigationBar.scrollEdgeAppearance ?? navigationBar.standardAppearance,
+            inlineTitleColor: inlineTitleColor,
+            largeTitleColor: largeTitleColor
+        )
+    }
+
+    private func fieldAppearance(
+        from source: UINavigationBarAppearance,
+        inlineTitleColor: UIColor,
+        largeTitleColor: UIColor
+    ) -> UINavigationBarAppearance {
+        let appearance = source.copy()
+        appearance.configureWithTransparentBackground()
+        appearance.backgroundColor = .clear
+        appearance.backgroundEffect = nil
+        appearance.shadowColor = .clear
+
+        var titleAttributes = appearance.titleTextAttributes
+        titleAttributes[.foregroundColor] = inlineTitleColor
+        appearance.titleTextAttributes = titleAttributes
+
+        var largeTitleAttributes = appearance.largeTitleTextAttributes
+        largeTitleAttributes[.foregroundColor] = largeTitleColor
+        appearance.largeTitleTextAttributes = largeTitleAttributes
+
+        return appearance
+    }
+
+    private func clearTitleColorOverrides(from navigationBar: UINavigationBar) {
+        navigationBar.standardAppearance = appearanceWithoutTitleColors(
+            from: navigationBar.standardAppearance
+        )
+
+        if let scrollEdgeAppearance = navigationBar.scrollEdgeAppearance {
+            navigationBar.scrollEdgeAppearance = appearanceWithoutTitleColors(
+                from: scrollEdgeAppearance
+            )
+        }
+
+        if let compactAppearance = navigationBar.compactAppearance {
+            navigationBar.compactAppearance = appearanceWithoutTitleColors(
+                from: compactAppearance
+            )
+        }
+
+        if let compactScrollEdgeAppearance = navigationBar.compactScrollEdgeAppearance {
+            navigationBar.compactScrollEdgeAppearance = appearanceWithoutTitleColors(
+                from: compactScrollEdgeAppearance
+            )
+        }
+    }
+
+    private func clearTitleColorOverrides(from navigationItem: UINavigationItem) {
+        navigationItem.standardAppearance = nil
+        navigationItem.scrollEdgeAppearance = nil
+        navigationItem.compactAppearance = nil
+        navigationItem.compactScrollEdgeAppearance = nil
+    }
+
+    private func appearanceWithoutTitleColors(
+        from source: UINavigationBarAppearance
+    ) -> UINavigationBarAppearance {
+        let appearance = source.copy()
+
+        var titleAttributes = appearance.titleTextAttributes
+        titleAttributes.removeValue(forKey: .foregroundColor)
+        appearance.titleTextAttributes = titleAttributes
+
+        var largeTitleAttributes = appearance.largeTitleTextAttributes
+        largeTitleAttributes.removeValue(forKey: .foregroundColor)
+        appearance.largeTitleTextAttributes = largeTitleAttributes
+
+        return appearance
+    }
+}
+#else
+private struct NavigationBarTitleColorConfigurator: View {
+    let palette: AppPalette
+
+    var body: some View {
+        EmptyView()
+    }
+}
+#endif
+
+private enum AppSegmentedPickerLayout {
+    static let itemSpacing: CGFloat = 2
+    static let containerPadding: CGFloat = 2
+    static let itemMinHeight: CGFloat = 32
+    static let itemCornerRadius: CGFloat = 7
+    static let containerCornerRadius: CGFloat = 9
 }
 
 private struct FieldPrimaryActionButtonStyle: ButtonStyle {

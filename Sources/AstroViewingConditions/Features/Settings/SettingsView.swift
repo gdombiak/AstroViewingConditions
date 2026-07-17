@@ -15,7 +15,7 @@ public struct SettingsView: View {
         NavigationStack {
             List {
                 Section("Appearance") {
-                    Toggle(isOn: $fieldModeEnabled) {
+                    Toggle(isOn: fieldModeBinding) {
                         VStack(alignment: .leading, spacing: 4) {
                             Label("Field Mode", systemImage: "flashlight.off.fill")
                                 .font(.subheadline)
@@ -165,6 +165,19 @@ public struct SettingsView: View {
             }
             .appNavigationTitle("Settings")
         }
+    }
+
+    private var fieldModeBinding: Binding<Bool> {
+        Binding(
+            get: { fieldModeEnabled },
+            set: { newValue in
+                NotificationCenter.default.post(
+                    name: .dashboardWillToggleFieldMode,
+                    object: newValue
+                )
+                fieldModeEnabled = newValue
+            }
+        )
     }
 }
 

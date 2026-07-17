@@ -2,15 +2,7 @@ import SharedCode
 import SwiftUI
 
 struct ContentView: View {
-    private enum FieldTabBarLayout {
-        static let maxWidth: CGFloat = 300
-        static let horizontalInset: CGFloat = 16
-        static let verticalInset: CGFloat = 0
-        static let height: CGFloat = 56
-        static let cornerRadius: CGFloat = 28
-    }
-
-    private enum AppTab: String, Hashable, CaseIterable {
+    fileprivate enum AppTab: String, Hashable, CaseIterable {
         case dashboard
         case locations
         case settings
@@ -47,64 +39,37 @@ struct ContentView: View {
         let isLandscape = verticalSizeClass == .compact
         let isRegular = horizontalSizeClass == .regular
 
-        Group {
-            if palette.appearance == .field {
-                fieldModeRoot
-            } else {
-                normalTabView
-            }
-        }
+        sharedRoot
         .dynamicTypeSize(isRegular ? .xxLarge : (isLandscape ? .large : .medium))
     }
 
-    private var normalTabView: some View {
-        TabView(selection: $selectedTab) {
-            DashboardView(
-                viewModel: dashboardViewModel,
-                locationSession: dashboardLocationSession
-            )
-                .tabItem {
-                    Label("Dashboard", systemImage: "star.fill")
-                }
-                .tag(AppTab.dashboard)
-
-            LocationsView()
-                .tabItem {
-                    Label("Locations", systemImage: "mappin.and.ellipse")
-                }
-                .tag(AppTab.locations)
-
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
-                .tag(AppTab.settings)
-        }
-    }
-
-    private var fieldModeRoot: some View {
+    private var sharedRoot: some View {
         ZStack {
-            fieldTabContent(.dashboard) {
+            tabContent(.dashboard) {
                 DashboardView(
                     viewModel: dashboardViewModel,
                     locationSession: dashboardLocationSession
                 )
             }
 
-            fieldTabContent(.locations) {
+            tabContent(.locations) {
                 LocationsView()
             }
 
-            fieldTabContent(.settings) {
+            tabContent(.settings) {
                 SettingsView()
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            fieldTabBar
+            AppTabBar(
+                tabs: AppTab.allCases,
+                selection: $selectedTab,
+                palette: palette
+            )
         }
     }
 
-    private func fieldTabContent<Content: View>(
+    private func tabContent<Content: View>(
         _ tab: AppTab,
         @ViewBuilder content: () -> Content
     ) -> some View {
@@ -113,30 +78,41 @@ struct ContentView: View {
             .allowsHitTesting(selectedTab == tab)
             .accessibilityHidden(selectedTab != tab)
     }
+}
 
-    private var fieldTabBar: some View {
-        HStack(spacing: 8) {
-            ForEach(AppTab.allCases, id: \.self) { tab in
-                let isSelected = selectedTab == tab
+private struct AppTabBar<Tab: AppTabItem>: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    let tabs: [Tab]
+    @Binding var selection: Tab
+    let palette: AppPalette
+
+    private var metrics: AppTabBarMetrics {
+        horizontalSizeClass == .regular ? .regularWidth : .compactWidth
+    }
+
+    var body: some View {
+        HStack(spacing: metrics.itemSpacing) {
+            ForEach(tabs, id: \.self) { tab in
+                let isSelected = selection == tab
                 Button {
-                    selectedTab = tab
+                    selection = tab
                 } label: {
-                    VStack(spacing: 3) {
+                    VStack(spacing: metrics.labelSpacing) {
                         Image(systemName: tab.systemImage)
-                            .font(.system(size: 18, weight: isSelected ? .semibold : .regular))
+                            .font(.system(size: metrics.iconSize, weight: isSelected ? .semibold : .regular))
                         Text(tab.title)
-                            .font(.caption2)
+                            .font(metrics.labelFont)
                             .fontWeight(isSelected ? .semibold : .regular)
                     }
                     .foregroundStyle(
-                        isSelected ? palette.selectedControlText : palette.unselectedControlText
+                        foregroundStyle(isSelected: isSelected)
                     )
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(isSelected ? palette.selectedControlBackground : Color.clear)
+                    .frame(maxWidth: .infinity, minHeight: metrics.itemMinHeight)
+                    .background(selectedBackground(isSelected: isSelected))
                     .clipShape(Capsule())
                     .overlay {
                         if isSelected {
-                            Capsule().stroke(palette.accent.opacity(0.55), lineWidth: 1)
+                            Capsule().stroke(selectedBorder, lineWidth: 1)
                         }
                     }
                     .contentShape(Rectangle())
@@ -148,21 +124,94 @@ struct ContentView: View {
             }
         }
         .padding(2)
-        .frame(maxWidth: FieldTabBarLayout.maxWidth)
-        .frame(height: FieldTabBarLayout.height)
-        .background(palette.tabBarBackground)
-        .clipShape(RoundedRectangle(cornerRadius: FieldTabBarLayout.cornerRadius))
+        .frame(maxWidth: metrics.maxWidth)
+        .frame(height: metrics.height)
+        .background(containerBackground)
+        .clipShape(RoundedRectangle(cornerRadius: metrics.cornerRadius))
         .overlay {
-            RoundedRectangle(cornerRadius: FieldTabBarLayout.cornerRadius)
+            RoundedRectangle(cornerRadius: metrics.cornerRadius)
                 .stroke(palette.border, lineWidth: 1)
         }
-        .shadow(color: .black.opacity(0.28), radius: 12, y: 5)
-        .padding(.horizontal, FieldTabBarLayout.horizontalInset)
-        .padding(.vertical, FieldTabBarLayout.verticalInset)
+        .shadow(color: shadowColor, radius: 12, y: 5)
+        .padding(.horizontal, metrics.horizontalInset)
+        .padding(.vertical, metrics.verticalInset)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Tab Bar")
     }
+
+    private var containerBackground: some ShapeStyle {
+        if palette.appearance == .field {
+            return AnyShapeStyle(palette.tabBarBackground)
+        }
+        return AnyShapeStyle(.regularMaterial)
+    }
+
+    private var selectedBorder: Color {
+        palette.appearance == .field ? palette.accent.opacity(0.55) : .clear
+    }
+
+    private var shadowColor: Color {
+        palette.appearance == .field ? .black.opacity(0.28) : .black.opacity(0.16)
+    }
+
+    private func foregroundStyle(isSelected: Bool) -> Color {
+        if palette.appearance == .field {
+            return isSelected ? palette.selectedControlText : palette.unselectedControlText
+        }
+        return isSelected ? palette.accent : palette.unselectedControlText
+    }
+
+    private func selectedBackground(isSelected: Bool) -> Color {
+        guard isSelected, palette.appearance == .field else { return .clear }
+        return palette.selectedControlBackground
+    }
 }
+
+private protocol AppTabItem: Hashable {
+    var title: String { get }
+    var systemImage: String { get }
+}
+
+private struct AppTabBarMetrics {
+    let maxWidth: CGFloat
+    let horizontalInset: CGFloat
+    let verticalInset: CGFloat
+    let height: CGFloat
+    let cornerRadius: CGFloat
+    let itemSpacing: CGFloat
+    let itemMinHeight: CGFloat
+    let iconSize: CGFloat
+    let labelSpacing: CGFloat
+    let labelFont: Font
+
+    static let compactWidth = AppTabBarMetrics(
+        maxWidth: 300,
+        horizontalInset: 16,
+        verticalInset: 0,
+        height: 56,
+        cornerRadius: 28,
+        itemSpacing: 8,
+        itemMinHeight: 52,
+        iconSize: 18,
+        labelSpacing: 3,
+        labelFont: .caption2
+    )
+
+    static let regularWidth = AppTabBarMetrics(
+        maxWidth: 420,
+        horizontalInset: 24,
+        verticalInset: 0,
+        height: 68,
+        cornerRadius: 34,
+        itemSpacing: 12,
+        itemMinHeight: 64,
+        iconSize: 22,
+        labelSpacing: 4,
+        labelFont: .caption
+    )
+}
+
+extension ContentView.AppTab: AppTabItem {}
 
 #Preview {
     ContentView()
