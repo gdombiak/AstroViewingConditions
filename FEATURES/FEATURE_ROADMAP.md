@@ -76,7 +76,17 @@ The catalog is intentionally curated rather than a complete Messier/NGC database
 - [x] Observer guide for scores, difficulty labels, observing windows, and ISS paths
 - [x] Persistent dim-red Field Mode for telescope use, available from Settings and the Dashboard while widgets and watchOS retain their normal presentation
 
-## Next Release
+## Recent Release: 2.0.2
+
+Stabilization and catalog update following 2.0.1:
+
+- Added M36, M38, and M77 to the curated deep-sky catalog.
+- Preserved native tab and Dashboard state when toggling Field Mode.
+- Ensured saved-location selection does not request current GPS.
+- Improved Best Nearby Area cancellation behavior.
+- Restored conditional Best Nearby Area refresh after settings changes.
+
+## Next Feature Release
 
 The next release should focus on making the app's core guidance more trustworthy and more useful at the telescope. The recommended sequence is:
 

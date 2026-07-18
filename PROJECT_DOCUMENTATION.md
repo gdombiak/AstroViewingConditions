@@ -59,7 +59,7 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
   - Manual coordinate entry
   - Map-based location picker
 - **Unit Preferences**: Toggle between Metric and Imperial
-- **Field Mode**: Persistent, iOS-only dim red appearance with controls in Settings and the Dashboard toolbar, semantic card/action/control surfaces, and a compact floating Field tab bar; normal Light and Dark Mode retain their original system tab bar
+- **Field Mode**: Persistent, iOS-only dim red appearance with controls in Settings and the Dashboard toolbar. Light, Dark, and Field Mode share the same persistent native `TabView`; Field Mode changes the semantic palette and UIKit appearance configuration without replacing root views, preserving the selected tab and mounted screen instances.
 - **3-Day Forecast**: Today, tomorrow, and day after
 - **Location-Local Dates**: Forecast tabs and displayed times follow the selected observing site's time zone
 - **iOS Widgets**: Home screen widgets backed by shared cached conditions and selected location data
@@ -98,7 +98,7 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
 - **Shared Snapshot Data**: Cached conditions and selected location snapshots are shared with widgets and Apple Watch so glanceable surfaces can render without launching the iOS app
 - **Feature-Based Organization**: UI is grouped by product surface and feature
 - **Shared Core Module**: Cross-platform models, services, and utilities live in `SharedCode`
-- **iOS Appearance Isolation**: Field Mode persistence and semantic visual tokens live in the iOS app target. Only Field Mode forces a dark scheme and supplies dim-red semantic colors; the normal branch retains the original system Light/Dark hierarchy and styling. Reusable title, primary-action, card, list, map, and control modifiers cover system boundaries that do not inherit ordinary foreground styles. Field Mode uses a compact, safe-area-aware custom tab bar with labeled selected states, while normal modes continue to use the original system tab bar. Maps use MapKit's supported flat, muted standard style and dark color scheme, but Apple Maps labels, attribution, and other map-renderer details remain system controlled. Widgets, watchOS, model data, caches, and connectivity payloads remain unchanged.
+- **iOS Appearance Isolation**: Field Mode persistence and semantic visual tokens live in the iOS app target. Light, Dark, and Field Mode use the same persistent native `TabView`; only Field Mode forces a dark scheme and supplies dim-red semantic colors through UIKit appearance configuration without replacing root views. Reusable title, primary-action, card, list, map, and control modifiers cover system boundaries that do not inherit ordinary foreground styles. This keeps the selected tab and mounted screen instances stable, preserving Dashboard state, selected forecast day, loaded conditions, and scroll position when Field Mode changes. Maps use MapKit's supported flat, muted standard style and dark color scheme, but Apple Maps labels, attribution, and other map-renderer details remain system controlled. Widgets, watchOS, model data, caches, and connectivity payloads remain unchanged.
 
 ### Project Structure
 ```
@@ -344,7 +344,8 @@ System-controlled limitations: Field Mode does not recolor status-bar icons or t
 - [ ] Open Locations, add/search/manual/map location flows, and the Dashboard location picker.
 - [ ] Open the complete Best Targets list, target details, bundled target imagery, and the full-screen image viewer.
 - [ ] Open Best Nearby Area, its map, search settings, results, and error/cancellation paths.
-- [ ] Verify the Field Mode custom tab bar exposes labeled, selected tab controls; preserves each tab's state; clears bottom-most scroll content; and respects the safe area. Confirm normal Light/Dark Mode still uses the system tab bar.
+- [ ] Verify the native tab-bar layout remains consistent across Light, Dark, and Field Mode, and that the selected tab is preserved when changing modes.
+- [ ] On the Dashboard, select a forecast day, load conditions, and scroll; toggle Field Mode and confirm the Dashboard state, selected day, loaded conditions, and scroll position are preserved.
 - [ ] Verify long selected location names truncate at the tail without colliding and VoiceOver announces the complete name.
 - [ ] Exercise sheets plus loading, refreshing, stale, offline, empty, and error states; confirm no app-controlled bright background flashes.
 - [ ] Relaunch with Field Mode enabled and confirm it persists.
@@ -460,7 +461,7 @@ Implemented:
 - Detailed ISS pass paths and error states
 - Renameable and reorderable saved locations
 - Unit preferences
-- Persistent iOS-only Field Mode with a semantic dim-red palette, reusable field surfaces and controls, and an accessible compact floating tab bar
+- Persistent iOS-only Field Mode with a semantic dim-red palette, reusable field surfaces and controls, and a stable native tab-bar layout across appearance modes
 - iOS widgets
 - watchOS app
 - watchOS complications
@@ -481,5 +482,5 @@ This is an open-source project. Contributions welcome.
 
 ---
 
-*Last Updated: July 11, 2026*
-*Document Version: 1.5*
+*Last Updated: July 17, 2026*
+*Document Version: 1.6*
