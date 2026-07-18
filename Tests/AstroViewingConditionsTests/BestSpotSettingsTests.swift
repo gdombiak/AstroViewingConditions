@@ -5,6 +5,22 @@ import Foundation
 
 final class BestSpotSettingsTests: XCTestCase {
     private let testSuiteName = "group.com.astroviewing.conditions"
+
+    private actor SettingsCapturingSearcher: BestSpotSearching {
+        private(set) var searchParameters: [(radius: Double, spacing: Double)] = []
+
+        func findBestSpots(
+            around center: CachedLocation,
+            radiusMiles: Double,
+            spacingMiles: Double,
+            for date: Date,
+            topN: Int,
+            progressHandler: (@Sendable (Double) -> Void)?
+        ) async throws -> BestSpotResult {
+            searchParameters.append((radiusMiles, spacingMiles))
+            throw CancellationError()
+        }
+    }
     
     override func setUp() {
         super.setUp()
@@ -125,6 +141,69 @@ final class BestSpotSettingsTests: XCTestCase {
         let settings = AppGroupStorage.loadBestSpotSettings()
         XCTAssertEqual(settings?.searchRadius, 40)
         XCTAssertEqual(settings?.gridSpacing, 8)
+    }
+
+    // MARK: - Settings Dismissal Search Tests
+
+    func testSettingsDismissalWithUnchangedValuesDoesNotStartSearch() {
+        let settingsBeforePresentation = BestSpotSettingsSnapshot.current
+        var searchCount = 0
+
+        if BestSpotSettingsSnapshot.current.requiresSearchRestart(from: settingsBeforePresentation) {
+            searchCount += 1
+        }
+
+        XCTAssertEqual(searchCount, 0)
+    }
+
+    func testSettingsDismissalAfterRadiusChangeStartsOneSearch() {
+        let settingsBeforePresentation = BestSpotSettingsSnapshot.current
+        BestSpotSettings.searchRadius = 35
+        var searchCount = 0
+
+        if BestSpotSettingsSnapshot.current.requiresSearchRestart(from: settingsBeforePresentation) {
+            searchCount += 1
+        }
+
+        XCTAssertEqual(searchCount, 1)
+    }
+
+    func testSettingsDismissalAfterGridSpacingChangeStartsOneSearch() {
+        let settingsBeforePresentation = BestSpotSettingsSnapshot.current
+        BestSpotSettings.gridSpacing = 6
+        var searchCount = 0
+
+        if BestSpotSettingsSnapshot.current.requiresSearchRestart(from: settingsBeforePresentation) {
+            searchCount += 1
+        }
+
+        XCTAssertEqual(searchCount, 1)
+    }
+
+    func testSettingsSnapshotReadsUpdatedPersistedValues() {
+        BestSpotSettings.searchRadius = 35
+        BestSpotSettings.gridSpacing = 6
+
+        let settingsAfterDismissal = BestSpotSettingsSnapshot.current
+
+        XCTAssertEqual(settingsAfterDismissal.searchRadius, 35)
+        XCTAssertEqual(settingsAfterDismissal.gridSpacing, 6)
+    }
+
+    @MainActor
+    func testSearchUsesUpdatedPersistedSettings() async {
+        BestSpotSettings.searchRadius = 35
+        BestSpotSettings.gridSpacing = 6
+        let searcher = SettingsCapturingSearcher()
+        let viewModel = BestSpotViewModel(searcher: searcher)
+        let location = SavedLocation(name: "Test Location", latitude: 40.7128, longitude: -74.0060)
+
+        await viewModel.search(around: location, for: Date(), topN: 5)
+
+        let parameters = await searcher.searchParameters
+        XCTAssertEqual(parameters.count, 1)
+        XCTAssertEqual(parameters.first?.radius, 35)
+        XCTAssertEqual(parameters.first?.spacing, 6)
     }
     
     private func cleanupTestFiles() {

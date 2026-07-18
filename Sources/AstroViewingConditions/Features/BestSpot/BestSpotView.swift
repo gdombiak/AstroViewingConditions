@@ -2,6 +2,22 @@ import SharedCode
 import SwiftUI
 import MapKit
 
+struct BestSpotSettingsSnapshot: Equatable {
+    let searchRadius: Double
+    let gridSpacing: Double
+
+    static var current: Self {
+        Self(
+            searchRadius: BestSpotSettings.searchRadius,
+            gridSpacing: BestSpotSettings.gridSpacing
+        )
+    }
+
+    func requiresSearchRestart(from other: Self) -> Bool {
+        self != other
+    }
+}
+
 struct BestSpotView: View {
     let centerLocation: SavedLocation
     let searchDate: Date
@@ -28,11 +44,7 @@ struct BestSpotView: View {
     @State private var mapPosition: MapCameraPosition
     @State private var showingSettings = false
     @State private var centerTimeZone: TimeZone?
-    
-    @State private var searchRadius: Double = BestSpotSettings.searchRadius
-    @State private var gridSpacing: Double = BestSpotSettings.gridSpacing
-    @State private var previousSearchRadius: Double = BestSpotSettings.searchRadius
-    @State private var previousGridSpacing: Double = BestSpotSettings.gridSpacing
+    @State private var settingsSnapshot = BestSpotSettingsSnapshot.current
     
     var body: some View {
         NavigationStack {
@@ -59,9 +71,7 @@ struct BestSpotView: View {
                 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(action: {
-                        // Capture current settings before opening
-                        previousSearchRadius = searchRadius
-                        previousGridSpacing = gridSpacing
+                        settingsSnapshot = .current
                         showingSettings = true
                     }) {
                         Image(systemName: "gear")
@@ -71,8 +81,7 @@ struct BestSpotView: View {
                 }
             }
             .sheet(isPresented: $showingSettings, onDismiss: {
-                // Only refresh if settings actually changed
-                if searchRadius != previousSearchRadius || gridSpacing != previousGridSpacing {
+                if BestSpotSettingsSnapshot.current.requiresSearchRestart(from: settingsSnapshot) {
                     viewModel.startSearch(around: centerLocation, for: searchDate, topN: 5)
                 }
             }) {
