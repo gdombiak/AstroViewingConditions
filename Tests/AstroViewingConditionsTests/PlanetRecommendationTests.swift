@@ -2,6 +2,76 @@ import SharedCode
 import XCTest
 
 final class PlanetRecommendationTests: XCTestCase {
+    func testElSegundoVenusOnJuly172026ReachesBestTargetsThresholdDuringEveningTwilight() throws {
+        let context = Self.elSegundoVenusContext(hourlyScore: 1.3)
+        let recommendation = try XCTUnwrap(
+            DefaultPlanetTargetRecommendationProvider().recommendation(for: Self.venusTarget, context: context)
+        )
+
+        XCTAssertGreaterThanOrEqual(recommendation.score, 45)
+        XCTAssertGreaterThan(recommendation.visibilityWindow.maxAltitude ?? 0, 30)
+        XCTAssertLessThan(recommendation.visibilityWindow.end, context.astronomicalNightStart)
+    }
+
+    func testEveningVenusWithUsableAltitudeAndFairWeatherIsIncluded() throws {
+        let recommendation = try XCTUnwrap(
+            DefaultPlanetTargetRecommendationProvider().recommendation(
+                for: Self.venusTarget,
+                context: Self.elSegundoVenusContext(hourlyScore: 0.8)
+            )
+        )
+
+        XCTAssertGreaterThanOrEqual(recommendation.score, 45)
+    }
+
+    func testPoorConditionsLowerOtherwiseUsableTwilightVenusScore() throws {
+        let poorRecommendation = try XCTUnwrap(
+            DefaultPlanetTargetRecommendationProvider().recommendation(
+                for: Self.venusTarget,
+                context: Self.elSegundoVenusContext(hourlyScore: 2)
+            )
+        )
+        let fairRecommendation = try XCTUnwrap(
+            DefaultPlanetTargetRecommendationProvider().recommendation(
+                for: Self.venusTarget,
+                context: Self.elSegundoVenusContext(hourlyScore: 0.8)
+            )
+        )
+
+        XCTAssertLessThan(poorRecommendation.score, fairRecommendation.score)
+        XCTAssertTrue(poorRecommendation.reasons.contains(.poorWeather))
+    }
+
+    func testLowBriefVenusTwilightWindowRemainsBelowBestTargetsThreshold() {
+        let recommendation = recommendation(
+            target: Self.venusTarget,
+            samples: [
+                PlanetPositionSample(
+                    time: Self.date(hour: 18),
+                    altitude: 9,
+                    azimuth: 270,
+                    solarElongation: 45
+                )
+            ],
+            hourlyScore: 1.3
+        )
+
+        XCTAssertNotNil(recommendation)
+        XCTAssertLessThan(recommendation!.score, 45)
+    }
+
+    func testJupiterMarsAndSaturnRemainEligibleInAUsableDarknessWindow() {
+        let samples = Self.samples(altitudes: [35], azimuths: [180])
+
+        for target in [Self.jupiterTarget, Self.marsTarget, Self.saturnTarget] {
+            let targetRecommendation = recommendation(target: target, samples: samples)
+
+            XCTAssertNotNil(targetRecommendation, target.name)
+            XCTAssertGreaterThanOrEqual(targetRecommendation?.score ?? 0, 45, target.name)
+            XCTAssertEqual(targetRecommendation?.visibilityWindow.bestTime, samples[0].time, target.name)
+        }
+    }
+
     func testAltitudeQualityReachesMaximumAtSeventyDegrees() {
         let atNormalizationAltitude = recommendation(
             samples: Self.samples(altitudes: [70], azimuths: [180])
@@ -458,14 +528,20 @@ final class PlanetRecommendationTests: XCTestCase {
     }
 
     private static func context(
+        location: CachedLocation = CachedLocation(name: "Test", latitude: 34, longitude: -118, elevation: 0),
+        astronomicalNightStart: Date = date(hour: 20),
+        astronomicalNightEnd: Date = date(hour: 29),
         hourlyScore: Double = 0.2,
+        hourlyRatingsStart: Date? = nil,
         moonIllumination: Int = 20,
         moonAltitude: Double = -5
     ) -> TargetRecommendationContext {
-        TargetRecommendationContext(
-            location: CachedLocation(name: "Test", latitude: 34, longitude: -118, elevation: 0),
-            astronomicalNightStart: date(hour: 20),
-            astronomicalNightEnd: date(hour: 29),
+        let ratingsStart = hourlyRatingsStart ?? date(hour: 18)
+
+        return TargetRecommendationContext(
+            location: location,
+            astronomicalNightStart: astronomicalNightStart,
+            astronomicalNightEnd: astronomicalNightEnd,
             nightQuality: NightQualityAssessment(
                 rating: NightQualityAssessment.Rating.from(score: hourlyScore),
                 summary: "Test",
@@ -479,9 +555,9 @@ final class PlanetRecommendationTests: XCTestCase {
                     start: date(hour: 21),
                     end: date(hour: 25)
                 ),
-                hourlyRatings: (18..<30).map { hour in
+                hourlyRatings: (0..<12).map { offset in
                     NightQualityAssessment.HourlyRating(
-                        time: date(hour: hour),
+                        time: ratingsStart.addingTimeInterval(Double(offset) * 3600),
                         score: hourlyScore,
                         cloudCover: hourlyScore >= 1 ? 90 : 5,
                         fogScore: hourlyScore >= 1 ? 80 : 5,
@@ -490,8 +566,8 @@ final class PlanetRecommendationTests: XCTestCase {
                         windSpeed: hourlyScore >= 1 ? 18 : 2
                     )
                 },
-                nightStart: date(hour: 20),
-                nightEnd: date(hour: 29)
+                nightStart: astronomicalNightStart,
+                nightEnd: astronomicalNightEnd
             ),
             moonInfo: MoonInfo(
                 phase: Double(moonIllumination) / 100,
@@ -500,6 +576,38 @@ final class PlanetRecommendationTests: XCTestCase {
                 illumination: moonIllumination,
                 emoji: ""
             )
+        )
+    }
+
+    private static func elSegundoVenusContext(hourlyScore: Double) -> TargetRecommendationContext {
+        let astronomicalNightStart = date(
+            year: 2026,
+            month: 7,
+            day: 18,
+            hour: 4,
+            minute: 43,
+            second: 38
+        )
+        let astronomicalNightEnd = date(
+            year: 2026,
+            month: 7,
+            day: 18,
+            hour: 11,
+            minute: 16,
+            second: 6
+        )
+
+        return context(
+            location: CachedLocation(
+                name: "El Segundo",
+                latitude: 33.8078,
+                longitude: -118.3183,
+                elevation: 0
+            ),
+            astronomicalNightStart: astronomicalNightStart,
+            astronomicalNightEnd: astronomicalNightEnd,
+            hourlyScore: hourlyScore,
+            hourlyRatingsStart: astronomicalNightStart.addingTimeInterval(-2 * 3600)
         )
     }
 
@@ -564,7 +672,8 @@ final class PlanetRecommendationTests: XCTestCase {
         month: Int,
         day: Int,
         hour: Int,
-        minute: Int = 0
+        minute: Int = 0,
+        second: Int = 0
     ) -> Date {
         var components = DateComponents()
         components.year = year
@@ -572,6 +681,7 @@ final class PlanetRecommendationTests: XCTestCase {
         components.day = day
         components.hour = hour
         components.minute = minute
+        components.second = second
         components.timeZone = TimeZone(secondsFromGMT: 0)
         return Calendar(identifier: .gregorian).date(from: components)!
     }

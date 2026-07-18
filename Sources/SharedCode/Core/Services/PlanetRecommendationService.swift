@@ -170,6 +170,19 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
     // Planets use a dedicated, altitude-heavy scoring model. Altitude quality intentionally
     // saturates at 70°, independently of the generic deep-sky scorer's normalization.
     private static let planetAltitudeNormalizationDegrees = 70.0
+    // These are product heuristics, not physical definitions of twilight. Two hours matches
+    // the extended evening/dawn candidate range and prevents daytime visibility from earning
+    // twilight credit; 45 minutes is enough time to find and casually observe Venus while
+    // keeping a fleeting near-horizon window meaningfully weaker.
+    private static let venusTwilightEligibilityWindow: TimeInterval = 2 * 3600
+    private static let venusTwilightUsefulDuration: TimeInterval = 45 * 60
+    // Product heuristics: altitude is weighted highest because horizon extinction and local
+    // obstructions dominate naked-eye Venus; duration is next; elongation confirms useful
+    // separation from the Sun. The weights sum to one and should be revalidated if another
+    // twilight-object scoring model is introduced.
+    private static let venusTwilightAltitudeWeight = 0.45
+    private static let venusTwilightDurationWeight = 0.30
+    private static let venusTwilightElongationWeight = 0.25
 
     private let planetAstronomyProvider: any PlanetAstronomyProviding
 
@@ -205,10 +218,17 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
             darknessEnd: context.astronomicalNightEnd
         )
         let convenience = convenienceScore(for: bestSample.time, context: context)
+        let visibilityQuality = visibilityQuality(
+            for: target,
+            bestSample: bestSample,
+            window: window,
+            darknessOverlap: darknessOverlap,
+            context: context
+        )
         let score = score(
             altitude: bestSample.altitude,
             weatherQuality: weatherQuality,
-            darknessOverlap: darknessOverlap,
+            visibilityQuality: visibilityQuality,
             convenience: convenience
         )
         let reasons = reasons(
@@ -246,7 +266,7 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
             scoreBreakdown: scoreBreakdown(
                 altitude: bestSample.altitude,
                 weatherQuality: weatherQuality,
-                darknessOverlap: darknessOverlap,
+                visibilityQuality: visibilityQuality,
                 convenience: convenience
             )
         )
@@ -328,14 +348,14 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
     private func score(
         altitude: Double,
         weatherQuality: Double,
-        darknessOverlap: Double,
+        visibilityQuality: Double,
         convenience: Double
     ) -> Int {
         let altitudeQuality = min(max(altitude / Self.planetAltitudeNormalizationDegrees, 0), 1)
         let lowAltitudePenalty = altitude < 15 ? 18.0 : 0
         let rawScore = altitudeQuality * 45
             + weatherQuality * 30
-            + darknessOverlap * 12
+            + visibilityQuality * 12
             + convenience * 13
             - lowAltitudePenalty
         return Int(round(min(max(rawScore, 0), 100)))
@@ -344,29 +364,73 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
     private func scoreBreakdown(
         altitude: Double,
         weatherQuality: Double,
-        darknessOverlap: Double,
+        visibilityQuality: Double,
         convenience: Double
     ) -> [String] {
         let altitudeQuality = min(max(altitude / Self.planetAltitudeNormalizationDegrees, 0), 1)
         let lowAltitudePenalty = altitude < 15 ? 18.0 : 0
         let altitudeComponent = altitudeQuality * 45
         let weatherComponent = weatherQuality * 30
-        let darknessComponent = darknessOverlap * 12
+        let visibilityComponent = visibilityQuality * 12
         let convenienceComponent = convenience * 13
         let rawScore = altitudeComponent
             + weatherComponent
-            + darknessComponent
+            + visibilityComponent
             + convenienceComponent
             - lowAltitudePenalty
 
         return [
             String(format: "altitude %.1f", altitudeComponent),
             String(format: "weather %.1f", weatherComponent),
-            String(format: "darkness %.1f", darknessComponent),
+            String(format: "visibility %.1f", visibilityComponent),
             String(format: "convenience %.1f", convenienceComponent),
             String(format: "lowAltitudePenalty -%.1f", lowAltitudePenalty),
             String(format: "raw %.1f", rawScore)
         ]
+    }
+
+    private func visibilityQuality(
+        for target: ObservableTarget,
+        bestSample: PlanetPositionSample,
+        window: TargetVisibilityWindow,
+        darknessOverlap: Double,
+        context: TargetRecommendationContext
+    ) -> Double {
+        guard target.id.lowercased() == "venus" else {
+            return darknessOverlap
+        }
+
+        // Venus can be an excellent naked-eye twilight target. Credit it only when
+        // altitude, available time, and solar elongation support that use case.
+        // Weather is scored separately by the shared 30-point weather component.
+        return max(
+            darknessOverlap,
+            venusTwilightSuitability(
+                bestSample: bestSample,
+                window: window,
+                context: context
+            )
+        )
+    }
+
+    private func venusTwilightSuitability(
+        bestSample: PlanetPositionSample,
+        window: TargetVisibilityWindow,
+        context: TargetRecommendationContext
+    ) -> Double {
+        let isEveningTwilight = bestSample.time < context.astronomicalNightStart
+            && window.end > context.astronomicalNightStart.addingTimeInterval(-Self.venusTwilightEligibilityWindow)
+        let isMorningTwilight = bestSample.time > context.astronomicalNightEnd
+            && window.start < context.astronomicalNightEnd.addingTimeInterval(Self.venusTwilightEligibilityWindow)
+        guard isEveningTwilight || isMorningTwilight else { return 0 }
+
+        let altitudeQuality = min(max((bestSample.altitude - Self.minimumVisibleAltitude) / 12, 0), 1)
+        let durationQuality = min(max(window.duration / Self.venusTwilightUsefulDuration, 0), 1)
+        let elongationQuality = min(max(((bestSample.solarElongation ?? 0) - 15) / 30, 0), 1)
+
+        return altitudeQuality * Self.venusTwilightAltitudeWeight
+            + durationQuality * Self.venusTwilightDurationWeight
+            + elongationQuality * Self.venusTwilightElongationWeight
     }
 
     private func reasons(
