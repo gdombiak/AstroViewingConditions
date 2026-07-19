@@ -104,22 +104,22 @@ The next release should focus on making the app's core guidance more trustworthy
 - A binocular user and telescope user should not receive the same implied target suitability.
 - The app can explain target fit in a way that matches real observing expectations.
 
-**Scope**:
+**Phase 1 inventory scope**:
 
-- Add a simple profile in Settings.
-- Start with broad capability categories already present in the domain model: naked eye, binoculars, small telescope, larger telescope.
-- Consider optional aperture or instrument notes later, but avoid overfitting the first version.
-- Store the profile locally and sync only if there is a clear companion-surface need.
+- [x] Add, edit, and delete multiple saved binoculars, visual telescopes, and Smart / EAA telescopes.
+- [x] Treat naked eye as a built-in capability, not a saved item.
+- [x] Store binocular magnification and aperture, and telescope aperture normalized to millimeters while preserving the user's preferred millimeter/inch input unit.
+- [x] Keep inventory to add, edit, and delete only: no archived, enabled, or persistent “available tonight” state.
+- [x] Defer session availability to phase 2; do not sync inventory to companion surfaces yet.
 
 **Done when**:
 
-- The profile is persisted.
-- Existing users get a sensible default with no onboarding blocker.
-- The UI sets expectations that equipment improves ranking, not guaranteed visibility.
+- The inventory is persisted and existing users can leave it empty with no onboarding blocker.
+- Equipment matching remains phase 2; inventory does not change current rankings or visibility claims.
 
 ### 2. Equipment-Aware Best Targets
 
-**Goal**: Re-rank and explain Best Targets using the user's equipment profile.
+**Goal**: Add explainable equipment-fit guidance to Best Targets without changing its initial ranking semantics.
 
 **User value**:
 
@@ -128,17 +128,18 @@ The next release should focus on making the app's core guidance more trustworthy
 
 **Scope**:
 
-- Extend target recommendation context with user equipment.
-- Compare user equipment to each target's recommended equipment and difficulty.
-- Adjust score and recommendation reasons conservatively.
-- Add copy such as "Good fit for binoculars" or "Better with a larger scope" where useful.
-- Add tests around ordering and explanation changes.
+- Add structured, catalog-driven equipment requirements with category defaults and individual target overrides where needed.
+- Model naked-eye, binocular visual, telescope visual, and Smart / EAA observing modes, including practical/preferred aperture, binocular suitability and magnification, target framing, magnification benefit, and electronic-assistance benefit.
+- Add a session-level multi-select equipment selector in Best Targets, defaulting to Naked Eye plus all saved equipment. Keep this session choice separate from the persistent inventory.
+- Produce explainable Excellent, Good, Challenging, or Poor equipment-fit guidance, with visual and electronically assisted wording kept distinct.
+- Do not automatically hide challenging targets. Preserve current behavior when no equipment is configured, do not change the core numeric suitability score or ranking semantics in the initial release, and do not fetch weather or location data when equipment selection changes.
 
 **Done when**:
 
-- Recommendations change in predictable, testable ways for different equipment profiles.
-- The app avoids hard "visible/not visible" claims.
-- Existing Best Targets behavior remains stable when the default profile is used.
+- Catalog requirements and target overrides produce clear equipment-fit guidance for the active session selection.
+- The selector defaults to Naked Eye plus saved equipment, remains separate from inventory, and does not trigger weather or location fetching.
+- Visual and Smart / EAA guidance remains distinct, challenging targets stay visible, and the app avoids hard "visible/not visible" claims.
+- Best Targets retains its current numeric suitability score and ranking semantics, including when no equipment is configured.
 
 ### 3. Simple Horizon Constraints
 

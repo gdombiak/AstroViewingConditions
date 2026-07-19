@@ -20,6 +20,6 @@ struct AstroViewingConditionsApp: App {
             ContentView()
                 .appAppearance(fieldModeEnabled: fieldModeEnabled)
         }
-        .modelContainer(for: SavedLocation.self, inMemory: Self.isRunningUnitTests)
+        .modelContainer(for: [SavedLocation.self, EquipmentItem.self], inMemory: Self.isRunningUnitTests)
     }
 }

@@ -62,6 +62,21 @@ public struct SettingsView: View {
                     }
                 }
                 .appListRowSurface()
+
+                Section("Observing") {
+                    NavigationLink {
+                        MyEquipmentView()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("My Equipment", systemImage: "binoculars")
+                                .font(.subheadline)
+                            Text("Manage the binoculars and telescopes you own.")
+                                .font(.caption)
+                                .appSecondaryForeground()
+                        }
+                    }
+                }
+                .appListRowSurface()
                 
                 Section("Data Sources") {
                     VStack(alignment: .leading, spacing: 4) {
