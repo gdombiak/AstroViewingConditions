@@ -86,8 +86,9 @@ struct TargetDetailContentBuilder {
         }
 
         var sentences: [String] = []
-        if summaryLower != "visible tonight." {
-            sentences.append(Self.dateNeutralized(summary))
+        if summaryLower != "visible tonight.",
+           let summaryWithoutEquipmentAdvice = Self.recommendationSummaryWithoutEquipmentAdvice(summary) {
+            sentences.append(Self.dateNeutralized(summaryWithoutEquipmentAdvice))
         }
         if let placement = placementSentence(reasons: reasons),
            !sentences.contains(where: { Self.overlapsPlacement($0, placement) }) {
@@ -139,7 +140,7 @@ struct TargetDetailContentBuilder {
         case (.deepSky, .openCluster):
             return "Scan slowly around the target and look for the distinctive pattern formed by its brighter members."
         case (.deepSky, .globularCluster):
-            return "Use averted vision on the outer halo, then increase magnification gradually to look for resolved edge stars."
+            return "Use averted vision on the outer halo, then increase magnification gradually to compare the compact core with the surrounding granularity."
         case (.deepSky, .planetaryNebula):
             return "Compare direct and averted vision and look for a compact disk that remains slightly extended beside nearby stars."
         case (.deepSky, .galaxy):
@@ -188,20 +189,20 @@ struct TargetDetailContentBuilder {
         if let observingNotes = guide?.observingNotes { return observingNotes }
 
         switch (target.type, target.deepSkyObjectType) {
-        case (.moon, _): return "Very bright; reduce brightness with a Moon filter if needed."
-        case (.planet, _): return "Atmospheric steadiness matters; wait for moments of sharp seeing."
+        case (.moon, _): return "Craters and ridges show their strongest relief near the terminator, with shadows changing as the lunar phase changes."
+        case (.planet, _): return "Planets appear as small disks; subtle features can look much less obvious than they do in photographs."
         case (.deepSky, .doubleStar):
-            return "Use steady moments of seeing and medium or high magnification to split the pair cleanly."
+            return "Compare the stars’ brightness and color once the pair is resolved; many doubles show a noticeable contrast."
         case (.deepSky, .planetaryNebula):
-            return "Small target; use moderate or high magnification. A nebula filter may help."
+            return "It may appear as a small gray-green disk or ring rather than a bright, colorful photograph."
         case (.deepSky, .globularCluster):
-            return "Higher magnification may begin to resolve stars around the edges."
+            return "Expect a bright central glow with a granular outer halo; some edge stars may resolve under favorable conditions."
         case (.deepSky, .galaxy):
-            return "Best under dark, moonless skies; use averted vision."
+            return "Expect a brighter core with a diffuse halo or elongation; fine structure is often subtle visually."
         case (.deepSky, .openCluster):
-            return "Use lower magnification to frame the cluster."
-        case (.deepSky, .diffuseNebula): return "Dark adaptation and low magnification can make faint structure easier to see."
-        default: return "Allow your eyes time to adapt and keep direct lights out of view."
+            return "The cluster may appear loose or concentrated, with brighter members forming chains or patterns against the surrounding field."
+        case (.deepSky, .diffuseNebula): return "Expect a faint gray glow with uneven brightness or dark lanes; photographs usually show more color and extent."
+        default: return "Its appearance may be subtle, so compare it with nearby stars or familiar patterns."
         }
     }
 
@@ -234,8 +235,61 @@ struct TargetDetailContentBuilder {
     private static func overlapsPlacement(_ existing: String, _ placement: String) -> Bool {
         let existing = existing.lowercased()
         let placement = placement.lowercased()
-        return (existing.contains("high in the sky") && placement.contains("high in the sky"))
+        return (existing.contains("high in") && placement.contains("high in the sky"))
             || (existing.contains("astronomical darkness") && placement.contains("astronomical darkness"))
             || (existing.contains("weather") && placement.contains("weather"))
+    }
+
+    private static func recommendationSummaryWithoutEquipmentAdvice(_ summary: String) -> String? {
+        let trimmed = summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        guard containsPotentialEquipmentAdvice(trimmed) else { return trimmed }
+
+        let retainedSentences = trimmed
+            .split(whereSeparator: { ".!?".contains($0) })
+            .compactMap { sentenceWithoutEquipmentAdvice(String($0)) }
+        guard !retainedSentences.isEmpty else { return nil }
+        return retainedSentences.map { "\($0)." }.joined(separator: " ")
+    }
+
+    private static func sentenceWithoutEquipmentAdvice(_ sentence: String) -> String? {
+        var clauses = sentence
+            .split(separator: ";", omittingEmptySubsequences: true)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+        clauses = clauses.flatMap { clause in
+            clause.split(separator: ",", omittingEmptySubsequences: true)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        }
+
+        clauses = clauses.flatMap { clause in
+            let parts = clause.components(separatedBy: " and ")
+            guard parts.count == 2 else { return [clause] }
+            return parts.flatMap { part in
+                let trimmed = part.trimmingCharacters(in: .whitespacesAndNewlines)
+                return isEquipmentAdvice(trimmed) ? [] : [trimmed]
+            }
+        }
+
+        let retainedClauses = clauses.filter { !isEquipmentAdvice($0) }
+        guard !retainedClauses.isEmpty else { return nil }
+        return retainedClauses.joined(separator: ", ")
+    }
+
+    private static func isEquipmentAdvice(_ clause: String) -> Bool {
+        let lowercased = clause.lowercased()
+        let mentionsEquipment = ["binocular", "telescope", "low power", "higher power", "magnification"]
+            .contains(where: lowercased.contains)
+        guard mentionsEquipment else { return false }
+
+        return [
+            "use ", "best view", "best viewed", "through a telescope", "telescope target",
+            "recommended equipment", "with binocular", "with a telescope", "low power", "higher power",
+            "magnification", "resolve outer stars"
+        ].contains(where: lowercased.contains)
+    }
+
+    private static func containsPotentialEquipmentAdvice(_ text: String) -> Bool {
+        isEquipmentAdvice(text)
     }
 }

@@ -41,6 +41,8 @@ Manage **My Equipment**—the inventory of equipment you own—in Settings. Choo
 
 Target summaries and details may show **Equipment Suitability** as **Excellent**, **Good**, **Challenging**, or **Poor**. Visual and electronically assisted (Smart / EAA) guidance are intentionally described separately; when personalized guidance is unavailable—or the selected equipment is a Poor match—details also show generic **Best equipment** guidance. Suitability guidance is practical planning help, not a visibility promise: weather, sky darkness, Moon conditions, altitude, obstructions, eyesight, and experience still matter.
 
+In Target Details, **Finding tips** cover locating and observing technique, while **Observing notes** describe expected appearance and notable features.
+
 **Target Suitability for Your Equipment** controls the lowest equipment suitability level included. **Good**, for example, includes both Good and Excellent targets. **Any** includes all normal Best Targets regardless of equipment suitability. This setting affects which targets are shown in the Dashboard and View All, but does not change Best Targets conditions scores or the relative conditions-based ordering of targets that remain.
 
 ### Difficulty Labels

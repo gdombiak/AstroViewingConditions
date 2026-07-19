@@ -17,7 +17,7 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         let content = Self.detailContent(id: "ngc7009", name: "NGC 7009 Saturn Nebula", type: .planetaryNebula, image: image)
         XCTAssertEqual(
             content.sections.first(where: { $0.title == "Observing notes" })?.text,
-            "Small bright planetary nebula. In a telescope it may look like a tiny blue-green oval; the Saturn-like extensions need higher magnification and good seeing."
+            "Small bright planetary nebula that may look like a tiny blue-green oval; its Saturn-like extensions are subtle visually."
         )
     }
 
@@ -34,7 +34,7 @@ final class TargetDetailContentBuilderTests: XCTestCase {
 
         XCTAssertEqual(
             sections["Why recommended"],
-            "This large, bright planetary nebula is well placed during this observing window. The bright Moon may reduce contrast, but M27 is still worth trying because its dumbbell shape can stand out better than many faint nebulae."
+            "This large, bright planetary nebula is well placed during this observing window. The bright Moon may reduce contrast, but M27 is still worth trying."
         )
         XCTAssertEqual(
             sections["Best equipment"],
@@ -50,7 +50,7 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         )
         XCTAssertNil(sections["How to find it"])
         XCTAssertTrue(sections["Why recommended"]?.contains("large, bright planetary nebula") == true)
-        XCTAssertTrue(sections["Why recommended"]?.contains("stand out") == true)
+        XCTAssertFalse(sections["Why recommended"]?.localizedCaseInsensitiveContains("dumbbell") == true)
         XCTAssertTrue(sections["Observing notes"]?.contains("grayish fuzzy patch") == true)
         XCTAssertFalse(sections.values.contains(where: { $0.localizedCaseInsensitiveContains("small target") }))
         XCTAssertFalse(sections.values.contains(where: { $0.localizedCaseInsensitiveContains("small bright nebula") }))
@@ -77,15 +77,15 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         XCTAssertFalse(clusterSections["Finding tips"]?.contains("Best from") == true)
         XCTAssertEqual(
             clusterSections["Why recommended"],
-            "The Double Cluster is a rewarding wide-field target during this observing window. Clouds may interfere, but if the sky clears, both clusters can fit beautifully in binoculars or a low-power telescope."
+            "The Double Cluster is a rewarding target for this observing window. Clouds or haze may make it harder to see."
         )
         XCTAssertEqual(clusterSections["Best equipment"], "Use binoculars or a low-power telescope to keep both clusters in view.")
-        XCTAssertEqual(clusterSections["Observing notes"], "Both clusters can fit in a binocular or low-power telescope view, surrounded by a rich Milky Way star field.")
+        XCTAssertEqual(clusterSections["Observing notes"], "Two rich clusters sit close together in a Milky Way star field, with many bright blue-white stars and dense central concentrations.")
 
         let globular = Self.detailContent(name: "Generic Globular", type: .globularCluster)
         XCTAssertEqual(
             globular.sections.first(where: { $0.title == "Finding tips" })?.text,
-            "Use averted vision on the outer halo, then increase magnification gradually to look for resolved edge stars."
+            "Use averted vision on the outer halo, then increase magnification gradually to compare the compact core with the surrounding granularity."
         )
     }
 
@@ -132,7 +132,7 @@ final class TargetDetailContentBuilderTests: XCTestCase {
             "Wait for brief moments of steady seeing, when fine detail may become easier to distinguish.",
             "Trace the terminator, where long shadows make craters and ridges easier to recognize.",
             "Scan slowly around the target and look for the distinctive pattern formed by its brighter members.",
-            "Use averted vision on the outer halo, then increase magnification gradually to look for resolved edge stars.",
+            "Use averted vision on the outer halo, then increase magnification gradually to compare the compact core with the surrounding granularity.",
             "Compare direct and averted vision and look for a compact disk that remains slightly extended beside nearby stars.",
             "Shield your eyes from stray light and sweep slowly across the field to make faint boundaries easier to notice.",
             "Find the brighter central glow first, then use averted vision to trace the galaxy’s orientation and fainter extent."
@@ -173,8 +173,8 @@ final class TargetDetailContentBuilderTests: XCTestCase {
 
         for id in ["m33", "m101"] {
             let guide = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: id))
-            XCTAssertTrue(guide.observingNotes?.contains("Low surface brightness") == true, id)
-            XCTAssertTrue(guide.observingNotes?.contains("dark-sky challenge") == true, id)
+            XCTAssertTrue(guide.observingNotes?.contains("faint, diffuse glow") == true, id)
+            XCTAssertTrue(guide.observingNotes?.contains("subtle spiral structure") == true, id)
         }
     }
 
@@ -211,8 +211,8 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("double"))
         XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("telescope"))
         XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("high magnification"))
-        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("steady moments"))
-        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("split the pair"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("steady seeing"))
+        XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("pair separates cleanly"))
         XCTAssertEqual(content.directionText, "Look south.")
         XCTAssertEqual(content.altitudeDegrees ?? 0, 84, accuracy: 0.01)
         XCTAssertEqual(content.altitudeText, "About 84° high.")
@@ -236,6 +236,140 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         XCTAssertTrue(content.sectionsText.localizedCaseInsensitiveContains("brightness"))
         XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("good lunar target"))
         XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("faint deep-sky"))
+    }
+
+    func testObservingNotesPreserveAppearanceWhileFindingTipsKeepTechnique() {
+        let moon = Self.detailContent(name: "Moon", targetType: .moon)
+        let jupiter = Self.detailContent(id: "jupiter", name: "Jupiter", targetType: .planet)
+        let saturn = Self.detailContent(id: "saturn", name: "Saturn", targetType: .planet)
+        let albireo = Self.detailContent(id: "albireo", name: "Albireo", type: .doubleStar)
+        let genericDouble = Self.detailContent(name: "Generic Double", type: .doubleStar)
+        let genericGlobular = Self.detailContent(name: "Generic Globular", type: .globularCluster)
+        let genericPlanetaryNebula = Self.detailContent(name: "Generic Planetary Nebula", type: .planetaryNebula)
+        let genericNebula = Self.detailContent(name: "Generic Nebula", type: .diffuseNebula)
+
+        XCTAssertEqual(Self.section(.findingTips, in: moon), "Trace the terminator, where long shadows make craters and ridges easier to recognize.")
+        XCTAssertTrue(Self.section(.bestEquipment, in: moon).contains("Moon filter"))
+        XCTAssertTrue(Self.section(.observingNotes, in: moon).contains("shadows changing"))
+        XCTAssertEqual(Self.section(.observingNotes, in: jupiter), "Look for dark cloud bands across the disk; finer features may appear only briefly.")
+        XCTAssertEqual(Self.section(.observingNotes, in: saturn), "The rings are the most distinctive feature, with the planet’s globe appearing smaller and more subdued.")
+        XCTAssertEqual(Self.section(.observingNotes, in: albireo), "Look for the strong color contrast between the brighter golden star and its fainter blue companion.")
+        XCTAssertTrue(Self.section(.findingTips, in: genericDouble).contains("steady seeing"))
+        XCTAssertTrue(Self.section(.observingNotes, in: genericDouble).contains("brightness and color"))
+        XCTAssertFalse(Self.section(.observingNotes, in: genericDouble).localizedCaseInsensitiveContains("magnification"))
+        let globularTips = Self.section(.findingTips, in: genericGlobular)
+        let globularNotes = Self.section(.observingNotes, in: genericGlobular)
+        XCTAssertTrue(globularTips.contains("averted vision"))
+        XCTAssertTrue(globularTips.contains("increase magnification gradually"))
+        XCTAssertFalse(globularTips.localizedCaseInsensitiveContains("resolved edge stars"))
+        XCTAssertTrue(globularNotes.contains("bright central glow"))
+        XCTAssertTrue(globularNotes.contains("granular outer halo"))
+        XCTAssertTrue(globularNotes.contains("edge stars may resolve"))
+        XCTAssertTrue(Self.section(.observingNotes, in: genericPlanetaryNebula).contains("small gray-green disk or ring"))
+        XCTAssertFalse(Self.section(.observingNotes, in: genericPlanetaryNebula).localizedCaseInsensitiveContains("nebula filter"))
+        XCTAssertTrue(Self.section(.observingNotes, in: genericNebula).contains("photographs usually show more color"))
+    }
+
+    func testCuratedGuidesKeepEquipmentAndAppearanceGuidanceInSeparateSections() {
+        let doubleCluster = Self.detailContent(id: "double-cluster", name: "NGC 869/884 Double Cluster", type: .openCluster)
+        let m27 = Self.detailContent(id: "m27", name: "M27 Dumbbell Nebula", type: .planetaryNebula)
+        let m33 = Self.detailContent(id: "m33", name: "M33 Triangulum Galaxy", type: .galaxy)
+        let m31 = Self.detailContent(id: "m31", name: "M31 Andromeda Galaxy", type: .galaxy)
+
+        XCTAssertTrue(Self.section(.bestEquipment, in: doubleCluster).contains("binoculars"))
+        XCTAssertFalse(Self.section(.observingNotes, in: doubleCluster).localizedCaseInsensitiveContains("binocular"))
+        XCTAssertTrue(Self.section(.bestEquipment, in: m27).contains("nebula filter"))
+        XCTAssertTrue(Self.section(.observingNotes, in: m27).contains("dumbbell or apple-core"))
+        XCTAssertTrue(Self.section(.findingTips, in: m27).contains("direct and averted vision"))
+        XCTAssertTrue(Self.section(.findingTips, in: m33).contains("brighter central glow"))
+        XCTAssertTrue(Self.section(.observingNotes, in: m33).contains("faint, diffuse glow"))
+        XCTAssertTrue(Self.section(.observingNotes, in: m31).contains("bright core"))
+        XCTAssertFalse(Self.section(.observingNotes, in: m31).localizedCaseInsensitiveContains("easy to locate"))
+    }
+
+    func testWhyRecommendedDoesNotRepeatSummaryEquipmentAdvice() {
+        let content = Self.detailContent(
+            name: "Equipment Summary",
+            type: .globularCluster,
+            reasons: [.highAltitude],
+            summary: "Good telescope target; higher magnification may resolve outer stars."
+        )
+
+        XCTAssertFalse(content.whyRecommended.localizedCaseInsensitiveContains("telescope"))
+        XCTAssertFalse(content.whyRecommended.localizedCaseInsensitiveContains("magnification"))
+        XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("high in the sky"))
+        XCTAssertTrue(Self.section(.bestEquipment, in: content).localizedCaseInsensitiveContains("telescope"))
+        XCTAssertTrue(Self.section(.observingNotes, in: content).localizedCaseInsensitiveContains("edge stars may resolve"))
+    }
+
+    func testWhyRecommendedPreservesNonEquipmentSummarySentencesAndClauses() {
+        let equipmentThenConditions = Self.detailContent(
+            name: "Mixed Summary",
+            summary: "Good telescope target. High in the southeast tonight."
+        )
+        let conditionsThenEquipment = Self.detailContent(
+            name: "Mixed Summary",
+            summary: "High in the southeast tonight. Best viewed through a telescope."
+        )
+        let semicolonMix = Self.detailContent(
+            name: "Mixed Summary",
+            summary: "High in the southeast tonight; use a telescope for the best view."
+        )
+        let conjunctionMix = Self.detailContent(
+            name: "Mixed Summary",
+            summary: "High in the southeast tonight and rewarding through a telescope."
+        )
+
+        for content in [equipmentThenConditions, conditionsThenEquipment, semicolonMix, conjunctionMix] {
+            XCTAssertTrue(content.whyRecommended.localizedCaseInsensitiveContains("high in the southeast"))
+            XCTAssertFalse(content.whyRecommended.localizedCaseInsensitiveContains("telescope"))
+        }
+    }
+
+    func testWhyRecommendedPreservesOrdinarySummaryAndAvoidsDuplicateStructuredPlacement() {
+        let ordinarySummary = Self.detailContent(
+            name: "Placement Summary",
+            summary: "High in the sky during astronomical darkness."
+        )
+        let duplicatePlacement = Self.detailContent(
+            name: "Placement Summary",
+            reasons: [.highAltitude],
+            summary: "High in the southeast tonight."
+        )
+        let visibleTonight = Self.detailContent(name: "Visible Tonight", summary: "Visible tonight.")
+
+        XCTAssertEqual(ordinarySummary.whyRecommended, "High in the sky during astronomical darkness.")
+        XCTAssertEqual(
+            duplicatePlacement.whyRecommended.lowercased().components(separatedBy: "high in").count - 1,
+            1
+        )
+        XCTAssertEqual(visibleTonight.whyRecommended, "This target should be worth observing during its best window.")
+    }
+
+    func testWhyRecommendedPreservesOrdinarySummaryPunctuationAndConjunctions() {
+        let cases = [
+            (
+                "Bright and well placed during astronomical darkness.",
+                "Bright and well placed during astronomical darkness."
+            ),
+            (
+                "Clouds, haze, and moonlight may interfere.",
+                "Clouds, haze, and moonlight may interfere."
+            ),
+            (
+                "High in the southeast tonight, with a long observing window.",
+                "High in the southeast for this night, with a long observing window."
+            ),
+            (
+                "The telescope icon identifies this target category.",
+                "The telescope icon identifies this target category."
+            )
+        ]
+
+        for (summary, expectedWhyRecommended) in cases {
+            let content = Self.detailContent(name: "Ordinary Summary", summary: summary)
+            XCTAssertEqual(content.whyRecommended, expectedWhyRecommended, summary)
+        }
     }
 
     func testM31UnderBrightMoonPrefersDarkSkyAndWarnsOfWashedOutDetail() {
@@ -355,5 +489,12 @@ final class TargetDetailContentBuilderTests: XCTestCase {
             from: recommendation,
             timeZone: TimeZone(secondsFromGMT: 0)
         )
+    }
+
+    private static func section(
+        _ kind: TargetDetailSectionKind,
+        in content: TargetDetailContent
+    ) -> String {
+        content.sections.first(where: { $0.kind == kind })?.text ?? ""
     }
 }
