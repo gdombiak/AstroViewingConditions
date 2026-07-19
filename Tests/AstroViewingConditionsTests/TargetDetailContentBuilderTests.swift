@@ -46,7 +46,7 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         )
         XCTAssertEqual(
             sections["Finding tips"],
-            "Look in Vulpecula near Sagitta and Cygnus. Use low power first, then increase magnification once found."
+            "Look in Vulpecula near Sagitta and Cygnus. Compare direct and averted vision to distinguish the dumbbell shape from nearby stars."
         )
         XCTAssertNil(sections["How to find it"])
         XCTAssertTrue(sections["Why recommended"]?.contains("large, bright planetary nebula") == true)
@@ -71,7 +71,7 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         XCTAssertNil(clusterSections["How to find it"])
         XCTAssertEqual(
             clusterSections["Finding tips"],
-            "Look in Perseus between Cassiopeia and the bright star Mirfak. Use binoculars or a low-power telescope so both clusters fit in the same view."
+            "Look in Perseus between Cassiopeia and the bright star Mirfak. Scan slowly between both clusters and compare their bright star patterns."
         )
         XCTAssertFalse(clusterSections["Finding tips"]?.contains("52°") == true)
         XCTAssertFalse(clusterSections["Finding tips"]?.contains("Best from") == true)
@@ -85,8 +85,73 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         let globular = Self.detailContent(name: "Generic Globular", type: .globularCluster)
         XCTAssertEqual(
             globular.sections.first(where: { $0.title == "Finding tips" })?.text,
-            "Start with low power to locate the fuzzy core, then increase magnification to try resolving outer stars."
+            "Use averted vision on the outer halo, then increase magnification gradually to look for resolved edge stars."
         )
+    }
+
+    func testBestEquipmentSuppressionUsesFitLevelAndSemanticSectionKind() {
+        let content = Self.detailContent(name: "Generic Galaxy", type: .galaxy)
+
+        XCTAssertEqual(
+            content.sections.map(\.kind),
+            [.whyRecommended, .findingTips, .bestEquipment, .observingNotes]
+        )
+        XCTAssertEqual(
+            content.sections(hidingBestEquipment: false).map(\.kind),
+            [.whyRecommended, .findingTips, .bestEquipment, .observingNotes]
+        )
+        XCTAssertEqual(
+            content.sections(hidingBestEquipment: true).map(\.kind),
+            [.whyRecommended, .findingTips, .observingNotes]
+        )
+        XCTAssertEqual(
+            content.sections(hidingBestEquipment: true).map(\.title),
+            ["Why recommended", "Finding tips", "Observing notes"]
+        )
+
+        XCTAssertFalse(TargetDetailView.shouldHideBestEquipment(for: nil))
+        XCTAssertTrue(TargetDetailView.shouldHideBestEquipment(for: .excellent))
+        XCTAssertTrue(TargetDetailView.shouldHideBestEquipment(for: .good))
+        XCTAssertTrue(TargetDetailView.shouldHideBestEquipment(for: .challenging))
+        XCTAssertFalse(TargetDetailView.shouldHideBestEquipment(for: .poor))
+    }
+
+    func testFindingTipsAreTechniqueFocusedAcrossRepresentativeCategories() {
+        let cases: [(String, TargetDetailContent)] = [
+            ("double star", Self.detailContent(name: "Epsilon Lyrae", type: .doubleStar)),
+            ("planet", Self.detailContent(name: "Jupiter", targetType: .planet)),
+            ("Moon", Self.detailContent(name: "Moon", targetType: .moon)),
+            ("open cluster", Self.detailContent(name: "Generic Open Cluster", type: .openCluster)),
+            ("globular cluster", Self.detailContent(name: "Generic Globular", type: .globularCluster)),
+            ("planetary nebula", Self.detailContent(name: "Generic Planetary Nebula", type: .planetaryNebula)),
+            ("diffuse nebula", Self.detailContent(name: "Generic Diffuse Nebula", type: .diffuseNebula)),
+            ("galaxy", Self.detailContent(name: "Generic Galaxy", type: .galaxy))
+        ]
+        let expectedTips = [
+            "Wait for steady seeing, then increase magnification gradually until the pair separates cleanly.",
+            "Wait for brief moments of steady seeing, when fine detail may become easier to distinguish.",
+            "Trace the terminator, where long shadows make craters and ridges easier to recognize.",
+            "Scan slowly around the target and look for the distinctive pattern formed by its brighter members.",
+            "Use averted vision on the outer halo, then increase magnification gradually to look for resolved edge stars.",
+            "Compare direct and averted vision and look for a compact disk that remains slightly extended beside nearby stars.",
+            "Shield your eyes from stray light and sweep slowly across the field to make faint boundaries easier to notice.",
+            "Find the brighter central glow first, then use averted vision to trace the galaxy’s orientation and fainter extent."
+        ]
+
+        let tips = cases.map { label, content -> String in
+            let tip = content.sections.first(where: { $0.kind == .findingTips })?.text
+            XCTAssertNotNil(tip, label)
+            return tip ?? ""
+        }
+
+        XCTAssertEqual(tips, expectedTips)
+        for (label, tip) in zip(cases.map(\.0), tips) {
+            let lowercasedTip = tip.lowercased()
+            XCTAssertFalse(lowercasedTip.contains("use a telescope"), label)
+            XCTAssertFalse(lowercasedTip.contains("best viewed with"), label)
+            XCTAssertFalse(lowercasedTip.contains("larger aperture"), label)
+            XCTAssertFalse(lowercasedTip.contains("medium or high magnification"), label)
+        }
     }
 
     func testCuratedObservingGuideCatalogPreservesVisualExpectationCopy() throws {
@@ -292,4 +357,3 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         )
     }
 }
-

@@ -4,14 +4,14 @@ enum TargetObservingGuideCatalog {
             TargetObservingGuide(
                 targetID: "double-cluster",
                 whyRecommendedOverride: .always("The Double Cluster is a rewarding wide-field target during this observing window. Clouds may interfere, but if the sky clears, both clusters can fit beautifully in binoculars or a low-power telescope."),
-                findingTips: "Look in Perseus between Cassiopeia and the bright star Mirfak. Use binoculars or a low-power telescope so both clusters fit in the same view.",
+                findingTips: "Look in Perseus between Cassiopeia and the bright star Mirfak. Scan slowly between both clusters and compare their bright star patterns.",
                 bestEquipment: "Use binoculars or a low-power telescope to keep both clusters in view.",
                 observingNotes: "Both clusters can fit in a binocular or low-power telescope view, surrounded by a rich Milky Way star field."
             ),
             TargetObservingGuide(
                 targetID: "m27",
                 whyRecommendedOverride: .brightMoon("This large, bright planetary nebula is well placed during this observing window. The bright Moon may reduce contrast, but M27 is still worth trying because its dumbbell shape can stand out better than many faint nebulae."),
-                findingTips: "Look in Vulpecula near Sagitta and Cygnus. Use low power first, then increase magnification once found.",
+                findingTips: "Look in Vulpecula near Sagitta and Cygnus. Compare direct and averted vision to distinguish the dumbbell shape from nearby stars.",
                 bestEquipment: "Use a telescope at low to moderate magnification. A nebula filter may help if available.",
                 observingNotes: "Visually, M27 usually appears as a grayish fuzzy patch with a dumbbell or apple-core shape. Photos show much more color than you should expect at the eyepiece."
             ),

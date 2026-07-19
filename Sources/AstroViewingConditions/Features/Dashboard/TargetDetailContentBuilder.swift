@@ -28,10 +28,10 @@ struct TargetDetailContentBuilder {
             azimuthText: window.azimuth.map(Self.azimuthText),
             imageAttribution: target.image?.attributionText,
             sections: [
-                .init(title: "Why recommended", text: whyRecommended(recommendation, guide: guide)),
-                .init(title: "Finding tips", text: findingTips(for: target, guide: guide)),
-                .init(title: "Best equipment", text: equipment(for: target, guide: guide)),
-                .init(title: "Observing notes", text: observingNotes(for: target, guide: guide))
+                .init(kind: .whyRecommended, title: "Why recommended", text: whyRecommended(recommendation, guide: guide)),
+                .init(kind: .findingTips, title: "Finding tips", text: findingTips(for: target, guide: guide)),
+                .init(kind: .bestEquipment, title: "Best equipment", text: equipment(for: target, guide: guide)),
+                .init(kind: .observingNotes, title: "Observing notes", text: observingNotes(for: target, guide: guide))
             ]
         )
     }
@@ -133,23 +133,23 @@ struct TargetDetailContentBuilder {
 
         switch (target.type, target.deepSkyObjectType) {
         case (.moon, _):
-            return "Use low to moderate magnification. A Moon filter can make the view more comfortable."
+            return "Trace the terminator, where long shadows make craters and ridges easier to recognize."
         case (.planet, _):
-            return "Use moderate to high magnification when the air is steady."
+            return "Wait for brief moments of steady seeing, when fine detail may become easier to distinguish."
         case (.deepSky, .openCluster):
-            return "Use binoculars or low power first to keep the surrounding star field in view."
+            return "Scan slowly around the target and look for the distinctive pattern formed by its brighter members."
         case (.deepSky, .globularCluster):
-            return "Start with low power to locate the fuzzy core, then increase magnification to try resolving outer stars."
+            return "Use averted vision on the outer halo, then increase magnification gradually to look for resolved edge stars."
         case (.deepSky, .planetaryNebula):
-            return "Use low power to locate the field, then increase magnification. A nebula filter may help."
+            return "Compare direct and averted vision and look for a compact disk that remains slightly extended beside nearby stars."
         case (.deepSky, .galaxy):
-            return "Use low power and averted vision. Darker skies help reveal more of the galaxy."
+            return "Find the brighter central glow first, then use averted vision to trace the galaxy’s orientation and fainter extent."
         case (.deepSky, .doubleStar):
-            return "Use moderate magnification and steady moments of seeing to separate the stars."
+            return "Wait for steady seeing, then increase magnification gradually until the pair separates cleanly."
         case (.deepSky, .diffuseNebula):
-            return "Start with low power under dark skies. A nebula filter may improve contrast."
+            return "Shield your eyes from stray light and sweep slowly across the field to make faint boundaries easier to notice."
         default:
-            return "Start with low power to locate the target, then adjust magnification for the best view."
+            return "Allow your eyes time to adapt, then scan slowly around the target and compare nearby stars or patterns."
         }
     }
 

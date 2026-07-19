@@ -1,5 +1,13 @@
+enum TargetDetailSectionKind: Equatable {
+    case whyRecommended
+    case findingTips
+    case bestEquipment
+    case observingNotes
+}
+
 struct TargetDetailContent: Equatable {
     struct Section: Equatable, Identifiable {
+        let kind: TargetDetailSectionKind
         let title: String
         let text: String
         var id: String { title }
@@ -20,6 +28,12 @@ struct TargetDetailContent: Equatable {
 
     var direction: String? { directionText }
     var altitude: String? { altitudeText }
+
+    func sections(hidingBestEquipment: Bool) -> [Section] {
+        sections.filter { section in
+            !hidingBestEquipment || section.kind != .bestEquipment
+        }
+    }
 
     var sectionsText: String {
         sections.map { "\($0.title) \($0.text)" }.joined(separator: " ")

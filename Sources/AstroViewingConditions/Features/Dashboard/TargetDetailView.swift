@@ -25,6 +25,15 @@ struct TargetDetailView: View {
 
     private let imageRepository = TargetImageRepository()
 
+    private var shouldHideBestEquipment: Bool {
+        Self.shouldHideBestEquipment(for: equipmentFit?.level)
+    }
+
+    static func shouldHideBestEquipment(for fitLevel: EquipmentFitLevel?) -> Bool {
+        guard let fitLevel else { return false }
+        return fitLevel != .poor
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -76,7 +85,7 @@ struct TargetDetailView: View {
                     }
                 }
 
-                ForEach(content.sections) { section in
+                ForEach(content.sections(hidingBestEquipment: shouldHideBestEquipment)) { section in
                     Section(section.title) { Text(section.text) }
                 }
             }
