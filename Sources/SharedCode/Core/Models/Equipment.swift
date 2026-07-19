@@ -12,7 +12,7 @@ public enum EquipmentType: String, CaseIterable, Codable, Sendable, Hashable {
         switch self {
         case .binoculars: return "Binoculars"
         case .visualTelescope: return "Visual Telescope"
-        case .smartTelescope: return "Smart / EAA Telescope"
+        case .smartTelescope: return "Smart/EAA Telescope"
         }
     }
 }
@@ -198,7 +198,7 @@ public enum EquipmentValidation {
         return millimeters
     }
 
-    private static func maximumApertureMillimeters(for type: EquipmentType) -> Double {
+    static func maximumApertureMillimeters(for type: EquipmentType) -> Double {
         type == .binoculars
             ? maximumBinocularApertureMillimeters
             : maximumTelescopeApertureMillimeters
@@ -353,6 +353,7 @@ public enum EquipmentFormatting {
     }
 
     public static func decimalText(_ value: Double, locale: Locale) -> String {
+        guard value.isFinite else { return "Unavailable" }
         let formatter = NumberFormatter()
         formatter.locale = locale
         formatter.numberStyle = .decimal
@@ -368,6 +369,11 @@ public enum EquipmentFormatting {
     }
 
     public static func millimeters(_ value: Double) -> String {
+        guard value.isFinite,
+              value > 0,
+              abs(value) <= Double(Int.max) / 10 else {
+            return "Unavailable"
+        }
         let roundedToTenth = (value * 10).rounded() / 10
         if roundedToTenth.rounded() == roundedToTenth {
             return "\(Int(roundedToTenth)) mm"
@@ -418,14 +424,22 @@ public final class EquipmentItem {
     public var apertureMillimeters: Double
     private var apertureUnitRawValue: String = EquipmentApertureUnit.millimeters.rawValue
 
-    public var type: EquipmentType {
-        get { EquipmentType(rawValue: equipmentTypeRawValue) ?? .binoculars }
-        set { equipmentTypeRawValue = newValue.rawValue }
+    public var type: EquipmentType? {
+        get { EquipmentType(rawValue: equipmentTypeRawValue) }
+        set {
+            if let newValue {
+                equipmentTypeRawValue = newValue.rawValue
+            }
+        }
     }
 
-    public var apertureUnit: EquipmentApertureUnit {
-        get { EquipmentApertureUnit(rawValue: apertureUnitRawValue) ?? .millimeters }
-        set { apertureUnitRawValue = newValue.rawValue }
+    public var apertureUnit: EquipmentApertureUnit? {
+        get { EquipmentApertureUnit(rawValue: apertureUnitRawValue) }
+        set {
+            if let newValue {
+                apertureUnitRawValue = newValue.rawValue
+            }
+        }
     }
 
     public init(draft: EquipmentDraft) {
@@ -463,7 +477,71 @@ public final class EquipmentItem {
 }
 
 public extension EquipmentItem {
+    var persistedSnapshot: EquipmentPersistedSnapshot {
+        EquipmentPersistedSnapshot(
+            name: name,
+            equipmentTypeRawValue: equipmentTypeRawValue,
+            magnification: magnification,
+            apertureMillimeters: apertureMillimeters,
+            apertureUnitRawValue: apertureUnitRawValue
+        )
+    }
+
+    func restore(_ snapshot: EquipmentPersistedSnapshot) {
+        name = snapshot.name
+        equipmentTypeRawValue = snapshot.equipmentTypeRawValue
+        magnification = snapshot.magnification
+        apertureMillimeters = snapshot.apertureMillimeters
+        apertureUnitRawValue = snapshot.apertureUnitRawValue
+    }
+
+    var persistedValidation: EquipmentPersistedValidation {
+        var issues: [EquipmentPersistedIssue] = []
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedName.isEmpty {
+            issues.append(.blankName)
+        }
+
+        guard let type else {
+            issues.append(.unknownType)
+            if apertureUnit == nil { issues.append(.unknownApertureUnit) }
+            if !apertureMillimeters.isFinite || apertureMillimeters <= 0 {
+                issues.append(.invalidAperture)
+            }
+            return EquipmentPersistedValidation(issues: issues)
+        }
+
+        if apertureUnit == nil {
+            issues.append(.unknownApertureUnit)
+        }
+        if !apertureMillimeters.isFinite || apertureMillimeters <= 0 {
+            issues.append(.invalidAperture)
+        } else if apertureMillimeters > EquipmentValidation.maximumApertureMillimeters(for: type) {
+            issues.append(.apertureTooLarge)
+        }
+
+        if type == .binoculars {
+            switch magnification {
+            case nil:
+                issues.append(.missingMagnification)
+            case let value? where !value.isFinite || value <= 0:
+                issues.append(.invalidMagnification)
+            case let value? where value > EquipmentValidation.maximumBinocularMagnification:
+                issues.append(.magnificationTooHigh)
+            default:
+                break
+            }
+        }
+        return EquipmentPersistedValidation(issues: issues)
+    }
+
+    var inventoryDisplayName: String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "Unnamed Equipment" : trimmed
+    }
+
     var detailText: String {
+        guard persistedValidation.isAvailable, let type else { return "Unavailable — repair or delete" }
         switch type {
         case .binoculars:
             let magnificationText = magnification.map { "\(EquipmentFormatting.number($0))×" } ?? ""
@@ -479,11 +557,45 @@ public extension EquipmentItem {
 
 private extension EquipmentFormatting {
     static func number(_ value: Double) -> String {
+        guard value.isFinite,
+              value > 0,
+              abs(value) <= Double(Int.max) / 10 else {
+            return "Unavailable"
+        }
         let roundedToTenth = (value * 10).rounded() / 10
         if roundedToTenth.rounded() == roundedToTenth {
             return "\(Int(roundedToTenth))"
         }
         return "\(roundedToTenth)"
+    }
+}
+
+public enum EquipmentPersistedIssue: Sendable, Hashable {
+    case blankName
+    case unknownType
+    case unknownApertureUnit
+    case missingMagnification
+    case invalidMagnification
+    case magnificationTooHigh
+    case invalidAperture
+    case apertureTooLarge
+}
+
+public struct EquipmentPersistedSnapshot: Sendable, Hashable {
+    let name: String
+    let equipmentTypeRawValue: String
+    let magnification: Double?
+    let apertureMillimeters: Double
+    let apertureUnitRawValue: String
+}
+
+public struct EquipmentPersistedValidation: Sendable, Hashable {
+    public let issues: [EquipmentPersistedIssue]
+
+    public var isAvailable: Bool { issues.isEmpty }
+
+    public init(issues: [EquipmentPersistedIssue]) {
+        self.issues = issues
     }
 }
 #endif

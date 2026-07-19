@@ -7,7 +7,7 @@ final class TargetIntentPresentationTests: XCTestCase {
     func testOnlyChallengeTargetsRequestIntentBadges() {
         XCTAssertTrue(TargetIntentPresentation.showsBadge(for: .challenge))
         XCTAssertEqual(TargetIntentPresentation.badgeText(for: .challenge), "Challenge")
-        XCTAssertNotNil(TargetIntentPresentation.detailGuidance(for: .challenge))
+        XCTAssertNil(TargetIntentPresentation.detailGuidance(for: .challenge))
         XCTAssertFalse(TargetIntentPresentation.showsBadge(for: .easy))
         XCTAssertFalse(TargetIntentPresentation.showsBadge(for: .standard))
         XCTAssertNil(TargetIntentPresentation.badgeText(for: .easy))
@@ -17,4 +17,3 @@ final class TargetIntentPresentationTests: XCTestCase {
     }
 
 }
-

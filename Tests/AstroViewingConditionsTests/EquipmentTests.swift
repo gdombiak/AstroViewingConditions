@@ -1,6 +1,7 @@
 import SwiftData
 import XCTest
 @testable import SharedCode
+@testable import AstroViewingConditions
 
 @MainActor
 final class EquipmentTests: XCTestCase {
@@ -550,17 +551,17 @@ final class EquipmentTests: XCTestCase {
         XCTAssertEqual(item.apertureUnit, .millimeters)
         let displayed = EquipmentFormatting.apertureInputText(
             fromMillimeters: item.apertureMillimeters,
-            unit: item.apertureUnit,
+            unit: try XCTUnwrap(item.apertureUnit),
             locale: Locale(identifier: "en_US")
         )
         XCTAssertEqual(displayed, "150")
 
         let editedDraft = try EquipmentDraft(
             name: item.name,
-            type: item.type,
+            type: try XCTUnwrap(item.type),
             magnification: item.magnification,
             aperture: numericValue(from: displayed, locale: Locale(identifier: "en_US")),
-            apertureUnit: item.apertureUnit
+            apertureUnit: try XCTUnwrap(item.apertureUnit)
         )
         item.apply(editedDraft)
         XCTAssertEqual(item.apertureMillimeters, 150)
@@ -579,17 +580,17 @@ final class EquipmentTests: XCTestCase {
         for _ in 0..<3 {
             let displayed = EquipmentFormatting.apertureInputText(
                 fromMillimeters: item.apertureMillimeters,
-                unit: item.apertureUnit,
+                unit: try XCTUnwrap(item.apertureUnit),
                 locale: Locale(identifier: "en_US")
             )
             XCTAssertEqual(displayed, "5")
 
             item.apply(try EquipmentDraft(
                 name: item.name,
-                type: item.type,
+                type: try XCTUnwrap(item.type),
                 magnification: item.magnification,
                 aperture: numericValue(from: displayed, locale: Locale(identifier: "en_US")),
-                apertureUnit: item.apertureUnit
+                apertureUnit: try XCTUnwrap(item.apertureUnit)
             ))
         }
 
@@ -597,7 +598,7 @@ final class EquipmentTests: XCTestCase {
         XCTAssertEqual(item.apertureUnit, .inches)
     }
 
-    func testUnknownPersistedApertureUnitDefaultsToMillimeters() {
+    func testUnknownPersistedApertureUnitIsQuarantined() {
         let item = EquipmentItem(
             name: "Legacy Telescope",
             equipmentTypeRawValue: EquipmentType.visualTelescope.rawValue,
@@ -606,7 +607,9 @@ final class EquipmentTests: XCTestCase {
             apertureUnitRawValue: "unknown-unit"
         )
 
-        XCTAssertEqual(item.apertureUnit, .millimeters)
+        XCTAssertNil(item.apertureUnit)
+        XCTAssertTrue(item.persistedValidation.issues.contains(.unknownApertureUnit))
+        XCTAssertNil(item.matchingCapability)
     }
 
     func testSmartTelescopeWithAperturePreservesChosenUnitPreference() throws {
@@ -631,10 +634,309 @@ final class EquipmentTests: XCTestCase {
             apertureUnit: .inches
         ))
 
-        let capability = item.matchingCapability
+        let capability = try XCTUnwrap(item.matchingCapability)
         XCTAssertEqual(capability.id, .savedEquipment(item.id))
         XCTAssertEqual(capability.magnification, 10)
         XCTAssertEqual(try XCTUnwrap(capability.apertureMillimeters), 50.8, accuracy: 0.000_001)
+    }
+
+    func testUnknownPersistedTypeDoesNotBecomeBinocularsOrEnterMatching() {
+        let item = EquipmentItem(
+            name: "Legacy Optic",
+            equipmentTypeRawValue: "future-optic",
+            magnification: 10,
+            apertureMillimeters: 50,
+            apertureUnitRawValue: EquipmentApertureUnit.millimeters.rawValue
+        )
+
+        XCTAssertNil(item.type)
+        XCTAssertTrue(item.persistedValidation.issues.contains(.unknownType))
+        XCTAssertNil(item.matchingCapability)
+        XCTAssertEqual(item.detailText, "Unavailable — repair or delete")
+    }
+
+    func testMalformedPersistedNumericValuesAreQuarantinedAndFormattersAreTotal() {
+        let invalidValues: [Double] = [0, -1, .nan, .infinity, -.infinity, Double.greatestFiniteMagnitude]
+        for value in invalidValues {
+            let item = EquipmentItem(
+                name: "Persisted Binoculars",
+                equipmentTypeRawValue: EquipmentType.binoculars.rawValue,
+                magnification: value,
+                apertureMillimeters: value,
+                apertureUnitRawValue: EquipmentApertureUnit.millimeters.rawValue
+            )
+
+            XCTAssertFalse(item.persistedValidation.isAvailable, "Expected quarantine for \(value)")
+            XCTAssertNil(item.matchingCapability)
+            XCTAssertFalse(EquipmentFormatting.millimeters(value).isEmpty)
+            XCTAssertFalse(EquipmentFormatting.decimalText(value, locale: Locale(identifier: "en_US")).isEmpty)
+        }
+    }
+
+    func testBlankNameMissingMagnificationAndOversizedValuesAreQuarantined() {
+        let cases = [
+            EquipmentItem(name: "  ", equipmentTypeRawValue: EquipmentType.visualTelescope.rawValue, magnification: nil, apertureMillimeters: 100, apertureUnitRawValue: EquipmentApertureUnit.millimeters.rawValue),
+            EquipmentItem(name: "Binoculars", equipmentTypeRawValue: EquipmentType.binoculars.rawValue, magnification: nil, apertureMillimeters: 50, apertureUnitRawValue: EquipmentApertureUnit.millimeters.rawValue),
+            EquipmentItem(name: "Binoculars", equipmentTypeRawValue: EquipmentType.binoculars.rawValue, magnification: 101, apertureMillimeters: 50, apertureUnitRawValue: EquipmentApertureUnit.millimeters.rawValue),
+            EquipmentItem(name: "Scope", equipmentTypeRawValue: EquipmentType.visualTelescope.rawValue, magnification: nil, apertureMillimeters: 2_001, apertureUnitRawValue: EquipmentApertureUnit.millimeters.rawValue)
+        ]
+
+        for item in cases {
+            XCTAssertFalse(item.persistedValidation.isAvailable)
+            XCTAssertNil(item.matchingCapability)
+        }
+        XCTAssertEqual(cases[0].inventoryDisplayName, "Unnamed Equipment")
+    }
+
+    func testRepairingInvalidRecordMakesItMatchable() throws {
+        let item = EquipmentItem(
+            name: "Legacy Optic",
+            equipmentTypeRawValue: "future-optic",
+            magnification: .nan,
+            apertureMillimeters: .infinity,
+            apertureUnitRawValue: "future-unit"
+        )
+        XCTAssertNil(item.matchingCapability)
+
+        item.apply(try EquipmentDraft(
+            name: "Repaired 10×50",
+            type: .binoculars,
+            magnification: 10,
+            aperture: 50,
+            apertureUnit: .millimeters
+        ))
+
+        XCTAssertTrue(item.persistedValidation.isAvailable)
+        XCTAssertNotNil(item.matchingCapability)
+    }
+
+    func testFailedAddSaveRemovesRejectedInsertion() throws {
+        let container = try ModelContainer(
+            for: EquipmentItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let draft = try EquipmentDraft(
+            name: "Rejected Scope",
+            type: .visualTelescope,
+            magnification: nil,
+            aperture: 150,
+            apertureUnit: .millimeters
+        )
+
+        XCTAssertThrowsError(
+            try EquipmentPersistence.save(
+                draft: draft,
+                editing: nil,
+                in: context,
+                performSave: { _ in throw EquipmentPersistenceTestError.rejected }
+            )
+        )
+        XCTAssertTrue(try context.fetch(FetchDescriptor<EquipmentItem>()).isEmpty)
+    }
+
+    func testFailedEditSaveRestoresEveryOriginalFieldAndCapability() throws {
+        let container = try ModelContainer(
+            for: EquipmentItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let item = EquipmentItem(draft: try EquipmentDraft(
+            name: "Original 10×50",
+            type: .binoculars,
+            magnification: 10,
+            aperture: 2,
+            apertureUnit: .inches
+        ))
+        context.insert(item)
+        try context.save()
+        let originalCapability = try XCTUnwrap(item.matchingCapability)
+        let rejectedDraft = try EquipmentDraft(
+            name: "Rejected Scope",
+            type: .visualTelescope,
+            magnification: nil,
+            aperture: 200,
+            apertureUnit: .millimeters
+        )
+
+        XCTAssertThrowsError(
+            try EquipmentPersistence.save(
+                draft: rejectedDraft,
+                editing: item,
+                in: context,
+                performSave: { _ in throw EquipmentPersistenceTestError.rejected }
+            )
+        )
+
+        XCTAssertEqual(item.name, "Original 10×50")
+        XCTAssertEqual(item.type, .binoculars)
+        XCTAssertEqual(item.magnification, 10)
+        XCTAssertEqual(item.apertureMillimeters, 50.8, accuracy: 0.000_001)
+        XCTAssertEqual(item.apertureUnit, .inches)
+        XCTAssertEqual(item.matchingCapability, originalCapability)
+    }
+
+    func testFailedEditRestoresUncommittedScreenEntrySnapshotAndPreservesUnrelatedPendingChanges() throws {
+        let container = try ModelContainer(
+            for: EquipmentItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let item = EquipmentItem(draft: try EquipmentDraft(
+            name: "Committed Scope",
+            type: .visualTelescope,
+            magnification: nil,
+            aperture: 100,
+            apertureUnit: .millimeters
+        ))
+        let unrelated = EquipmentItem(draft: try EquipmentDraft(
+            name: "Committed Binoculars",
+            type: .binoculars,
+            magnification: 8,
+            aperture: 42,
+            apertureUnit: .millimeters
+        ))
+        context.insert(item)
+        context.insert(unrelated)
+        try context.save()
+
+        item.apply(try EquipmentDraft(
+            name: "Screen Entry Scope",
+            type: .visualTelescope,
+            magnification: nil,
+            aperture: 125,
+            apertureUnit: .millimeters
+        ))
+        unrelated.name = "Pending Binocular Rename"
+        let pendingInsertion = EquipmentItem(draft: try EquipmentDraft(
+            name: "Pending Smart Scope",
+            type: .smartTelescope,
+            magnification: nil,
+            aperture: 50,
+            apertureUnit: .millimeters
+        ))
+        context.insert(pendingInsertion)
+
+        XCTAssertThrowsError(
+            try EquipmentPersistence.save(
+                draft: EquipmentDraft(name: "Rejected Edit", type: .visualTelescope, magnification: nil, aperture: 200, apertureUnit: .millimeters),
+                editing: item,
+                in: context,
+                performSave: { _ in throw EquipmentPersistenceTestError.rejected }
+            )
+        )
+
+        XCTAssertEqual(item.name, "Screen Entry Scope")
+        XCTAssertEqual(item.apertureMillimeters, 125)
+        XCTAssertEqual(unrelated.name, "Pending Binocular Rename")
+        XCTAssertTrue(try context.fetch(FetchDescriptor<EquipmentItem>()).contains { $0 === pendingInsertion })
+        XCTAssertTrue(context.hasChanges)
+    }
+
+    func testFailedAddCancelsOnlyRejectedInsertionAndPreservesUnrelatedPendingChanges() throws {
+        let container = try ModelContainer(
+            for: EquipmentItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let unrelated = EquipmentItem(draft: try EquipmentDraft(
+            name: "Existing Scope",
+            type: .visualTelescope,
+            magnification: nil,
+            aperture: 100,
+            apertureUnit: .millimeters
+        ))
+        context.insert(unrelated)
+        try context.save()
+        unrelated.name = "Pending Existing Scope"
+        let pendingInsertion = EquipmentItem(draft: try EquipmentDraft(
+            name: "Pending Binoculars",
+            type: .binoculars,
+            magnification: 10,
+            aperture: 50,
+            apertureUnit: .millimeters
+        ))
+        context.insert(pendingInsertion)
+
+        XCTAssertThrowsError(
+            try EquipmentPersistence.save(
+                draft: EquipmentDraft(name: "Rejected Addition", type: .visualTelescope, magnification: nil, aperture: 150, apertureUnit: .millimeters),
+                editing: nil,
+                in: context,
+                performSave: { _ in throw EquipmentPersistenceTestError.rejected }
+            )
+        )
+
+        let fetched = try context.fetch(FetchDescriptor<EquipmentItem>())
+        XCTAssertEqual(unrelated.name, "Pending Existing Scope")
+        XCTAssertTrue(fetched.contains { $0 === pendingInsertion })
+        XCTAssertFalse(fetched.contains { $0.name == "Rejected Addition" })
+        XCTAssertTrue(context.hasChanges)
+    }
+
+    func testFailedRepairRestoresInvalidQuarantineState() throws {
+        let container = try ModelContainer(
+            for: EquipmentItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let item = EquipmentItem(
+            name: "Legacy Optic",
+            equipmentTypeRawValue: "future-optic",
+            magnification: 10,
+            apertureMillimeters: 50,
+            apertureUnitRawValue: EquipmentApertureUnit.millimeters.rawValue
+        )
+        context.insert(item)
+        try context.save()
+
+        XCTAssertThrowsError(
+            try EquipmentPersistence.save(
+                draft: EquipmentDraft(name: "Repair", type: .binoculars, magnification: 10, aperture: 50, apertureUnit: .millimeters),
+                editing: item,
+                in: context,
+                performSave: { _ in throw EquipmentPersistenceTestError.rejected }
+            )
+        )
+        XCTAssertNil(item.type)
+        XCTAssertNil(item.matchingCapability)
+    }
+
+    func testSuccessfulRetryPersistsExactlyOnceAfterFailure() throws {
+        let container = try ModelContainer(
+            for: EquipmentItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let draft = try EquipmentDraft(
+            name: "Retry Scope",
+            type: .visualTelescope,
+            magnification: nil,
+            aperture: 150,
+            apertureUnit: .millimeters
+        )
+        var successfulSaves = 0
+
+        XCTAssertThrowsError(
+            try EquipmentPersistence.save(
+                draft: draft,
+                editing: nil,
+                in: context,
+                performSave: { _ in throw EquipmentPersistenceTestError.rejected }
+            )
+        )
+        try EquipmentPersistence.save(
+            draft: draft,
+            editing: nil,
+            in: context,
+            performSave: { context in
+                try context.save()
+                successfulSaves += 1
+            }
+        )
+
+        XCTAssertEqual(successfulSaves, 1)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<EquipmentItem>()).map(\.name), ["Retry Scope"])
     }
 
     func testNakedEyeTargetMatchesBuiltInCapability() {
@@ -646,6 +948,114 @@ final class EquipmentTests: XCTestCase {
         XCTAssertEqual(result?.bestCapability, .nakedEye)
         XCTAssertEqual(result?.level, .excellent)
         XCTAssertEqual(result?.observingMode, .nakedEye)
+    }
+
+    func testNakedEyeSemanticStatesMapWithoutDisplayStringLogic() {
+        let matcher = EquipmentMatchingService()
+
+        XCTAssertEqual(catalogTarget(id: "m31").equipmentRequirement.nakedEyeSuitability, .challenging)
+        XCTAssertEqual(matcher.match(target: catalogTarget(id: "m31"), using: [.nakedEye])?.level, .challenging)
+        XCTAssertEqual(catalogTarget(id: "m42", deepSkyObjectType: .diffuseNebula).equipmentRequirement.nakedEyeSuitability, .challenging)
+        XCTAssertEqual(matcher.match(target: catalogTarget(id: "m42", deepSkyObjectType: .diffuseNebula), using: [.nakedEye])?.level, .challenging)
+        XCTAssertEqual(catalogTarget(id: "m45", deepSkyObjectType: .openCluster).equipmentRequirement.nakedEyeSuitability, .preferred)
+        XCTAssertEqual(matcher.match(target: catalogTarget(id: "m45", deepSkyObjectType: .openCluster), using: [.nakedEye])?.level, .excellent)
+    }
+
+    func testUnreviewedMarginalTargetsRemainUnsupportedForNakedEye() {
+        let matcher = EquipmentMatchingService()
+        for (id, subtype) in [
+            ("m13", DeepSkyObjectType.globularCluster),
+            ("m5", .globularCluster),
+            ("double-cluster", .openCluster),
+            ("m33", .galaxy),
+            ("m92", .globularCluster)
+        ] {
+            let target = catalogTarget(id: id, deepSkyObjectType: subtype)
+            XCTAssertEqual(target.equipmentRequirement.nakedEyeSuitability, .unsupported, id)
+            XCTAssertEqual(matcher.match(target: target, using: [.nakedEye])?.level, .poor, id)
+        }
+    }
+
+    func testBinocularMagnificationBoundsAndOutsideValuesChangeSuitability() {
+        let matcher = EquipmentMatchingService()
+        let target = catalogTarget(id: "m45", deepSkyObjectType: .openCluster)
+
+        XCTAssertEqual(matcher.match(target: target, using: [capability(name: "7×50", type: .binoculars, magnification: 7, aperture: 50)])?.level, .excellent)
+        XCTAssertEqual(matcher.match(target: target, using: [capability(name: "10×50", type: .binoculars, magnification: 10, aperture: 50)])?.level, .excellent)
+        XCTAssertEqual(matcher.match(target: target, using: [capability(name: "Low", type: .binoculars, magnification: 6.99, aperture: 50)])?.reason, .binocularMagnificationTooLow)
+        XCTAssertEqual(matcher.match(target: target, using: [capability(name: "High", type: .binoculars, magnification: 10.01, aperture: 50)])?.reason, .binocularMagnificationTooHigh)
+        XCTAssertEqual(matcher.match(target: target, using: [capability(name: "Low", type: .binoculars, magnification: 6.99, aperture: 50)])?.level, .challenging)
+        XCTAssertEqual(matcher.match(target: target, using: [capability(name: "High", type: .binoculars, magnification: 10.01, aperture: 50)])?.level, .challenging)
+    }
+
+    func testMissingAndInvalidBinocularMagnificationAreChallengingWithAccurateReason() {
+        let target = catalogTarget(id: "m45", deepSkyObjectType: .openCluster)
+        for value in [nil, 0, -1, .nan, .infinity] as [Double?] {
+            let result = EquipmentMatchingService().match(
+                target: target,
+                using: [capability(name: "Unknown", type: .binoculars, magnification: value, aperture: 50)]
+            )
+            XCTAssertEqual(result?.level, .challenging)
+            XCTAssertEqual(result?.reason, .binocularMagnificationUnknown)
+            XCTAssertTrue(result?.explanation.contains("valid binocular magnification") == true)
+        }
+    }
+
+    func testApertureAndMagnificationLimitationsAreEvaluatedIndependently() {
+        let target = catalogTarget(id: "m45", deepSkyObjectType: .openCluster)
+        let adequateApertureBadPower = capability(name: "20×50", type: .binoculars, magnification: 20, aperture: 50)
+        let inadequateApertureGoodPower = capability(name: "8×20", type: .binoculars, magnification: 8, aperture: 20)
+
+        XCTAssertEqual(EquipmentMatchingService().match(target: target, using: [adequateApertureBadPower])?.reason, .binocularMagnificationTooHigh)
+        XCTAssertEqual(EquipmentMatchingService().match(target: target, using: [inadequateApertureGoodPower])?.reason, .apertureLimited)
+    }
+
+    func testMultipleBinocularsChooseSemanticFitIndependentOfInputOrderAndNames() {
+        let target = catalogTarget(id: "m45", deepSkyObjectType: .openCluster)
+        let goodID = EquipmentCapabilityID.savedEquipment(UUID())
+        let poorID = EquipmentCapabilityID.savedEquipment(UUID())
+        let good = capability(id: goodID, name: "Zulu", type: .binoculars, magnification: 8, aperture: 50)
+        let poor = capability(id: poorID, name: "Alpha", type: .binoculars, magnification: 20, aperture: 50)
+        let matcher = EquipmentMatchingService()
+
+        XCTAssertEqual(matcher.match(target: target, using: [poor, good])?.bestCapability.id, goodID)
+        XCTAssertEqual(matcher.match(target: target, using: [good, poor])?.bestCapability.id, goodID)
+        XCTAssertTrue(matcher.match(target: target, using: [poor, good])?.explanation.hasPrefix("Best selected match") == true)
+    }
+
+    func testVerifiedTargetRequirementOverridesAndDeferrals() {
+        let m30 = catalogTarget(id: "m30", deepSkyObjectType: .globularCluster).equipmentRequirement
+        let m82 = catalogTarget(id: "m82").equipmentRequirement
+        let m16 = catalogTarget(id: "m16", deepSkyObjectType: .diffuseNebula).equipmentRequirement
+        let m64 = catalogTarget(id: "m64").equipmentRequirement
+        let m20 = catalogTarget(id: "m20", deepSkyObjectType: .diffuseNebula).equipmentRequirement
+        let albireo = catalogTarget(id: "albireo", deepSkyObjectType: .doubleStar).equipmentRequirement
+        let epsilon = catalogTarget(id: "epsilon-lyrae", deepSkyObjectType: .doubleStar).equipmentRequirement
+
+        XCTAssertEqual(m30.binocularSuitability, .practical)
+        XCTAssertEqual(m30.practicalBinocularApertureMillimeters, 50)
+        XCTAssertEqual(m82.binocularSuitability, .practical)
+        XCTAssertEqual(m16.practicalBinocularApertureMillimeters, 42)
+        XCTAssertEqual(m64.binocularSuitability, .unsuitable)
+        XCTAssertEqual(m64.practicalVisualApertureMillimeters, 100)
+        XCTAssertEqual(m64.practicalSmartEAAApertureMillimeters, 40)
+        XCTAssertEqual(m20.binocularSuitability, .practical)
+        XCTAssertEqual(m20.preferredBinocularMagnification, 15...20)
+        XCTAssertEqual(m20.practicalBinocularApertureMillimeters, 70)
+        XCTAssertEqual(albireo.practicalVisualApertureMillimeters, 50)
+        XCTAssertEqual(albireo.preferredVisualApertureMillimeters, 50)
+        XCTAssertFalse(albireo.magnificationBenefit)
+        XCTAssertEqual(epsilon.practicalVisualApertureMillimeters, 75)
+        XCTAssertEqual(epsilon.preferredVisualApertureMillimeters, 100)
+    }
+
+    func testM20SixteenBySeventyIsGoodButNeverExcellent() {
+        let target = catalogTarget(id: "m20", deepSkyObjectType: .diffuseNebula)
+        let tenByFifty = capability(name: "10×50", type: .binoculars, magnification: 10, aperture: 50)
+        let sixteenBySeventy = capability(name: "16×70", type: .binoculars, magnification: 16, aperture: 70)
+
+        XCTAssertEqual(EquipmentMatchingService().match(target: target, using: [tenByFifty])?.level, .challenging)
+        XCTAssertEqual(EquipmentMatchingService().match(target: target, using: [sixteenBySeventy])?.level, .good)
     }
 
     func testWideTargetPrefersBinocularsOverLargerVisualTelescope() {
@@ -852,7 +1262,7 @@ final class EquipmentTests: XCTestCase {
         XCTAssertEqual(result?.reason, .framingLimited)
         XCTAssertEqual(
             result?.explanation,
-            "Good for electronically assisted observing with your Large Smart Scope. This broad target may require a wider field than the equipment provides."
+            "Using “Large Smart Scope”: Good for electronically assisted observing. This broad target may require a wider field than the equipment provides."
         )
     }
 
@@ -1202,11 +1612,11 @@ final class EquipmentTests: XCTestCase {
 
         XCTAssertEqual(
             visualExplanation,
-            "Excellent for visual observing with your Heritage P150. Useful magnification can reveal more detail."
+            "Using “Heritage P150”: Excellent for visual observing. Useful magnification can reveal more detail."
         )
         XCTAssertEqual(
             electronicExplanation,
-            "Good for electronically assisted observing with your Seestar S30 Pro. Electronic assistance is especially well suited to this target."
+            "Using “Seestar S30 Pro”: Good for electronically assisted observing. Electronic capture can reveal faint structure that is difficult to see visually."
         )
         XCTAssertFalse(visualExplanation?.localizedCaseInsensitiveContains("match") == true)
         XCTAssertFalse(electronicExplanation?.localizedCaseInsensitiveContains("match") == true)
@@ -1340,7 +1750,8 @@ final class EquipmentTests: XCTestCase {
 
     private func catalogTarget(
         id: String,
-        type: ObservableTargetType = .deepSky
+        type: ObservableTargetType = .deepSky,
+        deepSkyObjectType: DeepSkyObjectType = .galaxy
     ) -> ObservableTarget {
         ObservableTarget(
             id: id,
@@ -1348,7 +1759,7 @@ final class EquipmentTests: XCTestCase {
             type: type,
             preferredEquipment: .telescope,
             difficulty: 0.5,
-            deepSkyObjectType: type == .deepSky ? .galaxy : nil
+            deepSkyObjectType: type == .deepSky ? deepSkyObjectType : nil
         )
     }
 
@@ -1367,4 +1778,8 @@ final class EquipmentTests: XCTestCase {
             summary: "Test recommendation."
         )
     }
+}
+
+private enum EquipmentPersistenceTestError: Error {
+    case rejected
 }

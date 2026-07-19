@@ -10,8 +10,6 @@ enum TargetIntentPresentation {
     }
 
     static func detailGuidance(for intent: TargetObservingIntent) -> String? {
-        showsBadge(for: intent)
-            ? "Challenge target: best from darker skies; low surface brightness may make it difficult from suburbs."
-            : nil
+        nil
     }
 }

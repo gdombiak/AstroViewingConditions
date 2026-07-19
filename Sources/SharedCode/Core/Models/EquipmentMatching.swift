@@ -19,11 +19,18 @@ public enum EquipmentFitObservingMode: Sendable, Hashable {
 }
 
 public enum EquipmentFitReason: Sendable, Hashable {
-    case nakedEye
+    case nakedEyePreferred
+    case nakedEyeChallenging
+    case nakedEyeUnsupported
     case wideField
     case preferredAperture
     case practicalAperture
     case magnification
+    case binocularMagnificationInRange
+    case binocularMagnificationTooLow
+    case binocularMagnificationTooHigh
+    case binocularMagnificationUnknown
+    case apertureAndMagnificationLimited
     case electronicAssistance
     case electronicSupport
     case apertureLimited
@@ -67,7 +74,7 @@ public struct EquipmentMatchingService: Sendable {
             level: best.level,
             observingMode: best.mode,
             reason: best.reason,
-            explanation: explanation(for: best)
+            explanation: explanation(for: best, isBestSelectedMatch: selectedCapabilities.count > 1)
         )
     }
 
@@ -77,11 +84,15 @@ public struct EquipmentMatchingService: Sendable {
         requirement: TargetEquipmentRequirement
     ) -> Candidate {
         guard let type = capability.type else {
-            let supportsNakedEye = requirement.nakedEyeSuitable
-            let level: EquipmentFitLevel = supportsNakedEye
-                ? (target.type == .planet ? .good : .excellent)
-                : .poor
-            return Candidate(capability: capability, level: level, mode: .nakedEye, reason: .nakedEye, preference: supportsNakedEye ? 60 : 0)
+            switch requirement.nakedEyeSuitability {
+            case .unsupported:
+                return Candidate(capability: capability, level: .poor, mode: .nakedEye, reason: .nakedEyeUnsupported, preference: 0)
+            case .challenging:
+                return Candidate(capability: capability, level: .challenging, mode: .nakedEye, reason: .nakedEyeChallenging, preference: 30)
+            case .preferred:
+                let level: EquipmentFitLevel = target.type == .planet ? .good : .excellent
+                return Candidate(capability: capability, level: level, mode: .nakedEye, reason: .nakedEyePreferred, preference: 60)
+            }
         }
 
         switch type {
@@ -94,18 +105,36 @@ public struct EquipmentMatchingService: Sendable {
                   let preferredAperture = requirement.preferredBinocularApertureMillimeters else {
                 return Candidate(capability: capability, level: .challenging, mode: .visual, reason: .unknownRequirement, preference: 20)
             }
-            let magnificationFits = requirement.preferredBinocularMagnification.map { range in
-                guard let magnification = capability.magnification, magnification.isFinite, magnification > 0 else { return false }
-                return range.contains(magnification)
-            } ?? false
+            let magnificationFit = binocularMagnificationFit(
+                capability.magnification,
+                preferredRange: requirement.preferredBinocularMagnification
+            )
             guard aperture >= practicalAperture else {
-                return Candidate(capability: capability, level: .challenging, mode: .visual, reason: .apertureLimited, preference: 30)
+                let reason: EquipmentFitReason = magnificationFit == .inRange
+                    ? .apertureLimited
+                    : .apertureAndMagnificationLimited
+                return Candidate(capability: capability, level: .challenging, mode: .visual, reason: reason, preference: 30)
+            }
+            guard magnificationFit == .inRange else {
+                return Candidate(
+                    capability: capability,
+                    level: .challenging,
+                    mode: .visual,
+                    reason: reason(for: magnificationFit),
+                    preference: 40
+                )
             }
             let isPreferred = requirement.binocularSuitability == .preferred
-                && magnificationFits
                 && aperture >= preferredAperture
             let level: EquipmentFitLevel = isPreferred ? .excellent : .good
-            let reason: EquipmentFitReason = requirement.framing == .veryWide || requirement.framing == .wide ? .wideField : .magnification
+            let reason: EquipmentFitReason
+            if requirement.framing == .veryWide || requirement.framing == .wide {
+                reason = .wideField
+            } else if aperture >= preferredAperture {
+                reason = .binocularMagnificationInRange
+            } else {
+                reason = .practicalAperture
+            }
             return Candidate(capability: capability, level: level, mode: .visual, reason: reason, preference: isPreferred ? 90 : 65)
 
         case .visualTelescope:
@@ -171,29 +200,74 @@ public struct EquipmentMatchingService: Sendable {
         framing == .veryWide || framing == .wide
     }
 
-    private func explanation(for candidate: Candidate) -> String {
-        let capabilityName = "your \(candidate.capability.displayName)"
+    private func binocularMagnificationFit(
+        _ magnification: Double?,
+        preferredRange: ClosedRange<Double>?
+    ) -> BinocularMagnificationFit {
+        guard let preferredRange else { return .unknown }
+        guard let magnification, magnification.isFinite, magnification > 0 else { return .unknown }
+        if magnification < preferredRange.lowerBound { return .tooLow }
+        if magnification > preferredRange.upperBound { return .tooHigh }
+        return .inRange
+    }
+
+    private func reason(for fit: BinocularMagnificationFit) -> EquipmentFitReason {
+        switch fit {
+        case .inRange: return .binocularMagnificationInRange
+        case .tooLow: return .binocularMagnificationTooLow
+        case .tooHigh: return .binocularMagnificationTooHigh
+        case .unknown: return .binocularMagnificationUnknown
+        }
+    }
+
+    private func explanation(for candidate: Candidate, isBestSelectedMatch: Bool) -> String {
+        let bestPrefix = isBestSelectedMatch ? "Best selected match — " : ""
         let prefix: String
-        switch candidate.mode {
-        case .nakedEye: prefix = "\(candidate.level.displayName) for naked-eye observing."
-        case .visual: prefix = "\(candidate.level.displayName) for visual observing with \(capabilityName)."
-        case .electronicallyAssisted: prefix = "\(candidate.level.displayName) for electronically assisted observing with \(capabilityName)."
+        if candidate.mode == .nakedEye {
+            prefix = "\(bestPrefix)\(candidate.level.displayName) for naked-eye observing."
+        } else {
+            let mode = candidate.mode == .visual ? "visual observing" : "electronically assisted observing"
+            prefix = "\(bestPrefix)Using “\(candidate.capability.displayName)”: \(candidate.level.displayName) for \(mode)."
         }
         switch candidate.reason {
-        case .wideField: return "\(prefix) A wide field frames this target well."
+        case .nakedEyeChallenging:
+            return "\(prefix) Detection requires favorable darkness and does not provide a detailed view."
+        case .nakedEyeUnsupported:
+            return "\(prefix) Optical equipment is needed for a useful view."
+        case .wideField:
+            return "\(prefix) Its magnification is within the preferred range, and the binocular view suits this broad target."
+        case .preferredAperture:
+            return "\(prefix) Its aperture meets the preferred requirement."
+        case .practicalAperture:
+            return candidate.capability.type == .binoculars
+                ? "\(prefix) Its aperture is sufficient and its magnification is within the preferred range."
+                : "\(prefix) Its aperture meets the practical requirement."
         case .apertureLimited:
             return candidate.mode == .electronicallyAssisted
                 ? "\(prefix) More aperture may improve the result."
                 : "\(prefix) More aperture may make the visual view easier."
+        case .apertureAndMagnificationLimited:
+            return "\(prefix) More aperture and a magnification within the target's preferred range would make detection easier."
         case .framingLimited:
             return candidate.mode == .electronicallyAssisted
                 ? "\(prefix) This broad target may require a wider field than the equipment provides."
                 : "\(prefix) A telescope may not provide the field needed to frame this target."
-        case .electronicAssistance: return "\(prefix) Electronic assistance is especially well suited to this target."
-        case .electronicSupport: return "\(prefix) Electronic assistance supports this target."
+        case .electronicAssistance: return "\(prefix) Electronic capture can reveal faint structure that is difficult to see visually."
+        case .electronicSupport: return "\(prefix) Electronic capture can build a clearer view of this target."
         case .unknownRequirement: return "\(prefix) Equipment requirements are not yet cataloged for this target."
         case .magnification: return "\(prefix) Useful magnification can reveal more detail."
-        default: return prefix
+        case .binocularMagnificationInRange:
+            return "\(prefix) Its magnification is within the preferred range."
+        case .binocularMagnificationTooLow:
+            return "\(prefix) Its magnification is below the target's preferred range."
+        case .binocularMagnificationTooHigh:
+            return "\(prefix) Its magnification is above the target's preferred range and may make the view harder to hold or frame."
+        case .binocularMagnificationUnknown:
+            return "\(prefix) Add a valid binocular magnification to assess the view accurately."
+        case .modeMismatch:
+            return "\(prefix) This observing mode is not suitable for the target."
+        case .nakedEyePreferred:
+            return prefix
         }
     }
 
@@ -206,6 +280,13 @@ public struct EquipmentMatchingService: Sendable {
 
         var apertureMillimeters: Double { capability.apertureMillimeters ?? 0 }
         var magnification: Double { capability.magnification ?? 0 }
+    }
+
+    private enum BinocularMagnificationFit: Equatable {
+        case inRange
+        case tooLow
+        case tooHigh
+        case unknown
     }
 }
 

@@ -21,8 +21,14 @@ public enum SmartEAASuitability: String, Codable, Sendable, Hashable {
     case preferred
 }
 
+public enum NakedEyeSuitability: String, Codable, Sendable, Hashable {
+    case unsupported
+    case challenging
+    case preferred
+}
+
 public struct TargetEquipmentRequirement: Sendable, Hashable, Codable {
-    public let nakedEyeSuitable: Bool
+    public let nakedEyeSuitability: NakedEyeSuitability
     public let binocularSuitability: BinocularSuitability
     public let preferredBinocularMagnification: ClosedRange<Double>?
     public let practicalBinocularApertureMillimeters: Double?
@@ -36,7 +42,7 @@ public struct TargetEquipmentRequirement: Sendable, Hashable, Codable {
     public let smartEAASuitability: SmartEAASuitability
 
     public init(
-        nakedEyeSuitable: Bool = false,
+        nakedEyeSuitability: NakedEyeSuitability = .unsupported,
         binocularSuitability: BinocularSuitability = .unsuitable,
         preferredBinocularMagnification: ClosedRange<Double>? = nil,
         practicalBinocularApertureMillimeters: Double? = nil,
@@ -49,7 +55,7 @@ public struct TargetEquipmentRequirement: Sendable, Hashable, Codable {
         magnificationBenefit: Bool = false,
         smartEAASuitability: SmartEAASuitability = .poorMatch
     ) {
-        self.nakedEyeSuitable = nakedEyeSuitable
+        self.nakedEyeSuitability = nakedEyeSuitability
         self.binocularSuitability = binocularSuitability
         self.preferredBinocularMagnification = preferredBinocularMagnification
         self.practicalBinocularApertureMillimeters = practicalBinocularApertureMillimeters
@@ -107,10 +113,11 @@ public enum TargetEquipmentRequirements {
     private static func fallback(for target: ObservableTarget) -> TargetEquipmentRequirement {
         switch target.type {
         case .moon:
-            return .init(nakedEyeSuitable: true, binocularSuitability: .practical, preferredBinocularMagnification: 7...12, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 60, preferredVisualApertureMillimeters: 100, practicalSmartEAAApertureMillimeters: 30, preferredSmartEAAApertureMillimeters: 50, framing: .medium, magnificationBenefit: true, smartEAASuitability: .supported)
+            return .init(nakedEyeSuitability: .preferred, binocularSuitability: .practical, preferredBinocularMagnification: 7...12, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 60, preferredVisualApertureMillimeters: 100, practicalSmartEAAApertureMillimeters: 30, preferredSmartEAAApertureMillimeters: 50, framing: .medium, magnificationBenefit: true, smartEAASuitability: .supported)
         case .planet:
             let nakedEyePlanetIDs: Set<String> = ["mercury", "venus", "mars", "jupiter", "saturn"]
-            return .init(nakedEyeSuitable: nakedEyePlanetIDs.contains(normalizedID(target.id)), binocularSuitability: .practical, preferredBinocularMagnification: 7...12, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 80, preferredVisualApertureMillimeters: 120, framing: .compact, magnificationBenefit: true)
+            let nakedEyeSuitability: NakedEyeSuitability = nakedEyePlanetIDs.contains(normalizedID(target.id)) ? .preferred : .unsupported
+            return .init(nakedEyeSuitability: nakedEyeSuitability, binocularSuitability: .practical, preferredBinocularMagnification: 7...12, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 80, preferredVisualApertureMillimeters: 120, framing: .compact, magnificationBenefit: true)
         case .deepSky:
             switch target.deepSkyObjectType {
             case .openCluster:
@@ -134,8 +141,9 @@ public enum TargetEquipmentRequirements {
     }
 
     private static let overrides: [String: TargetEquipmentRequirement] = [
-        "m31": .init(binocularSuitability: .preferred, preferredBinocularMagnification: 7...12, practicalBinocularApertureMillimeters: 42, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 75, preferredVisualApertureMillimeters: 120, practicalSmartEAAApertureMillimeters: 25, preferredSmartEAAApertureMillimeters: 50, framing: .veryWide, smartEAASuitability: .preferred),
-        "m45": .init(nakedEyeSuitable: true, binocularSuitability: .preferred, preferredBinocularMagnification: 7...10, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 60, preferredVisualApertureMillimeters: 80, practicalSmartEAAApertureMillimeters: 25, preferredSmartEAAApertureMillimeters: 40, framing: .veryWide, smartEAASuitability: .supported),
+        "m31": .init(nakedEyeSuitability: .challenging, binocularSuitability: .preferred, preferredBinocularMagnification: 7...12, practicalBinocularApertureMillimeters: 42, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 75, preferredVisualApertureMillimeters: 120, practicalSmartEAAApertureMillimeters: 25, preferredSmartEAAApertureMillimeters: 50, framing: .veryWide, smartEAASuitability: .preferred),
+        "m42": .init(nakedEyeSuitability: .challenging, binocularSuitability: .practical, preferredBinocularMagnification: 7...12, practicalBinocularApertureMillimeters: 42, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 75, preferredVisualApertureMillimeters: 150, practicalSmartEAAApertureMillimeters: 40, preferredSmartEAAApertureMillimeters: 70, framing: .wide, smartEAASuitability: .preferred),
+        "m45": .init(nakedEyeSuitability: .preferred, binocularSuitability: .preferred, preferredBinocularMagnification: 7...10, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 60, preferredVisualApertureMillimeters: 80, practicalSmartEAAApertureMillimeters: 25, preferredSmartEAAApertureMillimeters: 40, framing: .veryWide, smartEAASuitability: .supported),
         "double-cluster": .init(binocularSuitability: .preferred, preferredBinocularMagnification: 7...12, practicalBinocularApertureMillimeters: 42, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 60, preferredVisualApertureMillimeters: 90, practicalSmartEAAApertureMillimeters: 25, preferredSmartEAAApertureMillimeters: 40, framing: .wide, smartEAASuitability: .supported),
         "m36": .init(binocularSuitability: .practical, preferredBinocularMagnification: 7...12, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 60, preferredVisualApertureMillimeters: 100, practicalSmartEAAApertureMillimeters: 25, preferredSmartEAAApertureMillimeters: 40, framing: .medium, smartEAASuitability: .supported),
         "m38": .init(binocularSuitability: .preferred, preferredBinocularMagnification: 7...12, practicalBinocularApertureMillimeters: 42, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 60, preferredVisualApertureMillimeters: 90, practicalSmartEAAApertureMillimeters: 25, preferredSmartEAAApertureMillimeters: 40, framing: .wide, smartEAASuitability: .supported),
@@ -143,12 +151,16 @@ public enum TargetEquipmentRequirements {
         "m51": .init(binocularSuitability: .unsuitable, practicalVisualApertureMillimeters: 150, preferredVisualApertureMillimeters: 250, practicalSmartEAAApertureMillimeters: 40, preferredSmartEAAApertureMillimeters: 70, framing: .medium, smartEAASuitability: .preferred),
         "m101": .init(binocularSuitability: .unsuitable, practicalVisualApertureMillimeters: 150, preferredVisualApertureMillimeters: 250, practicalSmartEAAApertureMillimeters: 40, preferredSmartEAAApertureMillimeters: 70, framing: .wide, smartEAASuitability: .preferred),
         "m33": .init(binocularSuitability: .practical, preferredBinocularMagnification: 7...10, practicalBinocularApertureMillimeters: 50, preferredBinocularApertureMillimeters: 70, practicalVisualApertureMillimeters: 125, preferredVisualApertureMillimeters: 200, practicalSmartEAAApertureMillimeters: 40, preferredSmartEAAApertureMillimeters: 70, framing: .wide, smartEAASuitability: .preferred),
+        "m64": .init(binocularSuitability: .unsuitable, practicalVisualApertureMillimeters: 100, preferredVisualApertureMillimeters: 200, practicalSmartEAAApertureMillimeters: 40, preferredSmartEAAApertureMillimeters: 70, framing: .medium, smartEAASuitability: .preferred),
+        "m20": .init(binocularSuitability: .practical, preferredBinocularMagnification: 15...20, practicalBinocularApertureMillimeters: 70, preferredBinocularApertureMillimeters: 70, practicalVisualApertureMillimeters: 75, preferredVisualApertureMillimeters: 150, practicalSmartEAAApertureMillimeters: 40, preferredSmartEAAApertureMillimeters: 70, framing: .wide, smartEAASuitability: .preferred),
+        "albireo": .init(practicalVisualApertureMillimeters: 50, preferredVisualApertureMillimeters: 50, framing: .compact, magnificationBenefit: false),
+        "epsilon-lyrae": .init(practicalVisualApertureMillimeters: 75, preferredVisualApertureMillimeters: 100, framing: .compact, magnificationBenefit: true),
         "m57": .init(binocularSuitability: .unsuitable, practicalVisualApertureMillimeters: 75, preferredVisualApertureMillimeters: 125, practicalSmartEAAApertureMillimeters: 30, preferredSmartEAAApertureMillimeters: 50, framing: .compact, magnificationBenefit: true, smartEAASuitability: .preferred),
         "ngc7009": .init(binocularSuitability: .unsuitable, practicalVisualApertureMillimeters: 100, preferredVisualApertureMillimeters: 150, practicalSmartEAAApertureMillimeters: 30, preferredSmartEAAApertureMillimeters: 50, framing: .compact, magnificationBenefit: true, smartEAASuitability: .preferred),
         "ngc7293": .init(binocularSuitability: .unsuitable, practicalVisualApertureMillimeters: 150, preferredVisualApertureMillimeters: 250, practicalSmartEAAApertureMillimeters: 40, preferredSmartEAAApertureMillimeters: 70, framing: .veryWide, smartEAASuitability: .preferred),
-        "jupiter": .init(nakedEyeSuitable: true, binocularSuitability: .practical, preferredBinocularMagnification: 10...15, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 80, preferredVisualApertureMillimeters: 120, framing: .compact, magnificationBenefit: true),
-        "saturn": .init(nakedEyeSuitable: true, binocularSuitability: .practical, preferredBinocularMagnification: 10...15, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 80, preferredVisualApertureMillimeters: 120, framing: .compact, magnificationBenefit: true),
-        "mars": .init(nakedEyeSuitable: true, binocularSuitability: .practical, preferredBinocularMagnification: 10...15, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 90, preferredVisualApertureMillimeters: 150, framing: .compact, magnificationBenefit: true)
+        "jupiter": .init(nakedEyeSuitability: .preferred, binocularSuitability: .practical, preferredBinocularMagnification: 10...15, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 80, preferredVisualApertureMillimeters: 120, framing: .compact, magnificationBenefit: true),
+        "saturn": .init(nakedEyeSuitability: .preferred, binocularSuitability: .practical, preferredBinocularMagnification: 10...15, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 80, preferredVisualApertureMillimeters: 120, framing: .compact, magnificationBenefit: true),
+        "mars": .init(nakedEyeSuitability: .preferred, binocularSuitability: .practical, preferredBinocularMagnification: 10...15, practicalBinocularApertureMillimeters: 35, preferredBinocularApertureMillimeters: 50, practicalVisualApertureMillimeters: 90, preferredVisualApertureMillimeters: 150, framing: .compact, magnificationBenefit: true)
     ]
 }
 

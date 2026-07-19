@@ -39,10 +39,11 @@ public struct EquipmentCapability: Identifiable, Hashable, Sendable {
 
 #if os(iOS)
 public extension EquipmentItem {
-    var matchingCapability: EquipmentCapability {
-        EquipmentCapability(
+    var matchingCapability: EquipmentCapability? {
+        guard persistedValidation.isAvailable, let type else { return nil }
+        return EquipmentCapability(
             id: .savedEquipment(id),
-            displayName: name,
+            displayName: inventoryDisplayName,
             type: type,
             magnification: magnification,
             apertureMillimeters: apertureMillimeters

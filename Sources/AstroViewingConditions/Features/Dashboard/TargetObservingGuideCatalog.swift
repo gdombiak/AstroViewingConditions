@@ -3,86 +3,112 @@ enum TargetObservingGuideCatalog {
         let guides = [
             TargetObservingGuide(
                 targetID: "double-cluster",
-                whyRecommendedOverride: .withPlacement("The Double Cluster is a rewarding target for this observing window."),
-                findingTips: "Look in Perseus between Cassiopeia and the bright star Mirfak. Scan slowly between both clusters and compare their bright star patterns.",
+                findingTips: "In Perseus, use the line between Cassiopeia and Mirfak to locate the pair, then sweep slowly between the two cluster centers.",
                 bestEquipment: "Use binoculars or a low-power telescope to keep both clusters in view.",
-                observingNotes: "Two rich clusters sit close together in a Milky Way star field, with many bright blue-white stars and dense central concentrations."
+                observingNotes: "Two rich clusters sit close together in a Milky Way star field, with many blue-white stars and dense central concentrations."
             ),
             TargetObservingGuide(
                 targetID: "m27",
-                whyRecommendedOverride: .brightMoon("This large, bright planetary nebula is well placed during this observing window. The bright Moon may reduce contrast, but M27 is still worth trying."),
-                findingTips: "Look in Vulpecula near Sagitta and Cygnus. Compare direct and averted vision to distinguish the dumbbell shape from nearby stars.",
-                bestEquipment: "Use a telescope at low to moderate magnification. A nebula filter may help if available.",
-                observingNotes: "Visually, M27 usually appears as a grayish fuzzy patch with a dumbbell or apple-core shape. Photos show much more color than you should expect at the eyepiece."
+                brightMoonContext: "M27’s brighter central lobes may remain detectable despite the reduced contrast.",
+                findingTips: "Find the arrow-shaped Sagitta inside the Summer Triangle; on a star chart, M27 is roughly 3° north of Gamma Sagittae in neighboring Vulpecula. Use averted vision after centering it.",
+                bestEquipment: "Binoculars can detect it as a fuzzy patch. For visual observing, use a telescope at low to moderate magnification; a UHC filter is the best first choice, while OIII can emphasize inner structure. A Smart/EAA telescope can reveal fainter extent.",
+                observingNotes: "M27 usually appears visually as a gray fuzzy patch with a dumbbell or apple-core shape. Photographs show much more color and extent than an eyepiece view."
             ),
             TargetObservingGuide(
                 targetID: "ngc7009",
-                observingNotes: "Small bright planetary nebula that may look like a tiny blue-green oval; its Saturn-like extensions are subtle visually."
+                findingTips: "In Aquarius, look about 1° west of Nu Aquarii. Start at low power to identify its tiny nonstellar disk, then increase toward 200× only as seeing allows.",
+                bestEquipment: "Use a telescope at moderate to high magnification. Start unfiltered; a UHC or OIII filter can be tried for faint structure. A Smart/EAA telescope can reveal more of its morphology.",
+                observingNotes: "Expect a tiny, bright oval. A blue-green tint is easier for some observers in 150–200 mm telescopes; the ansae are difficult in about 200 mm or more under steady seeing, and their end knots are harder still."
             ),
             TargetObservingGuide(
                 targetID: "m31",
-                whyRecommendedOverride: .withPlacement("Andromeda is a bright, large galaxy worth observing when conditions allow."),
-                observingNotes: "Suburban views may show mostly the bright core rather than the broad, photo-like disk."
+                findingTips: "From Mirach in Andromeda, follow the chain through Mu to Nu Andromedae; M31 lies about 1.5° from Nu. Use averted vision to trace beyond the bright center.",
+                bestEquipment: "Use the naked eye for detection, binoculars for the broad disk and core, or a low-power wide-field telescope. A Smart/EAA telescope can reveal more of its faint extent.",
+                observingNotes: "The bright core and an elongated diffuse disk are the normal visual result. The outer disk and dust lanes are much subtler than they appear in photographs."
             ),
             TargetObservingGuide(
                 targetID: "albireo",
-                whyRecommendedOverride: .withPlacement("Albireo is a prominent double star."),
-                observingNotes: "Look for the strong color contrast between the brighter golden star and its fainter blue companion."
+                findingTips: "Follow the long axis of Cygnus from Deneb to the star at the opposite end, then center Albireo before increasing magnification.",
+                bestEquipment: "A small telescope at approximately 25–50× is sufficient to separate the pair.",
+                observingNotes: "Once resolved, the brighter star usually appears golden and the fainter companion blue."
             ),
             TargetObservingGuide(
                 targetID: "epsilon-lyrae",
-                whyRecommendedOverride: .withPlacement("Epsilon Lyrae is a compact double-star challenge."),
-                observingNotes: "Each visible component can divide into a close pair, creating the Double Double when conditions permit."
+                findingTips: "Find Vega, then center the nearby naked-eye companion. After centering the wide pair, increase magnification gradually during steady seeing without assuming both close pairs will split.",
+                bestEquipment: "Use a telescope of about 75 mm aperture or more; 100 mm is preferred, with approximately 100× as a practical starting point.",
+                observingNotes: "The two obvious stars each contain a much closer pair, giving this system its Double Double name. Resolving all four components is a demanding visual result, not a guarantee."
             ),
             TargetObservingGuide(
                 targetID: "m45",
-                whyRecommendedOverride: .withPlacement("The Pleiades is a bright, broad open cluster."),
-                bestEquipment: "Use binoculars or a low-power telescope to keep the whole cluster in view.",
-                observingNotes: "A bright, broad pattern of blue-white stars; the faint reflection nebulosity seen in photographs is usually subtle visually."
+                findingTips: "Locate the compact Seven Sisters pattern in Taurus. To test suspected haze near Merope, move the bright star just outside the field and rule out dew, haze, or dirty optics.",
+                bestEquipment: "Use the naked eye, binoculars, or a very low-power wide-field telescope. Visual nebula filters are not useful for its reflection nebulosity.",
+                observingNotes: "A broad pattern of blue-white stars is the normal visual result. The photographic dust is not normally visible; faint true haze near Merope is an exceptional challenge in roughly a 150 mm (6-inch) telescope at low power, and glare can imitate it."
             ),
             TargetObservingGuide(
                 targetID: "m42",
-                whyRecommendedOverride: .withPlacement("The Orion Nebula is a bright diffuse nebula."),
-                bestEquipment: "Use binoculars or a telescope. Low to moderate magnification frames the nebula well.",
-                observingNotes: "The nebula appears as a fuzzy gray or gray-green glow. Photographs show much more color and detail than the eyepiece view."
+                findingTips: "Follow Orion’s Belt to the Sword and center its fuzzy middle star. After your eyes adapt, use direct and averted vision to compare the bright center with the fainter wings.",
+                bestEquipment: "Use the naked eye for detection, binoculars for the broad glow, or a telescope for the Trapezium and finer structure. A Smart/EAA telescope can reveal fainter extent.",
+                observingNotes: "Expect a fuzzy gray or gray-green glow with a brighter center; a telescope can show the Trapezium. Photographs reveal far more color and faint structure."
             ),
             TargetObservingGuide(
                 targetID: "m5",
-                whyRecommendedOverride: .withPlacement("M5 is a bright globular cluster."),
-                bestEquipment: "Use a telescope; higher magnification may begin to resolve stars around the edges.",
-                observingNotes: "A bright, compact glow with a granular halo; some outer stars may resolve under favorable conditions."
+                findingTips: "In Serpens, use a star chart to locate M5 near 5 Serpentis. Center the compact glow before increasing magnification and use averted vision on its outskirts.",
+                bestEquipment: "Binoculars can detect its compact glow; a telescope can begin to resolve stars around the edges, and a Smart/EAA telescope can record more of the cluster.",
+                observingNotes: "Expect a bright, compact glow with a granular halo; some outer stars may resolve visually."
             ),
             TargetObservingGuide(
                 targetID: "m3",
-                whyRecommendedOverride: .withPlacement("M3 is a bright globular cluster."),
-                bestEquipment: "Use a telescope; higher magnification may begin to resolve stars around the edges.",
-                observingNotes: "A bright, compact glow with a granular halo; some outer stars may resolve under favorable conditions."
+                findingTips: "Use a star chart to search the region between Arcturus and Cor Caroli. Center the compact glow before increasing magnification and use averted vision on its outskirts.",
+                bestEquipment: "Binoculars can detect its compact glow; a telescope can begin to resolve stars around the edges, and a Smart/EAA telescope can record more of the cluster.",
+                observingNotes: "Expect a bright, compact glow with a granular halo; some outer stars may resolve visually."
             ),
             TargetObservingGuide(
                 targetID: "m16",
-                bestEquipment: "Use a telescope. A nebula filter may help under dark skies.",
-                observingNotes: "The open cluster is the easiest part. Faint surrounding nebulosity may appear under dark skies, but the Pillars of Creation are mainly an imaging and Hubble target."
+                findingTips: "In Serpens, start at Gamma Scuti; on a star chart, M16 lies about 2.5° west-northwest. Shield your eyes from stray light and use averted vision after centering the cluster.",
+                bestEquipment: "Use a telescope or Smart/EAA telescope. For visual observing, try a narrowband UHC filter first; OIII can increase contrast in the brighter inner nebula. H-beta is not recommended.",
+                observingNotes: "The embedded star cluster is much easier to detect than the faint gray nebula. The Pillars of Creation are not a routine visual expectation; imaging reveals them and much more of the surrounding gas."
             ),
             TargetObservingGuide(
                 targetID: "m20",
-                bestEquipment: "Use a telescope. A nebula filter may help under dark skies.",
-                observingNotes: "Faint gray nebulosity and dark lanes may appear under good dark skies, but do not expect the vivid colors seen in photographs."
+                findingTips: "Find M8, then move a little more than 1° celestial north to M20. Use averted vision to trace the nebula and its dark lanes after centering it.",
+                bestEquipment: "Use 16×70-class binoculars for a challenging visual attempt or a telescope for more dependable visual observing. Try a UHC filter first and compare it with the unfiltered view; use a Smart/EAA telescope for electronically assisted observing.",
+                observingNotes: "Smaller binoculars may show only the stars and a weak glow. In a telescope, expect faint gray nebulosity divided by dark lanes, not the vivid red and blue seen in photographs."
             ),
             TargetObservingGuide(
                 targetID: "m33",
-                whyRecommendedOverride: .withPlacement("This is a rewarding dark-sky challenge with low surface brightness, and it can be difficult from suburban skies."),
-                bestEquipment: "A wide-field telescope or smart telescope is most helpful; dark, moonless skies are important.",
-                observingNotes: "Expect a faint, diffuse glow with subtle spiral structure rather than a photo-like disk."
+                findingTips: "Use the sharp tip of Triangulum as the starting point; M33 lies about 4° away. Sweep a wide field slowly and use averted vision to secure the diffuse glow.",
+                bestEquipment: "Use binoculars or a low-power wide-field telescope for the broad galaxy, or a Smart/EAA telescope to reveal more structure.",
+                observingNotes: "Expect a faint, diffuse glow. Hints of spiral structure are exceptional visually, while Smart/EAA observation can reveal the arms more clearly."
             ),
             TargetObservingGuide(
                 targetID: "m101",
-                whyRecommendedOverride: .withPlacement("This is a rewarding dark-sky challenge with low surface brightness, and it can be difficult from suburban skies."),
-                bestEquipment: "A wide-field telescope or smart telescope is most helpful; dark, moonless skies are important.",
-                observingNotes: "Expect a faint, diffuse glow with subtle spiral structure rather than a photo-like disk."
+                findingTips: "Use Mizar and Alkaid in the Big Dipper as two corners of an approximate equilateral triangle, then sweep the third-corner region slowly with averted vision.",
+                bestEquipment: "Use a low-power wide-field telescope for visual observation or a Smart/EAA telescope for the galaxy’s faint extent.",
+                observingNotes: "Expect a very faint diffuse patch with an uneven or slightly brighter center. Spiral arms are exceptional visually but become clearer with Smart/EAA observation."
+            ),
+            TargetObservingGuide(
+                targetID: "m57",
+                findingTips: "In Lyra, sweep a little more than halfway from Sulafat toward Sheliak. At low power it can resemble an out-of-focus star; center it before increasing magnification.",
+                bestEquipment: "Use a telescope, starting unfiltered. A UHC or OIII filter can modestly improve visual contrast, while a Smart/EAA telescope can reveal fainter structure.",
+                observingNotes: "Expect a tiny, dim gray smoke ring with a darker center in a sufficient telescope. The strong color and fine structure in photographs are not normal visual expectations."
+            ),
+            TargetObservingGuide(
+                targetID: "ngc7293",
+                findingTips: "In Aquarius, use a star chart to find Upsilon Aquarii; the Helix lies about 1.2° west. Sweep at low power with averted vision because its light is spread across a large area.",
+                bestEquipment: "Use a low-power wide-field telescope. An OIII filter is usually the strongest visual choice, with UHC also effective; a Smart/EAA telescope can reveal fainter extent and structure.",
+                observingNotes: "Expect a very large, diffuse gray oval or ring with a darker center in a good visual view. Photographs show much more color and intricate structure."
+            ),
+            TargetObservingGuide(
+                targetID: "m92",
+                findingTips: "In Hercules, use a star chart to find Pi Herculis; M92 lies about one binocular field to its celestial north. Center the compact glow before increasing magnification.",
+                bestEquipment: "Binoculars can detect its compact glow; a telescope can begin to resolve outer stars, and a Smart/EAA telescope can record more of the cluster.",
+                observingNotes: "Binoculars show a compact fuzzy glow. A telescope reveals a bright concentrated core and can make the outer halo look granular or partly resolved."
             ),
             TargetObservingGuide(
                 targetID: "jupiter",
-                observingNotes: "Look for dark cloud bands across the disk; finer features may appear only briefly."
+                findingTips: "Use the live direction and altitude to locate the bright planet, then wait for brief moments of steady seeing before judging fine detail.",
+                bestEquipment: "Binoculars can show the four Galilean moons; use a telescope for the disk and cloud bands.",
+                observingNotes: "The disk commonly shows two dark equatorial cloud bands; finer features may appear only briefly."
             ),
             TargetObservingGuide(
                 targetID: "saturn",
@@ -94,6 +120,8 @@ enum TargetObservingGuideCatalog {
             ),
             TargetObservingGuide(
                 targetID: "venus",
+                findingTips: "Use the live direction and altitude to locate Venus, then view it at low to moderate power and wait for steadier moments to judge its phase and limb.",
+                bestEquipment: "Use the naked eye to locate Venus and a telescope to see its phase.",
                 observingNotes: "Venus is intensely bright and shows phases, but its cloud-covered disk has little visual surface detail."
             )
         ]

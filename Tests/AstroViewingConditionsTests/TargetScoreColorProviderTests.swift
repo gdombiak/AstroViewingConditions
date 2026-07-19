@@ -84,6 +84,20 @@ final class TargetScoreColorProviderTests: XCTestCase {
         XCTAssertLessThan(backgroundComponents[0], 0.05)
     }
 
+    func testUnavailableEquipmentRowUsesPaletteCautionColor() throws {
+        let normal = try rgbComponents(of: EquipmentRowPresentation.unavailableColor(palette: .normal))
+        let normalCaution = try rgbComponents(of: AppPalette.normal.statusColor(.caution))
+        let field = try rgbComponents(of: EquipmentRowPresentation.unavailableColor(palette: .field))
+        let fieldCaution = try rgbComponents(of: AppPalette.field.statusColor(.caution))
+
+        XCTAssertEqual(normal.0, normalCaution.0, accuracy: 0.000_1)
+        XCTAssertEqual(normal.1, normalCaution.1, accuracy: 0.000_1)
+        XCTAssertEqual(normal.2, normalCaution.2, accuracy: 0.000_1)
+        XCTAssertEqual(field.0, fieldCaution.0, accuracy: 0.000_1)
+        XCTAssertEqual(field.1, fieldCaution.1, accuracy: 0.000_1)
+        XCTAssertEqual(field.2, fieldCaution.2, accuracy: 0.000_1)
+    }
+
     func testFieldPrimaryActionHasReadableSemanticContrast() throws {
         let background = try rgbComponents(of: AppPalette.field.primaryActionBackground)
         let label = try rgbComponents(of: AppPalette.field.primaryActionLabel)

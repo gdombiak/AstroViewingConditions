@@ -84,7 +84,7 @@ public struct DashboardView: View {
     }
 
     private var equipmentCapabilities: [EquipmentCapability] {
-        equipmentItems.map(\.matchingCapability)
+        equipmentItems.compactMap(\.matchingCapability)
     }
 
     private var bestTargetsPresentation: BestTargetsListPresentation {
