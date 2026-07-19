@@ -2,6 +2,8 @@ import SharedCode
 import CoreLocation
 import XCTest
 import Foundation
+import UIKit
+import SwiftUI
 @testable import AstroViewingConditions
 
 @MainActor
@@ -705,6 +707,125 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertFalse(sections.flatMap(\.recommendations).contains { $0.score < 45 })
     }
 
+    func testEquipmentSuitabilityRowSummaryUsesLevelAndEquipmentName() {
+        XCTAssertEqual(
+            TargetRecommendationRow.equipmentSuitabilitySummary(
+                level: .excellent,
+                capabilityName: "Heritage P150"
+            ),
+            "Excellent · Heritage P150"
+        )
+        XCTAssertEqual(
+            TargetRecommendationRow.equipmentSuitabilityAccessibilityLabel(
+                level: .good,
+                capabilityName: "Seestar S30 Pro"
+            ),
+            "Equipment suitability: Good with Seestar S30 Pro."
+        )
+    }
+
+    func testEquipmentControlsUseBinocularsIconAndConciseFooter() {
+        XCTAssertEqual(EquipmentSessionSelectorView.equipmentControlIconName, "binoculars")
+        XCTAssertEqual(EquipmentSessionSelectorView.equipmentControlTitle, "Observation Equipment")
+        XCTAssertEqual(
+            EquipmentSessionSelectorView.equipmentControlAccessibilityLabel,
+            EquipmentSessionSelectorView.equipmentControlTitle
+        )
+        XCTAssertEqual(
+            EquipmentSessionSelectorView.equipmentControlAccessibilityHint,
+            "Opens observation equipment and target suitability options."
+        )
+        XCTAssertEqual(
+            EquipmentSessionSelectorView.availableForObservationSectionTitle,
+            "Available for Observation"
+        )
+        XCTAssertEqual(
+            EquipmentSessionSelectorView.minimumSuitabilitySectionTitle,
+            "Target Suitability for Your Equipment"
+        )
+        XCTAssertEqual(EquipmentSessionSelectorView.suitabilityPickerLabel, "Minimum level")
+        XCTAssertEqual(
+            EquipmentSessionSelectorView.suitabilityPickerAccessibilityLabel,
+            "Minimum target suitability for selected equipment"
+        )
+        XCTAssertEqual(
+            EquipmentSessionSelectorView.suitabilityPickerAccessibilityHint,
+            "Choose the lowest equipment suitability level a target must meet to be shown."
+        )
+        XCTAssertEqual(
+            TonightsBestTargetsCard.equipmentControlAccessibilityValue(
+                selectionSummary: "Seestar S30 Pro",
+                minimumFit: .goodOrBetter
+            ),
+            "Seestar S30 Pro. Show targets with Good suitability or better."
+        )
+        XCTAssertEqual(
+            EquipmentSessionSelectorView.footerText,
+            "Targets below this equipment suitability level are hidden. Conditions scores do not change."
+        )
+    }
+
+    func testFieldModeSuitabilityColorsRemainRedOnly() throws {
+        for level in EquipmentFitLevel.allCases {
+            let color = TargetRecommendationRow.suitabilityColor(for: level, palette: .field)
+            let components = try rgbComponents(of: color)
+
+            XCTAssertGreaterThanOrEqual(components.red, components.green)
+            XCTAssertGreaterThanOrEqual(components.red, components.blue)
+        }
+    }
+
+    func testEquipmentFilterEmptyStateCopyAndResetThreshold() {
+        XCTAssertEqual(BestTargetsListView.equipmentFilterEmptyTitle, "No Suitable Targets")
+        XCTAssertEqual(
+            BestTargetsListView.equipmentFilterEmptyDescription,
+            "No targets are suitable enough for the selected equipment and minimum level. Choose a lower level."
+        )
+        XCTAssertEqual(BestTargetsListView.removeEquipmentFilterActionTitle, "Set Suitability to Any")
+        XCTAssertEqual(BestTargetsListView.clearedEquipmentFilterThreshold, .any)
+    }
+
+    func testCategoryEmptyStateStaysGenericWhenCategoryWasAlreadyEmpty() {
+        let unfiltered = BestTargetsListPresentation(recommendations: [
+            Self.makeRecommendation(id: "jupiter", name: "Jupiter", score: 90, type: .planet)
+        ])
+        let filtered = BestTargetsListPresentation(recommendations: [])
+
+        XCTAssertFalse(BestTargetsListView.shouldShowEquipmentFilteredEmptyState(
+            unfilteredPresentation: unfiltered,
+            filteredPresentation: filtered,
+            filter: .deepSky,
+            hasSavedEquipment: true,
+            minimumFit: .goodOrBetter
+        ))
+    }
+
+    private func rgbComponents(of color: SwiftUI.Color) throws -> (red: CGFloat, green: CGFloat, blue: CGFloat) {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+        let uiColor = UIColor(color).resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark))
+
+        XCTAssertTrue(uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha))
+        return (red, green, blue)
+    }
+
+    func testCategoryEmptyStateIdentifiesEquipmentFilteringWhenItRemovesTargets() {
+        let unfiltered = BestTargetsListPresentation(recommendations: [
+            Self.makeRecommendation(id: "m45", name: "Pleiades", score: 90, type: .deepSky)
+        ])
+        let filtered = BestTargetsListPresentation(recommendations: [])
+
+        XCTAssertTrue(BestTargetsListView.shouldShowEquipmentFilteredEmptyState(
+            unfilteredPresentation: unfiltered,
+            filteredPresentation: filtered,
+            filter: .deepSky,
+            hasSavedEquipment: true,
+            minimumFit: .goodOrBetter
+        ))
+    }
+
     func testCurrentTargetRecommendationsUseInjectedServiceOutput() {
         let timeZone = TimeZone(identifier: "America/Los_Angeles")!
         var calendar = Calendar(identifier: .gregorian)
@@ -841,7 +962,8 @@ final class DashboardViewModelTests: XCTestCase {
     private static func makeRecommendation(
         id: String,
         name: String,
-        score: Int
+        score: Int,
+        type: ObservableTargetType = .planet
     ) -> TargetRecommendation {
         let start = Date(timeIntervalSince1970: 1_782_790_000)
         let end = start.addingTimeInterval(3_600)
@@ -849,7 +971,7 @@ final class DashboardViewModelTests: XCTestCase {
             target: ObservableTarget(
                 id: id,
                 name: name,
-                type: .planet,
+                type: type,
                 preferredEquipment: .nakedEye,
                 difficulty: 0.2
             ),

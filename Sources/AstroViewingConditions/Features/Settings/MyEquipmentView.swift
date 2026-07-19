@@ -110,6 +110,7 @@ private struct EquipmentRow: View {
 private struct EquipmentEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.appPalette) private var palette
 
     private let item: EquipmentItem?
     @State private var name: String
@@ -117,7 +118,8 @@ private struct EquipmentEditorView: View {
     @State private var magnification: String
     @State private var aperture: String
     @State private var apertureUnit: EquipmentApertureUnit = .millimeters
-    @State private var validationMessage: String?
+    @State private var fieldErrors: [EquipmentFormField: String] = [:]
+    @State private var saveErrorMessage: String?
 
     init(item: EquipmentItem? = nil) {
         self.item = item
@@ -126,9 +128,9 @@ private struct EquipmentEditorView: View {
         let apertureUnit = item?.apertureUnit ?? .millimeters
         _apertureUnit = State(initialValue: apertureUnit)
         _magnification = State(initialValue: item?.magnification.map { EquipmentFormatting.decimalText($0, locale: .current) } ?? "")
-        _aperture = State(initialValue: item?.apertureMillimeters.map {
+        _aperture = State(initialValue: item.map {
             EquipmentFormatting.apertureInputText(
-                fromMillimeters: $0,
+                fromMillimeters: $0.apertureMillimeters,
                 unit: apertureUnit,
                 locale: .current
             )
@@ -138,21 +140,47 @@ private struct EquipmentEditorView: View {
     var body: some View {
         Form {
             Section {
-                TextField("Name", text: $name)
-                    .textInputAutocapitalization(.words)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(EquipmentFormPresentation.label(for: .name))
+                        .font(.subheadline)
+                    TextField("Seestar S30 Pro", text: $name)
+                        .textInputAutocapitalization(.words)
+                        .accessibilityLabel(EquipmentFormPresentation.nameAccessibilityLabel)
+                        .onChange(of: name) { _, _ in
+                            fieldErrors[.name] = nil
+                        }
+                }
+                fieldError(for: .name)
 
                 Picker("Type", selection: $type) {
                     ForEach(EquipmentType.allCases, id: \.self) { type in
                         Text(type.displayName).tag(type)
                     }
                 }
+                .onChange(of: type) { _, newType in
+                    magnification = EquipmentFormPresentation.magnificationText(
+                        afterChangingTo: newType,
+                        currentText: magnification
+                    )
+                    fieldErrors[.magnification] = nil
+                    fieldErrors[.aperture] = nil
+                }
             }
 
             if type == .binoculars {
                 Section("Optics") {
-                    TextField("Magnification", text: $magnification)
-                        .keyboardType(.decimalPad)
+                    magnificationField
                     apertureFields
+                    if let binocularSizeSummary {
+                        Text(binocularSizeSummary)
+                            .font(.caption)
+                            .appSecondaryForeground()
+                            .accessibilityLabel(
+                                binocularSizeSummary
+                                    .replacingOccurrences(of: "Binocular size: ", with: "Binocular size ")
+                                    .replacingOccurrences(of: "×", with: " by ")
+                            )
+                    }
                 }
             } else if type == .visualTelescope {
                 Section("Optics") {
@@ -161,9 +189,6 @@ private struct EquipmentEditorView: View {
             } else {
                 Section("Optics") {
                     apertureFields
-                    Text("Aperture is optional for Smart / EAA telescopes.")
-                        .font(.caption)
-                        .appSecondaryForeground()
                 }
             }
         }
@@ -181,23 +206,60 @@ private struct EquipmentEditorView: View {
                     .appToolbarButtonStyle()
             }
         }
-        .alert("Cannot Save Equipment", isPresented: validationAlert) {
+        .alert("Cannot Save Equipment", isPresented: saveErrorAlert) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(validationMessage ?? "Check the equipment details and try again.")
+            Text(saveErrorMessage ?? "The equipment could not be saved. Please try again.")
+        }
+    }
+
+    private var magnificationField: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(EquipmentFormPresentation.label(for: .magnification))
+                .font(.subheadline)
+            TextField("10", text: $magnification)
+                .keyboardType(.decimalPad)
+                .accessibilityLabel("Binocular magnification")
+                .accessibilityHint("Enter the first number in a binocular size such as 10 by 50.")
+                .onChange(of: magnification) { _, _ in
+                    fieldErrors[.magnification] = nil
+                }
+            fieldError(for: .magnification)
+            Text("Enter the first number in 10×50 binoculars.")
+                .font(.caption)
+                .appSecondaryForeground()
         }
     }
 
     private var apertureFields: some View {
-        Group {
-            TextField("Aperture", text: $aperture)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(EquipmentFormPresentation.label(for: .aperture))
+                .font(.subheadline)
+            TextField("50", text: $aperture)
                 .keyboardType(.decimalPad)
-            Picker("Unit", selection: $apertureUnit) {
+                .accessibilityLabel("Aperture")
+                .onChange(of: aperture) { _, _ in
+                    fieldErrors[.aperture] = nil
+                }
+            fieldError(for: .aperture)
+
+            if type == .binoculars {
+                Text(EquipmentFormPresentation.binocularApertureHelperText(for: apertureUnit))
+                    .font(.caption)
+                    .appSecondaryForeground()
+            } else if type == .smartTelescope {
+                Text("Enter the aperture of the main astronomical lens or telescope.")
+                    .font(.caption)
+                    .appSecondaryForeground()
+            }
+
+            Picker("Aperture unit", selection: $apertureUnit) {
                 ForEach(EquipmentApertureUnit.allCases, id: \.self) { unit in
                     Text(unit.displayName).tag(unit)
                 }
             }
             .pickerStyle(.segmented)
+            .accessibilityLabel("Aperture unit")
             .onChange(of: apertureUnit) { previousUnit, newUnit in
                 guard let convertedText = EquipmentFormatting.convertedApertureInputText(
                     aperture,
@@ -212,26 +274,65 @@ private struct EquipmentEditorView: View {
         }
     }
 
-    private var validationAlert: Binding<Bool> {
+    private var binocularSizeSummary: String? {
+        EquipmentFormPresentation.binocularSizeSummary(
+            magnificationText: magnification,
+            apertureText: aperture,
+            apertureUnit: apertureUnit,
+            locale: .current
+        )
+    }
+
+    @ViewBuilder
+    private func fieldError(for field: EquipmentFormField) -> some View {
+        if let error = fieldErrors[field] {
+            Text(error)
+                .font(.caption)
+                .foregroundStyle(palette.statusColor(.negative))
+        }
+    }
+
+    private var saveErrorAlert: Binding<Bool> {
         Binding(
-            get: { validationMessage != nil },
-            set: { if !$0 { validationMessage = nil } }
+            get: { saveErrorMessage != nil },
+            set: { if !$0 { saveErrorMessage = nil } }
         )
     }
 
     private func save() {
+        var errors: [EquipmentFormField: String] = [:]
+        let parsedMagnification = numericValue(
+            from: magnification,
+            field: .magnification,
+            errors: &errors
+        )
+        let parsedAperture = numericValue(
+            from: aperture,
+            field: .aperture,
+            errors: &errors
+        )
+
+        for error in EquipmentValidation.validationErrors(
+            name: name,
+            type: type,
+            magnification: parsedMagnification,
+            aperture: parsedAperture,
+            apertureUnit: apertureUnit
+        ) where errors[error.field] == nil {
+            errors[error.field] = error.inlineMessage(for: type)
+        }
+
+        guard errors.isEmpty else {
+            fieldErrors = errors
+            return
+        }
+
         do {
             let draft = try EquipmentDraft(
                 name: name,
                 type: type,
-                magnification: numericValue(
-                    from: magnification,
-                    error: .invalidMagnification
-                ),
-                aperture: numericValue(
-                    from: aperture,
-                    error: .invalidAperture
-                ),
+                magnification: parsedMagnification,
+                aperture: parsedAperture,
                 apertureUnit: apertureUnit
             )
 
@@ -243,23 +344,33 @@ private struct EquipmentEditorView: View {
             try modelContext.save()
             dismiss()
         } catch let error as EquipmentValidationError {
-            validationMessage = error.message
+            fieldErrors = [error.field: error.inlineMessage(for: type)]
         } catch {
-            validationMessage = "The equipment could not be saved. Please try again."
+            print("Failed to save equipment: \(error)")
+            saveErrorMessage = "The equipment could not be saved. Please try again."
         }
     }
 
     private func numericValue(
         from text: String,
-        error: EquipmentValidationError
-    ) throws -> Double? {
+        field: EquipmentFormField,
+        errors: inout [EquipmentFormField: String]
+    ) -> Double? {
         switch EquipmentFormatting.decimalInput(from: text, locale: .current) {
         case .blank:
             return nil
         case let .value(value):
             return value
         case .invalid:
-            throw error
+            if type == .binoculars, EquipmentFormatting.isCombinedBinocularInput(text) {
+                errors[field] = "Enter magnification and aperture in separate fields."
+            } else {
+                let error: EquipmentValidationError = field == .magnification
+                    ? .invalidMagnification
+                    : .invalidAperture
+                errors[field] = error.inlineMessage(for: type)
+            }
+            return nil
         }
     }
 }

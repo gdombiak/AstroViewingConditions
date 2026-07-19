@@ -35,6 +35,14 @@ Each recommendation includes:
 
 The dashboard shows the leading recommendations. Tap **View All** for the complete list, or tap a target to see why it was recommended, finding tips, suggested equipment, and observing notes. Tap the reference image to inspect it full screen. Images are examples for identification and may not resemble the visual appearance through your equipment.
 
+### Equipment Suitability
+
+Manage **My Equipment**—the inventory of equipment you own—in Settings. Choose **Observation Equipment** from the Dashboard Best Targets section, or use the same control in **View All**. It applies to the selected observing date and starts with Naked Eye plus every saved item; choose **All My Equipment**, **Naked Eye Only**, or a custom multi-selection without changing your inventory.
+
+Target summaries and details may show **Equipment Suitability** as **Excellent**, **Good**, **Challenging**, or **Poor**. Visual and electronically assisted (Smart / EAA) guidance are intentionally described separately. Suitability guidance is practical planning help, not a visibility promise: weather, sky darkness, Moon conditions, altitude, obstructions, eyesight, and experience still matter.
+
+**Target Suitability for Your Equipment** controls the lowest equipment suitability level included. **Good**, for example, includes both Good and Excellent targets. **Any** includes all normal Best Targets regardless of equipment suitability. This setting affects which targets are shown in the Dashboard and View All, but does not change Best Targets conditions scores or the relative conditions-based ordering of targets that remain.
+
 ### Difficulty Labels
 
 - **Easy**: Generally conspicuous or forgiving for newer observers.

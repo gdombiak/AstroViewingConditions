@@ -21,11 +21,14 @@ public struct DashboardView: View {
     @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
     @SceneStorage("dashboardSelectedDay") private var storedSelectedDayRawValue: Int = DashboardViewModel.DaySelection.today.rawValue
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
+    @Query(sort: \EquipmentItem.name) private var equipmentItems: [EquipmentItem]
     private let viewModel: DashboardViewModel
     @State private var locationLoader: DashboardLocationLoader
     @State private var showingLocationPicker = false
     @State private var showingBestSpotSearch = false
     @State private var showingAllBestTargets = false
+    @State private var equipmentSessionSelection = EquipmentSessionSelection()
+    @State private var minimumEquipmentFit: EquipmentFitThreshold = .any
     @State private var hasRestoredSelectedDay = false
     @State private var dashboardScrollPosition = ScrollPosition(edge: .top)
     @State private var dashboardScrollCoordinator = DashboardScrollCoordinator()
@@ -79,7 +82,21 @@ public struct DashboardView: View {
     private var orderedSavedLocations: [SavedLocation] {
         SavedLocation.ordered(savedLocations)
     }
-    
+
+    private var equipmentCapabilities: [EquipmentCapability] {
+        equipmentItems.map(\.matchingCapability)
+    }
+
+    private var bestTargetsPresentation: BestTargetsListPresentation {
+        let completePresentation = viewModel.currentBestTargetsPresentation
+        let filteredRecommendations = equipmentSessionSelection.filteredRecommendations(
+            completePresentation.recommendations,
+            inventory: equipmentCapabilities,
+            minimumFit: minimumEquipmentFit
+        )
+        return BestTargetsListPresentation(recommendations: filteredRecommendations)
+    }
+
     private var selectedLocationName: String {
         activeSavedLocation?.name ?? "Astro Conditions"
     }
@@ -171,8 +188,12 @@ public struct DashboardView: View {
             }
             .sheet(isPresented: $showingAllBestTargets) {
                 BestTargetsListView(
-                    presentation: viewModel.currentBestTargetsPresentation,
-                    timeZone: viewModel.displayTimeZone
+                    presentation: bestTargetsPresentation,
+                    timeZone: viewModel.displayTimeZone,
+                    equipmentCapabilities: equipmentCapabilities,
+                    sessionSelection: $equipmentSessionSelection,
+                    minimumFit: $minimumEquipmentFit,
+                    unfilteredPresentation: viewModel.currentBestTargetsPresentation
                 )
                 .adaptiveTargetSheet(horizontalSizeClass: horizontalSizeClass)
             }
@@ -226,6 +247,14 @@ public struct DashboardView: View {
         .onChange(of: savedLocations.map(\.id)) { _, _ in
             locationLoader.repairSelectionIfNeeded(using: savedLocations.map(CachedLocation.init))
         }
+        .onChange(of: equipmentCapabilities.map(\.id)) { previousIDs, currentIDs in
+            equipmentSessionSelection.reconcile(with: equipmentCapabilities)
+            minimumEquipmentFit = EquipmentSessionSelection.minimumFitAfterInventoryTransition(
+                currentMinimumFit: minimumEquipmentFit,
+                previousInventoryIDs: previousIDs,
+                currentInventoryIDs: currentIDs
+            )
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             if viewModel.isDataStale, !viewModel.isLoading, let location = activeLocation {
                 Task {
@@ -249,7 +278,7 @@ public struct DashboardView: View {
     }
     
     private func conditionsContent(conditions: ViewingConditions) -> some View {
-        let bestTargets = viewModel.currentBestTargetsPresentation
+        let bestTargets = bestTargetsPresentation
 
         return ScrollView {
             VStack(spacing: 16) {
@@ -272,6 +301,10 @@ public struct DashboardView: View {
                     timeZone: viewModel.displayTimeZone,
                     nightQualityScore: viewModel.currentNightQuality?.calculatedScore,
                     hasAdditionalTargets: bestTargets.hasAdditionalTargets,
+                    equipmentCapabilities: equipmentCapabilities,
+                    sessionSelection: $equipmentSessionSelection,
+                    minimumFit: $minimumEquipmentFit,
+                    hasUnfilteredVisibleTargets: !viewModel.currentBestTargetsPresentation.sections(for: .all).isEmpty,
                     onViewAll: { showingAllBestTargets = true }
                 )
                 .id(DashboardSection.bestTargets)

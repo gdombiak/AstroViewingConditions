@@ -3,24 +3,38 @@ import SwiftUI
 
 struct TonightsBestTargetsCard: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.appPalette) private var palette
     let recommendations: [TargetRecommendation]
     let timeZone: TimeZone?
     let nightQualityScore: Int?
     let hasAdditionalTargets: Bool
+    let equipmentCapabilities: [EquipmentCapability]
+    @Binding var sessionSelection: EquipmentSessionSelection
+    @Binding var minimumFit: EquipmentFitThreshold
+    let hasUnfilteredVisibleTargets: Bool
     let onViewAll: (() -> Void)?
     @State private var selectedRecommendation: TargetRecommendation?
+    @State private var showingEquipmentSelector = false
 
     init(
         recommendations: [TargetRecommendation],
         timeZone: TimeZone?,
         nightQualityScore: Int?,
         hasAdditionalTargets: Bool = false,
+        equipmentCapabilities: [EquipmentCapability],
+        sessionSelection: Binding<EquipmentSessionSelection>,
+        minimumFit: Binding<EquipmentFitThreshold>,
+        hasUnfilteredVisibleTargets: Bool,
         onViewAll: (() -> Void)? = nil
     ) {
         self.recommendations = recommendations
         self.timeZone = timeZone
         self.nightQualityScore = nightQualityScore
         self.hasAdditionalTargets = hasAdditionalTargets
+        self.equipmentCapabilities = equipmentCapabilities
+        _sessionSelection = sessionSelection
+        _minimumFit = minimumFit
+        self.hasUnfilteredVisibleTargets = hasUnfilteredVisibleTargets
         self.onViewAll = onViewAll
     }
 
@@ -31,6 +45,13 @@ struct TonightsBestTargetsCard: View {
 
     static func showsViewAll(hasAdditionalTargets: Bool) -> Bool {
         hasAdditionalTargets
+    }
+
+    static func equipmentControlAccessibilityValue(
+        selectionSummary: String,
+        minimumFit: EquipmentFitThreshold
+    ) -> String {
+        "\(selectionSummary). \(minimumFit.dashboardAccessibilitySummary)"
     }
 
     var body: some View {
@@ -56,18 +77,19 @@ struct TonightsBestTargetsCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            if !equipmentCapabilities.isEmpty {
+                equipmentControl
+            }
+
             if recommendations.isEmpty {
-                Text("No target recommendations available tonight")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding()
+                emptyState
             } else {
                 VStack(spacing: 8) {
                     ForEach(recommendations.prefix(5)) { recommendation in
                         TargetRecommendationRow(
                             recommendation: recommendation,
-                            timeZone: timeZone
+                            timeZone: timeZone,
+                            equipmentFit: equipmentFit(for: recommendation.target)
                         )
                         .contentShape(Rectangle())
                         .onTapGesture { selectedRecommendation = recommendation }
@@ -82,12 +104,120 @@ struct TonightsBestTargetsCard: View {
         }
         .dashboardCardStyle()
         .sheet(item: $selectedRecommendation) { recommendation in
-            TargetDetailView(recommendation: recommendation, timeZone: timeZone)
+            TargetDetailView(
+                recommendation: recommendation,
+                timeZone: timeZone,
+                equipmentFit: sessionSelection.equipmentFit(
+                    for: recommendation.target,
+                    inventory: equipmentCapabilities
+                )
+            )
                 .adaptiveTargetSheet(
                     horizontalSizeClass: horizontalSizeClass,
                     prefersTallerPresentation: true
                 )
         }
+        .sheet(isPresented: $showingEquipmentSelector) {
+            EquipmentSessionSelectorView(
+                selection: $sessionSelection,
+                inventory: equipmentCapabilities,
+                minimumFit: $minimumFit
+            )
+        }
+    }
+
+    private var equipmentControl: some View {
+        Button {
+            showingEquipmentSelector = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: EquipmentSessionSelectorView.equipmentControlIconName)
+                    .font(.title3)
+                    .foregroundStyle(palette.accent)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(EquipmentSessionSelectorView.equipmentControlTitle)
+                        .font(.subheadline.weight(.semibold))
+                    Text(selectionSummary)
+                        .font(.caption)
+                        .appSecondaryForeground()
+                        .lineLimit(1)
+                    Text(minimumFit.dashboardSummary)
+                        .font(.caption2)
+                        .appSecondaryForeground()
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .appSecondaryForeground()
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(palette.controlBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(palette.border, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(EquipmentSessionSelectorView.equipmentControlAccessibilityLabel)
+        .accessibilityValue(
+            Self.equipmentControlAccessibilityValue(
+                selectionSummary: selectionSummary,
+                minimumFit: minimumFit
+            )
+        )
+        .accessibilityHint(EquipmentSessionSelectorView.equipmentControlAccessibilityHint)
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        if isEquipmentFilterActive {
+            VStack(spacing: 8) {
+                Text(BestTargetsListView.equipmentFilterEmptyTitle)
+                    .font(.subheadline.weight(.semibold))
+                Text(BestTargetsListView.equipmentFilterEmptyDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button(BestTargetsListView.removeEquipmentFilterActionTitle) {
+                    minimumFit = BestTargetsListView.clearedEquipmentFilterThreshold
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+        } else {
+            Text("No target recommendations available tonight")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding()
+        }
+    }
+
+    private var selectionSummary: String {
+        if sessionSelection.mode == .allEquipment {
+            return "All My Equipment"
+        }
+        let capabilities = sessionSelection.selectedCapabilities(from: equipmentCapabilities)
+        if capabilities == [.nakedEye] {
+            return "Naked Eye Only"
+        }
+        return capabilities.map(\.displayName).joined(separator: ", ")
+    }
+
+    private var isEquipmentFilterActive: Bool {
+        !equipmentCapabilities.isEmpty
+            && minimumFit != .any
+            && hasUnfilteredVisibleTargets
+    }
+
+    private func equipmentFit(for target: ObservableTarget) -> EquipmentFitResult? {
+        sessionSelection.equipmentFit(for: target, inventory: equipmentCapabilities)
     }
 }
 
@@ -117,6 +247,10 @@ struct TonightsBestTargetsCard: View {
         timeZone: nil,
         nightQualityScore: 85,
         hasAdditionalTargets: true,
+        equipmentCapabilities: [],
+        sessionSelection: .constant(EquipmentSessionSelection()),
+        minimumFit: .constant(.any),
+        hasUnfilteredVisibleTargets: false,
         onViewAll: {}
     )
     .padding()

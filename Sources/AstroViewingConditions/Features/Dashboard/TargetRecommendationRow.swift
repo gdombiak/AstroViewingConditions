@@ -5,6 +5,7 @@ struct TargetRecommendationRow: View {
     @Environment(\.appPalette) private var palette
     let recommendation: TargetRecommendation
     let timeZone: TimeZone?
+    var equipmentFit: EquipmentFitResult? = nil
     var showsThumbnail = false
     private let imageRepository = TargetImageRepository()
 
@@ -57,6 +58,22 @@ struct TargetRecommendationRow: View {
                     .appSecondaryForeground()
                     .fixedSize(horizontal: false, vertical: true)
 
+                if let equipmentFit {
+                    HStack(spacing: 0) {
+                        Text(equipmentFit.level.displayName)
+                            .foregroundStyle(Self.suitabilityColor(for: equipmentFit.level, palette: palette))
+                        Text(" · \(equipmentFit.bestCapability.displayName)")
+                            .appSecondaryForeground()
+                    }
+                        .font(.caption2)
+                        .lineLimit(1)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(Self.equipmentSuitabilityAccessibilityLabel(
+                            level: equipmentFit.level,
+                            capabilityName: equipmentFit.bestCapability.displayName
+                        ))
+                }
+
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(windowText)
                         .font(.caption)
@@ -73,6 +90,40 @@ struct TargetRecommendationRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    static func equipmentSuitabilitySummary(
+        level: EquipmentFitLevel,
+        capabilityName: String
+    ) -> String {
+        "\(level.displayName) · \(capabilityName)"
+    }
+
+    static func equipmentSuitabilityAccessibilityLabel(
+        level: EquipmentFitLevel,
+        capabilityName: String
+    ) -> String {
+        "Equipment suitability: \(level.displayName) with \(capabilityName)."
+    }
+
+    static func suitabilityColor(for level: EquipmentFitLevel, palette: AppPalette) -> Color {
+        if palette.appearance == .field {
+            switch level {
+            case .excellent: return palette.primaryText
+            case .good: return palette.secondaryText
+            case .challenging: return palette.tertiaryText
+            case .poor: return palette.disabledText
+            }
+        }
+
+        let tone: AppStatusTone
+        switch level {
+        case .excellent: tone = .positive
+        case .good: tone = .informational
+        case .challenging: tone = .caution
+        case .poor: tone = .negative
+        }
+        return palette.statusColor(tone).opacity(0.82)
     }
 
     private var targetTitle: some View {

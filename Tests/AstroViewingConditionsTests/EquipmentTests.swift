@@ -4,6 +4,74 @@ import XCTest
 
 @MainActor
 final class EquipmentTests: XCTestCase {
+    func testSmartEAAApertureThresholdPairAcceptsAbsentEqualAndIncreasingValues() {
+        let absent = TargetEquipmentRequirement()
+        let equal = TargetEquipmentRequirement(
+            practicalSmartEAAApertureMillimeters: 30,
+            preferredSmartEAAApertureMillimeters: 30
+        )
+        let increasing = TargetEquipmentRequirement(
+            practicalSmartEAAApertureMillimeters: 30,
+            preferredSmartEAAApertureMillimeters: 50
+        )
+
+        XCTAssertNil(absent.practicalSmartEAAApertureMillimeters)
+        XCTAssertNil(absent.preferredSmartEAAApertureMillimeters)
+        XCTAssertEqual(equal.practicalSmartEAAApertureMillimeters, 30)
+        XCTAssertEqual(equal.preferredSmartEAAApertureMillimeters, 30)
+        XCTAssertEqual(increasing.practicalSmartEAAApertureMillimeters, 30)
+        XCTAssertEqual(increasing.preferredSmartEAAApertureMillimeters, 50)
+    }
+
+    func testSmartEAAApertureThresholdPairValidationRejectsMalformedStates() {
+        XCTAssertFalse(
+            TargetEquipmentRequirement.hasValidSmartEAAApertureThresholds(
+                practical: 30,
+                preferred: nil
+            )
+        )
+        XCTAssertFalse(
+            TargetEquipmentRequirement.hasValidSmartEAAApertureThresholds(
+                practical: nil,
+                preferred: 50
+            )
+        )
+        XCTAssertFalse(
+            TargetEquipmentRequirement.hasValidSmartEAAApertureThresholds(
+                practical: 50,
+                preferred: 30
+            )
+        )
+        for values in [(0.0, 30.0), (-1.0, 30.0), (.nan, 30.0), (30.0, .infinity)] {
+            XCTAssertFalse(
+                TargetEquipmentRequirement.hasValidSmartEAAApertureThresholds(
+                    practical: values.0,
+                    preferred: values.1
+                )
+            )
+        }
+    }
+
+    func testCatalogSmartEAAApertureThresholdPairsRemainValid() {
+        let targets = [
+            catalogTarget(id: "m77"),
+            catalogTarget(id: "m45"),
+            catalogTarget(id: "m101"),
+            catalogTarget(id: "generic-galaxy")
+        ]
+
+        for target in targets {
+            let requirement = target.equipmentRequirement
+            XCTAssertTrue(
+                TargetEquipmentRequirement.hasValidSmartEAAApertureThresholds(
+                    practical: requirement.practicalSmartEAAApertureMillimeters,
+                    preferred: requirement.preferredSmartEAAApertureMillimeters
+                ),
+                target.id
+            )
+        }
+    }
+
     func testEquipmentTypeCodableRoundTrip() throws {
         for type in EquipmentType.allCases {
             let data = try JSONEncoder().encode(type)
@@ -140,7 +208,7 @@ final class EquipmentTests: XCTestCase {
             apertureUnit: .inches
         )
 
-        XCTAssertEqual(try XCTUnwrap(draft.apertureMillimeters), 127, accuracy: 0.000_001)
+        XCTAssertEqual(draft.apertureMillimeters, 127, accuracy: 0.000_001)
     }
 
     func testBinocularsRequirePositiveMagnificationAndAperture() throws {
@@ -167,20 +235,16 @@ final class EquipmentTests: XCTestCase {
         }
     }
 
-    func testSmartTelescopeAllowsMissingApertureButRejectsInvalidProvidedValue() throws {
-        let draft = try EquipmentDraft(
-            name: "Seestar",
-            type: .smartTelescope,
-            magnification: nil,
-            aperture: nil,
-            apertureUnit: .millimeters
-        )
-        XCTAssertNil(draft.apertureMillimeters)
-        XCTAssertEqual(draft.apertureUnit, .millimeters)
-
-        XCTAssertValidationError(.invalidAperture) {
-            _ = try EquipmentDraft(name: "Seestar", type: .smartTelescope, magnification: nil, aperture: .infinity, apertureUnit: .millimeters)
+    func testSmartTelescopeRequiresPositiveAperture() throws {
+        XCTAssertValidationError(.missingAperture) {
+            _ = try EquipmentDraft(name: "Seestar S30 Pro", type: .smartTelescope, magnification: nil, aperture: nil, apertureUnit: .millimeters)
         }
+        XCTAssertValidationError(.invalidAperture) {
+            _ = try EquipmentDraft(name: "Seestar S30 Pro", type: .smartTelescope, magnification: nil, aperture: .infinity, apertureUnit: .millimeters)
+        }
+
+        let draft = try EquipmentDraft(name: "Seestar S30 Pro", type: .smartTelescope, magnification: nil, aperture: 30, apertureUnit: .millimeters)
+        XCTAssertEqual(draft.apertureMillimeters, 30)
     }
 
     func testValidationRejectsBlankNamesAndNonFiniteValues() throws {
@@ -193,6 +257,231 @@ final class EquipmentTests: XCTestCase {
         XCTAssertValidationError(.invalidAperture) {
             _ = try EquipmentDraft(name: "Scope", type: .visualTelescope, magnification: nil, aperture: -.infinity, apertureUnit: .inches)
         }
+    }
+
+    func testValidationRejectsZeroNegativeNaNAndInfinityValues() {
+        XCTAssertValidationError(.invalidMagnification) {
+            _ = try EquipmentDraft(name: "Binoculars", type: .binoculars, magnification: -10, aperture: 50, apertureUnit: .millimeters)
+        }
+        XCTAssertValidationError(.invalidMagnification) {
+            _ = try EquipmentDraft(name: "Binoculars", type: .binoculars, magnification: .infinity, aperture: 50, apertureUnit: .millimeters)
+        }
+        XCTAssertValidationError(.invalidAperture) {
+            _ = try EquipmentDraft(name: "Telescope", type: .visualTelescope, magnification: nil, aperture: .nan, apertureUnit: .millimeters)
+        }
+        XCTAssertValidationError(.invalidAperture) {
+            _ = try EquipmentDraft(name: "Telescope", type: .visualTelescope, magnification: nil, aperture: -1, apertureUnit: .millimeters)
+        }
+    }
+
+    func testBinocularMagnificationAboveOneHundredIsRejected() {
+        XCTAssertValidationError(.magnificationTooHigh) {
+            _ = try EquipmentDraft(
+                name: "High Power Binoculars",
+                type: .binoculars,
+                magnification: 101,
+                aperture: 50,
+                apertureUnit: .millimeters
+            )
+        }
+    }
+
+    func testBinocularApertureAboveThreeHundredMillimetersIsRejected() {
+        XCTAssertValidationError(.apertureTooLarge) {
+            _ = try EquipmentDraft(
+                name: "Large Binoculars",
+                type: .binoculars,
+                magnification: 20,
+                aperture: 301,
+                apertureUnit: .millimeters
+            )
+        }
+    }
+
+    func testTelescopeApertureAboveTwoThousandMillimetersIsRejected() {
+        XCTAssertValidationError(.apertureTooLarge) {
+            _ = try EquipmentDraft(
+                name: "Large Telescope",
+                type: .visualTelescope,
+                magnification: nil,
+                aperture: 2_001,
+                apertureUnit: .millimeters
+            )
+        }
+    }
+
+    func testInchApertureIsNormalizedBeforeRangeValidation() throws {
+        XCTAssertValidationError(.apertureTooLarge) {
+            _ = try EquipmentDraft(
+                name: "Large Binoculars",
+                type: .binoculars,
+                magnification: 20,
+                aperture: 12,
+                apertureUnit: .inches
+            )
+        }
+
+        let validDraft = try EquipmentDraft(
+            name: "Large Binoculars",
+            type: .binoculars,
+            magnification: 20,
+            aperture: 11.8,
+            apertureUnit: .inches
+        )
+        XCTAssertEqual(validDraft.apertureMillimeters, 299.72, accuracy: 0.000_001)
+    }
+
+    func testCombinedBinocularInputIsRecognizedAsSeparateFieldError() {
+        for input in ["10×50", "10x50", "10 X 50"] {
+            XCTAssertTrue(EquipmentFormatting.isCombinedBinocularInput(input), input)
+            XCTAssertEqual(
+                EquipmentFormatting.decimalInput(from: input, locale: Locale(identifier: "en_US")),
+                .invalid
+            )
+        }
+    }
+
+    func testValidTenByFiftyBinocularsKeepSeparateMagnificationAndAperture() throws {
+        let draft = try EquipmentDraft(
+            name: "10×50 Binoculars",
+            type: .binoculars,
+            magnification: 10,
+            aperture: 50,
+            apertureUnit: .millimeters
+        )
+
+        XCTAssertEqual(draft.magnification, 10)
+        XCTAssertEqual(draft.apertureMillimeters, 50)
+    }
+
+    func testPersistentOpticsFieldLabelsMatchEquipmentType() {
+        XCTAssertEqual(
+            EquipmentFormPresentation.opticsFields(for: .binoculars),
+            [.magnification, .aperture]
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.opticsFields(for: .visualTelescope),
+            [.aperture]
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.opticsFields(for: .smartTelescope),
+            [.aperture]
+        )
+        XCTAssertEqual(EquipmentFormPresentation.label(for: .name), "Name")
+        XCTAssertEqual(EquipmentFormPresentation.nameAccessibilityLabel, "Equipment name")
+        XCTAssertEqual(EquipmentFormPresentation.label(for: .magnification), "Magnification")
+        XCTAssertEqual(EquipmentFormPresentation.label(for: .aperture), "Aperture")
+    }
+
+    func testLiveBinocularSummaryFormatsIntegersAndLocalizedDecimals() {
+        XCTAssertEqual(
+            EquipmentFormPresentation.binocularSizeSummary(
+                magnificationText: "10",
+                apertureText: "50",
+                apertureUnit: .millimeters,
+                locale: Locale(identifier: "en_US")
+            ),
+            "Binocular size: 10×50"
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.binocularSizeSummary(
+                magnificationText: "10.5",
+                apertureText: "50.25",
+                apertureUnit: .millimeters,
+                locale: Locale(identifier: "en_US")
+            ),
+            "Binocular size: 10.5×50.25"
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.binocularSizeSummary(
+                magnificationText: "10,5",
+                apertureText: "50,25",
+                apertureUnit: .millimeters,
+                locale: Locale(identifier: "es_AR")
+            ),
+            "Binocular size: 10,5×50,25"
+        )
+    }
+
+    func testLiveBinocularSummaryNormalizesInchApertureAndUpdatesWithUnitChanges() {
+        let locale = Locale(identifier: "en_US")
+        XCTAssertEqual(
+            EquipmentFormPresentation.binocularSizeSummary(
+                magnificationText: "10",
+                apertureText: "2",
+                apertureUnit: .inches,
+                locale: locale
+            ),
+            "Binocular size: 10×50.8"
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.binocularSizeSummary(
+                magnificationText: "10",
+                apertureText: "50.8",
+                apertureUnit: .millimeters,
+                locale: locale
+            ),
+            "Binocular size: 10×50.8"
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.binocularSizeSummary(
+                magnificationText: "8",
+                apertureText: "1.65",
+                apertureUnit: .inches,
+                locale: locale
+            ),
+            "Binocular size: 8×41.91"
+        )
+    }
+
+    func testLiveBinocularSummaryRejectsBlankInvalidAndOutOfRangeInput() {
+        let locale = Locale(identifier: "en_US")
+        for values in [("", "50"), ("10", ""), ("0", "50"), ("-10", "50"), ("10", "0"), ("10", "-50"), ("nan", "50"), ("10", "infinity"), ("101", "50"), ("10", "301")] {
+            XCTAssertNil(
+                EquipmentFormPresentation.binocularSizeSummary(
+                    magnificationText: values.0,
+                    apertureText: values.1,
+                    apertureUnit: .millimeters,
+                    locale: locale
+                ),
+                "Expected no summary for \(values.0)×\(values.1)"
+            )
+        }
+    }
+
+    func testBinocularApertureHelperTextReflectsSelectedUnit() {
+        XCTAssertEqual(
+            EquipmentFormPresentation.binocularApertureHelperText(for: .millimeters),
+            "Enter the second number in 10×50 binoculars."
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.binocularApertureHelperText(for: .inches),
+            "Enter the objective aperture in inches. It will be shown in standard millimeter notation below."
+        )
+    }
+
+    func testSwitchingAwayFromBinocularsClearsMagnificationText() {
+        XCTAssertEqual(
+            EquipmentFormPresentation.magnificationText(
+                afterChangingTo: .visualTelescope,
+                currentText: "10"
+            ),
+            ""
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.magnificationText(
+                afterChangingTo: .smartTelescope,
+                currentText: "10"
+            ),
+            ""
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.magnificationText(
+                afterChangingTo: .binoculars,
+                currentText: "10"
+            ),
+            "10"
+        )
     }
 
     func testMultipleItemsPersistAndCanBeDeleted() throws {
@@ -260,7 +549,7 @@ final class EquipmentTests: XCTestCase {
 
         XCTAssertEqual(item.apertureUnit, .millimeters)
         let displayed = EquipmentFormatting.apertureInputText(
-            fromMillimeters: try XCTUnwrap(item.apertureMillimeters),
+            fromMillimeters: item.apertureMillimeters,
             unit: item.apertureUnit,
             locale: Locale(identifier: "en_US")
         )
@@ -289,7 +578,7 @@ final class EquipmentTests: XCTestCase {
 
         for _ in 0..<3 {
             let displayed = EquipmentFormatting.apertureInputText(
-                fromMillimeters: try XCTUnwrap(item.apertureMillimeters),
+                fromMillimeters: item.apertureMillimeters,
                 unit: item.apertureUnit,
                 locale: Locale(identifier: "en_US")
             )
@@ -304,7 +593,7 @@ final class EquipmentTests: XCTestCase {
             ))
         }
 
-        XCTAssertEqual(try XCTUnwrap(item.apertureMillimeters), 127, accuracy: 0.000_001)
+        XCTAssertEqual(item.apertureMillimeters, 127, accuracy: 0.000_001)
         XCTAssertEqual(item.apertureUnit, .inches)
     }
 
@@ -320,17 +609,698 @@ final class EquipmentTests: XCTestCase {
         XCTAssertEqual(item.apertureUnit, .millimeters)
     }
 
-    func testSmartTelescopeWithoutAperturePreservesChosenUnitPreference() throws {
+    func testSmartTelescopeWithAperturePreservesChosenUnitPreference() throws {
         let item = EquipmentItem(draft: try EquipmentDraft(
-            name: "Smart Scope",
+            name: "Seestar S30 Pro",
             type: .smartTelescope,
             magnification: nil,
-            aperture: nil,
+            aperture: 30,
+            apertureUnit: .millimeters
+        ))
+
+        XCTAssertEqual(item.apertureMillimeters, 30)
+        XCTAssertEqual(item.apertureUnit, .millimeters)
+    }
+
+    func testEquipmentItemMapsOnlyNormalizedMatchingCapabilities() throws {
+        let item = EquipmentItem(draft: try EquipmentDraft(
+            name: "10×50",
+            type: .binoculars,
+            magnification: 10,
+            aperture: 2,
             apertureUnit: .inches
         ))
 
-        XCTAssertNil(item.apertureMillimeters)
-        XCTAssertEqual(item.apertureUnit, .inches)
+        let capability = item.matchingCapability
+        XCTAssertEqual(capability.id, .savedEquipment(item.id))
+        XCTAssertEqual(capability.magnification, 10)
+        XCTAssertEqual(try XCTUnwrap(capability.apertureMillimeters), 50.8, accuracy: 0.000_001)
+    }
+
+    func testNakedEyeTargetMatchesBuiltInCapability() {
+        let result = EquipmentMatchingService().match(
+            target: catalogTarget(id: "moon", type: .moon),
+            using: [.nakedEye]
+        )
+
+        XCTAssertEqual(result?.bestCapability, .nakedEye)
+        XCTAssertEqual(result?.level, .excellent)
+        XCTAssertEqual(result?.observingMode, .nakedEye)
+    }
+
+    func testWideTargetPrefersBinocularsOverLargerVisualTelescope() {
+        let binoculars = capability(name: "10×50 binoculars", type: .binoculars, magnification: 10, aperture: 50)
+        let telescope = capability(name: "Large Dob", type: .visualTelescope, aperture: 300)
+        let result = EquipmentMatchingService().match(target: catalogTarget(id: "m45"), using: [telescope, binoculars])
+
+        XCTAssertEqual(result?.bestCapability.id, binoculars.id)
+        XCTAssertEqual(result?.level, .excellent)
+        XCTAssertEqual(result?.reason, .wideField)
+    }
+
+    func testEightByFortyTwoBinocularsArePreferredOverLargeTelescopeForM45() {
+        let binoculars = capability(name: "8×42", type: .binoculars, magnification: 8, aperture: 42)
+        let telescope = capability(name: "Large Dob", type: .visualTelescope, aperture: 300)
+        let result = EquipmentMatchingService().match(target: catalogTarget(id: "m45"), using: [telescope, binoculars])
+
+        XCTAssertEqual(result?.bestCapability.id, binoculars.id)
+        XCTAssertEqual(result?.level, .good)
+        XCTAssertEqual(result?.reason, .wideField)
+    }
+
+    func testLargeVisualTelescopeIsNotExcellentForVeryWideM31() {
+        let telescope = capability(name: "Large Dob", type: .visualTelescope, aperture: 300)
+        let result = EquipmentMatchingService().match(target: catalogTarget(id: "m31"), using: [telescope])
+
+        XCTAssertEqual(result?.level, .good)
+        XCTAssertEqual(result?.reason, .framingLimited)
+    }
+
+    func testCompactTargetRewardsVisualApertureAndMagnification() {
+        let modest = capability(name: "Small scope", type: .visualTelescope, aperture: 80)
+        let larger = capability(name: "Heritage P150", type: .visualTelescope, aperture: 150)
+        let target = catalogTarget(id: "jupiter", type: .planet)
+
+        XCTAssertEqual(EquipmentMatchingService().match(target: target, using: [modest])?.level, .good)
+        XCTAssertEqual(EquipmentMatchingService().match(target: target, using: [larger])?.level, .excellent)
+    }
+
+    func testLargeVisualTelescopeRemainsExcellentForMediumTarget() {
+        let telescope = capability(name: "Large Dob", type: .visualTelescope, aperture: 300)
+        let result = EquipmentMatchingService().match(target: catalogTarget(id: "generic-galaxy"), using: [telescope])
+
+        XCTAssertEqual(result?.level, .excellent)
+    }
+
+    func testRenamingCapabilitiesDoesNotChangeBestMatch() {
+        let binocularID = EquipmentCapabilityID.savedEquipment(UUID())
+        let telescopeID = EquipmentCapabilityID.savedEquipment(UUID())
+        let matcher = EquipmentMatchingService()
+        let target = catalogTarget(id: "m45")
+        let original = matcher.match(
+            target: target,
+            using: [
+                capability(id: binocularID, name: "Alpha", type: .binoculars, magnification: 8, aperture: 42),
+                capability(id: telescopeID, name: "Zeta", type: .visualTelescope, aperture: 300)
+            ]
+        )
+        let renamed = matcher.match(
+            target: target,
+            using: [
+                capability(id: binocularID, name: "Zulu", type: .binoculars, magnification: 8, aperture: 42),
+                capability(id: telescopeID, name: "Alpha", type: .visualTelescope, aperture: 300)
+            ]
+        )
+
+        XCTAssertEqual(original?.bestCapability.id, binocularID)
+        XCTAssertEqual(renamed?.bestCapability.id, binocularID)
+    }
+
+    func testReversingCapabilitiesDoesNotChangeBestMatch() {
+        let binoculars = capability(name: "Binoculars", type: .binoculars, magnification: 8, aperture: 42)
+        let telescope = capability(name: "Telescope", type: .visualTelescope, aperture: 300)
+        let matcher = EquipmentMatchingService()
+        let target = catalogTarget(id: "m45")
+
+        let forward = matcher.match(target: target, using: [binoculars, telescope])
+        let reverse = matcher.match(target: target, using: [telescope, binoculars])
+
+        XCTAssertEqual(forward?.bestCapability.id, binoculars.id)
+        XCTAssertEqual(reverse?.bestCapability.id, binoculars.id)
+    }
+
+    func testGenuinelyEqualFitsUseStableCapabilityIdentifier() {
+        let firstID = EquipmentCapabilityID.savedEquipment(UUID(uuidString: "00000000-0000-0000-0000-000000000001")!)
+        let secondID = EquipmentCapabilityID.savedEquipment(UUID(uuidString: "00000000-0000-0000-0000-000000000002")!)
+        let first = capability(id: firstID, name: "Zebra", type: .visualTelescope, aperture: 150)
+        let second = capability(id: secondID, name: "Alpha", type: .visualTelescope, aperture: 150)
+        let matcher = EquipmentMatchingService()
+        let target = catalogTarget(id: "jupiter", type: .planet)
+
+        XCTAssertEqual(matcher.match(target: target, using: [first, second])?.bestCapability.id, firstID)
+        XCTAssertEqual(matcher.match(target: target, using: [second, first])?.bestCapability.id, firstID)
+    }
+
+    func testUnknownRequirementDoesNotTreatZeroApertureAsSufficient() {
+        let telescope = capability(name: "Large Dob", type: .visualTelescope, aperture: 300)
+        let result = EquipmentMatchingService().match(
+            target: catalogTarget(id: "unclassified-satellite", type: .satellite),
+            using: [telescope]
+        )
+
+        XCTAssertEqual(result?.level, .challenging)
+        XCTAssertEqual(result?.reason, .unknownRequirement)
+    }
+
+    func testLargerBinocularApertureImprovesFaintDeepSkyFit() {
+        let smaller = capability(name: "8×42", type: .binoculars, magnification: 8, aperture: 42)
+        let larger = capability(name: "10×70", type: .binoculars, magnification: 10, aperture: 70)
+        let target = catalogTarget(id: "m33")
+
+        XCTAssertEqual(EquipmentMatchingService().match(target: target, using: [smaller])?.level, .challenging)
+        XCTAssertEqual(EquipmentMatchingService().match(target: target, using: [larger])?.level, .good)
+    }
+
+    func testBrightWideTargetKeepsCommonBinocularsGoodOrExcellent() {
+        let eightByFortyTwo = capability(name: "8×42", type: .binoculars, magnification: 8, aperture: 42)
+        let tenByFifty = capability(name: "10×50", type: .binoculars, magnification: 10, aperture: 50)
+        let target = catalogTarget(id: "m45")
+
+        XCTAssertEqual(EquipmentMatchingService().match(target: target, using: [eightByFortyTwo])?.level, .good)
+        XCTAssertEqual(EquipmentMatchingService().match(target: target, using: [tenByFifty])?.level, .excellent)
+    }
+
+    func testM77IsChallengingVisuallyButGoodElectronicallyAssistedWithSeestarAperture() {
+        let modestVisual = capability(name: "Heritage P100", type: .visualTelescope, aperture: 100)
+        let smart = capability(name: "Seestar S30 Pro", type: .smartTelescope, aperture: 30)
+        let target = catalogTarget(id: "m77")
+
+        let visualResult = EquipmentMatchingService().match(target: target, using: [modestVisual])
+        let smartResult = EquipmentMatchingService().match(target: target, using: [smart])
+
+        XCTAssertEqual(visualResult?.level, .challenging)
+        XCTAssertEqual(visualResult?.observingMode, .visual)
+        XCTAssertEqual(smartResult?.level, .good)
+        XCTAssertEqual(smartResult?.observingMode, .electronicallyAssisted)
+        XCTAssertTrue(smartResult?.explanation.contains("electronically assisted") == true)
+    }
+
+    func testSmartEAASuitabilityMetadataDrivesRepresentativeMatches() {
+        let smart = capability(name: "Seestar S30 Pro", type: .smartTelescope, aperture: 30)
+        let matcher = EquipmentMatchingService()
+        let m77 = catalogTarget(id: "m77")
+        let m45 = catalogTarget(id: "m45")
+        let jupiter = catalogTarget(id: "jupiter", type: .planet)
+
+        XCTAssertEqual(m77.equipmentRequirement.smartEAASuitability, .preferred)
+        XCTAssertEqual(m77.equipmentRequirement.practicalSmartEAAApertureMillimeters, 30)
+        XCTAssertEqual(m77.equipmentRequirement.preferredSmartEAAApertureMillimeters, 50)
+        XCTAssertEqual(m45.equipmentRequirement.smartEAASuitability, .supported)
+        XCTAssertEqual(jupiter.equipmentRequirement.smartEAASuitability, .poorMatch)
+        XCTAssertEqual(matcher.match(target: m77, using: [smart])?.level, .good)
+        XCTAssertEqual(matcher.match(target: m45, using: [smart])?.level, .good)
+        XCTAssertEqual(matcher.match(target: jupiter, using: [smart])?.level, .poor)
+    }
+
+    func testPreferredSmartEAAUsesApertureToDifferentiateExcellentGoodAndChallenging() {
+        let matcher = EquipmentMatchingService()
+        let target = catalogTarget(id: "m77")
+        let belowPractical = capability(name: "Small Smart Scope", type: .smartTelescope, aperture: 20)
+        let practical = capability(name: "Seestar S30 Pro", type: .smartTelescope, aperture: 30)
+        let preferred = capability(name: "Large Smart Scope", type: .smartTelescope, aperture: 50)
+
+        XCTAssertEqual(matcher.match(target: target, using: [belowPractical])?.level, .challenging)
+        XCTAssertEqual(matcher.match(target: target, using: [belowPractical])?.reason, .apertureLimited)
+        XCTAssertEqual(matcher.match(target: target, using: [practical])?.level, .good)
+        XCTAssertEqual(matcher.match(target: target, using: [preferred])?.level, .excellent)
+        XCTAssertEqual(matcher.match(target: target, using: [preferred])?.reason, .electronicAssistance)
+    }
+
+    func testSupportedSmartEAATargetsNeverBecomeExcellentFromAperture() {
+        let matcher = EquipmentMatchingService()
+        let target = catalogTarget(id: "m45")
+        let belowPractical = capability(name: "Small Smart Scope", type: .smartTelescope, aperture: 20)
+        let adequate = capability(name: "Large Smart Scope", type: .smartTelescope, aperture: 60)
+
+        XCTAssertEqual(matcher.match(target: target, using: [belowPractical])?.level, .challenging)
+        XCTAssertEqual(matcher.match(target: target, using: [adequate])?.level, .good)
+        XCTAssertEqual(matcher.match(target: target, using: [adequate])?.reason, .electronicSupport)
+    }
+
+    func testSmartEAAPoorMatchAndInvalidApertureRemainPoor() {
+        let matcher = EquipmentMatchingService()
+        let target = catalogTarget(id: "jupiter", type: .planet)
+        let small = capability(name: "Small Smart Scope", type: .smartTelescope, aperture: 10)
+        let large = capability(name: "Large Smart Scope", type: .smartTelescope, aperture: 300)
+        let missing = capability(name: "Incomplete Smart Scope", type: .smartTelescope, aperture: nil)
+        let nonFinite = capability(name: "Invalid Smart Scope", type: .smartTelescope, aperture: .nan)
+
+        XCTAssertEqual(matcher.match(target: target, using: [small])?.level, .poor)
+        XCTAssertEqual(matcher.match(target: target, using: [small])?.reason, .modeMismatch)
+        XCTAssertEqual(matcher.match(target: target, using: [large])?.level, .poor)
+        XCTAssertEqual(matcher.match(target: target, using: [large])?.reason, .modeMismatch)
+        XCTAssertEqual(matcher.match(target: target, using: [missing])?.level, .poor)
+        XCTAssertEqual(matcher.match(target: target, using: [nonFinite])?.level, .poor)
+    }
+
+    func testBroadPreferredSmartEAAIsConservativelyCappedAtGood() {
+        let target = catalogTarget(id: "m101")
+        let smart = capability(name: "Large Smart Scope", type: .smartTelescope, aperture: 80)
+        let result = EquipmentMatchingService().match(target: target, using: [smart])
+
+        XCTAssertEqual(result?.level, .good)
+        XCTAssertEqual(result?.reason, .framingLimited)
+        XCTAssertEqual(
+            result?.explanation,
+            "Good for electronically assisted observing with your Large Smart Scope. This broad target may require a wider field than the equipment provides."
+        )
+    }
+
+    func testNakedEyeExplanationUsesNaturalWording() {
+        let result = EquipmentMatchingService().match(
+            target: catalogTarget(id: "moon", type: .moon),
+            using: [.nakedEye]
+        )
+
+        XCTAssertEqual(result?.explanation, "Excellent for naked-eye observing.")
+    }
+
+    func testSmartEAAIsPoorForAHighMagnificationVisualTarget() {
+        let smart = capability(name: "Seestar S30 Pro", type: .smartTelescope, aperture: 30)
+        let result = EquipmentMatchingService().match(
+            target: catalogTarget(id: "jupiter", type: .planet),
+            using: [smart]
+        )
+
+        XCTAssertEqual(result?.level, .poor)
+        XCTAssertEqual(result?.reason, .modeMismatch)
+    }
+
+    func testNakedEyeSupportsPlanetsByCaseInsensitiveID() {
+        let matcher = EquipmentMatchingService()
+        for id in ["JUPITER", "Saturn", "mars", "vEnUs"] {
+            let result = matcher.match(target: catalogTarget(id: id, type: .planet), using: [.nakedEye])
+            XCTAssertEqual(result?.level, .good, "Expected Naked Eye support for \(id)")
+            XCTAssertEqual(result?.observingMode, .nakedEye)
+        }
+    }
+
+    func testVisualTelescopeIsPreferredOverNakedEyeForPlanetaryDetail() {
+        let telescope = capability(name: "Heritage P150", type: .visualTelescope, aperture: 150)
+        let result = EquipmentMatchingService().match(
+            target: catalogTarget(id: "jupiter", type: .planet),
+            using: [.nakedEye, telescope]
+        )
+
+        XCTAssertEqual(result?.bestCapability.id, telescope.id)
+        XCTAssertEqual(result?.level, .excellent)
+    }
+
+    func testOverridesDifferentiateM31M77M45M36AndM38() {
+        let binoculars = capability(name: "10×50", type: .binoculars, magnification: 10, aperture: 50)
+        let matcher = EquipmentMatchingService()
+
+        XCTAssertEqual(catalogTarget(id: "m45").equipmentRequirement.framing, .veryWide)
+        XCTAssertEqual(catalogTarget(id: "m36").equipmentRequirement.framing, .medium)
+        XCTAssertEqual(catalogTarget(id: "m38").equipmentRequirement.framing, .wide)
+        XCTAssertEqual(catalogTarget(id: "m77").equipmentRequirement.practicalVisualApertureMillimeters, 150)
+        XCTAssertEqual(matcher.match(target: catalogTarget(id: "m31"), using: [binoculars])?.level, .excellent)
+        XCTAssertEqual(matcher.match(target: catalogTarget(id: "m77"), using: [binoculars])?.level, .poor)
+    }
+
+    func testSessionSelectionAllModeAndCustomModeHandleInventoryChanges() {
+        let first = capability(name: "Binoculars", type: .binoculars, magnification: 10, aperture: 50)
+        let second = capability(name: "Scope", type: .visualTelescope, aperture: 150)
+        var selection = EquipmentSessionSelection()
+
+        XCTAssertEqual(selection.selectedCapabilities(from: [first]).count, 2)
+        XCTAssertEqual(selection.selectedCapabilities(from: [first, second]).count, 3)
+
+        selection.selectNakedEyeOnly()
+        selection.toggle(first.id, inventory: [first, second])
+        XCTAssertEqual(selection.selectedCapabilities(from: [first, second]).map(\.id), [.nakedEye, first.id])
+
+        let third = capability(name: "Smart scope", type: .smartTelescope, aperture: 30)
+        XCTAssertFalse(selection.selectedCapabilities(from: [first, second, third]).contains { $0.id == third.id })
+
+        selection.reconcile(with: [second, third])
+        XCTAssertEqual(selection.selectedCapabilities(from: [second, third]).map(\.id), [.nakedEye])
+    }
+
+    func testSetSelectedIsIdempotentForAlreadySelectedAndDeselectedCapabilities() {
+        let telescope = capability(name: "Scope", type: .visualTelescope, aperture: 150)
+        var selection = EquipmentSessionSelection()
+
+        selection.setSelected(true, for: telescope.id, inventory: [telescope])
+        XCTAssertEqual(selection.mode, .allEquipment)
+        XCTAssertEqual(selection.selectedCapabilities(from: [telescope]).map(\.id), [.nakedEye, telescope.id])
+
+        selection.selectNakedEyeOnly()
+        selection.setSelected(false, for: telescope.id, inventory: [telescope])
+        XCTAssertEqual(selection.mode, .custom)
+        XCTAssertEqual(selection.selectedCapabilities(from: [telescope]).map(\.id), [.nakedEye])
+    }
+
+    func testSetSelectedConvertsAllEquipmentToCustomAndPreservesOtherCapabilities() {
+        let binoculars = capability(name: "Binoculars", type: .binoculars, magnification: 10, aperture: 50)
+        let telescope = capability(name: "Scope", type: .visualTelescope, aperture: 150)
+        var selection = EquipmentSessionSelection()
+
+        selection.setSelected(false, for: telescope.id, inventory: [binoculars, telescope])
+
+        XCTAssertEqual(selection.mode, .custom)
+        XCTAssertEqual(selection.selectedCapabilities(from: [binoculars, telescope]).map(\.id), [.nakedEye, binoculars.id])
+    }
+
+    func testSetSelectedUpdatesCustomSelectionAndPreservesFinalCapability() {
+        let binoculars = capability(name: "Binoculars", type: .binoculars, magnification: 10, aperture: 50)
+        let telescope = capability(name: "Scope", type: .visualTelescope, aperture: 150)
+        var selection = EquipmentSessionSelection()
+        selection.selectNakedEyeOnly()
+
+        selection.setSelected(true, for: telescope.id, inventory: [binoculars, telescope])
+        XCTAssertEqual(selection.selectedCapabilities(from: [binoculars, telescope]).map(\.id), [.nakedEye, telescope.id])
+
+        selection.setSelected(false, for: telescope.id, inventory: [binoculars, telescope])
+        XCTAssertEqual(selection.selectedCapabilities(from: [binoculars, telescope]).map(\.id), [.nakedEye])
+
+        selection.setSelected(true, for: binoculars.id, inventory: [binoculars, telescope])
+        selection.setSelected(false, for: .nakedEye, inventory: [binoculars, telescope])
+        XCTAssertEqual(selection.selectedCapabilities(from: [binoculars, telescope]).map(\.id), [binoculars.id])
+
+        selection.setSelected(false, for: binoculars.id, inventory: [binoculars, telescope])
+        XCTAssertEqual(selection.selectedCapabilities(from: [binoculars, telescope]).map(\.id), [.nakedEye])
+    }
+
+    func testToggleMatchesSetSelectedInverseAndRepeatedAssignmentsRemainStable() {
+        let telescope = capability(name: "Scope", type: .visualTelescope, aperture: 150)
+        var throughToggle = EquipmentSessionSelection()
+        var throughSetter = EquipmentSessionSelection()
+
+        throughToggle.toggle(telescope.id, inventory: [telescope])
+        throughSetter.setSelected(false, for: telescope.id, inventory: [telescope])
+        XCTAssertEqual(throughToggle, throughSetter)
+
+        throughSetter.setSelected(true, for: telescope.id, inventory: [telescope])
+        throughSetter.setSelected(true, for: telescope.id, inventory: [telescope])
+        XCTAssertTrue(throughSetter.isSelected(telescope.id, inventory: [telescope]))
+        throughSetter.setSelected(false, for: telescope.id, inventory: [telescope])
+        throughSetter.setSelected(false, for: telescope.id, inventory: [telescope])
+        XCTAssertFalse(throughSetter.isSelected(telescope.id, inventory: [telescope]))
+    }
+
+    func testInventoryBecomingEmptyResetsMinimumFitAndReconcilesSelection() {
+        let telescope = capability(name: "Scope", type: .visualTelescope, aperture: 150)
+        var selection = EquipmentSessionSelection()
+        selection.selectNakedEyeOnly()
+        selection.toggle(telescope.id, inventory: [telescope])
+        selection.toggle(.nakedEye, inventory: [telescope])
+
+        selection.reconcile(with: [])
+        let minimumFit = EquipmentSessionSelection.minimumFitAfterInventoryTransition(
+            currentMinimumFit: .excellentOnly,
+            previousInventoryIDs: [telescope.id],
+            currentInventoryIDs: []
+        )
+
+        XCTAssertEqual(minimumFit, .any)
+        XCTAssertEqual(selection.selectedCapabilities(from: []).map(\.id), [.nakedEye])
+    }
+
+    func testMinimumFitIsPreservedForNonEmptyInventoryChangesAndEdits() {
+        let first = capability(name: "Binoculars", type: .binoculars, magnification: 10, aperture: 50)
+        let second = capability(name: "Scope", type: .visualTelescope, aperture: 150)
+
+        XCTAssertEqual(
+            EquipmentSessionSelection.minimumFitAfterInventoryTransition(
+                currentMinimumFit: .goodOrBetter,
+                previousInventoryIDs: [first.id, second.id],
+                currentInventoryIDs: [first.id]
+            ),
+            .goodOrBetter
+        )
+        XCTAssertEqual(
+            EquipmentSessionSelection.minimumFitAfterInventoryTransition(
+                currentMinimumFit: .excellentOnly,
+                previousInventoryIDs: [first.id],
+                currentInventoryIDs: [first.id]
+            ),
+            .excellentOnly
+        )
+    }
+
+    func testAddingEquipmentToAnEmptyInventoryPreservesAnyMinimumFit() {
+        let telescope = capability(name: "Scope", type: .visualTelescope, aperture: 150)
+
+        XCTAssertEqual(
+            EquipmentSessionSelection.minimumFitAfterInventoryTransition(
+                currentMinimumFit: .any,
+                previousInventoryIDs: [],
+                currentInventoryIDs: [telescope.id]
+            ),
+            .any
+        )
+    }
+
+    func testDeselectingFinalSessionCapabilityFallsBackToNakedEye() {
+        var selection = EquipmentSessionSelection()
+        selection.selectNakedEyeOnly()
+        selection.toggle(.nakedEye, inventory: [])
+
+        XCTAssertEqual(selection.selectedCapabilities(from: []).map(\.id), [.nakedEye])
+    }
+
+    func testDeletingFinalSelectedSavedEquipmentFallsBackToNakedEye() {
+        let telescope = capability(name: "Scope", type: .visualTelescope, aperture: 150)
+        var selection = EquipmentSessionSelection()
+        selection.selectNakedEyeOnly()
+        selection.toggle(telescope.id, inventory: [telescope])
+        selection.toggle(.nakedEye, inventory: [telescope])
+        selection.reconcile(with: [])
+
+        XCTAssertEqual(selection.selectedCapabilities(from: []).map(\.id), [.nakedEye])
+    }
+
+    func testTelescopeOnlyAndBinocularOnlySelectionsRemainValid() {
+        let telescope = capability(name: "Scope", type: .visualTelescope, aperture: 150)
+        let binoculars = capability(name: "Binoculars", type: .binoculars, magnification: 10, aperture: 50)
+        var selection = EquipmentSessionSelection()
+
+        selection.toggle(.nakedEye, inventory: [telescope, binoculars])
+        selection.toggle(binoculars.id, inventory: [telescope, binoculars])
+        XCTAssertEqual(selection.selectedCapabilities(from: [telescope, binoculars]).map(\.id), [telescope.id])
+
+        selection.selectNakedEyeOnly()
+        selection.toggle(binoculars.id, inventory: [telescope, binoculars])
+        selection.toggle(.nakedEye, inventory: [telescope, binoculars])
+        XCTAssertEqual(selection.selectedCapabilities(from: [telescope, binoculars]).map(\.id), [binoculars.id])
+    }
+
+    func testDashboardAndRecreatedViewAllUseSameSessionEquipmentFit() {
+        let smart = capability(name: "Seestar S30 Pro", type: .smartTelescope, aperture: 30)
+        let telescope = capability(name: "Dobsonian", type: .visualTelescope, aperture: 150)
+        let inventory = [smart, telescope]
+        var dashboardSelection = EquipmentSessionSelection()
+        dashboardSelection.selectNakedEyeOnly()
+        dashboardSelection.toggle(smart.id, inventory: inventory)
+        dashboardSelection.toggle(.nakedEye, inventory: inventory)
+        let target = catalogTarget(id: "m77")
+
+        let dashboardFit = dashboardSelection.equipmentFit(for: target, inventory: inventory)
+        // A recreated View All receives the Dashboard-owned selection instead
+        // of constructing a new one.
+        let recreatedViewAllFit = dashboardSelection.equipmentFit(for: target, inventory: inventory)
+
+        XCTAssertEqual(dashboardSelection.selectedCapabilities(from: inventory).map(\.id), [smart.id])
+        XCTAssertEqual(dashboardFit, recreatedViewAllFit)
+        XCTAssertEqual(dashboardFit?.bestCapability.id, smart.id)
+        XCTAssertEqual(dashboardFit?.level, .good)
+    }
+
+    func testEquipmentSessionFitRemainsGenericWithoutSavedInventory() {
+        let selection = EquipmentSessionSelection()
+        let fit = selection.equipmentFit(for: catalogTarget(id: "m45"), inventory: [])
+
+        XCTAssertNil(fit)
+    }
+
+    func testAnyEquipmentThresholdPreservesConditionsOrderingAndScores() {
+        let binoculars = capability(name: "10×50", type: .binoculars, magnification: 10, aperture: 50)
+        let recommendations = [
+            recommendation(for: catalogTarget(id: "m45"), score: 90),
+            recommendation(for: catalogTarget(id: "jupiter", type: .planet), score: 80),
+            recommendation(for: catalogTarget(id: "m77"), score: 70)
+        ]
+        let transformed = EquipmentSessionSelection().filteredRecommendations(
+            recommendations,
+            inventory: [binoculars],
+            minimumFit: .any
+        )
+
+        XCTAssertEqual(transformed.map(\.id), recommendations.map(\.id))
+        XCTAssertEqual(transformed.map(\.score), recommendations.map(\.score))
+    }
+
+    func testEquipmentFitThresholdsIncludeExpectedLevelsAndPreserveOrder() {
+        let tenByFifty = capability(name: "10×50", type: .binoculars, magnification: 10, aperture: 50)
+        let bright = recommendation(for: catalogTarget(id: "m45"), score: 90)
+        let planet = recommendation(for: catalogTarget(id: "jupiter", type: .planet), score: 80)
+        let poor = recommendation(for: catalogTarget(id: "m77"), score: 70)
+        let goodOrBetter = EquipmentSessionSelection().filteredRecommendations(
+            [bright, planet, poor],
+            inventory: [tenByFifty],
+            minimumFit: .goodOrBetter
+        )
+
+        XCTAssertEqual(goodOrBetter.map(\.id), [bright.id, planet.id])
+        XCTAssertTrue(EquipmentFitThreshold.challengingOrBetter.includes(.challenging))
+        XCTAssertFalse(EquipmentFitThreshold.challengingOrBetter.includes(.poor))
+        XCTAssertEqual(
+            EquipmentSessionSelection().filteredRecommendations(
+                [bright, planet, poor],
+                inventory: [tenByFifty],
+                minimumFit: .excellentOnly
+            ).map(\.id),
+            [bright.id]
+        )
+    }
+
+    func testEquipmentSuitabilityThresholdPresentationLabelsAndOrder() {
+        XCTAssertEqual(EquipmentFitThreshold.excellentOnly.displayName, "Excellent")
+        XCTAssertEqual(EquipmentFitThreshold.goodOrBetter.displayName, "Good")
+        XCTAssertEqual(EquipmentFitThreshold.challengingOrBetter.displayName, "Challenging")
+        XCTAssertEqual(EquipmentFitThreshold.any.displayName, "Any")
+        XCTAssertEqual(
+            EquipmentFitThreshold.presentationOrder,
+            [.excellentOnly, .goodOrBetter, .challengingOrBetter, .any]
+        )
+        XCTAssertEqual(EquipmentFitThreshold.excellentOnly.dashboardSummary, "Show targets: Excellent only")
+        XCTAssertEqual(EquipmentFitThreshold.goodOrBetter.dashboardSummary, "Show targets: Good or better")
+        XCTAssertEqual(EquipmentFitThreshold.challengingOrBetter.dashboardSummary, "Show targets: Challenging or better")
+        XCTAssertEqual(EquipmentFitThreshold.any.dashboardSummary, "Show targets: Any suitability")
+        XCTAssertEqual(
+            EquipmentFitThreshold.excellentOnly.dashboardAccessibilitySummary,
+            "Show targets with Excellent suitability only."
+        )
+        XCTAssertEqual(
+            EquipmentFitThreshold.goodOrBetter.dashboardAccessibilitySummary,
+            "Show targets with Good suitability or better."
+        )
+        XCTAssertEqual(
+            EquipmentFitThreshold.challengingOrBetter.dashboardAccessibilitySummary,
+            "Show targets with Challenging suitability or better."
+        )
+        XCTAssertEqual(
+            EquipmentFitThreshold.any.dashboardAccessibilitySummary,
+            "Show targets with any equipment suitability."
+        )
+    }
+
+    func testEquipmentThresholdInclusionSemanticsRemainUnchanged() {
+        XCTAssertTrue(EquipmentFitThreshold.goodOrBetter.includes(.excellent))
+        XCTAssertTrue(EquipmentFitThreshold.goodOrBetter.includes(.good))
+        XCTAssertFalse(EquipmentFitThreshold.goodOrBetter.includes(.challenging))
+        XCTAssertFalse(EquipmentFitThreshold.goodOrBetter.includes(.poor))
+        XCTAssertTrue(EquipmentFitThreshold.challengingOrBetter.includes(.excellent))
+        XCTAssertTrue(EquipmentFitThreshold.challengingOrBetter.includes(.good))
+        XCTAssertTrue(EquipmentFitThreshold.challengingOrBetter.includes(.challenging))
+        XCTAssertFalse(EquipmentFitThreshold.challengingOrBetter.includes(.poor))
+    }
+
+    func testSuitabilityExplanationsUseObservingTerminology() {
+        let visual = capability(name: "Heritage P150", type: .visualTelescope, aperture: 150)
+        let smart = capability(name: "Seestar S30 Pro", type: .smartTelescope, aperture: 30)
+        let matcher = EquipmentMatchingService()
+        let visualExplanation = matcher.match(
+            target: catalogTarget(id: "jupiter", type: .planet),
+            using: [visual]
+        )?.explanation
+        let electronicExplanation = matcher.match(
+            target: catalogTarget(id: "m77"),
+            using: [smart]
+        )?.explanation
+
+        XCTAssertEqual(
+            visualExplanation,
+            "Excellent for visual observing with your Heritage P150. Useful magnification can reveal more detail."
+        )
+        XCTAssertEqual(
+            electronicExplanation,
+            "Good for electronically assisted observing with your Seestar S30 Pro. Electronic assistance is especially well suited to this target."
+        )
+        XCTAssertFalse(visualExplanation?.localizedCaseInsensitiveContains("match") == true)
+        XCTAssertFalse(electronicExplanation?.localizedCaseInsensitiveContains("match") == true)
+    }
+
+    func testChallengingThresholdExcludesOnlyPoorFit() {
+        let eightByFortyTwo = capability(name: "8×42", type: .binoculars, magnification: 8, aperture: 42)
+        let good = recommendation(for: catalogTarget(id: "m45"), score: 90)
+        let challenging = recommendation(for: catalogTarget(id: "m33"), score: 80)
+        let poor = recommendation(for: catalogTarget(id: "m77"), score: 70)
+        let transformed = EquipmentSessionSelection().filteredRecommendations(
+            [good, challenging, poor],
+            inventory: [eightByFortyTwo],
+            minimumFit: .challengingOrBetter
+        )
+
+        XCTAssertEqual(transformed.map(\.id), [good.id, challenging.id])
+    }
+
+    func testEquipmentFilteringOccursBeforeDashboardLimitAndUsesBestSelectedFit() {
+        let smart = capability(name: "Seestar S30 Pro", type: .smartTelescope, aperture: 30)
+        let modestVisual = capability(name: "Heritage P100", type: .visualTelescope, aperture: 100)
+        let binoculars = capability(name: "10×50", type: .binoculars, magnification: 10, aperture: 50)
+        let rejected = (0..<5).map { index in
+            recommendation(for: catalogTarget(id: "m77"), score: 95 - index)
+        }
+        let sixth = recommendation(for: catalogTarget(id: "m45"), score: 60)
+        let filtered = EquipmentSessionSelection().filteredRecommendations(
+            rejected + [sixth],
+            inventory: [binoculars],
+            minimumFit: .goodOrBetter
+        )
+
+        XCTAssertEqual(filtered.map(\.id), [sixth.id])
+        XCTAssertEqual(Array(filtered.prefix(5)).map(\.id), [sixth.id])
+        XCTAssertEqual(EquipmentSessionSelection().equipmentFit(for: catalogTarget(id: "m77"), inventory: [smart, modestVisual])?.level, .good)
+    }
+
+    func testDashboardAndViewAllShareDashboardOwnedSelectionAndThreshold() {
+        let smart = capability(name: "Seestar S30 Pro", type: .smartTelescope, aperture: 30)
+        let binoculars = capability(name: "10×50", type: .binoculars, magnification: 10, aperture: 50)
+        let inventory = [smart, binoculars]
+        let recommendations = [
+            recommendation(for: catalogTarget(id: "m77"), score: 90),
+            recommendation(for: catalogTarget(id: "m45"), score: 80),
+            recommendation(for: catalogTarget(id: "jupiter", type: .planet), score: 70)
+        ]
+        var dashboardSelection = EquipmentSessionSelection()
+        dashboardSelection.selectNakedEyeOnly()
+        dashboardSelection.toggle(smart.id, inventory: inventory)
+        dashboardSelection.toggle(.nakedEye, inventory: inventory)
+        let dashboardThreshold: EquipmentFitThreshold = .goodOrBetter
+
+        let dashboardRecommendations = dashboardSelection.filteredRecommendations(
+            recommendations,
+            inventory: inventory,
+            minimumFit: dashboardThreshold
+        )
+        // Recreating View All receives the same Dashboard-owned state.
+        let recreatedViewAllRecommendations = dashboardSelection.filteredRecommendations(
+            recommendations,
+            inventory: inventory,
+            minimumFit: dashboardThreshold
+        )
+
+        XCTAssertEqual(dashboardSelection.selectedCapabilities(from: inventory).map(\.id), [smart.id])
+        XCTAssertEqual(dashboardRecommendations, recreatedViewAllRecommendations)
+        XCTAssertEqual(dashboardRecommendations.map(\.id), [recommendations[0].id, recommendations[1].id])
+        XCTAssertEqual(dashboardThreshold, .goodOrBetter)
+    }
+
+    func testNoInventoryBypassesThresholdAndResetToAnyRestoresTargets() {
+        let recommendations = [
+            recommendation(for: catalogTarget(id: "m45"), score: 90),
+            recommendation(for: catalogTarget(id: "m77"), score: 80)
+        ]
+        let selection = EquipmentSessionSelection()
+
+        XCTAssertEqual(
+            selection.filteredRecommendations(recommendations, inventory: [], minimumFit: .excellentOnly),
+            recommendations
+        )
+
+        let binoculars = capability(name: "10×50", type: .binoculars, magnification: 10, aperture: 50)
+        let filtered = selection.filteredRecommendations(
+            recommendations,
+            inventory: [binoculars],
+            minimumFit: .excellentOnly
+        )
+        XCTAssertEqual(filtered.map(\.id), [recommendations[0].id])
+        XCTAssertEqual(
+            selection.filteredRecommendations(recommendations, inventory: [binoculars], minimumFit: .any),
+            recommendations
+        )
     }
 
     private func XCTAssertValidationError(
@@ -350,5 +1320,51 @@ final class EquipmentTests: XCTestCase {
             return 0
         }
         return value
+    }
+
+    private func capability(
+        id: EquipmentCapabilityID = .savedEquipment(UUID()),
+        name: String,
+        type: EquipmentType,
+        magnification: Double? = nil,
+        aperture: Double? = nil
+    ) -> EquipmentCapability {
+        EquipmentCapability(
+            id: id,
+            displayName: name,
+            type: type,
+            magnification: magnification,
+            apertureMillimeters: aperture
+        )
+    }
+
+    private func catalogTarget(
+        id: String,
+        type: ObservableTargetType = .deepSky
+    ) -> ObservableTarget {
+        ObservableTarget(
+            id: id,
+            name: id.uppercased(),
+            type: type,
+            preferredEquipment: .telescope,
+            difficulty: 0.5,
+            deepSkyObjectType: type == .deepSky ? .galaxy : nil
+        )
+    }
+
+    private func recommendation(for target: ObservableTarget, score: Int) -> TargetRecommendation {
+        TargetRecommendation(
+            target: target,
+            score: score,
+            visibilityWindow: TargetVisibilityWindow(
+                start: Date(),
+                end: Date().addingTimeInterval(3_600),
+                bestTime: Date().addingTimeInterval(1_800),
+                maxAltitude: 45,
+                direction: "S"
+            ),
+            reasons: [.highAltitude],
+            summary: "Test recommendation."
+        )
     }
 }

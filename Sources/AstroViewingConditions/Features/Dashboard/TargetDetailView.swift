@@ -7,6 +7,17 @@ struct TargetDetailView: View {
     @State private var viewerPresentation = TargetImageViewerPresentationState()
     let recommendation: TargetRecommendation
     let timeZone: TimeZone?
+    let equipmentFit: EquipmentFitResult?
+
+    init(
+        recommendation: TargetRecommendation,
+        timeZone: TimeZone?,
+        equipmentFit: EquipmentFitResult? = nil
+    ) {
+        self.recommendation = recommendation
+        self.timeZone = timeZone
+        self.equipmentFit = equipmentFit
+    }
 
     private var content: TargetDetailContent {
         TargetDetailContentBuilder().build(from: recommendation, timeZone: timeZone)
@@ -57,6 +68,12 @@ struct TargetDetailView: View {
                     LabeledContent("Best time", value: content.bestTime)
                     if let direction = content.directionText { LabeledContent("Direction", value: direction) }
                     if let altitude = content.altitudeText { LabeledContent("Altitude", value: altitude) }
+                }
+
+                if let equipmentFit {
+                    Section("Equipment Suitability") {
+                        Text(equipmentFit.explanation)
+                    }
                 }
 
                 ForEach(content.sections) { section in

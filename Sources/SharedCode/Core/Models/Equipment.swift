@@ -33,7 +33,8 @@ public struct EquipmentDraft: Equatable, Sendable {
     public let name: String
     public let type: EquipmentType
     public let magnification: Double?
-    public let apertureMillimeters: Double?
+    /// All saved optical instruments have a normalized aperture for matching.
+    public let apertureMillimeters: Double
     public let apertureUnit: EquipmentApertureUnit
 
     public init(
@@ -57,27 +58,92 @@ public enum EquipmentValidationError: Error, Equatable, Sendable {
     case blankName
     case missingMagnification
     case invalidMagnification
+    case magnificationTooHigh
     case missingAperture
     case invalidAperture
+    case apertureTooLarge
+
+    public var field: EquipmentFormField {
+        switch self {
+        case .blankName:
+            return .name
+        case .missingMagnification, .invalidMagnification, .magnificationTooHigh:
+            return .magnification
+        case .missingAperture, .invalidAperture, .apertureTooLarge:
+            return .aperture
+        }
+    }
 
     public var message: String {
         switch self {
         case .blankName:
             return "Enter a name for this equipment."
         case .missingMagnification:
-            return "Enter the binocular magnification."
+            return "Enter the magnification, such as 10 for 10×50 binoculars."
         case .invalidMagnification:
-            return "Magnification must be a positive, finite number."
+            return "Enter a number greater than zero."
+        case .magnificationTooHigh:
+            return "Magnification looks too high. Enter the first number shown on the binoculars."
         case .missingAperture:
             return "Enter the aperture."
         case .invalidAperture:
-            return "Aperture must be a positive, finite number."
+            return "Enter a number greater than zero."
+        case .apertureTooLarge:
+            return "Aperture looks too large. Check the value and selected unit."
         }
+    }
+
+    public func inlineMessage(for type: EquipmentType) -> String {
+        guard self == .missingAperture, type == .binoculars else { return message }
+        return "Enter the aperture, such as 50 for 10×50 binoculars."
     }
 }
 
 public enum EquipmentValidation {
     public static let millimetersPerInch = 25.4
+    public static let maximumBinocularMagnification = 100.0
+    public static let maximumBinocularApertureMillimeters = 300.0
+    public static let maximumTelescopeApertureMillimeters = 2_000.0
+
+    public static func validationErrors(
+        name: String,
+        type: EquipmentType,
+        magnification: Double?,
+        aperture: Double?,
+        apertureUnit: EquipmentApertureUnit
+    ) -> [EquipmentValidationError] {
+        var errors: [EquipmentValidationError] = []
+
+        if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            errors.append(.blankName)
+        }
+
+        if type == .binoculars {
+            switch magnification {
+            case nil:
+                errors.append(.missingMagnification)
+            case let value? where !value.isFinite || value <= 0:
+                errors.append(.invalidMagnification)
+            case let value? where value > maximumBinocularMagnification:
+                errors.append(.magnificationTooHigh)
+            default:
+                break
+            }
+        }
+
+        switch normalizedApertureMillimeters(aperture, unit: apertureUnit) {
+        case nil:
+            errors.append(.missingAperture)
+        case let value? where value <= 0 || !value.isFinite:
+            errors.append(.invalidAperture)
+        case let value? where value > maximumApertureMillimeters(for: type):
+            errors.append(.apertureTooLarge)
+        default:
+            break
+        }
+
+        return errors
+    }
 
     public static func validate(
         name: String,
@@ -86,25 +152,23 @@ public enum EquipmentValidation {
         aperture: Double?,
         apertureUnit: EquipmentApertureUnit
     ) throws -> EquipmentDraft {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else {
-            throw EquipmentValidationError.blankName
+        if let error = validationErrors(
+            name: name,
+            type: type,
+            magnification: magnification,
+            aperture: aperture,
+            apertureUnit: apertureUnit
+        ).first {
+            throw error
         }
 
-        let normalizedAperture = try normalizedApertureMillimeters(
-            aperture,
-            unit: apertureUnit,
-            isRequired: type != .smartTelescope
-        )
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let aperture else { throw EquipmentValidationError.missingAperture }
+        let normalizedAperture = EquipmentFormatting.apertureMillimeters(from: aperture, unit: apertureUnit)
 
         switch type {
         case .binoculars:
-            guard let magnification else {
-                throw EquipmentValidationError.missingMagnification
-            }
-            guard magnification.isFinite, magnification > 0 else {
-                throw EquipmentValidationError.invalidMagnification
-            }
+            guard let magnification else { throw EquipmentValidationError.missingMagnification }
 
             return EquipmentDraft(
                 validatedName: trimmedName,
@@ -127,25 +191,77 @@ public enum EquipmentValidation {
 
     private static func normalizedApertureMillimeters(
         _ aperture: Double?,
-        unit: EquipmentApertureUnit,
-        isRequired: Bool
-    ) throws -> Double? {
-        guard let aperture else {
-            if isRequired {
-                throw EquipmentValidationError.missingAperture
-            }
+        unit: EquipmentApertureUnit
+    ) -> Double? {
+        guard let aperture else { return nil }
+        let millimeters = EquipmentFormatting.apertureMillimeters(from: aperture, unit: unit)
+        return millimeters
+    }
+
+    private static func maximumApertureMillimeters(for type: EquipmentType) -> Double {
+        type == .binoculars
+            ? maximumBinocularApertureMillimeters
+            : maximumTelescopeApertureMillimeters
+    }
+}
+
+public enum EquipmentFormField: Hashable, Sendable {
+    case name
+    case magnification
+    case aperture
+}
+
+public enum EquipmentFormPresentation {
+    public static let nameAccessibilityLabel = "Equipment name"
+
+    public static func opticsFields(for type: EquipmentType) -> [EquipmentFormField] {
+        switch type {
+        case .binoculars: return [.magnification, .aperture]
+        case .visualTelescope, .smartTelescope: return [.aperture]
+        }
+    }
+
+    public static func label(for field: EquipmentFormField) -> String {
+        switch field {
+        case .name: return "Name"
+        case .magnification: return "Magnification"
+        case .aperture: return "Aperture"
+        }
+    }
+
+    public static func binocularSizeSummary(
+        magnificationText: String,
+        apertureText: String,
+        apertureUnit: EquipmentApertureUnit,
+        locale: Locale
+    ) -> String? {
+        guard case let .value(magnification) = EquipmentFormatting.decimalInput(from: magnificationText, locale: locale),
+              case let .value(aperture) = EquipmentFormatting.decimalInput(from: apertureText, locale: locale),
+              magnification > 0,
+              aperture > 0,
+              magnification <= EquipmentValidation.maximumBinocularMagnification else {
             return nil
         }
-
-        guard aperture.isFinite, aperture > 0 else {
-            throw EquipmentValidationError.invalidAperture
+        let apertureMillimeters = EquipmentFormatting.apertureMillimeters(from: aperture, unit: apertureUnit)
+        guard apertureMillimeters.isFinite,
+              apertureMillimeters > 0,
+              apertureMillimeters <= EquipmentValidation.maximumBinocularApertureMillimeters else {
+            return nil
         }
+        return "Binocular size: \(EquipmentFormatting.decimalText(magnification, locale: locale))×\(EquipmentFormatting.decimalText(apertureMillimeters, locale: locale))"
+    }
 
-        let millimeters = EquipmentFormatting.apertureMillimeters(from: aperture, unit: unit)
-        guard millimeters.isFinite, millimeters > 0 else {
-            throw EquipmentValidationError.invalidAperture
+    public static func binocularApertureHelperText(for unit: EquipmentApertureUnit) -> String {
+        switch unit {
+        case .millimeters:
+            return "Enter the second number in 10×50 binoculars."
+        case .inches:
+            return "Enter the objective aperture in inches. It will be shown in standard millimeter notation below."
         }
-        return millimeters
+    }
+
+    public static func magnificationText(afterChangingTo type: EquipmentType, currentText: String) -> String {
+        type == .binoculars ? currentText : ""
     }
 }
 
@@ -154,7 +270,7 @@ private extension EquipmentDraft {
         validatedName: String,
         type: EquipmentType,
         magnification: Double?,
-        apertureMillimeters: Double?,
+        apertureMillimeters: Double,
         apertureUnit: EquipmentApertureUnit
     ) {
         self.name = validatedName
@@ -246,6 +362,11 @@ public enum EquipmentFormatting {
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
+    public static func isCombinedBinocularInput(_ text: String) -> Bool {
+        let pattern = #"^\s*\d+(?:[\.,]\d+)?\s*[xX×]\s*\d+(?:[\.,]\d+)?\s*$"#
+        return text.range(of: pattern, options: .regularExpression) != nil
+    }
+
     public static func millimeters(_ value: Double) -> String {
         let roundedToTenth = (value * 10).rounded() / 10
         if roundedToTenth.rounded() == roundedToTenth {
@@ -294,7 +415,7 @@ public final class EquipmentItem {
     public var name: String
     private var equipmentTypeRawValue: String
     public var magnification: Double?
-    public var apertureMillimeters: Double?
+    public var apertureMillimeters: Double
     private var apertureUnitRawValue: String = EquipmentApertureUnit.millimeters.rawValue
 
     public var type: EquipmentType {
@@ -329,7 +450,7 @@ public final class EquipmentItem {
         name: String,
         equipmentTypeRawValue: String,
         magnification: Double?,
-        apertureMillimeters: Double?,
+        apertureMillimeters: Double,
         apertureUnitRawValue: String
     ) {
         self.id = id
@@ -346,12 +467,12 @@ public extension EquipmentItem {
         switch type {
         case .binoculars:
             let magnificationText = magnification.map { "\(EquipmentFormatting.number($0))×" } ?? ""
-            let apertureText = apertureMillimeters.map(EquipmentFormatting.millimeters) ?? ""
+            let apertureText = EquipmentFormatting.millimeters(apertureMillimeters)
             return "\(magnificationText)\(apertureText)"
         case .visualTelescope:
-            return apertureMillimeters.map { "\(EquipmentFormatting.millimeters($0)) aperture" } ?? ""
+            return "\(EquipmentFormatting.millimeters(apertureMillimeters)) aperture"
         case .smartTelescope:
-            return apertureMillimeters.map { "\(EquipmentFormatting.millimeters($0)) aperture" } ?? "Aperture not specified"
+            return "\(EquipmentFormatting.millimeters(apertureMillimeters)) aperture"
         }
     }
 }

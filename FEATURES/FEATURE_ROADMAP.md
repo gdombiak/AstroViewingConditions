@@ -126,20 +126,24 @@ The next release should focus on making the app's core guidance more trustworthy
 - Faint galaxies and low-surface-brightness nebulae should be down-ranked for modest gear.
 - Bright planets, the Moon, double stars, open clusters, and large bright targets should remain useful when appropriate.
 
-**Scope**:
+**Initial matching scope — complete**:
 
-- Add structured, catalog-driven equipment requirements with category defaults and individual target overrides where needed.
-- Model naked-eye, binocular visual, telescope visual, and Smart / EAA observing modes, including practical/preferred aperture, binocular suitability and magnification, target framing, magnification benefit, and electronic-assistance benefit.
-- Add a session-level multi-select equipment selector in Best Targets, defaulting to Naked Eye plus all saved equipment. Keep this session choice separate from the persistent inventory.
-- Produce explainable Excellent, Good, Challenging, or Poor equipment-fit guidance, with visual and electronically assisted wording kept distinct.
-- Do not automatically hide challenging targets. Preserve current behavior when no equipment is configured, do not change the core numeric suitability score or ranking semantics in the initial release, and do not fetch weather or location data when equipment selection changes.
+- [x] Add structured, catalog-driven equipment requirements with category defaults and individual target overrides where needed.
+- [x] Model naked-eye, binocular visual, telescope visual, and Smart / EAA observing modes, including practical/preferred aperture, conservative broad-framing guidance without full optical-system simulation, binocular suitability and magnification, magnification benefit, and Smart / EAA suitability.
+- [x] Add a session-level multi-select equipment selector in Best Targets, defaulting to Naked Eye plus all saved equipment. Keep this session choice separate from the persistent inventory.
+- [x] Produce explainable Excellent, Good, Challenging, or Poor equipment-fit guidance, with visual and electronically assisted wording kept distinct.
+- [x] Do not automatically hide challenging targets. Preserve current behavior when no equipment is configured, do not change the core numeric suitability score or ranking semantics in the initial release, and do not fetch weather or location data when equipment selection changes.
+
+**Future calibration**:
+
+- [ ] Evaluate whether equipment fit should conservatively influence numeric scoring or ranking after field validation.
 
 **Done when**:
 
-- Catalog requirements and target overrides produce clear equipment-fit guidance for the active session selection.
-- The selector defaults to Naked Eye plus saved equipment, remains separate from inventory, and does not trigger weather or location fetching.
-- Visual and Smart / EAA guidance remains distinct, challenging targets stay visible, and the app avoids hard "visible/not visible" claims.
-- Best Targets retains its current numeric suitability score and ranking semantics, including when no equipment is configured.
+- [x] Catalog requirements and target overrides produce clear equipment-fit guidance for the active session selection.
+- [x] The selector defaults to Naked Eye plus saved equipment, remains separate from inventory, and does not trigger weather or location fetching.
+- [x] Visual and Smart / EAA guidance remains distinct, challenging targets stay visible, and the app avoids hard "visible/not visible" claims.
+- [x] Best Targets retains its current numeric suitability score and ranking semantics, including when no equipment is configured.
 
 ### 3. Simple Horizon Constraints
 
