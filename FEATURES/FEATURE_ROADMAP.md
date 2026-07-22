@@ -76,76 +76,24 @@ The catalog is intentionally curated rather than a complete Messier/NGC database
 - [x] Observer guide for scores, difficulty labels, observing windows, and ISS paths
 - [x] Persistent dim-red Field Mode for telescope use, available from Settings and the Dashboard while widgets and watchOS retain their normal presentation
 
-## Recent Release: 2.0.2
+## Recent Release: 2.1.0
 
-Stabilization and catalog update following 2.0.1:
+Made Best Targets more useful for the equipment an observer has available:
 
-- Added M36, M38, and M77 to the curated deep-sky catalog.
-- Preserved native tab and Dashboard state when toggling Field Mode.
-- Ensured saved-location selection does not request current GPS.
-- Improved Best Nearby Area cancellation behavior.
-- Restored conditional Best Nearby Area refresh after settings changes.
+- Added a persistent **My Equipment** inventory for binoculars, visual telescopes, and Smart / EAA telescopes. Naked Eye remains built in rather than stored.
+- Added session-level equipment selection and catalog-driven Excellent, Good, Challenging, or Poor fit guidance, including an optional suitability filter. Conditions scores and their relative ordering remain unchanged.
+- Completed curated Target Details guidance for every named deep-sky catalog target, with target-specific locating, equipment, and observing notes.
+- Updated Venus scoring so a suitably high, sufficiently long, well-separated twilight window can be recommended while weather and the existing safeguards still apply.
 
 ## Next Feature Release
 
-The next release should focus on making the app's core guidance more trustworthy and more useful at the telescope. The recommended sequence is:
+The next release should build on the new equipment guidance by accounting for the local observing site. The recommended sequence is:
 
-1. Add Equipment Profile.
-2. Add equipment-aware Best Targets scoring.
-3. Add simple horizon constraints per saved location.
-4. Add Sky Darkness / Light Pollution after selecting a suitable modeled atlas and confirming redistribution terms.
+1. Add simple horizon constraints per saved location.
+2. Add Sky Darkness / Light Pollution after selecting a suitable modeled atlas and confirming redistribution terms.
+3. Evaluate whether equipment fit should conservatively influence numeric scoring or ranking after field validation.
 
-### 1. Equipment Profile
-
-**Goal**: Let the user describe what they observe with so recommendations can become personal.
-
-**User value**:
-
-- A binocular user and telescope user should not receive the same implied target suitability.
-- The app can explain target fit in a way that matches real observing expectations.
-
-**Phase 1 inventory scope**:
-
-- [x] Add, edit, and delete multiple saved binoculars, visual telescopes, and Smart / EAA telescopes.
-- [x] Treat naked eye as a built-in capability, not a saved item.
-- [x] Store binocular magnification and aperture, and telescope aperture normalized to millimeters while preserving the user's preferred millimeter/inch input unit.
-- [x] Keep inventory to add, edit, and delete only: no archived, enabled, or persistent “available tonight” state.
-- [x] Defer session availability to phase 2; do not sync inventory to companion surfaces yet.
-
-**Done when**:
-
-- The inventory is persisted and existing users can leave it empty with no onboarding blocker.
-- Equipment matching remains phase 2; inventory does not change current rankings or visibility claims.
-
-### 2. Equipment-Aware Best Targets
-
-**Goal**: Add explainable equipment-fit guidance to Best Targets without changing its initial ranking semantics.
-
-**User value**:
-
-- Faint galaxies and low-surface-brightness nebulae should be down-ranked for modest gear.
-- Bright planets, the Moon, double stars, open clusters, and large bright targets should remain useful when appropriate.
-
-**Initial matching scope — complete**:
-
-- [x] Add structured, catalog-driven equipment requirements with category defaults and individual target overrides where needed.
-- [x] Model naked-eye, binocular visual, telescope visual, and Smart / EAA observing modes, including practical/preferred aperture, conservative broad-framing guidance without full optical-system simulation, binocular suitability and magnification, magnification benefit, and Smart / EAA suitability.
-- [x] Add a session-level multi-select equipment selector in Best Targets, defaulting to Naked Eye plus all saved equipment. Keep this session choice separate from the persistent inventory.
-- [x] Produce explainable Excellent, Good, Challenging, or Poor equipment-fit guidance, with visual and electronically assisted wording kept distinct.
-- [x] Do not automatically hide challenging targets. Preserve current behavior when no equipment is configured, do not change the core numeric suitability score or ranking semantics in the initial release, and do not fetch weather or location data when equipment selection changes.
-
-**Future calibration**:
-
-- [ ] Evaluate whether equipment fit should conservatively influence numeric scoring or ranking after field validation.
-
-**Done when**:
-
-- [x] Catalog requirements and target overrides produce clear equipment-fit guidance for the active session selection.
-- [x] The selector defaults to Naked Eye plus saved equipment, remains separate from inventory, and does not trigger weather or location fetching.
-- [x] Visual and Smart / EAA guidance remains distinct, challenging targets stay visible, and the app avoids hard "visible/not visible" claims.
-- [x] Best Targets retains its current numeric suitability score and ranking semantics, including when no equipment is configured.
-
-### 3. Simple Horizon Constraints
+### 1. Simple Horizon Constraints
 
 **Goal**: Account for trees, buildings, hills, and other site-specific obstructions.
 

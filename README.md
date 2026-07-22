@@ -15,9 +15,10 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Real-time Weather Data**: Cloud cover including mid/high layers, humidity, wind including upper-atmosphere wind for observing estimates, temperature, visibility, and hourly forecasts
 - **Astronomical Information**: Sun and moon rise/set times, astronomical night timing, and moon phase
 - **Night Quality Analysis**: Clear, scan-friendly assessment of transparency, seeing, cloud cover, moonlight, fog, wind, and observing quality
-- **Best Targets**: Ranked recommendations for the Moon, visible planets, double stars, star clusters, nebulae, and galaxies based on the selected location and night, target altitude, darkness, weather, moonlight, and observing difficulty
+- **Best Targets**: Ranked recommendations for the Moon, visible planets, double stars, star clusters, nebulae, and galaxies based on the selected location and night, target altitude, darkness (or a useful Venus twilight window), weather, moonlight, and observing difficulty
+- **Equipment Personalization**: Save binoculars, visual telescopes, and Smart / EAA telescopes, then select the equipment available for a session and see Excellent, Good, Challenging, or Poor target-fit guidance without changing conditions scores
 - **Best Nearby Area**: Weather-scores nearby grid points, checks candidate suitability before recommending destinations, and shows a clean ranked map of the best nearby observing areas
-- **Practical Observing Guidance**: See each target's best observing window, compass direction, altitude, suitability score, finding tips, recommended equipment, and observing notes
+- **Practical Observing Guidance**: See each target's best observing window, compass direction, altitude, suitability score, curated finding tips, equipment guidance, and observing notes
 - **Observing Difficulty**: Easy, standard, and challenge labels help set expectations; challenge targets may require darker skies, more aperture, or careful observing techniques
 - **Offline Target Images**: Reference images with source and license credits are bundled for many targets and require no network connection
 - **ISS Pass Predictions**: With an optional N2YO API key, see rise and set times, peak time and elevation, compass directions, and passes already in progress

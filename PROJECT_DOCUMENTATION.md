@@ -45,9 +45,10 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
   - Suitability verification expands through ranked candidate bands but caps checks at 40, below the observed iOS/CoreLocation reverse-geocoding throttling threshold
   - If at least one suitable candidate is found before the cap, the app returns the available recommendations even when fewer than the requested count are available
 - **Best Targets**: Ranked Moon, planet, double-star, cluster, nebula, and galaxy recommendations for the selected location and forecast night
-  - Scores combine visibility, altitude, astronomical darkness, weather, moonlight, and observing difficulty
+  - Scores combine visibility, altitude, astronomical darkness (or qualified twilight visibility for Venus), weather, moonlight, and observing difficulty
   - Shows the observing window, direction, maximum altitude, and a concise recommendation rationale
-  - Full target details provide finding tips, equipment suggestions, observing notes, and difficulty guidance
+  - Full target details provide curated finding tips, equipment guidance, observing notes, and difficulty guidance for every named deep-sky catalog target
+  - Users can save binoculars, visual telescopes, and Smart / EAA telescopes, choose session-available equipment, and filter by explainable equipment suitability without changing conditions scores or ranking
   - Curated target images are bundled locally with attribution and license metadata
 - **ISS Pass Predictions**: Visible ISS passes via N2YO with rise/set range, peak time and elevation, compass path, active-pass handling, and service error messages when a user-provided API key is configured
 - **Fog Score**: Risk calculated from humidity, temperature-dew point difference, visibility, and low cloud cover
@@ -148,7 +149,7 @@ Defined in `project.yml`:
 ### Data Models and Storage
 
 #### Persistent User Data
-`SavedLocation` is the core user-owned location model. The app also keeps selected-location and unit preference snapshots for app extensions and watch sync.
+`SavedLocation` and `EquipmentItem` are the core user-owned SwiftData models. The app also keeps selected-location and unit preference snapshots for app extensions and watch sync. Equipment inventory remains local to the iOS app; session equipment selection is deliberately non-persistent.
 
 ```swift
 @Model
@@ -175,6 +176,7 @@ Important services:
 - `MigrationHelper`: Migrates older widget/cache storage into the newer shared storage approach
 - `WidgetReloadService`: Requests widget timeline refreshes after relevant data changes
 - `TargetRecommendationService`: Scores and ranks the curated targets for a forecast night
+- `EquipmentItem` and `EquipmentMatchingService`: Store a user's inventory through SwiftData and compare the selected session equipment with catalog-driven target requirements
 - `BestSpotSearcher`: Scores nearby areas, preserves all sampled scores, verifies ranked candidate suitability, and returns recommendable top locations
 - `LocationSuitabilityService`: Wraps Apple reverse geocoding for land/water/suitability checks with cached batch lookup support
 - `MoonRecommendationService` and `PlanetRecommendationService`: Calculate useful visibility windows for solar-system targets
@@ -254,7 +256,8 @@ Important services:
 - [x] Pull-to-refresh
 - [x] Offline/stale data handling
 - [x] Best Targets dashboard card and complete recommendations list
-- [x] Target detail sheets with observing guidance and credited offline imagery
+- [x] Target detail sheets with curated observing guidance for every named deep-sky catalog target and credited offline imagery
+- [x] Persistent equipment inventory plus session-level equipment-fit guidance and filtering in Best Targets
 - [x] Detailed ISS paths, active passes, empty states, and service errors
 - [x] Consistent dashboard card styling and Light Mode cloud-symbol contrast
 
@@ -324,7 +327,7 @@ Product priority, next-release sequencing, and future feature direction are cent
 ### Testing Needs
 - [x] Unit tests for key models and utilities
 - [x] Unit tests for weather, astronomy, ISS, best spot, and migration helpers
-- [x] Unit tests for target scoring, Moon and planet recommendations, catalog metadata, image manifests, and target-detail guidance
+- [x] Unit tests for target scoring, including Venus twilight behavior; Moon and planet recommendations; catalog metadata; image manifests; target-detail guidance; and equipment persistence, matching, and filtering
 - [x] Unit tests for Field Mode preference defaults, persistence, appearance resolution, and palette characteristics
 - [ ] Widget timeline tests
 - [ ] WatchConnectivity tests or integration checklist
@@ -457,7 +460,8 @@ Implemented:
 - Night quality analysis
 - Seeing & Transparency
 - Best Nearby Area with checked ranked recommendations and a recommended-only default map
-- Best Targets with scores, observing windows, practical guidance, and offline reference images
+- Best Targets with scores, observing windows, curated target guidance, equipment-fit filtering, and offline reference images
+- Persistent My Equipment inventory for binoculars, visual telescopes, and Smart / EAA telescopes
 - Detailed ISS pass paths and error states
 - Renameable and reorderable saved locations
 - Unit preferences
@@ -468,7 +472,7 @@ Implemented:
 - Shared storage and iPhone/watch sync
 - Core unit test coverage
 
-**Next Milestone**: Equipment Profile, followed by equipment-aware Best Targets scoring and simple horizon constraints per saved location. See [FEATURES/FEATURE_ROADMAP.md](FEATURES/FEATURE_ROADMAP.md) for the full sequence.
+**Next Milestone**: Simple horizon constraints per saved location. See [FEATURES/FEATURE_ROADMAP.md](FEATURES/FEATURE_ROADMAP.md) for the full sequence.
 
 ---
 
@@ -482,5 +486,5 @@ This is an open-source project. Contributions welcome.
 
 ---
 
-*Last Updated: July 17, 2026*
-*Document Version: 1.6*
+*Last Updated: July 21, 2026*
+*Document Version: 1.7*

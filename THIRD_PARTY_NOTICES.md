@@ -1,6 +1,6 @@
 # Third-Party Image Notices
 
-Target images are bundled locally and are not downloaded at runtime. The copies in the asset catalog may be resized, recognition-cropped for thumbnail/detail presentation, and JPEG-compressed without recoloring or other creative modification. Full assets remain available for the zoom viewer. Metadata was last verified on 2026-07-04.
+Target images are bundled locally and are not downloaded at runtime. The copies in the asset catalog may be resized, recognition-cropped for thumbnail/detail presentation, and JPEG-compressed without recoloring or other creative modification. Full assets remain available for the zoom viewer. Metadata was last verified on 2026-07-14.
 
 | Target ID | Target | Source page | Credit | License | Verified |
 |---|---|---|---|---|---|
