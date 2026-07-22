@@ -70,7 +70,7 @@ enum TargetObservingGuideCatalog {
             ),
             TargetObservingGuide(
                 targetID: "m20",
-                findingTips: "Find M8, then move a little more than 1° celestial north to M20. Use averted vision to trace the nebula and its dark lanes after centering it.",
+                findingTips: "On a star chart, move a little more than 1° north from M8 to M20. Use averted vision to trace the nebula and its dark lanes after centering it.",
                 bestEquipment: "Use 16×70-class binoculars for a challenging visual attempt or a telescope for more dependable visual observing. Try a UHC filter first and compare it with the unfiltered view; use a Smart/EAA telescope for electronically assisted observing.",
                 observingNotes: "Smaller binoculars may show only the stars and a weak glow. In a telescope, expect faint gray nebulosity divided by dark lanes, not the vivid red and blue seen in photographs."
             ),
@@ -100,27 +100,29 @@ enum TargetObservingGuideCatalog {
             ),
             TargetObservingGuide(
                 targetID: "m92",
-                findingTips: "In Hercules, use a star chart to find Pi Herculis; M92 lies about one binocular field to its celestial north. Center the compact glow before increasing magnification.",
+                findingTips: "In Hercules, use a star chart to find Pi Herculis; move about 6° north—roughly the width of a typical 10× binocular field—to reach M92. Center the compact glow before increasing magnification.",
                 bestEquipment: "Binoculars can detect its compact glow; a telescope can begin to resolve outer stars, and a Smart/EAA telescope can record more of the cluster.",
                 observingNotes: "Binoculars show a compact fuzzy glow. A telescope reveals a bright concentrated core and can make the outer halo look granular or partly resolved."
             ),
             TargetObservingGuide(
                 targetID: "jupiter",
-                findingTips: "Use the live direction and altitude to locate the bright planet, then wait for brief moments of steady seeing before judging fine detail.",
+                findingTips: "Use the compass direction and height above the horizon shown above to locate Jupiter. Then increase magnification gradually and wait for brief moments of steady seeing before judging fine detail.",
                 bestEquipment: "Binoculars can show the four Galilean moons; use a telescope for the disk and cloud bands.",
                 observingNotes: "The disk commonly shows two dark equatorial cloud bands; finer features may appear only briefly."
             ),
             TargetObservingGuide(
                 targetID: "saturn",
+                findingTips: "Use the compass direction and height above the horizon shown above to locate Saturn. Then increase magnification gradually and wait for steady moments before examining fine detail.",
                 observingNotes: "The rings are the most distinctive feature, with the planet’s globe appearing smaller and more subdued."
             ),
             TargetObservingGuide(
                 targetID: "mars",
+                findingTips: "Use the compass direction and height above the horizon shown above to locate Mars. Then increase magnification gradually and wait for steady moments; its small disk may not support as much magnification as Jupiter or Saturn.",
                 observingNotes: "Mars appears as a small orange-red disk; subtle darker markings or a polar cap can be difficult to distinguish."
             ),
             TargetObservingGuide(
                 targetID: "venus",
-                findingTips: "Use the live direction and altitude to locate Venus, then view it at low to moderate power and wait for steadier moments to judge its phase and limb.",
+                findingTips: "Use the compass direction and height above the horizon shown above to locate Venus. Then increase magnification gradually and wait for steadier moments before judging its phase.",
                 bestEquipment: "Use the naked eye to locate Venus and a telescope to see its phase.",
                 observingNotes: "Venus is intensely bright and shows phases, but its cloud-covered disk has little visual surface detail."
             )

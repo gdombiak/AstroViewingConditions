@@ -154,6 +154,44 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         }
     }
 
+    func testCuratedPlanetFindingTipsReplaceGenericFallbackAndStayInTheirSection() {
+        let expectedTips = [
+            "jupiter": "Use the compass direction and height above the horizon shown above to locate Jupiter. Then increase magnification gradually and wait for brief moments of steady seeing before judging fine detail.",
+            "venus": "Use the compass direction and height above the horizon shown above to locate Venus. Then increase magnification gradually and wait for steadier moments before judging its phase.",
+            "saturn": "Use the compass direction and height above the horizon shown above to locate Saturn. Then increase magnification gradually and wait for steady moments before examining fine detail.",
+            "mars": "Use the compass direction and height above the horizon shown above to locate Mars. Then increase magnification gradually and wait for steady moments; its small disk may not support as much magnification as Jupiter or Saturn."
+        ]
+        let genericPlanetTip = Self.section(
+            .findingTips,
+            in: Self.detailContent(name: "Generic Planet", targetType: .planet)
+        )
+
+        for (id, expectedTip) in expectedTips {
+            let content = Self.detailContent(id: id, name: id.capitalized, targetType: .planet)
+
+            XCTAssertEqual(Self.section(.findingTips, in: content), expectedTip, id)
+            XCTAssertNotEqual(Self.section(.findingTips, in: content), genericPlanetTip, id)
+            XCTAssertFalse(Self.section(.findingTips, in: content).contains("live direction and altitude"), id)
+            for sectionKind in [TargetDetailSectionKind.whyRecommended, .bestEquipment, .observingNotes] {
+                XCTAssertFalse(Self.section(sectionKind, in: content).contains(expectedTip), "\(id): \(sectionKind)")
+            }
+        }
+    }
+
+    func testClarifiedAngularFindingTipsPreserveTheirAnchorsAndOffsets() throws {
+        let m20 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m20")?.findingTips)
+        XCTAssertEqual(
+            m20,
+            "On a star chart, move a little more than 1° north from M8 to M20. Use averted vision to trace the nebula and its dark lanes after centering it."
+        )
+
+        let m92 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m92")?.findingTips)
+        XCTAssertEqual(
+            m92,
+            "In Hercules, use a star chart to find Pi Herculis; move about 6° north—roughly the width of a typical 10× binocular field—to reach M92. Center the compact glow before increasing magnification."
+        )
+    }
+
     func testCuratedObservingGuideCatalogPreservesVisualExpectationCopy() throws {
         let doubleCluster = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "double-cluster"))
         XCTAssertTrue(doubleCluster.findingTips?.contains("Perseus") == true)
