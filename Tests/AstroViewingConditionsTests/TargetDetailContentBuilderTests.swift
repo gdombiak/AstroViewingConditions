@@ -664,13 +664,142 @@ final class TargetDetailContentBuilderTests: XCTestCase {
         XCTAssertTrue(Self.section(.observingNotes, in: content).contains("relief looks flatter"))
     }
 
-    func testChangeFiveAddsCuratedGuidesWithoutRequiringFullCatalogCoverage() {
-        for id in ["m57", "ngc7293", "m92"] {
-            let guide = TargetObservingGuideCatalog.guide(for: id)
-            XCTAssertNotNil(guide, id)
-            XCTAssertNotNil(guide?.findingTips, id)
-            XCTAssertNotNil(guide?.bestEquipment, id)
-            XCTAssertNotNil(guide?.observingNotes, id)
+    func testEveryCuratedDeepSkyCatalogTargetHasCompleteObservingGuide() throws {
+        for entry in CuratedDeepSkyCatalogProvider().entries() {
+            let guide = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: entry.id), entry.id)
+            XCTAssertFalse(try XCTUnwrap(guide.findingTips, entry.id).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, entry.id)
+            XCTAssertFalse(try XCTUnwrap(guide.bestEquipment, entry.id).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, entry.id)
+            XCTAssertFalse(try XCTUnwrap(guide.observingNotes, entry.id).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, entry.id)
+        }
+    }
+
+    func testIssue62FindingTipsPreserveVerifiedAnchorsAndAngularRelationships() throws {
+        let requiredLocatorFacts = [
+            "m13": ["Keystone", "Hercules", "one-third", "Eta Herculis", "Zeta Herculis"],
+            "m2": ["Aquarius", "Sadalsuud", "Beta Aquarii", "about 5° north"],
+            "m30": ["Capricornus", "about 3° east", "Zeta Capricorni", "41 Capricorni", "less than 0.5° west"],
+            "m52": ["Cassiopeia", "Schedar", "Caph", "about 6° beyond Caph"],
+            "m11": ["Scutum", "Beta Scuti", "about 2° southeast"],
+            "m36": ["Auriga", "about 6° north-northeast", "Elnath", "Beta Tauri"],
+            "m38": ["M36", "Auriga", "about 2.5° northwest"],
+            "m51": ["Alkaid", "Big Dipper", "about 3.5° southwest", "Canes Venatici", "smaller companion immediately beside it"],
+            "m64": ["Coma Berenices", "35 Comae Berenices", "about 1° northeast"],
+            "m77": ["Cetus", "Delta Ceti", "less than 1° southeast"],
+            "m81": ["Phecda", "Dubhe", "Big Dipper", "roughly the same distance", "24 Ursae Majoris"],
+            "m82": ["Phecda", "Dubhe", "24 Ursae Majoris", "about 0.6° north of M81"]
+        ]
+
+        XCTAssertEqual(requiredLocatorFacts.count, 12)
+        for (id, facts) in requiredLocatorFacts {
+            let findingTips = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: id)?.findingTips, id)
+            for fact in facts {
+                XCTAssertTrue(findingTips.contains(fact), "\(id): \(fact)")
+            }
+        }
+    }
+
+    func testIssue62EquipmentGuidancePreservesEstablishedBinocularSuitability() throws {
+        for id in ["m13", "m2", "m30", "m52", "m11", "m36", "m38", "m81", "m82"] {
+            let equipment = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: id)?.bestEquipment, id)
+            XCTAssertTrue(equipment.localizedCaseInsensitiveContains("binocular"), id)
+            XCTAssertTrue(equipment.localizedCaseInsensitiveContains("visual telescope"), id)
+            XCTAssertTrue(equipment.localizedCaseInsensitiveContains("Smart/EAA telescope"), id)
+        }
+
+        let m51 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m51")?.bestEquipment)
+        XCTAssertTrue(m51.contains("Binoculars are not a dependable choice"))
+        XCTAssertFalse(m51.localizedCaseInsensitiveContains("Binoculars can detect"))
+
+        for id in ["m64", "m77"] {
+            let equipment = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: id)?.bestEquipment, id)
+            XCTAssertTrue(equipment.contains("Binoculars are unsuitable for \(id.uppercased())"), id)
+            XCTAssertFalse(equipment.localizedCaseInsensitiveContains("Binoculars can detect"), id)
+        }
+    }
+
+    func testIssue62BestEquipmentStaysEquipmentOnlyWithConcreteSmartEAABenefits() throws {
+        for id in ["m13", "m2", "m30", "m52", "m11", "m36", "m38"] {
+            let equipment = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: id)?.bestEquipment, id)
+            XCTAssertTrue(equipment.contains("Smart/EAA telescope can record more cluster members"), id)
+            XCTAssertTrue(equipment.contains("Observe unfiltered"), id)
+        }
+
+        for id in ["m51", "m64", "m77", "m81", "m82"] {
+            let equipment = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: id)?.bestEquipment, id)
+            XCTAssertTrue(equipment.localizedCaseInsensitiveContains("visual telescope"), id)
+            XCTAssertTrue(equipment.localizedCaseInsensitiveContains("Smart/EAA telescope"), id)
+            XCTAssertTrue(equipment.localizedCaseInsensitiveContains("unfiltered"), id)
+            for currentCondition in ["dark sky", "darkness", "transparent", "transparency", "Moon", "weather"] {
+                XCTAssertFalse(equipment.localizedCaseInsensitiveContains(currentCondition), "\(id): \(currentCondition)")
+            }
+        }
+    }
+
+    func testIssue62HighRiskGalaxyVisualExpectationsRemainQualified() throws {
+        let m51 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m51")?.observingNotes)
+        XCTAssertTrue(m51.contains("normal visual baseline is two small, unequal glows"))
+        XCTAssertTrue(m51.contains("Spiral structure is difficult"))
+        XCTAssertTrue(m51.contains("connecting bridge is an exceptional visual result, not a promise"))
+
+        let m64 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m64")?.observingNotes)
+        XCTAssertTrue(m64.contains("oval diffuse glow with a brighter center"))
+        XCTAssertTrue(m64.contains("feature that gives M64 its ‘Black Eye’ nickname is challenging visual detail"))
+        XCTAssertTrue(m64.contains("not guaranteed"))
+
+        let m77 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m77")?.observingNotes)
+        XCTAssertTrue(m77.contains("small, bright central region"))
+        XCTAssertTrue(m77.contains("much fainter diffuse halo"))
+        XCTAssertTrue(m77.contains("spiral structure is not a routine visual expectation"))
+
+        let m81 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m81")?.observingNotes)
+        XCTAssertTrue(m81.contains("smooth oval glow with a conspicuously brighter center"))
+        XCTAssertTrue(m81.contains("spiral arms are difficult visual detail"))
+
+        let m82 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m82")?.observingNotes)
+        XCTAssertTrue(m82.contains("narrow, elongated streak"))
+        XCTAssertTrue(m82.contains("may reveal uneven brightness or dark interruptions"))
+        XCTAssertTrue(m82.contains("colored starburst plumes"))
+        XCTAssertTrue(m82.contains("not a normal visual expectation"))
+    }
+
+    func testIssue62ClusterGuidesPreserveRelativeScaleAndQualifiedRecognition() throws {
+        let m52 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m52")?.observingNotes)
+        XCTAssertTrue(m52.contains("compact, grainy concentration"))
+        XCTAssertTrue(m52.contains("rich group dominated by faint stars"))
+
+        let m11 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m11")?.observingNotes)
+        XCTAssertTrue(m11.contains("compact triangular patch"))
+        XCTAssertTrue(m11.contains("unusually rich, concentrated open cluster"))
+        XCTAssertTrue(m11.contains("can suggest a wedge or rough V"))
+        XCTAssertTrue(m11.contains("depends on magnification and sky conditions"))
+
+        let m36 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m36")?.observingNotes)
+        XCTAssertTrue(m36.contains("relatively small, compact group"))
+        XCTAssertTrue(m36.contains("pinwheel impression is subjective rather than guaranteed"))
+
+        let m38 = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: "m38")?.observingNotes)
+        XCTAssertTrue(m38.contains("larger, looser, and more irregular group than M36"))
+        XCTAssertTrue(m38.contains("may suggest an oblique cross or starfish pattern"))
+        XCTAssertTrue(m38.contains("resemblance depends on field orientation"))
+    }
+
+    func testIssue62VisualAndElectronicExpectationsStayDistinctWithoutRoutinePhotoPromises() throws {
+        let expectedRestraints = [
+            "m51": "exceptional visual result, not a promise",
+            "m64": "not guaranteed",
+            "m77": "not a routine visual expectation",
+            "m81": "difficult visual detail",
+            "m82": "not a normal visual expectation"
+        ]
+
+        for (id, restraint) in expectedRestraints {
+            let guide = try XCTUnwrap(TargetObservingGuideCatalog.guide(for: id), id)
+            let equipment = try XCTUnwrap(guide.bestEquipment, id)
+            let notes = try XCTUnwrap(guide.observingNotes, id)
+            XCTAssertTrue(equipment.contains("Smart/EAA telescope"), id)
+            XCTAssertTrue(notes.contains(restraint), id)
+            XCTAssertTrue(notes.localizedCaseInsensitiveContains("Smart/EAA"), id)
+            XCTAssertTrue(notes.localizedCaseInsensitiveContains("photograph"), id)
         }
     }
 

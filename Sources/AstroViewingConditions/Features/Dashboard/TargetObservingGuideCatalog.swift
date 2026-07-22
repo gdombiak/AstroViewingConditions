@@ -8,6 +8,48 @@ enum TargetObservingGuideCatalog {
                 observingNotes: "Two rich clusters sit close together in a Milky Way star field, with many blue-white stars and dense central concentrations."
             ),
             TargetObservingGuide(
+                targetID: "m13",
+                findingTips: "Find the Keystone asterism in Hercules. M13 lies about one-third of the way from Eta Herculis toward Zeta Herculis; center it at low power, then increase magnification and use averted vision around its outskirts.",
+                bestEquipment: "Binoculars can detect M13. Use a visual telescope with increased magnification to resolve stars; a Smart/EAA telescope can record more cluster members. Observe unfiltered.",
+                observingNotes: "Expect a bright, round glow with a concentrated center. Under dark skies, a telescope can resolve stars around the outskirts; increasing aperture and steady seeing reveal progressively more stars toward the core."
+            ),
+            TargetObservingGuide(
+                targetID: "m2",
+                findingTips: "In Aquarius, use a star chart to find Sadalsuud, Beta Aquarii; M2 lies about 5° north. Center it before increasing magnification, then use averted vision around its outskirts.",
+                bestEquipment: "Binoculars can detect M2. Use a visual telescope to begin resolving its stars; a Smart/EAA telescope can record more cluster members. Observe unfiltered.",
+                observingNotes: "Expect a bright, concentrated globular glow. Its outer halo may look granular in a telescope, while resolving individual stars requires favorable conditions and additional aperture."
+            ),
+            TargetObservingGuide(
+                targetID: "m30",
+                findingTips: "In Capricornus, use a star chart to move about 3° east from Zeta Capricorni to 41 Capricorni; M30 lies less than 0.5° west of 41. Center it before increasing magnification and use averted vision around its outskirts.",
+                bestEquipment: "Binoculars can detect M30 but do not normally resolve its stars. Use a visual telescope for partial resolution; a Smart/EAA telescope can record more cluster members. Observe unfiltered.",
+                observingNotes: "Expect a small, round misty glow with a brighter, tightly concentrated center. A telescope may resolve some outer stars under dark, steady conditions, while the dense center generally remains unresolved."
+            ),
+            TargetObservingGuide(
+                targetID: "m52",
+                findingTips: "In Cassiopeia, follow the line from Schedar through Caph and extend it about 6° beyond Caph to M52. Sweep at low power, then increase magnification after centering the cluster.",
+                bestEquipment: "Binoculars can detect M52. Use a visual telescope to resolve its many faint members; a Smart/EAA telescope can record more cluster members. Observe unfiltered.",
+                observingNotes: "Expect a compact, grainy concentration in a crowded star field. A telescope resolves it into a rich group dominated by faint stars, with a few brighter members making the cluster easier to recognize."
+            ),
+            TargetObservingGuide(
+                targetID: "m11",
+                findingTips: "In Scutum, use a star chart to find Beta Scuti; M11 lies about 2° southeast. Sweep at low power through the dense Milky Way field, then increase magnification after centering the cluster.",
+                bestEquipment: "Binoculars can detect M11. Use a visual telescope to resolve its dense stellar population; a Smart/EAA telescope can record more cluster members. Observe unfiltered.",
+                observingNotes: "Binoculars show a compact triangular patch. A telescope reveals an unusually rich, concentrated open cluster whose brighter stars can suggest a wedge or rough V; the pattern's clarity depends on magnification and sky conditions."
+            ),
+            TargetObservingGuide(
+                targetID: "m36",
+                findingTips: "In Auriga, use a star chart to move about 6° north-northeast from Elnath, Beta Tauri, to M36. Sweep at low power, then center the cluster before increasing magnification.",
+                bestEquipment: "Binoculars can detect M36; use a visual telescope to separate more of its stars. A Smart/EAA telescope can record more cluster members. Observe unfiltered.",
+                observingNotes: "Expect a relatively small, compact group of conspicuously bright stars with open space between them. A telescope makes the cluster easier to separate from the surrounding Milky Way field; the pinwheel impression is subjective rather than guaranteed."
+            ),
+            TargetObservingGuide(
+                targetID: "m38",
+                findingTips: "After locating M36 in Auriga, move about 2.5° northwest to M38. Sweep with a wide field to secure the cluster, then increase magnification while keeping its broader extent in view.",
+                bestEquipment: "Binoculars are preferred for M38. Use a low- to moderate-power visual telescope to resolve more members; a Smart/EAA telescope can record more cluster members. Observe unfiltered.",
+                observingNotes: "Expect a larger, looser, and more irregular group than M36. Its brighter stars may suggest an oblique cross or starfish pattern, but the resemblance depends on field orientation and which stars are visible."
+            ),
+            TargetObservingGuide(
                 targetID: "m27",
                 brightMoonContext: "M27’s brighter central lobes may remain detectable despite the reduced contrast.",
                 findingTips: "Find the arrow-shaped Sagitta inside the Summer Triangle; on a star chart, M27 is roughly 3° north of Gamma Sagittae in neighboring Vulpecula. Use averted vision after centering it.",
@@ -85,6 +127,36 @@ enum TargetObservingGuideCatalog {
                 findingTips: "Use Mizar and Alkaid in the Big Dipper as two corners of an approximate equilateral triangle, then sweep the third-corner region slowly with averted vision.",
                 bestEquipment: "Use a low-power wide-field telescope for visual observation or a Smart/EAA telescope for the galaxy’s faint extent.",
                 observingNotes: "Expect a very faint diffuse patch with an uneven or slightly brighter center. Spiral arms are exceptional visually but become clearer with Smart/EAA observation."
+            ),
+            TargetObservingGuide(
+                targetID: "m51",
+                findingTips: "From Alkaid at the end of the Big Dipper’s handle, move about 3.5° southwest into Canes Venatici. Sweep slowly with averted vision; after detecting M51, look for its smaller companion immediately beside it.",
+                bestEquipment: "Binoculars are not a dependable choice. Use a visual telescope and observe unfiltered; a Smart/EAA telescope can reveal the spiral pattern and interaction with the companion more clearly.",
+                observingNotes: "The normal visual baseline is two small, unequal glows: M51 and its companion NGC 5195. Spiral structure is difficult and requires unusually favorable darkness, transparency, aperture, and observing skill; a connecting bridge is an exceptional visual result, not a promise. Smart/EAA and photographs show the interaction much more clearly."
+            ),
+            TargetObservingGuide(
+                targetID: "m64",
+                findingTips: "In Coma Berenices, use a star chart to find 35 Comae Berenices; M64 lies about 1° northeast. Sweep slowly with averted vision, then compare moderate magnifications after centering the galaxy.",
+                bestEquipment: "Binoculars are unsuitable for M64. Use a visual telescope and observe unfiltered; a Smart/EAA telescope can reveal the dust feature and faint outer extent more readily.",
+                observingNotes: "Expect an oval diffuse glow with a brighter center. The feature that gives M64 its ‘Black Eye’ nickname is challenging visual detail: it may appear with sufficient aperture, magnification, darkness, and transparency, but is not guaranteed. Smart/EAA and photographs reveal it much more readily."
+            ),
+            TargetObservingGuide(
+                targetID: "m77",
+                findingTips: "In Cetus, use a star chart to find Delta Ceti; M77 lies a little less than 1° southeast. Center it at low power, then increase magnification and use averted vision around its outskirts.",
+                bestEquipment: "Binoculars are unsuitable for M77. Use a visual telescope, starting unfiltered; a Smart/EAA telescope can reveal the faint outer galaxy and surrounding structure more clearly.",
+                observingNotes: "Expect a small, bright central region surrounded by a much fainter diffuse halo. Dark, transparent conditions may reveal more of the outer galaxy, but its photographed spiral structure is not a routine visual expectation. Smart/EAA and photographs show substantially more extent."
+            ),
+            TargetObservingGuide(
+                targetID: "m81",
+                findingTips: "Extend the line from Phecda through Dubhe in the Big Dipper by roughly the same distance toward 24 Ursae Majoris; the M81/M82 pair lies before that star. Sweep at low power to secure both galaxies, then center M81.",
+                bestEquipment: "Binoculars can detect M81 and M82 in one field. Use a low-power visual telescope for the shared field and more magnification for M81; a Smart/EAA telescope can reveal more of its disk. Observe unfiltered.",
+                observingNotes: "M81 normally appears as a smooth oval glow with a conspicuously brighter center. Its faint outer halo depends strongly on darkness and transparency, while spiral arms are difficult visual detail even with substantial aperture. Smart/EAA and photographs reveal the arms much more clearly."
+            ),
+            TargetObservingGuide(
+                targetID: "m82",
+                findingTips: "Locate the M81/M82 field by extending the line from Phecda through Dubhe toward 24 Ursae Majoris. M82 lies about 0.6° north of M81; use averted vision along its long axis after centering it.",
+                bestEquipment: "Binoculars can detect M82 in the same field as M81. Use a low-power visual telescope for the pair and moderate magnification to study M82; a Smart/EAA telescope can reveal more internal structure and outer material. Observe unfiltered.",
+                observingNotes: "M82 appears as a narrow, elongated streak, distinctly thinner than M81. Under dark, transparent skies, additional aperture may reveal uneven brightness or dark interruptions across it. The colored starburst plumes prominent in photographs and Smart/EAA are not a normal visual expectation."
             ),
             TargetObservingGuide(
                 targetID: "m57",
