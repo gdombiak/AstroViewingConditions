@@ -6,21 +6,30 @@ struct HourlyForecastView: View {
     let unitConverter: AstroUnitConverter
     let timeZone: TimeZone?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .subheadline) private var compactColumnWidth: CGFloat = 60
+    @ScaledMetric(relativeTo: .subheadline) private var regularColumnWidth: CGFloat = 80
+    @ScaledMetric(relativeTo: .footnote) private var accessibilityCompactColumnWidth: CGFloat = 86
+    @ScaledMetric(relativeTo: .footnote) private var accessibilityRegularColumnWidth: CGFloat = 104
+    @ScaledMetric(relativeTo: .caption) private var compactLabelColumnWidth: CGFloat = 88
+    @ScaledMetric(relativeTo: .caption) private var regularLabelColumnWidth: CGFloat = 90
+    @ScaledMetric(relativeTo: .footnote) private var headerHeight: CGFloat = 28
+    @ScaledMetric(relativeTo: .subheadline) private var rowHeight: CGFloat = 20
+    @ScaledMetric(relativeTo: .subheadline) private var columnPadding: CGFloat = 4
     
     private var isIPad: Bool {
         horizontalSizeClass == .regular
     }
     
-    private var fontScale: CGFloat {
-        isIPad ? 1.3 : 1.0
-    }
-    
     private var columnWidth: CGFloat {
-        isIPad ? 80 : 60
+        if dynamicTypeSize.requiresExpandedCompactLayout {
+            return isIPad ? accessibilityRegularColumnWidth : accessibilityCompactColumnWidth
+        }
+        return isIPad ? regularColumnWidth : compactColumnWidth
     }
     
     private var labelColumnWidth: CGFloat {
-        isIPad ? 90 : 70
+        isIPad ? regularLabelColumnWidth : compactLabelColumnWidth
     }
     
     private var upcomingForecasts: [HourlyForecast] {
@@ -52,14 +61,14 @@ struct HourlyForecastView: View {
                     // Fixed labels column (spacer)
                     VStack(alignment: .leading, spacing: 16) {
                         Text("")
-                            .frame(height: 28 * fontScale)
-                        MetricLabel(icon: "cloud.fill", label: "Cloud", color: .blue, fontScale: fontScale)
-                        MetricLabel(icon: "thermometer", label: "Temp", color: .orange, fontScale: fontScale)
-                        MetricLabel(icon: "humidity.fill", label: "Humidity", color: .cyan, fontScale: fontScale)
-                        MetricLabel(icon: "wind", label: "Wind", color: .gray, fontScale: fontScale)
-                        MetricLabel(icon: "arrow.up", label: "Dir", color: .gray, fontScale: fontScale)
-                        MetricLabel(icon: "cloud.fog.fill", label: "Fog", color: .gray, fontScale: fontScale)
-                        MetricLabel(icon: "eye", label: "Visibility", color: .gray, fontScale: fontScale)
+                            .frame(height: headerHeight)
+                        MetricLabel(icon: "cloud.fill", label: "Cloud", color: .blue, rowHeight: rowHeight)
+                        MetricLabel(icon: "thermometer", label: "Temp", color: .orange, rowHeight: rowHeight)
+                        MetricLabel(icon: "humidity.fill", label: "Humidity", color: .cyan, rowHeight: rowHeight)
+                        MetricLabel(icon: "wind", label: "Wind", color: .gray, rowHeight: rowHeight)
+                        MetricLabel(icon: "arrow.up", label: "Dir", color: .gray, rowHeight: rowHeight)
+                        MetricLabel(icon: "cloud.fog.fill", label: "Fog", color: .gray, rowHeight: rowHeight)
+                        MetricLabel(icon: "eye", label: "Visibility", color: .gray, rowHeight: rowHeight)
                     }
                     .frame(width: labelColumnWidth)
                     
@@ -72,8 +81,10 @@ struct HourlyForecastView: View {
                                     unitConverter: unitConverter,
                                     isNow: isCurrentHour(forecast.time),
                                     timeZone: timeZone,
-                                    fontScale: fontScale,
-                                    columnWidth: columnWidth
+                                    columnWidth: columnWidth,
+                                    headerHeight: headerHeight,
+                                    rowHeight: rowHeight,
+                                    columnPadding: columnPadding
                                 )
                             }
                         }
@@ -104,18 +115,18 @@ struct MetricLabel: View {
     let icon: String
     let label: String
     let color: Color
-    var fontScale: CGFloat = 1.0
+    let rowHeight: CGFloat
     
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 11 * fontScale))
+                .font(.caption)
                 .foregroundStyle(palette.appearance == .field ? palette.accent : color)
             Text(label)
-                .font(.system(size: 11 * fontScale, weight: .medium))
+                .font(.caption.weight(.medium))
                 .foregroundStyle(palette.appearance == .field ? palette.secondaryText : .primary)
         }
-        .frame(height: 20 * fontScale)
+        .frame(height: rowHeight)
     }
 }
 
@@ -125,8 +136,10 @@ struct HourlyColumn: View {
     let unitConverter: AstroUnitConverter
     let isNow: Bool
     let timeZone: TimeZone?
-    var fontScale: CGFloat = 1.0
-    var columnWidth: CGFloat = 60
+    let columnWidth: CGFloat
+    let headerHeight: CGFloat
+    let rowHeight: CGFloat
+    let columnPadding: CGFloat
     
     private var fogScore: FogScore {
         FogCalculator.calculate(from: forecast)
@@ -136,79 +149,79 @@ struct HourlyColumn: View {
         VStack(spacing: 16) {
             // Time header
             Text(DateFormatters.formatTime(forecast.time, in: timeZone))
-                .font(.system(size: 12 * fontScale, weight: isNow ? .bold : .medium))
+                .font(.footnote.weight(isNow ? .bold : .medium))
                 .foregroundStyle(timeTextColor)
-                .frame(height: 28 * fontScale)
+                .frame(height: headerHeight)
             
             // Cloud cover with astronomy-friendly coloring
             Text("\(forecast.cloudCover)%")
-                .font(.system(size: 13 * fontScale, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(cloudTextColor)
-                .frame(height: 20 * fontScale)
+                .frame(height: rowHeight)
                 .frame(maxWidth: .infinity)
                 .background(cloudBackgroundColor)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             
             // Temperature
             Text(unitConverter.formatTemperature(forecast.temperature))
-                .font(.system(size: 13 * fontScale, weight: .medium))
+                .font(.subheadline.weight(.medium))
                 .foregroundStyle(palette.primaryText)
-                .frame(height: 20 * fontScale)
+                .frame(height: rowHeight)
             
             // Humidity
             Text("\(forecast.humidity)%")
-                .font(.system(size: 13 * fontScale, weight: .medium))
+                .font(.subheadline.weight(.medium))
                 .foregroundStyle(palette.primaryText)
-                .frame(height: 20 * fontScale)
+                .frame(height: rowHeight)
             
             // Wind speed
             Text(unitConverter.formatWindSpeed(forecast.windSpeed))
-                .font(.system(size: 12 * fontScale, weight: .medium))
+                .font(.footnote.weight(.medium))
                 .foregroundStyle(palette.primaryText)
-                .frame(height: 20 * fontScale)
+                .frame(height: rowHeight)
             
             // Wind direction
             HStack(spacing: 2) {
                 Image(systemName: "arrow.up")
-                    .font(.system(size: 10 * fontScale))
+                    .font(.footnote)
                     .rotationEffect(.degrees(Double(forecast.windDirection)))
                 Text("\(forecast.windDirection)")
-                    .font(.system(size: 11 * fontScale))
+                    .font(.footnote)
             }
             .foregroundStyle(lowEmphasisTextColor)
-            .frame(height: 20 * fontScale)
+            .frame(height: rowHeight)
             
             // Fog risk
             if fogScore.score > 0 {
                 Text("\(fogScore.score)%")
-                    .font(.system(size: 13 * fontScale, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(fogColor)
-                    .frame(height: 20 * fontScale)
+                    .frame(height: rowHeight)
                     .frame(maxWidth: .infinity)
                     .background(fogBackgroundColor)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
             } else {
                 Text("—")
-                    .font(.system(size: 13 * fontScale))
+                    .font(.subheadline)
                     .foregroundStyle(lowEmphasisTextColor)
-                    .frame(height: 20 * fontScale)
+                    .frame(height: rowHeight)
             }
 
             // Visibility
             if let visibility = forecast.visibility {
                 Text(unitConverter.formatShortVisibility(visibility))
-                    .font(.system(size: 13 * fontScale, weight: .medium))
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(visibilityColor(for: visibility))
-                    .frame(height: 20 * fontScale)
+                    .frame(height: rowHeight)
             } else {
                 Text("—")
-                    .font(.system(size: 13 * fontScale))
+                    .font(.subheadline)
                     .foregroundStyle(lowEmphasisTextColor)
-                    .frame(height: 20 * fontScale)
+                    .frame(height: rowHeight)
             }
         }
         .frame(width: columnWidth)
-        .padding(.horizontal, 4 * fontScale)
+        .padding(.horizontal, columnPadding)
         .background(currentColumnBackground)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay {

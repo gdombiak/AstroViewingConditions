@@ -54,7 +54,7 @@ struct TargetRecommendationRow: View {
                 }
 
                 Text(recommendation.summary)
-                    .font(.caption)
+                    .font(.footnote)
                     .appSecondaryForeground()
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -65,8 +65,7 @@ struct TargetRecommendationRow: View {
                         Text(" · \(equipmentFit.bestCapability.displayName)")
                             .appSecondaryForeground()
                     }
-                        .font(.caption2)
-                        .lineLimit(1)
+                        .font(.footnote)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(Self.equipmentSuitabilityAccessibilityLabel(
                             level: equipmentFit.level,
@@ -76,12 +75,12 @@ struct TargetRecommendationRow: View {
 
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(windowText)
-                        .font(.caption)
+                        .font(.footnote)
                         .fontWeight(.medium)
 
                     if let positionText {
                         Text(positionText)
-                            .font(.caption2)
+                            .font(.footnote)
                             .appTertiaryForeground()
                     }
 
@@ -138,7 +137,7 @@ struct TargetRecommendationRow: View {
     private var targetMetadata: some View {
         HStack(spacing: 8) {
             Text(recommendation.target.displayTypeName)
-                .font(.caption2)
+                .font(.footnote)
                 .fontWeight(.medium)
                 .appSecondaryForeground()
                 .lineLimit(1)
@@ -154,7 +153,7 @@ struct TargetRecommendationRow: View {
                 .fontWeight(.bold)
                 .foregroundStyle(TargetScoreColorProvider.color(for: recommendation.score, palette: palette))
             Text("/100")
-                .font(.caption2)
+                .font(.footnote)
                 .appTertiaryForeground()
         }
         .fixedSize(horizontal: true, vertical: false)

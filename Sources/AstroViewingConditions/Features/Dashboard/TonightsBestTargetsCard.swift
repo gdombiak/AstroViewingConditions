@@ -65,14 +65,14 @@ struct TonightsBestTargetsCard: View {
                         .font(.subheadline)
                 } else if !recommendations.isEmpty {
                     Text("\(recommendations.count) picks")
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
 
             if Self.showsPoorConditionsNote(for: nightQualityScore) {
                 Label("Poor sky conditions; targets shown for planning.", systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(.orange)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -139,11 +139,10 @@ struct TonightsBestTargetsCard: View {
                     Text(EquipmentSessionSelectorView.equipmentControlTitle)
                         .font(.subheadline.weight(.semibold))
                     Text(selectionSummary)
-                        .font(.caption)
+                        .font(.footnote)
                         .appSecondaryForeground()
-                        .lineLimit(1)
                     Text(minimumFit.dashboardSummary)
-                        .font(.caption2)
+                        .font(.footnote)
                         .appSecondaryForeground()
                 }
 

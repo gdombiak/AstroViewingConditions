@@ -25,8 +25,6 @@ struct ContentView: View {
     }
 
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.appPalette) private var palette
     @SceneStorage("selectedAppTab") private var selectedTab: AppTab = .dashboard
     @State private var dashboardLocationSession = DashboardLocationSession()
@@ -34,13 +32,8 @@ struct ContentView: View {
         apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
     )
     
-    @ViewBuilder
     var body: some View {
-        let isLandscape = verticalSizeClass == .compact
-        let isRegular = horizontalSizeClass == .regular
-
         sharedRoot
-        .dynamicTypeSize(isRegular ? .xxLarge : (isLandscape ? .large : .medium))
     }
 
     private var sharedRoot: some View {
@@ -82,6 +75,7 @@ struct ContentView: View {
 
 private struct AppTabBar<Tab: AppTabItem>: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let tabs: [Tab]
     @Binding var selection: Tab
     let palette: AppPalette
@@ -90,8 +84,24 @@ private struct AppTabBar<Tab: AppTabItem>: View {
         horizontalSizeClass == .regular ? .regularWidth : .compactWidth
     }
 
+    private var usesAccessibilityLayout: Bool {
+        dynamicTypeSize.requiresExpandedCompactLayout
+    }
+
+    private var maximumWidth: CGFloat {
+        usesAccessibilityLayout ? metrics.accessibilityMaxWidth : metrics.maxWidth
+    }
+
+    private var horizontalInset: CGFloat {
+        usesAccessibilityLayout ? metrics.accessibilityHorizontalInset : metrics.horizontalInset
+    }
+
+    private var itemSpacing: CGFloat {
+        usesAccessibilityLayout ? metrics.accessibilityItemSpacing : metrics.itemSpacing
+    }
+
     var body: some View {
-        HStack(spacing: metrics.itemSpacing) {
+        HStack(spacing: itemSpacing) {
             ForEach(tabs, id: \.self) { tab in
                 let isSelected = selection == tab
                 Button {
@@ -101,13 +111,22 @@ private struct AppTabBar<Tab: AppTabItem>: View {
                         Image(systemName: tab.systemImage)
                             .font(.system(size: metrics.iconSize, weight: isSelected ? .semibold : .regular))
                         Text(tab.title)
-                            .font(metrics.labelFont)
+                            .font(.caption)
                             .fontWeight(isSelected ? .semibold : .regular)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(usesAccessibilityLayout ? 2 : nil)
                     }
                     .foregroundStyle(
                         foregroundStyle(isSelected: isSelected)
                     )
-                    .frame(maxWidth: .infinity, minHeight: metrics.itemMinHeight)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: metrics.itemMinHeight
+                    )
+                    .fixedSize(
+                        horizontal: false,
+                        vertical: usesAccessibilityLayout
+                    )
                     .background(selectedBackground(isSelected: isSelected))
                     .clipShape(Capsule())
                     .overlay {
@@ -124,8 +143,8 @@ private struct AppTabBar<Tab: AppTabItem>: View {
             }
         }
         .padding(2)
-        .frame(maxWidth: metrics.maxWidth)
-        .frame(height: metrics.height)
+        .frame(maxWidth: maximumWidth)
+        .frame(minHeight: metrics.minHeight)
         .background(containerBackground)
         .clipShape(RoundedRectangle(cornerRadius: metrics.cornerRadius))
         .overlay {
@@ -133,7 +152,7 @@ private struct AppTabBar<Tab: AppTabItem>: View {
                 .stroke(palette.border, lineWidth: 1)
         }
         .shadow(color: shadowColor, radius: 12, y: 5)
-        .padding(.horizontal, metrics.horizontalInset)
+        .padding(.horizontal, horizontalInset)
         .padding(.vertical, metrics.verticalInset)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Tab Bar")
@@ -174,44 +193,57 @@ private protocol AppTabItem: Hashable {
 
 private struct AppTabBarMetrics {
     let maxWidth: CGFloat
+    let accessibilityMaxWidth: CGFloat
     let horizontalInset: CGFloat
+    let accessibilityHorizontalInset: CGFloat
     let verticalInset: CGFloat
-    let height: CGFloat
+    let minHeight: CGFloat
     let cornerRadius: CGFloat
     let itemSpacing: CGFloat
+    let accessibilityItemSpacing: CGFloat
     let itemMinHeight: CGFloat
     let iconSize: CGFloat
     let labelSpacing: CGFloat
-    let labelFont: Font
 
     static let compactWidth = AppTabBarMetrics(
         maxWidth: 300,
+        accessibilityMaxWidth: 380,
         horizontalInset: 16,
+        accessibilityHorizontalInset: 8,
         verticalInset: 0,
-        height: 56,
+        minHeight: 56,
         cornerRadius: 28,
         itemSpacing: 8,
+        accessibilityItemSpacing: 4,
         itemMinHeight: 52,
         iconSize: 18,
-        labelSpacing: 3,
-        labelFont: .caption2
+        labelSpacing: 3
     )
 
     static let regularWidth = AppTabBarMetrics(
         maxWidth: 420,
+        accessibilityMaxWidth: 560,
         horizontalInset: 24,
+        accessibilityHorizontalInset: 16,
         verticalInset: 0,
-        height: 68,
+        minHeight: 68,
         cornerRadius: 34,
         itemSpacing: 12,
+        accessibilityItemSpacing: 8,
         itemMinHeight: 64,
         iconSize: 22,
-        labelSpacing: 4,
-        labelFont: .caption
+        labelSpacing: 4
     )
 }
 
 extension ContentView.AppTab: AppTabItem {}
+
+extension DynamicTypeSize {
+    /// Layouts that need more room before accessibility categories begin.
+    var requiresExpandedCompactLayout: Bool {
+        self >= .xxxLarge
+    }
+}
 
 #Preview {
     ContentView()

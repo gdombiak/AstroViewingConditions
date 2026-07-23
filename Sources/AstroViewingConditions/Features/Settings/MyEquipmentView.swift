@@ -50,7 +50,7 @@ struct MyEquipmentView: View {
                     Label("Naked Eye", systemImage: "eye")
                         .font(.subheadline)
                     Text("Available for every observing session. No setup required.")
-                        .font(.caption)
+                        .font(.footnote)
                         .appSecondaryForeground()
                 }
             }
@@ -143,11 +143,11 @@ private struct EquipmentRow: View {
                 .font(.subheadline)
             if item.persistedValidation.isAvailable, let type = item.type {
                 Text("\(type.displayName) · \(item.detailText)")
-                    .font(.caption)
+                    .font(.footnote)
                     .appSecondaryForeground()
             } else {
                 Label("Unavailable — repair or delete", systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(EquipmentRowPresentation.unavailableColor(palette: palette))
             }
         }

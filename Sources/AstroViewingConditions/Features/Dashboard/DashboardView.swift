@@ -484,11 +484,6 @@ public struct DashboardView: View {
         ) { day in
             Text(viewModel.titleForSelectedDay(day))
         }
-        .scaleEffect(isIPad ? 1.2 : 1.0)
-    }
-    
-    private var isIPad: Bool {
-        horizontalSizeClass == .regular
     }
 
     private func restoreSelectedDay() {

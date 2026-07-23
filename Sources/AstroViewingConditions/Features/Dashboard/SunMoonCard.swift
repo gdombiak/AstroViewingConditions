@@ -8,6 +8,7 @@ struct SunMoonCard: View {
     let moonInfo: MoonInfo
     let timeZone: TimeZone?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     
     private var isIPad: Bool {
         horizontalSizeClass == .regular
@@ -51,29 +52,7 @@ struct SunMoonCard: View {
                         Spacer()
                     }
                     
-                    HStack {
-                        HStack(spacing: 16) {
-                            Text(DateFormatters.formatTime(sunEvents.astronomicalNightStart, in: timeZone))
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                            Text("to")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Text(DateFormatters.formatTime(sunEvents.astronomicalNightEnd(using: tomorrowSunEvents), in: timeZone))
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                        }
-                        Spacer()
-                        HStack(spacing: 4) {
-                            Text("Duration:")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            Text(formatDuration(sunEvents.astronomicalNightDuration(using: tomorrowSunEvents)))
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(palette.appearance == .field ? palette.accent : .indigo)
-                        }
-                    }
+                    astronomicalNightDetails
                 }
                 .padding(.top, 4)
             }
@@ -91,28 +70,7 @@ struct SunMoonCard: View {
                         .foregroundStyle(.secondary)
                 }
                 
-                HStack(spacing: 16) {
-                    // Moon appearance and illumination
-                    VStack(spacing: 4) {
-                        Text(moonInfo.emoji)
-                            .font(.system(size: 48))
-                        Text("Illumination: \(moonInfo.illumination)%")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Image(systemName: "arrow.up")
-                                .foregroundStyle(.secondary)
-                            Text("Altitude: \(String(format: "%.1f°", moonInfo.altitude))")
-                                .font(.subheadline)
-                        }
-                        
-                    }
-                    
-                    Spacer()
-                }
+                moonDetails
             }
         }
         .dashboardCardStyle()
@@ -122,6 +80,112 @@ struct SunMoonCard: View {
         let hours = Int(interval) / 3600
         let minutes = (Int(interval) % 3600) / 60
         return String(format: "%dh %dm", hours, minutes)
+    }
+
+    private var usesExpandedLayout: Bool {
+        dynamicTypeSize.requiresExpandedCompactLayout && !isIPad
+    }
+
+    private var astronomicalTimeRange: some View {
+        HStack(spacing: usesExpandedLayout ? 8 : 16) {
+            Text(DateFormatters.formatTime(sunEvents.astronomicalNightStart, in: timeZone))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .fixedSize(horizontal: true, vertical: false)
+            Text("to")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: true, vertical: false)
+            Text(DateFormatters.formatTime(sunEvents.astronomicalNightEnd(using: tomorrowSunEvents), in: timeZone))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    private var stackedAstronomicalTimeRange: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(DateFormatters.formatTime(sunEvents.astronomicalNightStart, in: timeZone))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .fixedSize(horizontal: true, vertical: false)
+            Text("to")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(DateFormatters.formatTime(sunEvents.astronomicalNightEnd(using: tomorrowSunEvents), in: timeZone))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    private var durationView: some View {
+        HStack(spacing: 4) {
+            Text("Duration:")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Text(formatDuration(sunEvents.astronomicalNightDuration(using: tomorrowSunEvents)))
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(palette.appearance == .field ? palette.accent : .indigo)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    @ViewBuilder
+    private var astronomicalNightDetails: some View {
+        if usesExpandedLayout {
+            VStack(alignment: .leading, spacing: 6) {
+                ViewThatFits(in: .horizontal) {
+                    astronomicalTimeRange
+                    stackedAstronomicalTimeRange
+                }
+                durationView
+            }
+        } else {
+            HStack {
+                astronomicalTimeRange
+                Spacer()
+                durationView
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var moonDetails: some View {
+        if usesExpandedLayout {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(moonInfo.emoji)
+                    .font(.system(size: 48))
+                Text("Illumination: \(moonInfo.illumination)%")
+                    .font(.footnote)
+                    .fontWeight(.semibold)
+                altitudeView
+            }
+        } else {
+            HStack(spacing: 16) {
+                VStack(spacing: 4) {
+                    Text(moonInfo.emoji)
+                        .font(.system(size: 48))
+                    Text("Illumination: \(moonInfo.illumination)%")
+                        .font(.footnote)
+                        .fontWeight(.semibold)
+                }
+
+                altitudeView
+                Spacer()
+            }
+        }
+    }
+
+    private var altitudeView: some View {
+        HStack {
+            Image(systemName: "arrow.up")
+                .foregroundStyle(.secondary)
+            Text("Altitude: \(String(format: "%.1f°", moonInfo.altitude))")
+                .font(.subheadline)
+                .fixedSize(horizontal: true, vertical: false)
+        }
     }
 }
 
@@ -140,7 +204,7 @@ struct SunEventItem: View {
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 Text(label)
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }

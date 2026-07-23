@@ -322,12 +322,12 @@ struct LocationRow: View {
                     .font(.headline)
                 
                 Text(CoordinateFormatters.format(location.coordinate))
-                    .font(.caption)
+                    .font(.footnote)
                     .appSecondaryForeground()
                 
                 if let elevation = location.elevation {
                     Text("Elevation: \(Int(elevation))m")
-                        .font(.caption2)
+                        .font(.caption)
                         .appTertiaryForeground()
                 }
             }

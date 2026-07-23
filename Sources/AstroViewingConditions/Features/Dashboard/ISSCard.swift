@@ -38,7 +38,7 @@ struct ISSCard: View {
                 Spacer()
                 if !upcomingPasses.isEmpty {
                     Text(passCountDescription)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -101,7 +101,7 @@ struct ISSPassRow: View {
                 .fontWeight(.semibold)
 
             Text(DateFormatters.formatShortDate(pass.riseTime, in: timeZone))
-                .font(.caption2)
+                .font(.footnote)
                 .foregroundStyle(.secondary)
         }
     }
@@ -117,7 +117,7 @@ struct ISSPassRow: View {
 
             if let pathDescription {
                 Text(pathDescription)
-                    .font(.caption2)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }

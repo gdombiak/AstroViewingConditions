@@ -20,11 +20,11 @@ struct LocationPickerView: View {
                                 
                                 if let location = currentLocation {
                                     Text(CoordinateFormatters.format(location.coordinate))
-                                        .font(.caption)
+                                        .font(.footnote)
                                         .foregroundStyle(.secondary)
                                 } else {
                                     Text("Using device location")
-                                        .font(.caption)
+                                        .font(.footnote)
                                         .foregroundStyle(.secondary)
                                 }
                             }
@@ -50,12 +50,12 @@ struct LocationPickerView: View {
                                             .font(.headline)
                                         
                                         Text(CoordinateFormatters.format(location.coordinate))
-                                            .font(.caption)
+                                            .font(.footnote)
                                             .foregroundStyle(.secondary)
                                         
                                         if let elevation = location.elevation {
                                             Text("Elevation: \(Int(elevation))m")
-                                                .font(.caption2)
+                                                .font(.caption)
                                                 .foregroundStyle(.secondary)
                                         }
                                     }

@@ -3,6 +3,8 @@ import SwiftUI
 
 struct NightQualityCard: View {
     @Environment(\.appPalette) private var palette
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let assessment: NightQualityAssessment
     
     private var unitConverter: AstroUnitConverter {
@@ -63,22 +65,7 @@ struct NightQualityCard: View {
                 Spacer()
             }
             
-            HStack(spacing: 16) {
-                FactorPill(label: "Clouds", value: "\(Int(assessment.details.cloudCoverScore))%", color: assessment.cloudColor(assessment.details.cloudCoverScore))
-                FactorPill(label: "Moon", value: "\(assessment.details.moonIlluminationAvg)%", color: assessment.moonColor(assessment.details.moonIlluminationAvg))
-                FactorPill(label: "Wind", value: unitConverter.formatWindSpeed(assessment.details.windSpeedAvg), color: assessment.windColor(assessment.details.windSpeedAvg))
-            }
-
-            if assessment.details.seeingScoreAvg != nil || assessment.details.transparencyScoreAvg != nil {
-                HStack(spacing: 16) {
-                    if let seeingScore = assessment.details.seeingScoreAvg {
-                        FactorPill(label: "Seeing", value: assessment.scoreLabel(seeingScore), color: assessment.scoreToColor(seeingScore))
-                    }
-                    if let transparencyScore = assessment.details.transparencyScoreAvg {
-                        FactorPill(label: "Transparency", value: assessment.scoreLabel(transparencyScore), color: assessment.scoreToColor(transparencyScore))
-                    }
-                }
-            }
+            factorsView
         }
         .dashboardCardStyle()
     }
@@ -100,6 +87,92 @@ struct NightQualityCard: View {
         default: return palette.statusColor(.negative)
         }
     }
+
+    private var usesExpandedFactorLayout: Bool {
+        dynamicTypeSize.requiresExpandedCompactLayout
+            && horizontalSizeClass != .regular
+    }
+
+    private var factors: [NightConditionFactor] {
+        var factors = [
+            NightConditionFactor(
+                label: "Clouds",
+                value: "\(Int(assessment.details.cloudCoverScore))%",
+                color: assessment.cloudColor(assessment.details.cloudCoverScore)
+            ),
+            NightConditionFactor(
+                label: "Moon",
+                value: "\(assessment.details.moonIlluminationAvg)%",
+                color: assessment.moonColor(assessment.details.moonIlluminationAvg)
+            ),
+            NightConditionFactor(
+                label: "Wind",
+                value: unitConverter.formatWindSpeed(assessment.details.windSpeedAvg),
+                color: assessment.windColor(assessment.details.windSpeedAvg)
+            )
+        ]
+
+        if let seeingScore = assessment.details.seeingScoreAvg {
+            factors.append(
+                NightConditionFactor(
+                    label: "Seeing",
+                    value: assessment.scoreLabel(seeingScore),
+                    color: assessment.scoreToColor(seeingScore)
+                )
+            )
+        }
+
+        if let transparencyScore = assessment.details.transparencyScoreAvg {
+            factors.append(
+                NightConditionFactor(
+                    label: "Transparency",
+                    value: assessment.scoreLabel(transparencyScore),
+                    color: assessment.scoreToColor(transparencyScore)
+                )
+            )
+        }
+
+        return factors
+    }
+
+    @ViewBuilder
+    private var factorsView: some View {
+        if usesExpandedFactorLayout {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 180), spacing: 12)],
+                alignment: .leading,
+                spacing: 12
+            ) {
+                ForEach(factors) { factor in
+                    FactorPill(factor: factor, isExpanded: true)
+                }
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 16) {
+                    ForEach(factors.prefix(3)) { factor in
+                        FactorPill(factor: factor, isExpanded: false)
+                    }
+                }
+
+                if factors.count > 3 {
+                    HStack(spacing: 16) {
+                        ForEach(factors.dropFirst(3)) { factor in
+                            FactorPill(factor: factor, isExpanded: false)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct NightConditionFactor: Identifiable {
+    let label: String
+    let value: String
+    let color: Color
+
+    var id: String { label }
 }
 
 struct HalfScorePill: View {
@@ -113,10 +186,10 @@ struct HalfScorePill: View {
                 .fill(color)
                 .frame(width: 6, height: 6)
             Text(label)
-                .font(.caption2)
+                .font(.footnote)
                 .foregroundStyle(.secondary)
             Text(scoreLabel(score))
-                .font(.caption)
+                .font(.subheadline)
                 .fontWeight(.medium)
         }
     }
@@ -129,23 +202,28 @@ struct HalfScorePill: View {
     }
 }
 
-struct FactorPill: View {
-    let label: String
-    let value: String
-    let color: Color
+private struct FactorPill: View {
+    let factor: NightConditionFactor
+    let isExpanded: Bool
     
     var body: some View {
         HStack(spacing: 4) {
             Circle()
-                .fill(color)
+                .fill(factor.color)
                 .frame(width: 6, height: 6)
-            Text(label)
-                .font(.caption2)
+            Text(factor.label)
+                .font(.footnote)
                 .foregroundStyle(.secondary)
-            Text(value)
-                .font(.caption)
+                .fixedSize(horizontal: isExpanded, vertical: false)
+            if isExpanded {
+                Spacer(minLength: 4)
+            }
+            Text(factor.value)
+                .font(.subheadline)
                 .fontWeight(.medium)
+                .fixedSize(horizontal: isExpanded, vertical: false)
         }
+        .frame(maxWidth: isExpanded ? .infinity : nil, alignment: .leading)
     }
 }
 

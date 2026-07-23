@@ -20,7 +20,7 @@ public struct SettingsView: View {
                             Label("Field Mode", systemImage: "flashlight.off.fill")
                                 .font(.subheadline)
                             Text("Uses a dim red appearance to reduce glare while observing. Affects this iPhone or iPad app only.")
-                                .font(.caption)
+                                .font(.footnote)
                                 .appSecondaryForeground()
                         }
                     }
@@ -41,7 +41,7 @@ public struct SettingsView: View {
                         Label("Temperature", systemImage: "thermometer")
                             .font(.subheadline)
                         Text(unitSystem == .metric ? "Celsius (°C)" : "Fahrenheit (°F)")
-                            .font(.caption)
+                            .font(.footnote)
                             .appSecondaryForeground()
                     }
                     
@@ -49,7 +49,7 @@ public struct SettingsView: View {
                         Label("Wind Speed", systemImage: "wind")
                             .font(.subheadline)
                         Text(unitSystem == .metric ? "Kilometers per hour (km/h)" : "Miles per hour (mph)")
-                            .font(.caption)
+                            .font(.footnote)
                             .appSecondaryForeground()
                     }
                     
@@ -57,7 +57,7 @@ public struct SettingsView: View {
                         Label("Distance", systemImage: "ruler")
                             .font(.subheadline)
                         Text(unitSystem == .metric ? "Kilometers (km)" : "Miles (mi)")
-                            .font(.caption)
+                            .font(.footnote)
                             .appSecondaryForeground()
                     }
                 }
@@ -71,7 +71,7 @@ public struct SettingsView: View {
                             Label("My Equipment", systemImage: "binoculars")
                                 .font(.subheadline)
                             Text("Manage the binoculars and telescopes you own.")
-                                .font(.caption)
+                                .font(.footnote)
                                 .appSecondaryForeground()
                         }
                     }
@@ -83,7 +83,7 @@ public struct SettingsView: View {
                         Label("Weather Data", systemImage: "cloud.sun")
                             .font(.subheadline)
                         Text("Open-Meteo (open-meteo.com)")
-                            .font(.caption)
+                            .font(.footnote)
                             .appSecondaryForeground()
                     }
                     
@@ -91,7 +91,7 @@ public struct SettingsView: View {
                         Label("Astronomical Data", systemImage: "moon.stars")
                             .font(.subheadline)
                         Text("SunCalc Swift Package")
-                            .font(.caption)
+                            .font(.footnote)
                             .appSecondaryForeground()
                     }
                     
@@ -99,7 +99,7 @@ public struct SettingsView: View {
                         Label("ISS Tracking", systemImage: "airplane")
                             .font(.subheadline)
                         Text("N2YO (n2yo.com)")
-                            .font(.caption)
+                            .font(.footnote)
                             .appSecondaryForeground()
                     }
                 }
@@ -112,19 +112,19 @@ public struct SettingsView: View {
                         if n2yoApiKey.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Enter your N2YO API key to enable ISS pass predictions.")
-                                    .font(.caption)
+                                    .font(.footnote)
                                     .appSecondaryForeground()
                                 
                                 if let n2yoURL = URL(string: "https://www.n2yo.com/") {
                                     Link(destination: n2yoURL) {
                                         Label("Get a free API key at n2yo.com", systemImage: "arrow.up.right.square")
-                                            .font(.caption)
+                                            .font(.footnote)
                                     }
                                 }
                             }
                         } else {
                             Text("ISS tracking is enabled")
-                                .font(.caption)
+                                .font(.footnote)
                                 .foregroundStyle(
                                     palette.appearance == .field ? palette.statusColor(.positive) : .green
                                 )
@@ -145,7 +145,7 @@ public struct SettingsView: View {
                         Text("Astro Viewing Conditions")
                             .font(.headline)
                         Text("An open-source app for astronomy enthusiasts to check stargazing conditions.")
-                            .font(.caption)
+                            .font(.footnote)
                             .appSecondaryForeground()
                     }
                     .padding(.vertical, 4)
@@ -163,10 +163,10 @@ public struct SettingsView: View {
                         Text("License")
                             .font(.subheadline)
                         Text("GNU Affero General Public License v3.0 (AGPL-3.0)")
-                            .font(.caption)
+                            .font(.footnote)
                             .appSecondaryForeground()
                         Text("This ensures the app remains open source and free for the astronomy community.")
-                            .font(.caption2)
+                            .font(.caption)
                             .appSecondaryForeground()
                             .padding(.top, 2)
                     }

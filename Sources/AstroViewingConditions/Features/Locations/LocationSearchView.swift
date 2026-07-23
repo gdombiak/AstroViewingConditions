@@ -50,7 +50,7 @@ public struct LocationSearchView: View {
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                     Text("\(String(format: "%.4f", result.latitude)), \(String(format: "%.4f", result.longitude))")
-                                        .font(.caption2)
+                                        .font(.footnote)
                                         .foregroundStyle(.secondary)
                                 }
                             }
