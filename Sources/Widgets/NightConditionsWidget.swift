@@ -25,13 +25,35 @@ struct NightConditionsWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            NightConditionsWidgetSmallEntryView(assessment: entry.assessment)
-        case .systemMedium:
-            NightConditionsWidgetMediumEntryView(assessment: entry.assessment, timeZone: entry.timeZone)
-        default:
-            NightConditionsWidgetSmallEntryView(assessment: entry.assessment)
+        switch entry.state {
+        case let .available(summary):
+            switch family {
+            case .systemSmall:
+                NightConditionsWidgetSmallEntryView(summary: summary)
+            case .systemMedium:
+                NightConditionsWidgetMediumEntryView(summary: summary)
+            default:
+                NightConditionsWidgetSmallEntryView(summary: summary)
+            }
+        case let .unavailable(reason):
+            WidgetUnavailableView(message: reason.message)
         }
+    }
+}
+
+private struct WidgetUnavailableView: View {
+    let message: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Tonight at a Glance", systemImage: "sparkles")
+                .font(.headline)
+            Spacer(minLength: 0)
+            Text(message)
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }

@@ -719,7 +719,9 @@ public class DashboardViewModel {
     private func publishCompanionConditions() async {
         guard let conditions = viewingConditions else { return }
         let companionConditions = conditions.limitedToTonightCache()
-        await AppGroupStorage.saveWidgetConditionsAsync(companionConditions)
+        if let widgetSummary = WidgetNightSummary.make(from: companionConditions) {
+            await AppGroupStorage.saveWidgetNightSummaryAsync(widgetSummary)
+        }
         WatchConnectivityService.shared.sendConditionsToWatch(companionConditions)
         
         WidgetReloadService.shared.scheduleReload()

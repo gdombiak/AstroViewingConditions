@@ -70,23 +70,7 @@ public struct NightQualityAnalyzer {
             (5, 0.0), (20, 0.5), (40, 1.0), (60, 1.5), (100, 2.0)
         ]
         
-        static let moonIlluminationThresholds: [(max: Int, score: Double)] = [
-            (10, 0.0), (25, 0.5), (50, 1.0), (100, 2.0)
-        ]
-        
-        static let windSpeedThresholds: [(max: Double, score: Double)] = [
-            (3.0, 0.0), (6.0, 0.5), (10.0, 1.0), (100.0, 2.0)
-        ]
-        
         static let goodRatingThreshold: Double = 1.0
-    }
-
-    private struct HeavyCloudInterval {
-        let startIndex: Int
-        let hourCount: Int
-        let averageCloudCover: Double
-        let hasUsableHoursBefore: Bool
-        let hasUsableHoursAfter: Bool
     }
     
     public static func analyzeNight(
@@ -218,8 +202,8 @@ public struct NightQualityAnalyzer {
                 forecast.lowCloudCover != nil &&
                 forecast.midCloudCover != nil &&
                 forecast.highCloudCover != nil
-            let moonScore = calculateMoonScore(illumination: moonIllumination, altitude: moonAltitude)
-            let windScore = calculateWindScore(forecast.windSpeed)
+            let moonScore = NightQualityAnalysisRules.moonPenalty(illumination: moonIllumination, altitude: moonAltitude)
+            let windScore = NightQualityAnalysisRules.windPenalty(forecast.windSpeed)
             let fogPenalty = Double(fogScore.score) / 50.0
             let weightedScore: Double
 
@@ -288,7 +272,7 @@ public struct NightQualityAnalyzer {
         )
         
         let (trend, firstHalf, secondHalf) = calculateTrend(hourlyRatings: hourlyRatings)
-        let heavyCloudInterval = preferredHeavyCloudInterval(in: hourlyRatings)
+        let cloudTiming = NightQualityAnalysisRules.cloudTiming(in: hourlyRatings)
         
         let summary = generateSummary(
             rating: rating,
@@ -296,7 +280,7 @@ public struct NightQualityAnalyzer {
             trend: trend,
             averageCloudCover: avgCloudCover,
             seeingScoreAvg: details.seeingScoreAvg,
-            heavyCloudInterval: heavyCloudInterval
+            cloudTiming: cloudTiming
         )
         
         let bestWindowStart = hourlyRatings.first?.time ?? date
@@ -327,30 +311,6 @@ public struct NightQualityAnalyzer {
         return 2.0
     }
     
-    private static func calculateMoonScore(illumination: Int, altitude: Double) -> Double {
-        // If moon is below horizon (altitude <= 0), it's perfect for stargazing regardless of illumination
-        if altitude <= 0 {
-            return 0.0
-        }
-        
-        // For moon above horizon, score based on both illumination and altitude
-        // Higher altitude = more interference, higher illumination = more interference
-        var illuminationScore: Double = 2.0
-        for threshold in Constants.moonIlluminationThresholds {
-            if illumination <= threshold.max {
-                illuminationScore = threshold.score
-                break
-            }
-        }
-        
-        // Altitude factor: moon at 90° is worst, at 0° is best (but still above horizon)
-        // Normalize altitude to 0-1 range (0° -> 0, 90° -> 1)
-        let altitudeFactor = min(max(altitude / 90.0, 0.0), 1.0)
-        
-        // Combine scores: high altitude makes moon interference worse
-        return illuminationScore * (0.5 + 0.5 * altitudeFactor)
-    }
-    
     private static func calculateMoonAltitude(latitude: Double, longitude: Double, at time: Date) -> Double {
         do {
             let position = try MoonPosition.compute()
@@ -374,101 +334,17 @@ public struct NightQualityAnalyzer {
         }
     }
     
-    private static func calculateWindScore(_ windSpeed: Double) -> Double {
-        for threshold in Constants.windSpeedThresholds {
-            if windSpeed <= threshold.max {
-                return threshold.score
-            }
-        }
-        return 2.0
-    }
-    
     private static func determineRating(_ avgScore: Double) -> NightQualityAssessment.Rating {
         NightQualityAssessment.Rating.from(score: avgScore)
     }
 
-    private static func preferredHeavyCloudInterval(
-        in hourlyRatings: [NightQualityAssessment.HourlyRating]
-    ) -> HeavyCloudInterval? {
-        sustainedHeavyCloudIntervals(in: hourlyRatings)
-            .filter { $0.hasUsableHoursBefore || $0.hasUsableHoursAfter }
-            .sorted { lhs, rhs in
-                if lhs.hourCount != rhs.hourCount {
-                    return lhs.hourCount > rhs.hourCount
-                }
-                if lhs.averageCloudCover != rhs.averageCloudCover {
-                    return lhs.averageCloudCover > rhs.averageCloudCover
-                }
-                return lhs.startIndex < rhs.startIndex
-            }
-            .first
-    }
-
-    private static func sustainedHeavyCloudIntervals(
-        in hourlyRatings: [NightQualityAssessment.HourlyRating]
-    ) -> [HeavyCloudInterval] {
-        var intervals: [HeavyCloudInterval] = []
-        var runStartIndex: Int?
-
-        func appendInterval(endingAt endIndex: Int) {
-            guard let startIndex = runStartIndex, endIndex - startIndex >= 1 else { return }
-
-            let hasUsableHoursBefore = hourlyRatings[..<startIndex].contains {
-                $0.score < NightQualityAssessment.Rating.Thresholds.fairMax
-            }
-            let hasUsableHoursAfter = hourlyRatings[(endIndex + 1)...].contains {
-                $0.score < NightQualityAssessment.Rating.Thresholds.fairMax
-            }
-            let heavyCloudRatings = hourlyRatings[startIndex...endIndex]
-            intervals.append(
-                HeavyCloudInterval(
-                    startIndex: startIndex,
-                    hourCount: heavyCloudRatings.count,
-                    averageCloudCover: Double(heavyCloudRatings.map(\.cloudCover).reduce(0, +)) /
-                        Double(heavyCloudRatings.count),
-                    hasUsableHoursBefore: hasUsableHoursBefore,
-                    hasUsableHoursAfter: hasUsableHoursAfter
-                )
-            )
-        }
-
-        for index in hourlyRatings.indices {
-            let isHeavyCloud = hourlyRatings[index].cloudCover >= 80
-            let followsPreviousHour = index > 0 &&
-                hourlyRatings[index].time.timeIntervalSince(hourlyRatings[index - 1].time) == 3_600
-
-            if isHeavyCloud && (runStartIndex == nil || followsPreviousHour) {
-                runStartIndex = runStartIndex ?? index
-            } else {
-                appendInterval(endingAt: index - 1)
-                runStartIndex = isHeavyCloud ? index : nil
-            }
-        }
-
-        appendInterval(endingAt: hourlyRatings.count - 1)
-        return intervals
-    }
-
-    private static func heavyCloudSummary(for interval: HeavyCloudInterval) -> String? {
-        switch (interval.hasUsableHoursBefore, interval.hasUsableHoursAfter) {
-        case (true, false):
-            return "Decent early, with heavy clouds expected later tonight."
-        case (false, true):
-            return "Heavy clouds early, with better conditions later."
-        case (true, true):
-            return "A period of heavy clouds may interrupt otherwise better conditions."
-        case (false, false):
-            return nil
-        }
-    }
-    
     private static func generateSummary(
         rating: NightQualityAssessment.Rating,
         avgScore: Double,
         trend: NightQualityAssessment.Trend,
         averageCloudCover: Double,
         seeingScoreAvg: Double?,
-        heavyCloudInterval: HeavyCloudInterval?
+        cloudTiming: NightQualityAnalysisRules.CloudTiming
     ) -> String {
         let seeingWarning = seeingScoreAvg.map { NightQualityAssessment.Rating.from(score: $0) == .poor } == true
             ? " Poor seeing may limit fine detail."
@@ -486,8 +362,7 @@ public struct NightQualityAnalyzer {
         }
 
         if rating != .poor,
-           let heavyCloudInterval,
-           let summary = heavyCloudSummary(for: heavyCloudInterval) {
+           let summary = cloudTiming.summaryText {
             return summary + seeingWarning
         }
 

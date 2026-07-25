@@ -89,6 +89,7 @@ targets:
     platform: iOS
     sources:
       - Tests/AstroViewingConditionsTests
+      - Sources/Widgets/WidgetTonightPresentation.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

@@ -65,14 +65,14 @@ public struct AppGroupStorage: Sendable {
         return (selected.latitude, selected.longitude, selected.name)
     }
     
-    private static func writeWidgetConditions(_ conditions: ViewingConditions) -> Bool {
+    private static func writeWidgetNightSummary(_ summary: WidgetNightSummary) -> Bool {
         guard let baseURL = containerURL else {
             logger.error("App Group container not available")
             return false
         }
 
         do {
-            let data = try JSONEncoder().encode(conditions)
+            let data = try JSONEncoder().encode(summary)
             let fileURL = baseURL.appendingPathComponent("widgetConditions.json")
             try data.write(to: fileURL, options: .atomic)
             return true
@@ -82,7 +82,7 @@ public struct AppGroupStorage: Sendable {
         }
     }
 
-    private static func readWidgetConditions() -> ViewingConditions? {
+    private static func readWidgetNightSummary() -> WidgetNightSummary? {
         guard let baseURL = containerURL else {
             logger.error("App Group container not available")
             return nil
@@ -92,22 +92,22 @@ public struct AppGroupStorage: Sendable {
 
         do {
             let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode(ViewingConditions.self, from: data)
+            return WidgetNightSummary.decodeCachedPayload(data)
         } catch {
             logger.warning("Failed to load widget conditions: \(error.localizedDescription)")
             return nil
         }
     }
 
-    public static func saveWidgetConditionsAsync(_ conditions: ViewingConditions) async {
+    public static func saveWidgetNightSummaryAsync(_ summary: WidgetNightSummary) async {
         await performFileAccessAsync {
-            _ = writeWidgetConditions(conditions)
+            _ = writeWidgetNightSummary(summary)
         }
     }
 
-    public static func loadWidgetConditionsAsync() async -> ViewingConditions? {
+    public static func loadWidgetNightSummaryAsync() async -> WidgetNightSummary? {
         await performFileAccessAsync {
-            readWidgetConditions()
+            readWidgetNightSummary()
         }
     }
 
