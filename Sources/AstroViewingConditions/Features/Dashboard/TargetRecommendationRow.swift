@@ -81,7 +81,7 @@ struct TargetRecommendationRow: View {
                     if let positionText {
                         Text(positionText)
                             .font(.footnote)
-                            .appTertiaryForeground()
+                            .appSecondaryForeground()
                     }
 
                     Spacer(minLength: 0)
