@@ -47,7 +47,11 @@ public struct WidgetTonightTargetSummary: Identifiable, Codable, Sendable, Hasha
 /// All astronomy, ranking, scoring, status, and position conclusions are
 /// resolved before this payload reaches the widget extension.
 public struct WidgetTonightTargetsSummary: Codable, Sendable, Hashable {
-    public static let maximumAge: TimeInterval = 3 * 3600
+#if os(watchOS)
+    public static let maximumAge: TimeInterval = 3600
+#else
+    public static let maximumAge: TimeInterval = WidgetConditionsRefreshService.maximumAge
+#endif
 
     public let generatedAt: Date
     public let locationName: String

@@ -36,20 +36,22 @@ final class WidgetTonightTargetsTests: XCTestCase {
         XCTAssertFalse(source.contains("import WidgetKit"))
     }
 
-    func testThreeHourMaximumAgeBoundary() {
+    func testMaximumAgeMatchesConditionsCacheAndRejectsOlderSummary() {
         let generatedAt = date(day: 25, hour: 20)
         let summary = makeSummary(generatedAt: generatedAt)
+        let maximumAge = WidgetTonightTargetsSummary.maximumAge
 
+        XCTAssertEqual(maximumAge, WidgetConditionsRefreshService.maximumAge)
         XCTAssertTrue(summary.isWithinMaximumAge(
-            3 * 3600,
-            relativeTo: generatedAt.addingTimeInterval(3 * 3600)
+            maximumAge,
+            relativeTo: generatedAt.addingTimeInterval(maximumAge)
         ))
         XCTAssertFalse(summary.isWithinMaximumAge(
-            3 * 3600,
-            relativeTo: generatedAt.addingTimeInterval(3 * 3600 + 1)
+            maximumAge,
+            relativeTo: generatedAt.addingTimeInterval(maximumAge + 1)
         ))
         XCTAssertFalse(summary.isWithinMaximumAge(
-            3 * 3600,
+            maximumAge,
             relativeTo: generatedAt.addingTimeInterval(-1)
         ))
     }
@@ -323,7 +325,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
             dataStartDay: 26
         )
         let activePayload = makeSummary(
-            generatedAt: date(day: 25, hour: 23),
+            generatedAt: date(day: 26),
             observingDate: date(day: 25),
             nightStart: date(day: 25, hour: 22),
             nightEnd: date(day: 26, hour: 4)

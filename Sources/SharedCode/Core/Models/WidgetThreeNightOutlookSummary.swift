@@ -56,7 +56,11 @@ public struct WidgetThreeNightOutlookNight: Identifiable, Codable, Sendable, Has
 
 /// Display-ready, app-resolved cache for the Three-Night Outlook widget.
 public struct WidgetThreeNightOutlookSummary: Codable, Sendable, Hashable {
-    public static let maximumAge: TimeInterval = 3 * 3600
+#if os(watchOS)
+    public static let maximumAge: TimeInterval = 3600
+#else
+    public static let maximumAge: TimeInterval = WidgetConditionsRefreshService.maximumAge
+#endif
 
     public let generatedAt: Date
     public let locationName: String

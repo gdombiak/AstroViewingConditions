@@ -51,12 +51,24 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         ))
     }
 
-    func testThreeHourFreshnessBoundaryAndFutureRejection() {
+    func testMaximumAgeMatchesConditionsCacheAndRejectsOlderSummary() {
         let generatedAt = date(day: 25, hour: 20)
         let summary = makeSummary(generatedAt: generatedAt)
-        XCTAssertTrue(summary.isWithinMaximumAge(3 * 3600, relativeTo: generatedAt.addingTimeInterval(3 * 3600)))
-        XCTAssertFalse(summary.isWithinMaximumAge(3 * 3600, relativeTo: generatedAt.addingTimeInterval(3 * 3600 + 1)))
-        XCTAssertFalse(summary.isWithinMaximumAge(3 * 3600, relativeTo: generatedAt.addingTimeInterval(-1)))
+        let maximumAge = WidgetThreeNightOutlookSummary.maximumAge
+
+        XCTAssertEqual(maximumAge, WidgetConditionsRefreshService.maximumAge)
+        XCTAssertTrue(summary.isWithinMaximumAge(
+            maximumAge,
+            relativeTo: generatedAt.addingTimeInterval(maximumAge)
+        ))
+        XCTAssertFalse(summary.isWithinMaximumAge(
+            maximumAge,
+            relativeTo: generatedAt.addingTimeInterval(maximumAge + 1)
+        ))
+        XCTAssertFalse(summary.isWithinMaximumAge(
+            maximumAge,
+            relativeTo: generatedAt.addingTimeInterval(-1)
+        ))
     }
 
     func testLocationMatchAndMismatch() {
@@ -116,7 +128,11 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         XCTAssertEqual(resolve(nil, location, at: referenceDate), .noCache)
         XCTAssertEqual(
             resolve(
-                makeSummary(generatedAt: referenceDate.addingTimeInterval(-3 * 3600 - 1)),
+                makeSummary(
+                    generatedAt: referenceDate.addingTimeInterval(
+                        -WidgetThreeNightOutlookSummary.maximumAge - 1
+                    )
+                ),
                 location, at: referenceDate
             ),
             .stale
@@ -231,7 +247,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         let referenceDate = date(day: 26, hour: 1)
         let conditions = makeConditions(referenceDate: referenceDate, dataStartDay: 26)
         let valid = makeSummary(
-            generatedAt: date(day: 25, hour: 23),
+            generatedAt: date(day: 26),
             nights: shiftedNights(startDay: 25)
         )
         assertPreserved(conditions: conditions, existing: valid, referenceDate: referenceDate)
