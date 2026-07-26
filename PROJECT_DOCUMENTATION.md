@@ -25,7 +25,7 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
 - Uses **WatchConnectivity** for iPhone and Apple Watch sync
 
 ### License
-**AGPL-3.0** - Ensures the app remains open source and prevents commercial exploitation while keeping it free for the astronomy community.
+**AGPL-3.0** - A copyleft license requiring covered modified versions and their corresponding source code to remain available under the license, including the source-access requirement for modified versions used over a network.
 
 ---
 
@@ -226,9 +226,9 @@ Important services:
 - The feature does not validate roads, parking, ownership, legal access, personal safety, elevation advantage, light pollution, or local horizon obstructions.
 
 ### Why AGPL-3.0 License?
-- Prevents commercial apps from taking the code
-- Ensures modifications remain open source
-- Protects the astronomy community's investment
+- Requires covered modifications distributed to others to remain under the AGPL with corresponding source available
+- Requires modified versions offered for remote network interaction to provide source access as specified by the license
+- Keeps covered improvements available to the community under the same copyleft terms
 - Aligns with open data sources used
 
 ---

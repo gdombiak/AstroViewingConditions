@@ -89,14 +89,11 @@ Persistent user data is stored with SwiftData and shared storage helpers. App gr
 
 ## License
 
-This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+Astro Conditions is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
-This license ensures that:
-- The app remains open source
-- Anyone distributing the app must share their modifications
-- Commercial exploitation is prevented while keeping the project free for the community
+Modified versions distributed to others must comply with the AGPL and make the corresponding source code available. Modified versions made available for users to interact with over a network must also provide source access as required by the license.
 
-See [LICENSE](LICENSE) for full details.
+See [LICENSE](LICENSE) for the complete terms.
 
 ## Contributing
 

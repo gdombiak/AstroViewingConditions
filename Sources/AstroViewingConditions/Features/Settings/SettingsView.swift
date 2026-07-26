@@ -165,7 +165,7 @@ public struct SettingsView: View {
                         Text("GNU Affero General Public License v3.0 (AGPL-3.0)")
                             .font(.footnote)
                             .appSecondaryForeground()
-                        Text("This ensures the app remains open source and free for the astronomy community.")
+                        Text("Astro Conditions is open-source software licensed under AGPL-3.0. Covered modified versions and their corresponding source code must remain available under the license.")
                             .font(.caption)
                             .appSecondaryForeground()
                             .padding(.top, 2)
