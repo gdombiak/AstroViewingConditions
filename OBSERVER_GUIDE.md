@@ -45,6 +45,10 @@ In Target Details, **Finding tips** cover locating and observing technique, whil
 
 **Target Suitability for Your Equipment** controls the lowest equipment suitability level included. **Good**, for example, includes both Good and Excellent targets. **Any** includes all normal Best Targets regardless of equipment suitability. This setting affects which targets are shown in the Dashboard and View All, but does not change Best Targets conditions scores or the relative conditions-based ordering of targets that remain.
 
+### Add or Edit Equipment
+
+New equipment starts as a **Visual Telescope** with **mm** selected for aperture. The name and aperture examples change with the selected type: Visual Telescope (`e.g. Virtuoso GTi 150P`, `150`), Binoculars (`e.g. Nikon 10×50`, `50`), or Smart/EAA Telescope (`e.g. Seestar S30 Pro`, `30`). The aperture control offers only **mm** and **inches**, with type-specific guidance beneath the field. Changing type keeps the name and aperture text you entered. When editing, saved aperture units are preserved; older entries without a saved unit use millimeters.
+
 ### Difficulty Labels
 
 - **Easy**: Generally conspicuous or forgiving for newer observers.
@@ -52,6 +56,16 @@ In Target Details, **Finding tips** cover locating and observing technique, whil
 - **Challenge**: May be faint, have low surface brightness, require dark skies or more aperture, or benefit from techniques such as averted vision.
 
 When sky conditions are poor, the app may still show targets for planning. Treat these as the best available choices, not a prediction of a successful observation.
+
+## Use Home Screen Widgets
+
+Widgets use the location selected in Astro Viewing Conditions and the app's cached forecast data. Dates and times use that location's time zone. Refresh the app after changing locations or when a widget asks for an update; the widgets re-evaluate their timelines about hourly and show a clear unavailable message when no selected location, matching forecast, or fresh cached data is available. They retain the normal system appearance when the app uses Field Mode.
+
+- **Night Conditions** is the adaptive small and medium widget; its medium layout is headed **Tonight at a Glance**. It shows the night score and verdict, early-to-late trend, best observing window or a no-night/limiting message, and—when space permits—clouds, seeing, and transparency.
+- **Tonight’s Targets** is a medium widget. It shows up to three recommended targets, with score, best time, and, where space permits, category plus compass direction and altitude in degrees. A night with no recommendations says so.
+- **Three-Night Outlook** is a medium widget for Tonight, Tomorrow, and Day After. It compares each night's score, verdict, and best window or status, and marks the highest available score as **Best**.
+
+The widgets are informational. Tapping one opens Astro Conditions, but it does not navigate to a specific screen or provide controls directly in the widget.
 
 ## Follow an ISS Pass
 

@@ -62,7 +62,8 @@ The catalog is intentionally curated rather than a complete Messier/NGC database
 
 ### Companion Experiences
 
-- [x] Small and medium iOS Home Screen widgets
+- [x] Adaptive small and medium **Tonight at a Glance** conditions widget
+- [x] Medium **Tonight’s Targets** and **Three-Night Outlook** Home Screen widgets
 - [x] Apple Watch dashboard and location selector
 - [x] Inline, circular, corner, and rectangular watchOS complications
 - [x] Selected location, saved locations, unit preferences, and cached-condition exchange between iPhone and Apple Watch
@@ -73,10 +74,21 @@ The catalog is intentionally curated rather than a complete Messier/NGC database
 - [x] Improved cloud-symbol contrast in Light Mode
 - [x] Clearer Moon illumination labeling
 - [x] Adaptive layouts for target details and narrow ISS pass rows
+- [x] Dynamic Type layout improvements through the largest standard iOS Text Size setting
+- [x] Improved semantic contrast for direction and altitude beside Best Targets observing windows
 - [x] Observer guide for scores, difficulty labels, observing windows, and ISS paths
 - [x] Persistent dim-red Field Mode for telescope use, available from Settings and the Dashboard while widgets and watchOS retain their normal presentation
 
-## Recent Release: 2.1.0
+## Recent Release: 2.2.0
+
+Improved large-text readability and added Home Screen planning views:
+
+- Added Dynamic Type layout adjustments through the largest standard iOS Text Size setting. Accessibility-size layouts may show a reduced amount of widget detail; broader accessibility validation remains ongoing.
+- Added the adaptive small and medium **Tonight at a Glance** conditions widget, medium **Tonight’s Targets** widget, and medium **Three-Night Outlook** widget.
+- Improved semantic contrast for the direction and altitude shown beside Best Targets observing windows.
+- Refined the **My Equipment** editor with Visual Telescope and millimeter defaults, type-specific examples and aperture guidance, and preserved entered text when the type changes.
+
+## Previous Release: 2.1.0
 
 Made Best Targets more useful for the equipment an observer has available:
 
@@ -173,7 +185,7 @@ These remain valuable but are lower priority than the next-release foundation ab
 - [ ] Add regression cases for polar day/night, twilight-only windows, Moon rise/set boundaries, and objects skimming the horizon
 - [ ] Review scoring thresholds against real observing sessions and document any recalibration
 - [ ] Add UI tests for selecting forecast days, opening target details, renaming/reordering locations, and ISS error states
-- [ ] Add widget timeline tests
+- [x] Add widget timeline tests
 - [ ] Create a WatchConnectivity integration checklist covering first launch, unreachable phone, stale cache, and selection changes on both devices
 - [ ] Run watchOS UI smoke tests and location-permission edge cases
 - [ ] Continue the Swift concurrency and main-actor audit

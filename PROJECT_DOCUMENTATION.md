@@ -61,9 +61,15 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
   - Map-based location picker
 - **Unit Preferences**: Toggle between Metric and Imperial
 - **Field Mode**: Persistent, iOS-only dim red appearance with controls in Settings and the Dashboard toolbar. Light, Dark, and Field Mode share the same persistent native `TabView`; Field Mode changes the semantic palette and UIKit appearance configuration without replacing root views, preserving the selected tab and mounted screen instances.
+- **Dynamic Type**: Larger standard text sizes reorganize dashboard and navigation layouts through the largest standard iOS Text Size setting. This release does not claim complete validation of every Accessibility Text Size layout.
 - **3-Day Forecast**: Today, tomorrow, and day after
 - **Location-Local Dates**: Forecast tabs and displayed times follow the selected observing site's time zone
 - **iOS Widgets**: Home screen widgets backed by shared cached conditions and selected location data
+  - **Night Conditions** supports small and medium families. Its medium presentation is headed **Tonight at a Glance** and shows the night score, verdict, early/late trend, best window or limiting state, and space-dependent condition factors.
+  - **Tonight’s Targets** supports the medium family and presents up to three ranked targets with their score, best time, and space-dependent category and position (compass direction and altitude in degrees).
+  - **Three-Night Outlook** supports the medium family and compares Tonight, Tomorrow, and Day After by score, verdict, and best window or status, marking the highest available score as Best.
+  - All three use the selected location and its local time zone, consume app-resolved cached summaries, and re-evaluate their timelines hourly. Conditions data older than one hour is stale; target and outlook summaries older than three hours are stale. The widgets surface no-location, missing, mismatched, stale, and unavailable states rather than fetching their own data. They show no Metric/Imperial-dependent values: cloud values are percentages and target altitude is rounded degrees. No widget-specific URL or interactive control is declared.
+  - They use the normal system appearance, including while the iOS app is in Field Mode. Widgets reduce optional detail to fit larger text; this describes adaptive layout behavior, not complete accessibility-size validation.
 - **watchOS App**: Apple Watch dashboard with location selection, night quality, current conditions, and astronomical night details
 - **watchOS Complications**: Inline, circular, corner, and rectangular complication views
 - **iPhone/Watch Sync**: Saved locations, selected location, unit preferences, and cached conditions are exchanged through WatchConnectivity
@@ -175,6 +181,7 @@ Important services:
 - `iCloudKeyValueStorage`: Supports lightweight cloud-backed preference/location state
 - `MigrationHelper`: Migrates older widget/cache storage into the newer shared storage approach
 - `WidgetReloadService`: Requests widget timeline refreshes after relevant data changes
+- `WidgetNightSummary`, `WidgetTonightTargetsSummary`, and `WidgetThreeNightOutlookSummary`: Compact, display-ready summaries published by the iOS app for the three Home Screen widgets
 - `TargetRecommendationService`: Scores and ranks the curated targets for a forecast night
 - `EquipmentItem` and `EquipmentMatchingService`: Store a user's inventory through SwiftData and compare the selected session equipment with catalog-driven target requirements
 - `BestSpotSearcher`: Scores nearby areas, preserves all sampled scores, verifies ranked candidate suitability, and returns recommendable top locations
@@ -274,11 +281,12 @@ Important services:
 - [x] Unit system toggle
 - [x] Settings UI
 - [x] Error handling and edge cases
-- [x] Accessibility basics
+- [x] Accessibility basics and Dynamic Type layout adjustments through the largest standard text size
 
 ### Phase 6: Widgets - Complete
 - [x] iOS widget extension
-- [x] Small and medium widget layouts
+- [x] Adaptive small and medium Tonight at a Glance conditions layouts
+- [x] Medium Tonight’s Targets and Three-Night Outlook layouts
 - [x] Shared timeline data backed by cached conditions
 - [x] Widget reload service
 
@@ -329,7 +337,7 @@ Product priority, next-release sequencing, and future feature direction are cent
 - [x] Unit tests for weather, astronomy, ISS, best spot, and migration helpers
 - [x] Unit tests for target scoring, including Venus twilight behavior; Moon and planet recommendations; catalog metadata; image manifests; target-detail guidance; and equipment persistence, matching, and filtering
 - [x] Unit tests for Field Mode preference defaults, persistence, appearance resolution, and palette characteristics
-- [ ] Widget timeline tests
+- [x] Widget timeline, layout-presentation, freshness, and unavailable-state tests for all three Home Screen widgets
 - [ ] WatchConnectivity tests or integration checklist
 - [ ] UI tests for critical iOS paths
 - [ ] watchOS UI smoke tests
@@ -441,6 +449,9 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 - `Sources/SharedCode/Core/Services/TargetRecommendationService.swift` - Deep-sky ranking and visibility windows
 - `Sources/SharedCode/Core/Services/BestSpotSearcher.swift` - Nearby-area weather scoring, suitability expansion, and recommendation selection
 - `Sources/SharedCode/Core/Services/LocationSuitabilityService.swift` - Reverse-geocoded suitability checks used by Best Nearby Area
+- `Sources/Widgets/NightConditionsWidget.swift` - Adaptive Tonight at a Glance Home Screen widget
+- `Sources/Widgets/TonightTargetsWidget.swift` - Tonight’s Targets Home Screen widget
+- `Sources/Widgets/ThreeNightOutlookWidget.swift` - Three-Night Outlook Home Screen widget
 - `Sources/SharedCode/Core/Services/MoonRecommendationService.swift` - Moon visibility and recommendation logic
 - `Sources/SharedCode/Core/Services/PlanetRecommendationService.swift` - Local planet position and recommendation logic
 - `Sources/SharedCode/Core/Services/DeepSkyCatalogService.swift` - Curated target catalog
@@ -466,7 +477,7 @@ Implemented:
 - Renameable and reorderable saved locations
 - Unit preferences
 - Persistent iOS-only Field Mode with a semantic dim-red palette, reusable field surfaces and controls, and a stable native tab-bar layout across appearance modes
-- iOS widgets
+- iOS Home Screen widgets: adaptive Tonight at a Glance, medium Tonight’s Targets, and medium Three-Night Outlook
 - watchOS app
 - watchOS complications
 - Shared storage and iPhone/watch sync
@@ -486,5 +497,5 @@ This is an open-source project. Contributions welcome.
 
 ---
 
-*Last Updated: July 21, 2026*
-*Document Version: 1.7*
+*Last Updated: July 25, 2026*
+*Document Version: 1.8*

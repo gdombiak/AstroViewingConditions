@@ -26,7 +26,8 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Location Management**: Use current location, save and rename observing locations, arrange them in your preferred order, search by city, enter coordinates, or pick from a map
 - **Unit Preferences**: Toggle between Metric and Imperial units
 - **Field Mode**: Persistent dim-red iOS appearance for telescope use, available from Settings and the Dashboard; widgets and watchOS retain their normal presentation
-- **iOS Widgets**: Home screen viewing-condition widgets backed by shared app data
+- **Dynamic Type**: Layouts adapt at larger standard iOS text sizes, including the largest standard Text Size setting
+- **iOS Widgets**: Adaptive small and medium **Tonight at a Glance** conditions views, plus medium **Tonight’s Targets** and **Three-Night Outlook** Home Screen widgets backed by shared app data
 - **watchOS App**: Apple Watch dashboard with current conditions, night quality, astronomical timing, and location selection
 - **watchOS Complications**: Inline, circular, corner, and rectangular complication layouts
 - **Cross-Device Sync**: iPhone and Apple Watch exchange selected locations, saved locations, unit preferences, and cached conditions
