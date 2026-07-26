@@ -58,7 +58,8 @@ public struct ViewingConditions: Sendable, Codable {
 
 public extension ViewingConditions {
     func isFresh(within maxAge: TimeInterval, relativeTo referenceDate: Date = Date()) -> Bool {
-        referenceDate.timeIntervalSince(fetchedAt) <= maxAge
+        let age = referenceDate.timeIntervalSince(fetchedAt)
+        return age >= 0 && age < maxAge
     }
 
     func isFreshForLocalDay(within maxAge: TimeInterval, relativeTo referenceDate: Date = Date()) -> Bool {

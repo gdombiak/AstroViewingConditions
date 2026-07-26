@@ -412,8 +412,24 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         }
         XCTAssertTrue(provider.contains("WidgetConditionsRefreshService().conditions"))
         XCTAssertTrue(provider.contains("ThreeNightOutlookWidgetPayloadBuilder.publicationDecision"))
+        XCTAssertTrue(provider.contains("saveWidgetThreeNightOutlookSummaryAsync"))
         XCTAssertTrue(provider.contains("cachedSummary.locationMatches(location)"))
         XCTAssertTrue(provider.contains("cachedSummary.matchesCurrentObservingNight"))
+        XCTAssertTrue(provider.contains("context.isPreview"))
+        XCTAssertTrue(provider.contains("Timeline invocation"))
+        XCTAssertTrue(provider.contains("Using matching last-known-good Outlook summary"))
+        XCTAssertFalse(provider.contains("payloadMaximumAge"))
+
+        let conditionsCall = try XCTUnwrap(
+            provider.range(of: "WidgetConditionsRefreshService().conditions")
+        )
+        let fallbackCheck = try XCTUnwrap(
+            provider.range(of: "cachedSummary.locationMatches(location)")
+        )
+        XCTAssertLessThan(
+            provider.distance(from: provider.startIndex, to: conditionsCall.lowerBound),
+            provider.distance(from: provider.startIndex, to: fallbackCheck.lowerBound)
+        )
     }
 
     func testEveryLayoutCandidateRetainsThreeRowLoopAndSharedIdentity() throws {

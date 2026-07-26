@@ -6,7 +6,6 @@ private let targetsWidgetLogger = Logger(subsystem: "com.astroviewing.conditions
 
 struct TonightTargetsTimelineProvider: TimelineProvider {
     static let timelineReevaluationInterval: TimeInterval = 3600
-    static let payloadMaximumAge = WidgetTonightTargetsSummary.maximumAge
 
     func placeholder(in context: Context) -> TonightTargetsEntry {
         .placeholder
@@ -16,6 +15,10 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
         in context: Context,
         completion: @Sendable @escaping (TonightTargetsEntry) -> Void
     ) {
+        guard !context.isPreview else {
+            completion(.placeholder)
+            return
+        }
         Task { @Sendable in
             completion(await buildEntry())
         }
@@ -26,12 +29,18 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
         completion: @Sendable @escaping (Timeline<TonightTargetsEntry>) -> Void
     ) {
         Task { @Sendable in
-            let entry = await buildEntry()
+            let referenceDate = Date()
+            targetsWidgetLogger.info("Timeline invocation")
+            let entry = await buildEntry(referenceDate: referenceDate)
+            let nextRequestDate = referenceDate.addingTimeInterval(
+                Self.timelineReevaluationInterval
+            )
+            targetsWidgetLogger.info(
+                "Next timeline request: \(nextRequestDate.description, privacy: .public)"
+            )
             completion(Timeline(
                 entries: [entry],
-                policy: .after(
-                    Date().addingTimeInterval(Self.timelineReevaluationInterval)
-                )
+                policy: .after(nextRequestDate)
             ))
         }
     }
@@ -43,12 +52,9 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
                 state: .unavailable(.noLocation)
             )
         }
+        targetsWidgetLogger.info("Selected location: \(location.name, privacy: .public)")
 
         let cachedSummary = await AppGroupStorage.loadWidgetTonightTargetsSummaryAsync()
-        if let cachedSummary, isCurrent(cachedSummary, location: location, referenceDate: referenceDate) {
-            return entry(for: cachedSummary, date: referenceDate)
-        }
-
         let cachedLocation = CachedLocation(
             id: location.source == .saved ? location.id : nil,
             name: location.name, latitude: location.latitude, longitude: location.longitude
@@ -56,6 +62,9 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
         do {
             let conditions = try await WidgetConditionsRefreshService().conditions(
                 for: cachedLocation, referenceDate: referenceDate
+            )
+            targetsWidgetLogger.info(
+                "Conditions returned; fetchedAt: \(conditions.fetchedAt.description, privacy: .public)"
             )
             let decision = TonightTargetsWidgetContextResolver.publicationDecision(
                 conditions: conditions, existingSummary: cachedSummary,
@@ -69,9 +78,13 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
                     resolution: resolution
                 )
                 await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
+                targetsWidgetLogger.info("Rebuilt and saved Tonight’s Targets summary")
                 return entry(for: summary, date: referenceDate)
             case .preserveExisting:
-                if let cachedSummary { return entry(for: cachedSummary, date: referenceDate) }
+                if let cachedSummary {
+                    targetsWidgetLogger.info("Preserving active previous-night Targets summary")
+                    return entry(for: cachedSummary, date: referenceDate)
+                }
             case .unavailable:
                 let summary = TonightTargetsWidgetPayloadBuilder.makeUnavailableSummary(
                     generatedAt: conditions.fetchedAt, location: conditions.location,
@@ -80,26 +93,23 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
                     referenceDate: referenceDate
                 )
                 await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
+                targetsWidgetLogger.info("Rebuilt and saved unavailable Targets summary")
                 return entry(for: summary, date: referenceDate)
             }
         } catch {
-            targetsWidgetLogger.warning("Widget targets refresh failed: \(error.localizedDescription)")
+            targetsWidgetLogger.warning(
+                "Conditions service failed: \(error.localizedDescription, privacy: .public)"
+            )
         }
 
         if let cachedSummary,
            cachedSummary.locationMatches(location),
            cachedSummary.matchesCurrentObservingNight(relativeTo: referenceDate) {
+            targetsWidgetLogger.info("Using matching last-known-good Targets summary")
             return entry(for: cachedSummary, date: referenceDate)
         }
+        targetsWidgetLogger.warning("No usable Targets summary fallback")
         return .init(date: referenceDate, state: .unavailable(cachedSummary == nil ? .noCache : .stale))
-    }
-
-    private func isCurrent(
-        _ summary: WidgetTonightTargetsSummary, location: SelectedLocation, referenceDate: Date
-    ) -> Bool {
-        summary.locationMatches(location)
-            && summary.matchesCurrentObservingNight(relativeTo: referenceDate)
-            && summary.isWithinMaximumAge(Self.payloadMaximumAge, relativeTo: referenceDate)
     }
 
     private func entry(for summary: WidgetTonightTargetsSummary, date: Date) -> TonightTargetsEntry {

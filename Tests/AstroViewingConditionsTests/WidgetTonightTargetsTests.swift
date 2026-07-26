@@ -660,8 +660,25 @@ final class WidgetTonightTargetsTests: XCTestCase {
         let source = try sourceText("Sources/Widgets/TonightTargetsTimelineProvider.swift")
         XCTAssertTrue(source.contains("WidgetConditionsRefreshService().conditions"))
         XCTAssertTrue(source.contains("TonightTargetsWidgetRefreshPipeline.makeSummary"))
+        XCTAssertTrue(source.contains("saveWidgetTonightTargetsSummaryAsync"))
         XCTAssertTrue(source.contains("cachedSummary.locationMatches(location)"))
         XCTAssertTrue(source.contains("cachedSummary.matchesCurrentObservingNight"))
+        XCTAssertTrue(source.contains("context.isPreview"))
+        XCTAssertTrue(source.contains("Timeline invocation"))
+        XCTAssertTrue(source.contains("Using matching last-known-good Targets summary"))
+        XCTAssertFalse(source.contains("private func isCurrent("))
+        XCTAssertFalse(source.contains("payloadMaximumAge"))
+
+        let conditionsCall = try XCTUnwrap(
+            source.range(of: "WidgetConditionsRefreshService().conditions")
+        )
+        let fallbackCheck = try XCTUnwrap(
+            source.range(of: "cachedSummary.locationMatches(location)")
+        )
+        XCTAssertLessThan(
+            source.distance(from: source.startIndex, to: conditionsCall.lowerBound),
+            source.distance(from: source.startIndex, to: fallbackCheck.lowerBound)
+        )
     }
 
     func testLongNameViewUsesIntrinsicWrappingInsteadOfTruncation() throws {
@@ -862,17 +879,32 @@ final class WidgetTonightTargetsTests: XCTestCase {
         let reloadService = try sourceText(
             "Sources/SharedCode/Core/Services/WidgetReloadService.swift"
         )
-        XCTAssertTrue(phaseOneProvider.contains("addingTimeInterval(3600)"))
+        XCTAssertTrue(phaseOneProvider.contains(
+            "timelineReevaluationInterval: TimeInterval = 3600"
+        ))
         XCTAssertTrue(phaseOneProvider.contains("WidgetConditionsRefreshService"))
         XCTAssertTrue(phaseOneProvider.contains("WidgetNightSummary.make(from: conditions)"))
+        XCTAssertTrue(phaseOneProvider.contains("saveWidgetNightSummaryAsync"))
+        XCTAssertTrue(phaseOneProvider.contains("context.isPreview"))
+        XCTAssertTrue(phaseOneProvider.contains("fallbackMaximumAge: TimeInterval = 24 * 3600"))
+        XCTAssertTrue(phaseOneProvider.contains("Using matching last-known-good Night Conditions summary"))
+        XCTAssertFalse(phaseOneProvider.contains("widgetCacheMaxAge"))
         XCTAssertTrue(targetsProvider.contains(
             "timelineReevaluationInterval: TimeInterval = 3600"
         ))
-        XCTAssertTrue(targetsProvider.contains(
-            "payloadMaximumAge = WidgetTonightTargetsSummary.maximumAge"
-        ))
         XCTAssertTrue(reloadService.contains("\"NightConditionsWidget\""))
         XCTAssertTrue(reloadService.contains("\"TonightTargetsWidget\""))
+
+        let conditionsCall = try XCTUnwrap(
+            phaseOneProvider.range(of: "refreshService.conditions")
+        )
+        let fallbackCheck = try XCTUnwrap(
+            phaseOneProvider.range(of: "within: Self.fallbackMaximumAge")
+        )
+        XCTAssertLessThan(
+            phaseOneProvider.distance(from: phaseOneProvider.startIndex, to: conditionsCall.lowerBound),
+            phaseOneProvider.distance(from: phaseOneProvider.startIndex, to: fallbackCheck.lowerBound)
+        )
     }
 
     private var calendar: Calendar {

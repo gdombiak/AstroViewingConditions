@@ -57,21 +57,31 @@ final class WidgetConditionsRefreshServiceTests: XCTestCase {
         XCTAssertEqual(saves, 1)
     }
 
-    func testStaleOrWrongLocationConditionsFetchAndReplaceSharedCache() async throws {
+    func testExactlyExpiredConditionsFetchOnceAndReplaceSharedCache() async throws {
         let now = Self.referenceDate
         let selected = CachedLocation(id: UUID(), name: "Home", latitude: 45.5, longitude: -122.7)
-        let stale = Self.conditions(location: selected, fetchedAt: now.addingTimeInterval(-3601))
+        let stale = Self.conditions(
+            location: selected,
+            fetchedAt: now.addingTimeInterval(-WidgetConditionsRefreshService.maximumAge)
+        )
         let refreshed = Self.conditions(location: selected, fetchedAt: now)
         let store = Store(stale)
         let service = WidgetConditionsRefreshService(
-            load: { await store.load() }, save: { await store.save($0) }, fetch: { _ in refreshed }
+            load: { await store.load() },
+            save: { await store.save($0) },
+            fetch: { _ in
+                await store.recordFetch()
+                return refreshed
+            }
         )
 
         let result = try await service.conditions(for: selected, referenceDate: now)
         let saved = await store.load()
+        let fetches = await store.fetches
         let saves = await store.saves
         XCTAssertEqual(result.fetchedAt, now)
         XCTAssertEqual(saved?.fetchedAt, now)
+        XCTAssertEqual(fetches, 1)
         XCTAssertEqual(saves, 1)
 
         let secondProvider = WidgetConditionsRefreshService(
@@ -81,7 +91,11 @@ final class WidgetConditionsRefreshServiceTests: XCTestCase {
         _ = try await secondProvider.conditions(for: selected, referenceDate: now)
         let secondSaves = await store.saves
         XCTAssertEqual(secondSaves, 1)
+    }
 
+    func testWrongLocationConditionsFetchAndReplaceSharedCache() async throws {
+        let now = Self.referenceDate
+        let selected = CachedLocation(id: UUID(), name: "Home", latitude: 45.5, longitude: -122.7)
         let different = CachedLocation(id: UUID(), name: "Elsewhere", latitude: 45.500001, longitude: -122.7)
         let mismatched = Store(Self.conditions(location: selected, fetchedAt: now))
         let mismatchService = WidgetConditionsRefreshService(
@@ -91,6 +105,31 @@ final class WidgetConditionsRefreshServiceTests: XCTestCase {
         _ = try await mismatchService.conditions(for: different, referenceDate: now)
         let mismatchSaves = await mismatched.saves
         XCTAssertEqual(mismatchSaves, 1)
+    }
+
+    func testFutureDatedConditionsAreRejectedAndReplaced() async throws {
+        let now = Self.referenceDate
+        let location = CachedLocation(id: UUID(), name: "Home", latitude: 45.5, longitude: -122.7)
+        let future = Self.conditions(location: location, fetchedAt: now.addingTimeInterval(1))
+        let refreshed = Self.conditions(location: location, fetchedAt: now)
+        let store = Store(future)
+        let service = WidgetConditionsRefreshService(
+            load: { await store.load() },
+            save: { await store.save($0) },
+            fetch: { _ in
+                await store.recordFetch()
+                return refreshed
+            }
+        )
+
+        let result = try await service.conditions(for: location, referenceDate: now)
+        let saved = await store.load()
+        let fetches = await store.fetches
+        let saves = await store.saves
+        XCTAssertEqual(result.fetchedAt, now)
+        XCTAssertEqual(saved?.fetchedAt, now)
+        XCTAssertEqual(fetches, 1)
+        XCTAssertEqual(saves, 1)
     }
 
     func testFailedFetchPreservesMatchingStaleConditionsForFallback() async {

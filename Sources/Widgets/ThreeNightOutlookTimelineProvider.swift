@@ -6,11 +6,14 @@ private let outlookWidgetLogger = Logger(subsystem: "com.astroviewing.conditions
 
 struct ThreeNightOutlookTimelineProvider: TimelineProvider {
     static let timelineReevaluationInterval: TimeInterval = 3600
-    static let payloadMaximumAge = WidgetThreeNightOutlookSummary.maximumAge
 
     func placeholder(in context: Context) -> ThreeNightOutlookEntry { .placeholder }
 
     func getSnapshot(in context: Context, completion: @Sendable @escaping (ThreeNightOutlookEntry) -> Void) {
+        guard !context.isPreview else {
+            completion(.placeholder)
+            return
+        }
         Task { @Sendable in completion(await buildEntry()) }
     }
 
@@ -19,10 +22,18 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
         completion: @Sendable @escaping (Timeline<ThreeNightOutlookEntry>) -> Void
     ) {
         Task { @Sendable in
-            let entry = await buildEntry()
+            let referenceDate = Date()
+            outlookWidgetLogger.info("Timeline invocation")
+            let entry = await buildEntry(referenceDate: referenceDate)
+            let nextRequestDate = referenceDate.addingTimeInterval(
+                Self.timelineReevaluationInterval
+            )
+            outlookWidgetLogger.info(
+                "Next timeline request: \(nextRequestDate.description, privacy: .public)"
+            )
             completion(Timeline(
                 entries: [entry],
-                policy: .after(Date().addingTimeInterval(Self.timelineReevaluationInterval))
+                policy: .after(nextRequestDate)
             ))
         }
     }
@@ -31,15 +42,8 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
         guard let location = AppGroupStorage.loadSelectedLocationForWidget() else {
             return .init(date: referenceDate, state: .unavailable(.noLocation))
         }
+        outlookWidgetLogger.info("Selected location: \(location.name, privacy: .public)")
         let cachedSummary = await AppGroupStorage.loadWidgetThreeNightOutlookSummaryAsync()
-        if let cachedSummary,
-           ThreeNightOutlookEntryResolver.resolve(
-            summary: cachedSummary, selectedLocation: location, referenceDate: referenceDate,
-            maximumAge: Self.payloadMaximumAge
-           ) == .available {
-            return .init(date: referenceDate, state: .available(cachedSummary))
-        }
-
         let cachedLocation = CachedLocation(
             id: location.source == .saved ? location.id : nil,
             name: location.name, latitude: location.latitude, longitude: location.longitude
@@ -48,6 +52,9 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
             let conditions = try await WidgetConditionsRefreshService().conditions(
                 for: cachedLocation, referenceDate: referenceDate
             )
+            outlookWidgetLogger.info(
+                "Conditions returned; fetchedAt: \(conditions.fetchedAt.description, privacy: .public)"
+            )
             let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
                 conditions: conditions, existingSummary: cachedSummary, referenceDate: referenceDate,
                 timeZone: conditions.timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
@@ -55,12 +62,18 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
             switch decision {
             case let .publish(summary), let .unavailable(summary):
                 await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
+                outlookWidgetLogger.info("Rebuilt and saved Three-Night Outlook summary")
                 return entry(for: summary, location: location, date: referenceDate)
             case .preserveExisting:
-                if let cachedSummary { return entry(for: cachedSummary, location: location, date: referenceDate) }
+                if let cachedSummary {
+                    outlookWidgetLogger.info("Preserving active previous-night Outlook summary")
+                    return entry(for: cachedSummary, location: location, date: referenceDate)
+                }
             }
         } catch {
-            outlookWidgetLogger.warning("Three-night outlook refresh failed: \(error.localizedDescription)")
+            outlookWidgetLogger.warning(
+                "Conditions service failed: \(error.localizedDescription, privacy: .public)"
+            )
         }
 
         // A valid active-night payload remains more useful than an unavailable
@@ -68,8 +81,10 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
         if let cachedSummary,
            cachedSummary.locationMatches(location),
            cachedSummary.matchesCurrentObservingNight(relativeTo: referenceDate) {
+            outlookWidgetLogger.info("Using matching last-known-good Outlook summary")
             return .init(date: referenceDate, state: .available(cachedSummary))
         }
+        outlookWidgetLogger.warning("No usable Outlook summary fallback")
         return .init(date: referenceDate, state: .unavailable(cachedSummary == nil ? .noCache : .stale))
     }
 
@@ -79,8 +94,7 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
         date: Date
     ) -> ThreeNightOutlookEntry {
         switch ThreeNightOutlookEntryResolver.resolve(
-            summary: summary, selectedLocation: location, referenceDate: date,
-            maximumAge: Self.payloadMaximumAge
+            summary: summary, selectedLocation: location, referenceDate: date
         ) {
         case .available: return .init(date: date, state: .available(summary))
         case .noLocation: return .init(date: date, state: .unavailable(.noLocation))
