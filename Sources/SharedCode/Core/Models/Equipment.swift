@@ -214,6 +214,30 @@ public enum EquipmentFormField: Hashable, Sendable {
 public enum EquipmentFormPresentation {
     public static let nameAccessibilityLabel = "Equipment name"
 
+    public static func namePlaceholder(for type: EquipmentType?) -> String {
+        switch type {
+        case .visualTelescope:
+            return "e.g. Virtuoso GTi 150P"
+        case .binoculars:
+            return "e.g. Nikon 10×50"
+        case .smartTelescope:
+            return "e.g. Seestar S30 Pro"
+        case nil:
+            return "e.g. Equipment name"
+        }
+    }
+
+    public static func aperturePlaceholder(for type: EquipmentType?) -> String {
+        switch type {
+        case .visualTelescope:
+            return "150"
+        case .binoculars, nil:
+            return "50"
+        case .smartTelescope:
+            return "30"
+        }
+    }
+
     public static func opticsFields(for type: EquipmentType) -> [EquipmentFormField] {
         switch type {
         case .binoculars: return [.magnification, .aperture]

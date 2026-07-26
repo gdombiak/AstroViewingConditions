@@ -164,21 +164,21 @@ private struct EquipmentEditorView: View {
     @State private var type: EquipmentType?
     @State private var magnification: String
     @State private var aperture: String
-    @State private var apertureUnit: EquipmentApertureUnit?
+    @State private var apertureUnit: EquipmentApertureUnit
     @State private var fieldErrors: [EquipmentFormField: String] = [:]
     @State private var saveErrorMessage: String?
 
     init(item: EquipmentItem? = nil) {
         self.item = item
         _name = State(initialValue: item?.name ?? "")
-        _type = State(initialValue: item == nil ? .binoculars : item?.type)
-        let apertureUnit: EquipmentApertureUnit? = item == nil ? .millimeters : item?.apertureUnit
+        _type = State(initialValue: item == nil ? .visualTelescope : item?.type)
+        let apertureUnit = item?.apertureUnit ?? .millimeters
         _apertureUnit = State(initialValue: apertureUnit)
         _magnification = State(initialValue: item?.magnification.map { EquipmentFormatting.decimalText($0, locale: .current) } ?? "")
         _aperture = State(initialValue: item.map {
             EquipmentFormatting.apertureInputText(
                 fromMillimeters: $0.apertureMillimeters,
-                unit: apertureUnit ?? .millimeters,
+                unit: apertureUnit,
                 locale: .current
             )
         } ?? "")
@@ -190,7 +190,7 @@ private struct EquipmentEditorView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(EquipmentFormPresentation.label(for: .name))
                         .font(.subheadline)
-                    TextField("Seestar S30 Pro", text: $name)
+                    TextField(EquipmentFormPresentation.namePlaceholder(for: type), text: $name)
                         .textInputAutocapitalization(.words)
                         .accessibilityLabel(EquipmentFormPresentation.nameAccessibilityLabel)
                         .onChange(of: name) { _, _ in
@@ -284,7 +284,7 @@ private struct EquipmentEditorView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(EquipmentFormPresentation.label(for: .aperture))
                 .font(.subheadline)
-            TextField("50", text: $aperture)
+            TextField(EquipmentFormPresentation.aperturePlaceholder(for: type), text: $aperture)
                 .keyboardType(.decimalPad)
                 .accessibilityLabel("Aperture")
                 .onChange(of: aperture) { _, _ in
@@ -293,27 +293,29 @@ private struct EquipmentEditorView: View {
             fieldError(for: .aperture)
 
             if type == .binoculars {
-                if let apertureUnit {
-                    Text(EquipmentFormPresentation.binocularApertureHelperText(for: apertureUnit))
-                        .font(.caption)
-                        .appSecondaryForeground()
-                }
+                Text(EquipmentFormPresentation.binocularApertureHelperText(for: apertureUnit))
+                    .font(.caption)
+                    .appSecondaryForeground()
+            } else if type == .visualTelescope {
+                Text("Enter the diameter of the telescope’s main mirror or lens.")
+                    .font(.caption)
+                    .appSecondaryForeground()
             } else if type == .smartTelescope {
                 Text("Enter the aperture of the main astronomical lens or telescope.")
                     .font(.caption)
                     .appSecondaryForeground()
             }
 
+            Text("Aperture unit")
+                .font(.subheadline)
             Picker("Aperture unit", selection: $apertureUnit) {
-                Text("Select unit").tag(nil as EquipmentApertureUnit?)
                 ForEach(EquipmentApertureUnit.allCases, id: \.self) { unit in
-                    Text(unit.displayName).tag(Optional(unit))
+                    Text(unit.displayName).tag(unit)
                 }
             }
             .pickerStyle(.segmented)
             .accessibilityLabel("Aperture unit")
             .onChange(of: apertureUnit) { previousUnit, newUnit in
-                guard let previousUnit, let newUnit else { return }
                 guard let convertedText = EquipmentFormatting.convertedApertureInputText(
                     aperture,
                     from: previousUnit,
@@ -328,7 +330,6 @@ private struct EquipmentEditorView: View {
     }
 
     private var binocularSizeSummary: String? {
-        guard let apertureUnit else { return nil }
         return EquipmentFormPresentation.binocularSizeSummary(
             magnificationText: magnification,
             apertureText: aperture,
@@ -356,10 +357,6 @@ private struct EquipmentEditorView: View {
     private func save() {
         guard let type else {
             saveErrorMessage = "Choose the correct equipment type before saving this record."
-            return
-        }
-        guard let apertureUnit else {
-            saveErrorMessage = "Choose the correct aperture unit before saving this record."
             return
         }
         var errors: [EquipmentFormField: String] = [:]

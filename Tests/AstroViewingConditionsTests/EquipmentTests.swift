@@ -374,6 +374,30 @@ final class EquipmentTests: XCTestCase {
         XCTAssertEqual(EquipmentFormPresentation.label(for: .aperture), "Aperture")
     }
 
+    func testEquipmentFormPlaceholdersMatchEquipmentType() {
+        XCTAssertEqual(
+            EquipmentFormPresentation.namePlaceholder(for: .visualTelescope),
+            "e.g. Virtuoso GTi 150P"
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.namePlaceholder(for: .binoculars),
+            "e.g. Nikon 10×50"
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.namePlaceholder(for: .smartTelescope),
+            "e.g. Seestar S30 Pro"
+        )
+        XCTAssertEqual(
+            EquipmentFormPresentation.namePlaceholder(for: nil),
+            "e.g. Equipment name"
+        )
+
+        XCTAssertEqual(EquipmentFormPresentation.aperturePlaceholder(for: .visualTelescope), "150")
+        XCTAssertEqual(EquipmentFormPresentation.aperturePlaceholder(for: .binoculars), "50")
+        XCTAssertEqual(EquipmentFormPresentation.aperturePlaceholder(for: .smartTelescope), "30")
+        XCTAssertEqual(EquipmentFormPresentation.aperturePlaceholder(for: nil), "50")
+    }
+
     func testLiveBinocularSummaryFormatsIntegersAndLocalizedDecimals() {
         XCTAssertEqual(
             EquipmentFormPresentation.binocularSizeSummary(
