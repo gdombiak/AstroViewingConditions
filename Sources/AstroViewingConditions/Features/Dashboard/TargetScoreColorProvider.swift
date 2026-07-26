@@ -1,20 +1,11 @@
 import SwiftUI
+import SharedCode
 
 enum TargetScoreColorProvider {
-    enum Category: Equatable {
-        case excellent
-        case good
-        case fair
-        case poor
-    }
+    typealias Category = TargetScoreCategory
 
     static func category(for score: Int) -> Category {
-        switch score {
-        case 80...100: return .excellent
-        case 60..<80: return .good
-        case 40..<60: return .fair
-        default: return .poor
-        }
+        TargetScoreCategory.resolve(score)
     }
 
     static func color(for score: Int, palette: AppPalette = .normal) -> Color {

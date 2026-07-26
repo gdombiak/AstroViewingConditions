@@ -28,22 +28,52 @@ struct Provider: TimelineProvider {
             widgetLogger.error("No location configured for widget")
             return NightConditionsEntry(date: Date(), state: .unavailable(.noLocation))
         }
-
-        guard let summary = await AppGroupStorage.loadWidgetNightSummaryAsync() else {
-            widgetLogger.error("No cached widget summary available")
-            return NightConditionsEntry(date: Date(), state: .unavailable(.noForecast))
+        let referenceDate = Date()
+        let cachedSummary = await AppGroupStorage.loadWidgetNightSummaryAsync()
+        if let cachedSummary,
+           cachedSummary.locationMatches(location),
+           cachedSummary.isFreshForLocalDay(within: widgetCacheMaxAge, relativeTo: referenceDate) {
+            return NightConditionsEntry(date: referenceDate, state: .available(cachedSummary))
         }
 
-        guard summary.locationMatches(location) else {
-            widgetLogger.warning("Cached widget summary is for a different location")
-            return NightConditionsEntry(date: Date(), state: .unavailable(.locationUnavailable))
+        let cachedLocation = CachedLocation(
+            id: location.source == .saved ? location.id : nil,
+            name: location.name, latitude: location.latitude, longitude: location.longitude
+        )
+        let refreshService = WidgetConditionsRefreshService()
+        do {
+            let conditions = try await refreshService.conditions(
+                for: cachedLocation, referenceDate: referenceDate
+            )
+            guard let summary = WidgetNightSummary.make(from: conditions) else {
+                widgetLogger.warning("Fresh widget conditions could not be analyzed")
+                return unavailableEntry(from: cachedSummary, location: location, date: referenceDate)
+            }
+            await AppGroupStorage.saveWidgetNightSummaryAsync(summary)
+            return NightConditionsEntry(date: referenceDate, state: .available(summary))
+        } catch {
+            widgetLogger.warning("Widget conditions refresh failed: \(error.localizedDescription)")
+            if let cachedSummary,
+               cachedSummary.locationMatches(location),
+               cachedSummary.isFreshForLocalDay(within: 24 * 3600, relativeTo: referenceDate) {
+                return NightConditionsEntry(date: referenceDate, state: .available(cachedSummary))
+            }
+            if let staleConditions = await refreshService.matchingCachedConditions(for: cachedLocation),
+               staleConditions.isFreshForLocalDay(within: 24 * 3600, relativeTo: referenceDate),
+               let summary = WidgetNightSummary.make(from: staleConditions) {
+                return NightConditionsEntry(date: referenceDate, state: .available(summary))
+            }
+            return unavailableEntry(from: cachedSummary, location: location, date: referenceDate)
         }
+    }
 
-        guard summary.isFreshForLocalDay(within: widgetCacheMaxAge) else {
-            widgetLogger.info("Cached widget summary is stale")
-            return NightConditionsEntry(date: Date(), state: .unavailable(.staleForecast))
-        }
-
-        return NightConditionsEntry(date: Date(), state: .available(summary))
+    private func unavailableEntry(
+        from summary: WidgetNightSummary?, location: SelectedLocation, date: Date
+    ) -> NightConditionsEntry {
+        guard let summary else { return .init(date: date, state: .unavailable(.noForecast)) }
+        return .init(
+            date: date,
+            state: .unavailable(summary.locationMatches(location) ? .staleForecast : .locationUnavailable)
+        )
     }
 }

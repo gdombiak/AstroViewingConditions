@@ -654,6 +654,14 @@ final class WidgetTonightTargetsTests: XCTestCase {
         XCTAssertFalse(source.contains("URL("))
     }
 
+    func testTargetsProviderRefreshesThroughSharedPipelineAndSafelyFallsBack() throws {
+        let source = try sourceText("Sources/Widgets/TonightTargetsTimelineProvider.swift")
+        XCTAssertTrue(source.contains("WidgetConditionsRefreshService().conditions"))
+        XCTAssertTrue(source.contains("TonightTargetsWidgetRefreshPipeline.makeSummary"))
+        XCTAssertTrue(source.contains("cachedSummary.locationMatches(location)"))
+        XCTAssertTrue(source.contains("cachedSummary.matchesCurrentObservingNight"))
+    }
+
     func testLongNameViewUsesIntrinsicWrappingInsteadOfTruncation() throws {
         let source = try sourceText(
             "Sources/Widgets/TonightTargetsWidgetMediumEntryView.swift"
@@ -853,6 +861,8 @@ final class WidgetTonightTargetsTests: XCTestCase {
             "Sources/SharedCode/Core/Services/WidgetReloadService.swift"
         )
         XCTAssertTrue(phaseOneProvider.contains("addingTimeInterval(3600)"))
+        XCTAssertTrue(phaseOneProvider.contains("WidgetConditionsRefreshService"))
+        XCTAssertTrue(phaseOneProvider.contains("WidgetNightSummary.make(from: conditions)"))
         XCTAssertTrue(targetsProvider.contains(
             "timelineReevaluationInterval: TimeInterval = 3600"
         ))

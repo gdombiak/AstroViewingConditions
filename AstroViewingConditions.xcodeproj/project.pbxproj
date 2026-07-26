@@ -23,6 +23,7 @@
 		0BF64CBDDE0AC959E53641A2 /* ViewingConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E5D52C842A86937C4A75C /* ViewingConditions.swift */; };
 		0E72CD7226CF8913BB3F590E /* NightQualityPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3352211A5644B08C309568 /* NightQualityPresentation.swift */; };
 		0EB8DA64741E8B0832EA4D24 /* WidgetTonightTargetsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30D860F338D3C38B049A6F8 /* WidgetTonightTargetsTests.swift */; };
+		C10000000000000000000006 /* WidgetConditionsRefreshServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000016 /* WidgetConditionsRefreshServiceTests.swift */; };
 		0FB65A25241F63CEC831A855 /* CacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D5372F28293316B4B4958E /* CacheService.swift */; };
 		112E4A2CF29AE48533E82B96 /* Equipment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CAE569F41E2C76EEE25FA0E /* Equipment.swift */; };
 		13F45D9333768FDB249776D1 /* MoonRecommendationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBA1BCA6C5B8AF940A3122 /* MoonRecommendationService.swift */; };
@@ -82,7 +83,6 @@
 		4CF43843F6A47F265797D63D /* TonightsBestTargetsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0F7548B7E04BEA85351CFDF /* TonightsBestTargetsCard.swift */; };
 		4E9BAF05442E452EE828A41B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B13AC1E745AF0480A32328 /* ContentView.swift */; };
 		51AE20D8B860BBE5E1E6863D /* TargetImageManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C39499FB2B751C4EBFA997F /* TargetImageManifest.swift */; };
-		52594828F8525748317D2CD5 /* TonightTargetsWidgetPayloadBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A67FD691782C270B5FA961 /* TonightTargetsWidgetPayloadBuilder.swift */; };
 		526FCB440CE76A3F992DD28B /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BE20FBA13683FA9BC910AF4 /* AppGroupStorage.swift */; };
 		52787B4FE6ADEAA43761C84E /* LocationSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109A5FAD0DEA939E3DEA7DBB /* LocationSearchView.swift */; };
 		53E1BE0087704D59F4700C60 /* NightQualityAnalysisRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320227149D106038736F521A /* NightQualityAnalysisRules.swift */; };
@@ -160,7 +160,11 @@
 		AF2DC462B6EB100967784DB5 /* UnitConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D610F1529AB262A03F49EB53 /* UnitConverter.swift */; };
 		AFF6272BEA680D98E48434AB /* SharedCode.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7DE13674996F9DC96D419E3F /* SharedCode.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		B1D6071736E2FD6F2459C428 /* TargetAssetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D45032363219CEC7896BF0F6 /* TargetAssetProvider.swift */; };
-		B2BA56C3EF16D404C41B527E /* TonightTargetsWidgetContextResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6E5BD57DB24C1B19C422385 /* TonightTargetsWidgetContextResolver.swift */; };
+		C10000000000000000000001 /* ActiveObservingNightResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000011 /* ActiveObservingNightResolver.swift */; };
+		C10000000000000000000002 /* TonightTargetsWidgetPayloadBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000012 /* TonightTargetsWidgetPayloadBuilder.swift */; };
+		C10000000000000000000003 /* ThreeNightOutlookWidgetPayloadBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000013 /* ThreeNightOutlookWidgetPayloadBuilder.swift */; };
+		C10000000000000000000004 /* WidgetConditionsRefreshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000014 /* WidgetConditionsRefreshService.swift */; };
+		C10000000000000000000005 /* TargetScoreCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000015 /* TargetScoreCategory.swift */; };
 		B571244AE8EAF85642F04100 /* AstroViewingConditionsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAE2FB1C99BE13E2DAC757D /* AstroViewingConditionsApp.swift */; };
 		B72E301DBC70B746208E3737 /* AdaptiveFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1993647566ECC08937BF07 /* AdaptiveFont.swift */; };
 		B8EDE465A8A4073DD286EBF0 /* NightConditionsWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7549069C120C6495548EE838 /* NightConditionsWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -169,7 +173,6 @@
 		BADACF648CC653054EE611A5 /* AsyncTimeout.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3707FB5F528861A275D7EBE /* AsyncTimeout.swift */; };
 		BC41E441C10145DF14ADD181 /* AstronomyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E091BB8BE5C0597F0ECD6457 /* AstronomyService.swift */; };
 		BC4574CF14EC10F3E9F23A4C /* AsyncTimeout.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3707FB5F528861A275D7EBE /* AsyncTimeout.swift */; };
-		BDF80243ACA132B5A24CC86C /* ThreeNightOutlookWidgetPayloadBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F9AF7EA07A28F198FE719B /* ThreeNightOutlookWidgetPayloadBuilder.swift */; };
 		BE3F0171F78377A8C0C5D87E /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BD83EFAF112F12D45763770 /* Formatters.swift */; };
 		C18756CB4487A9F5B3B22DD2 /* ConditionsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8F94C7F9B2BFCD27026B4FB /* ConditionsProvider.swift */; };
 		C2645099E1BB0892F553EC35 /* WidgetNightSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E58757E8DE5F81CEFB6C56F /* WidgetNightSummary.swift */; };
@@ -209,7 +212,6 @@
 		F55C83A976EADA13E36617A2 /* EquipmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 079D09CA234BCB1506EA0481 /* EquipmentTests.swift */; };
 		F564B80110CA570FCB242F57 /* MigrationHelperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BDEE6998588C3B988DD4C4C /* MigrationHelperTests.swift */; };
 		F642A5696B5FB983D3222CC2 /* TargetRecommendationScorerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9146F6A64DCAFC97F55675F /* TargetRecommendationScorerTests.swift */; };
-		F6AF87441AD6D6D1865D50EC /* ActiveObservingNightResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36AE62AF6C247857578DE598 /* ActiveObservingNightResolver.swift */; };
 		F8A5FEB03B56A920C3E32C29 /* NightQualityAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F86AFD7B60FB033235F6C30A /* NightQualityAnalyzer.swift */; };
 		F8D0AF4B7232E5B0D4042C4E /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E157C75A873C7D62A822DC6 /* LocationManager.swift */; };
 		F93BC50136368EA515A88EA1 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFEAF115DA49831689C1CD2 /* DashboardView.swift */; };
@@ -378,7 +380,6 @@
 		33A932544EBED47D8B540A33 /* NetworkErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkErrorTests.swift; sourceTree = "<group>"; };
 		35C6F6DA634C8883E7D2FB18 /* AdaptiveTargetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdaptiveTargetSheet.swift; sourceTree = "<group>"; };
 		3645CA158F56E2C6F1D47763 /* SeeingCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeeingCalculator.swift; sourceTree = "<group>"; };
-		36AE62AF6C247857578DE598 /* ActiveObservingNightResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveObservingNightResolver.swift; sourceTree = "<group>"; };
 		3705F74E4EEC82078143D834 /* BestSpotSearcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSearcher.swift; sourceTree = "<group>"; };
 		38D499FDBC2B800314836987 /* AstroViewingConditionsTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AstroViewingConditionsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A206498C0EFB9959303437E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -420,13 +421,18 @@
 		7549069C120C6495548EE838 /* NightConditionsWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = NightConditionsWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		76FE749B5F02F47589A036DE /* PlanetRecommendationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanetRecommendationService.swift; sourceTree = "<group>"; };
 		78557E067B5E1F6694CCE86A /* WidgetThreeNightOutlookTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetThreeNightOutlookTests.swift; sourceTree = "<group>"; };
-		78F9AF7EA07A28F198FE719B /* ThreeNightOutlookWidgetPayloadBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeNightOutlookWidgetPayloadBuilder.swift; sourceTree = "<group>"; };
 		7C39499FB2B751C4EBFA997F /* TargetImageManifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetImageManifest.swift; sourceTree = "<group>"; };
 		7CCF1F20E23488D05E7364C1 /* TonightTargetsEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonightTargetsEntry.swift; sourceTree = "<group>"; };
 		7DB147DCEAE4D89C4C6A2E89 /* TargetRecommendationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetRecommendationService.swift; sourceTree = "<group>"; };
 		7DE13674996F9DC96D419E3F /* SharedCode.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = SharedCode.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E2D9AA9C0EB405FC180299D /* WidgetTonightTargetsSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTonightTargetsSummary.swift; sourceTree = "<group>"; };
 		7E58757E8DE5F81CEFB6C56F /* WidgetNightSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetNightSummary.swift; sourceTree = "<group>"; };
+		C10000000000000000000011 /* ActiveObservingNightResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveObservingNightResolver.swift; sourceTree = "<group>"; };
+		C10000000000000000000012 /* TonightTargetsWidgetPayloadBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonightTargetsWidgetPayloadBuilder.swift; sourceTree = "<group>"; };
+		C10000000000000000000013 /* ThreeNightOutlookWidgetPayloadBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeNightOutlookWidgetPayloadBuilder.swift; sourceTree = "<group>"; };
+		C10000000000000000000014 /* WidgetConditionsRefreshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetConditionsRefreshService.swift; sourceTree = "<group>"; };
+		C10000000000000000000015 /* TargetScoreCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetScoreCategory.swift; sourceTree = "<group>"; };
+		C10000000000000000000016 /* WidgetConditionsRefreshServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetConditionsRefreshServiceTests.swift; sourceTree = "<group>"; };
 		805CA950E64D22820061D607 /* WidgetThreeNightOutlookPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetThreeNightOutlookPresentation.swift; sourceTree = "<group>"; };
 		81725D08FFF40AF5BB964C7F /* WatchNightQualityCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchNightQualityCard.swift; sourceTree = "<group>"; };
 		81B52C3C0FB94395C6A64BAF /* WeatherServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherServiceTests.swift; sourceTree = "<group>"; };
@@ -442,8 +448,6 @@
 		9BDEE6998588C3B988DD4C4C /* MigrationHelperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationHelperTests.swift; sourceTree = "<group>"; };
 		A1CDC2DE8DC8A9DB44BD3212 /* TargetImageViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetImageViewer.swift; sourceTree = "<group>"; };
 		A5118C88CDFB5D1011267DEA /* MyEquipmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyEquipmentView.swift; sourceTree = "<group>"; };
-		A6A67FD691782C270B5FA961 /* TonightTargetsWidgetPayloadBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonightTargetsWidgetPayloadBuilder.swift; sourceTree = "<group>"; };
-		A6E5BD57DB24C1B19C422385 /* TonightTargetsWidgetContextResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonightTargetsWidgetContextResolver.swift; sourceTree = "<group>"; };
 		A7428D2E9B118FC8308666F5 /* WidgetTonightTargetsPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTonightTargetsPresentation.swift; sourceTree = "<group>"; };
 		A7B0076F8062F05E911D2C19 /* WatchLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLocationManager.swift; sourceTree = "<group>"; };
 		A8F94C7F9B2BFCD27026B4FB /* ConditionsProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConditionsProvider.swift; sourceTree = "<group>"; };
@@ -594,6 +598,7 @@
 				78557E067B5E1F6694CCE86A /* WidgetThreeNightOutlookTests.swift */,
 				5F7284B9D6802BC2EF961977 /* WidgetTonightPresentationTests.swift */,
 				D30D860F338D3C38B049A6F8 /* WidgetTonightTargetsTests.swift */,
+				C10000000000000000000016 /* WidgetConditionsRefreshServiceTests.swift */,
 			);
 			name = AstroViewingConditionsTests;
 			path = Tests/AstroViewingConditionsTests;
@@ -824,6 +829,7 @@
 		B5B9A8F6B5AD2A6D31C07E15 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				C10000000000000000000011 /* ActiveObservingNightResolver.swift */,
 				4BE20FBA13683FA9BC910AF4 /* AppGroupStorage.swift */,
 				E091BB8BE5C0597F0ECD6457 /* AstronomyService.swift */,
 				3705F74E4EEC82078143D834 /* BestSpotSearcher.swift */,
@@ -840,7 +846,11 @@
 				7C39499FB2B751C4EBFA997F /* TargetImageManifest.swift */,
 				BE294F3806AF2A57E0A71853 /* TargetRecommendationContextBuilder.swift */,
 				7DB147DCEAE4D89C4C6A2E89 /* TargetRecommendationService.swift */,
+				C10000000000000000000015 /* TargetScoreCategory.swift */,
+				C10000000000000000000012 /* TonightTargetsWidgetPayloadBuilder.swift */,
+				C10000000000000000000013 /* ThreeNightOutlookWidgetPayloadBuilder.swift */,
 				68269A38CA6984DA843607EB /* WeatherService.swift */,
+				C10000000000000000000014 /* WidgetConditionsRefreshService.swift */,
 				4D01B96156B6D29A0594559A /* WidgetReloadService.swift */,
 			);
 			path = Services;
@@ -849,7 +859,6 @@
 		B776EE3D4311802F674D557F /* Dashboard */ = {
 			isa = PBXGroup;
 			children = (
-				36AE62AF6C247857578DE598 /* ActiveObservingNightResolver.swift */,
 				35C6F6DA634C8883E7D2FB18 /* AdaptiveTargetSheet.swift */,
 				4F63A285A3DE963B6E6E8828 /* BestTargetsListView.swift */,
 				ED12614074F110C4C95D4AAA /* DashboardCardStyle.swift */,
@@ -871,11 +880,8 @@
 				59D6C5224211C16AD0DB7E42 /* TargetObservingGuideCatalog.swift */,
 				C2858C1AE4BE1F6095EE93B5 /* TargetRecommendationRow.swift */,
 				04BB123BA2696982B02132B0 /* TargetScoreColorProvider.swift */,
-				78F9AF7EA07A28F198FE719B /* ThreeNightOutlookWidgetPayloadBuilder.swift */,
 				ADE06EBEFA2C9FF9F117C927 /* TodayCard.swift */,
 				C0F7548B7E04BEA85351CFDF /* TonightsBestTargetsCard.swift */,
-				A6E5BD57DB24C1B19C422385 /* TonightTargetsWidgetContextResolver.swift */,
-				A6A67FD691782C270B5FA961 /* TonightTargetsWidgetPayloadBuilder.swift */,
 			);
 			path = Dashboard;
 			sourceTree = "<group>";
@@ -1181,7 +1187,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F6AF87441AD6D6D1865D50EC /* ActiveObservingNightResolver.swift in Sources */,
 				1EAB35011886AD28FDF5DE0A /* AdaptiveTargetSheet.swift in Sources */,
 				2925B2002B9DD16AD0B1239A /* AppAppearance.swift in Sources */,
 				B571244AE8EAF85642F04100 /* AstroViewingConditionsApp.swift in Sources */,
@@ -1214,10 +1219,7 @@
 				7470BE39A5DB73FA5DDBD61E /* TargetObservingGuideCatalog.swift in Sources */,
 				4CCDB621649BC06A9D67DFCB /* TargetRecommendationRow.swift in Sources */,
 				22DED3CC308AECD20817C88B /* TargetScoreColorProvider.swift in Sources */,
-				BDF80243ACA132B5A24CC86C /* ThreeNightOutlookWidgetPayloadBuilder.swift in Sources */,
 				ABB073C8D162C82D7DC53730 /* TodayCard.swift in Sources */,
-				B2BA56C3EF16D404C41B527E /* TonightTargetsWidgetContextResolver.swift in Sources */,
-				52594828F8525748317D2CD5 /* TonightTargetsWidgetPayloadBuilder.swift in Sources */,
 				4CF43843F6A47F265797D63D /* TonightsBestTargetsCard.swift in Sources */,
 				A2A352AFD613D0DA6E6FD0C7 /* WatchConnectivityService.swift in Sources */,
 			);
@@ -1245,6 +1247,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B99415F8A5E97794DBD10A86 /* AdaptiveFont.swift in Sources */,
+				C10000000000000000000001 /* ActiveObservingNightResolver.swift in Sources */,
 				833E71BF50A436FA8384AC8F /* AppGroupStorage.swift in Sources */,
 				BC41E441C10145DF14ADD181 /* AstronomyService.swift in Sources */,
 				BC4574CF14EC10F3E9F23A4C /* AsyncTimeout.swift in Sources */,
@@ -1279,10 +1282,14 @@
 				DF346BD42319A72BB81FE4A6 /* TargetImageManifest.swift in Sources */,
 				915C2C58EA718CF3768A5058 /* TargetRecommendationContextBuilder.swift in Sources */,
 				3A7E573BEDA3699525D65A6C /* TargetRecommendationService.swift in Sources */,
+				C10000000000000000000005 /* TargetScoreCategory.swift in Sources */,
+				C10000000000000000000002 /* TonightTargetsWidgetPayloadBuilder.swift in Sources */,
+				C10000000000000000000003 /* ThreeNightOutlookWidgetPayloadBuilder.swift in Sources */,
 				F53970B4CD1F5E5308BD7B40 /* TransparencyCalculator.swift in Sources */,
 				AF2DC462B6EB100967784DB5 /* UnitConverter.swift in Sources */,
 				0BF64CBDDE0AC959E53641A2 /* ViewingConditions.swift in Sources */,
 				AF1EC05C9C54A033EB9FF6A4 /* WeatherService.swift in Sources */,
+				C10000000000000000000004 /* WidgetConditionsRefreshService.swift in Sources */,
 				C2645099E1BB0892F553EC35 /* WidgetNightSummary.swift in Sources */,
 				4523B6DA7D5729A92C3E4152 /* WidgetReloadService.swift in Sources */,
 				C3D7C5F6D4A9303243025C48 /* WidgetThreeNightOutlookSummary.swift in Sources */,
@@ -1331,6 +1338,7 @@
 				99491A7F6234AC0295F40821 /* WidgetTonightPresentationTests.swift in Sources */,
 				CEB3BA570559B988A15BDA74 /* WidgetTonightTargetsPresentation.swift in Sources */,
 				0EB8DA64741E8B0832EA4D24 /* WidgetTonightTargetsTests.swift in Sources */,
+				C10000000000000000000006 /* WidgetConditionsRefreshServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

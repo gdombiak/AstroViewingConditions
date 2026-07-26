@@ -394,6 +394,10 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         ] {
             XCTAssertFalse(widgetSources.contains(forbidden), forbidden)
         }
+        XCTAssertTrue(provider.contains("WidgetConditionsRefreshService().conditions"))
+        XCTAssertTrue(provider.contains("ThreeNightOutlookWidgetPayloadBuilder.publicationDecision"))
+        XCTAssertTrue(provider.contains("cachedSummary.locationMatches(location)"))
+        XCTAssertTrue(provider.contains("cachedSummary.matchesCurrentObservingNight"))
     }
 
     func testEveryLayoutCandidateRetainsThreeRowLoopAndSharedIdentity() throws {

@@ -711,6 +711,7 @@ public class DashboardViewModel {
     private func saveToCache() async {
         guard let conditions = viewingConditions else { return }
         await cacheService.saveAsync(conditions)
+        await AppGroupStorage.saveConditionsAsync(conditions)
     }
 
     private func publishCompanionConditions() async {
