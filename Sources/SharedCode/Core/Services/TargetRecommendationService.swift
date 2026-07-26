@@ -244,7 +244,7 @@ public struct DefaultTargetRecommendationScorer: TargetRecommendationScoring {
         )
         let weatherQuality = Self.weatherQuality(in: window, context: context)
         let moonPenalty = Self.moonPenalty(for: target, context: context)
-        let equipmentPenalty = target.difficulty * 8
+        let difficultyPenalty = target.difficulty * 8
 
         let altitudeComponent = altitude * 30
         let darknessComponent = Self.darknessComponent(
@@ -253,7 +253,7 @@ public struct DefaultTargetRecommendationScorer: TargetRecommendationScoring {
         )
         let weatherComponent = weatherQuality * 35
 
-        let rawScore = altitudeComponent + darknessComponent + weatherComponent - moonPenalty - equipmentPenalty
+        let rawScore = altitudeComponent + darknessComponent + weatherComponent - moonPenalty - difficultyPenalty
         let score = Int(round(min(max(rawScore, 0), 100)))
         let reasons = Self.reasons(
             for: target,
@@ -293,7 +293,7 @@ public struct DefaultTargetRecommendationScorer: TargetRecommendationScoring {
                 String(format: "darkness %.1f", darknessComponent),
                 String(format: "weather %.1f", weatherComponent),
                 String(format: "moonPenalty -%.1f", moonPenalty),
-                String(format: "equipmentPenalty -%.1f", equipmentPenalty),
+                String(format: "difficultyPenalty -%.1f", difficultyPenalty),
                 String(format: "raw %.1f", rawScore)
             ]
         )

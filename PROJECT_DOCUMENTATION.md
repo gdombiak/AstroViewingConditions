@@ -310,7 +310,7 @@ Important services:
 ### Phase 9: Target Recommendations - Complete
 - [x] Moon and naked-eye planet recommendations
 - [x] Curated double stars, clusters, nebulae, and galaxies
-- [x] Easy, standard, and challenge observing-intent labels
+- [x] Easy, Standard, and Challenge observing-intent labels
 - [x] Moonlight-aware and poor-weather-aware ranking
 - [x] Interpolated visibility-window boundaries and corrected planetary epoch calculations
 - [x] Target image viewer with source and license attribution
@@ -447,8 +447,7 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 - `Sources/SharedCode/Core/Services/CacheService.swift` - Shared condition cache
 - `Sources/SharedCode/Core/Services/LocationStorageService.swift` - Shared selected/saved location snapshots
 - `Sources/SharedCode/Core/Services/TargetRecommendationService.swift` - Deep-sky ranking and visibility windows
-- `Sources/SharedCode/Core/Services/BestSpotSearcher.swift` - Nearby-area weather scoring, suitability expansion, and recommendation selection
-- `Sources/SharedCode/Core/Services/LocationSuitabilityService.swift` - Reverse-geocoded suitability checks used by Best Nearby Area
+- `Sources/SharedCode/Core/Services/BestSpotSearcher.swift` - Nearby-area weather scoring, reverse-geocoded suitability checks, suitability expansion, and recommendation selection
 - `Sources/Widgets/NightConditionsWidget.swift` - Adaptive Tonight at a Glance Home Screen widget
 - `Sources/Widgets/TonightTargetsWidget.swift` - Tonight’s Targets Home Screen widget
 - `Sources/Widgets/ThreeNightOutlookWidget.swift` - Three-Night Outlook Home Screen widget

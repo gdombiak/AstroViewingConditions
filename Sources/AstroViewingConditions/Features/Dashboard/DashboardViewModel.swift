@@ -93,8 +93,7 @@ enum DashboardCurrentLocationResolutionResult: Equatable {
 }
 
 /// App-scoped, in-memory GPS state. ContentView owns this for the lifetime of
-/// the running app, so it survives Field Mode's dashboard recreation but not a
-/// new process launch.
+/// the running app, but it does not survive a new process launch.
 @MainActor
 @Observable
 final class DashboardLocationSession {

@@ -31,7 +31,7 @@ The strategic path for the next product work is:
 - [x] Ranked recommendations for the Moon, Venus, Mars, Jupiter, Saturn, and a curated deep-sky catalog
 - [x] Double stars, open and globular clusters, planetary and diffuse nebulae, and galaxies
 - [x] Scoring based on altitude, visibility window, darkness, weather, moonlight, and difficulty
-- [x] Easy, standard, and challenge observing-intent labels
+- [x] Easy, Standard, and Challenge observing-intent labels
 - [x] Best observing time, compass direction, and approximate maximum altitude
 - [x] Dashboard picks plus a complete Best Targets list
 - [x] Detail views explaining why a target was recommended, how to find it, useful equipment, and observing technique
@@ -127,7 +127,7 @@ The recommended next major Best Targets feature is simple horizon constraints pe
 - Preserve current behavior for locations without a profile. Current Location remains unconstrained unless the user saves it.
 - Prefer clear portions of each target's visibility window and apply the same rules to deep-sky objects, the Moon, and planets.
 - Initially retain, clearly warn about, and conservatively down-rank fully blocked targets instead of silently hiding them.
-- Regenerate Tonight's Targets widget data when the selected saved location's profile changes.
+- Regenerate Tonight’s Targets widget data when the selected saved location's profile changes.
 
 **Design constraints**:
 
@@ -146,7 +146,7 @@ The recommended next major Best Targets feature is simple horizon constraints pe
 
 ### Best Targets Explainability and Cleanup
 
-As a small polish item, make the distinction among the numeric target suitability score, intrinsic Easy / Standard / Challenge intent, and equipment fit discoverable inside the app. In a future behavior-neutral code cleanup, rename the internal `equipmentPenalty` symbol to `difficultyPenalty`; it currently represents intrinsic target difficulty, not the user's selected equipment.
+As a small polish item, make the distinction among the numeric target suitability score, intrinsic Easy / Standard / Challenge intent, and equipment fit discoverable inside the app.
 
 ## Later Product Backlog
 

@@ -19,7 +19,7 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Equipment Personalization**: Save binoculars, visual telescopes, and Smart / EAA telescopes, then select the equipment available for a session and see Excellent, Good, Challenging, or Poor target-fit guidance without changing conditions scores
 - **Best Nearby Area**: Weather-scores nearby grid points, checks candidate suitability before recommending destinations, and shows a clean ranked map of the best nearby observing areas
 - **Practical Observing Guidance**: See each target's best observing window, compass direction, altitude, suitability score, curated finding tips, equipment guidance, and observing notes
-- **Observing Difficulty**: Easy, standard, and challenge labels help set expectations; challenge targets may require darker skies, more aperture, or careful observing techniques
+- **Observing Difficulty**: Easy, Standard, and Challenge labels help set expectations; Challenge targets may require darker skies, more aperture, or careful observing techniques
 - **Offline Target Images**: Reference images with source and license credits are bundled for many targets and require no network connection
 - **ISS Pass Predictions**: With an optional N2YO API key, see rise and set times, peak time and elevation, compass directions, and passes already in progress
 - **Fog Score**: Calculated from humidity, temperature, dew point, visibility, and low cloud cover
