@@ -27,9 +27,6 @@ struct SmallConditionSummary: Equatable {
 }
 
 enum WidgetTonightPresentation {
-    static let identitySymbol = "sparkles"
-    static let identitySymbolIsDecorative = true
-
     static func trendLabel(for trend: NightQualityAssessment.Trend) -> String {
         switch trend {
         case .improving: return "Improving"

@@ -54,8 +54,8 @@ final class WidgetTonightPresentationTests: XCTestCase {
     }
 
     func testIdentityIconUsesTheDecorativeSparklesSymbol() {
-        XCTAssertEqual(WidgetTonightPresentation.identitySymbol, "sparkles")
-        XCTAssertTrue(WidgetTonightPresentation.identitySymbolIsDecorative)
+        XCTAssertEqual(WidgetAppIdentity.symbol, "sparkles")
+        XCTAssertTrue(WidgetAppIdentity.symbolIsDecorative)
     }
 
     func testCompactBestWindowTextRemovesOnlyZeroMinutesAndRetainsAMPM() {

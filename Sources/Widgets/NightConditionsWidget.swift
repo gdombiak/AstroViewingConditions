@@ -46,7 +46,7 @@ private struct WidgetUnavailableView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Tonight at a Glance", systemImage: "sparkles")
+            Label("Tonight at a Glance", systemImage: WidgetAppIdentity.symbol)
                 .font(.headline)
             Spacer(minLength: 0)
             Text(message)

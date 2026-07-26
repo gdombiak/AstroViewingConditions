@@ -16,35 +16,12 @@ enum TonightTargetsWidgetContextResolver {
         referenceDate: Date,
         timeZone: TimeZone?
     ) -> TonightTargetsWidgetPublicationDecision {
-        let previousResolution = TargetRecommendationContextBuilder.resolve(
-            conditions: conditions,
-            dayOffset: -1,
-            referenceDate: referenceDate,
-            timeZone: timeZone
+        let activeResolution = ActiveObservingNightResolver.resolve(
+            conditions: conditions, referenceDate: referenceDate, timeZone: timeZone
         )
-
-        if let previousResolution,
-           contains(
-            referenceDate,
-            in: previousResolution.context
-           ) {
-            return .publish(previousResolution)
-        }
-
-        guard let currentResolution = TargetRecommendationContextBuilder.resolve(
-            conditions: conditions,
-            dayOffset: 0,
-            referenceDate: referenceDate,
-            timeZone: timeZone
-        ) else {
+        if case let .resolved(resolution) = activeResolution { return .publish(resolution) }
+        guard case let .requiresActivePreviousPayload(resolvedTimeZone) = activeResolution else {
             return .unavailable
-        }
-
-        guard isPreviousNightTail(
-            referenceDate,
-            currentResolution: currentResolution
-        ) else {
-            return .publish(currentResolution)
         }
 
         // Fresh Open-Meteo/ConditionsProvider data starts at the current local
@@ -56,33 +33,12 @@ enum TonightTargetsWidgetContextResolver {
             existingSummary,
             conditions: conditions,
             referenceDate: referenceDate,
-            timeZone: currentResolution.timeZone
+            timeZone: resolvedTimeZone
            ) {
             return .preserveExisting
         }
 
         return .unavailable
-    }
-
-    private static func contains(
-        _ referenceDate: Date,
-        in context: TargetRecommendationContext
-    ) -> Bool {
-        referenceDate >= context.astronomicalNightStart
-            && referenceDate <= context.astronomicalNightEnd
-    }
-
-    private static func isPreviousNightTail(
-        _ referenceDate: Date,
-        currentResolution: TargetRecommendationContextResolution
-    ) -> Bool {
-        let calendar = LocationTimeZoneResolver.calendar(
-            for: currentResolution.timeZone
-        )
-        return calendar.isDate(
-            currentResolution.observingDate,
-            inSameDayAs: referenceDate
-        ) && referenceDate <= currentResolution.sunEventsToday.astronomicalTwilightBegin
     }
 
     private static func isValidActivePreviousNightPayload(

@@ -38,7 +38,7 @@ private struct TonightTargetsUnavailableView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Tonight’s Targets", systemImage: "sparkles")
+            Label("Tonight’s Targets", systemImage: WidgetAppIdentity.symbol)
                 .font(.headline)
             Spacer(minLength: 0)
             Text(message)

@@ -721,9 +721,24 @@ public class DashboardViewModel {
             await AppGroupStorage.saveWidgetNightSummaryAsync(widgetSummary)
         }
         await publishTonightTargets(from: conditions)
+        await publishThreeNightOutlook(from: conditions)
         WatchConnectivityService.shared.sendConditionsToWatch(companionConditions)
         
         WidgetReloadService.shared.scheduleReload()
+    }
+
+    private func publishThreeNightOutlook(from conditions: ViewingConditions) async {
+        let referenceDate = now()
+        let existing = await AppGroupStorage.loadWidgetThreeNightOutlookSummaryAsync()
+        switch ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
+            conditions: conditions, existingSummary: existing,
+            referenceDate: referenceDate, timeZone: displayTimeZone
+        ) {
+        case let .publish(summary), let .unavailable(summary):
+            await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
+        case .preserveExisting:
+            break
+        }
     }
 
     private func publishTonightTargets(from conditions: ViewingConditions) async {
@@ -779,6 +794,17 @@ public class DashboardViewModel {
             referenceDate: referenceDate
         )
         await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
+    }
+
+    private func publishUnavailableThreeNightOutlook(for location: CachedLocation) async {
+        let referenceDate = now()
+        let timeZone = displayTimeZone
+            ?? LocationTimeZoneResolver.approximate(longitude: location.longitude)
+        let summary = ThreeNightOutlookWidgetPayloadBuilder.makeUnavailableSummary(
+            generatedAt: referenceDate, location: location,
+            timeZone: timeZone, referenceDate: referenceDate
+        )
+        await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
     }
     
     private func loadFromCache(matching location: CachedLocation) async -> Bool {
@@ -842,8 +868,10 @@ public class DashboardViewModel {
         if let conditions = viewingConditions,
            conditionsMatch(conditions, location: location) {
             await publishTonightTargets(from: conditions)
+            await publishThreeNightOutlook(from: conditions)
         } else {
             await publishUnavailableTonightTargets(for: location)
+            await publishUnavailableThreeNightOutlook(for: location)
         }
         WidgetReloadService.shared.scheduleReload()
     }

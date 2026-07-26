@@ -91,6 +91,9 @@ targets:
       - Tests/AstroViewingConditionsTests
       - Sources/Widgets/WidgetTonightPresentation.swift
       - Sources/Widgets/WidgetTonightTargetsPresentation.swift
+      - Sources/Widgets/WidgetThreeNightOutlookPresentation.swift
+      - Sources/Widgets/ThreeNightOutlookEntryResolver.swift
+      - Sources/Widgets/WidgetAppIdentity.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

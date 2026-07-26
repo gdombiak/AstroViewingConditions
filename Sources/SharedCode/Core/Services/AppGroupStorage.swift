@@ -166,6 +166,46 @@ public struct AppGroupStorage: Sendable {
         }
     }
 
+    // MARK: - Three-Night Outlook Widget
+
+    static func writeWidgetThreeNightOutlookSummary(
+        _ summary: WidgetThreeNightOutlookSummary, baseURL: URL? = containerURL
+    ) -> Bool {
+        guard let baseURL else { return false }
+        do {
+            try JSONEncoder().encode(summary).write(
+                to: baseURL.appendingPathComponent("widgetThreeNightOutlook.json"),
+                options: .atomic
+            )
+            return true
+        } catch {
+            logger.error("Failed to save three-night outlook: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    static func readWidgetThreeNightOutlookSummary(
+        baseURL: URL? = containerURL
+    ) -> WidgetThreeNightOutlookSummary? {
+        guard let baseURL else { return nil }
+        do {
+            let data = try Data(contentsOf: baseURL.appendingPathComponent("widgetThreeNightOutlook.json"))
+            return try JSONDecoder().decode(WidgetThreeNightOutlookSummary.self, from: data)
+        } catch {
+            return nil
+        }
+    }
+
+    public static func saveWidgetThreeNightOutlookSummaryAsync(
+        _ summary: WidgetThreeNightOutlookSummary
+    ) async {
+        await performFileAccessAsync { _ = writeWidgetThreeNightOutlookSummary(summary) }
+    }
+
+    public static func loadWidgetThreeNightOutlookSummaryAsync() async -> WidgetThreeNightOutlookSummary? {
+        await performFileAccessAsync { readWidgetThreeNightOutlookSummary() }
+    }
+
     // MARK: - Watch Night Conditions
 
     private static func writeWatchNightConditions(_ conditions: ViewingConditions) -> Bool {

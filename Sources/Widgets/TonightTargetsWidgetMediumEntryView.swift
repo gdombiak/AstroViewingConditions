@@ -123,7 +123,7 @@ struct TonightTargetsWidgetMediumEntryView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Image(systemName: "sparkles")
+                Image(systemName: WidgetAppIdentity.symbol)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
@@ -201,7 +201,7 @@ struct TonightTargetsWidgetMediumEntryView: View {
     private func header(showsLocation: Bool, showsSymbol: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
             if showsSymbol {
-                Image(systemName: "sparkles")
+                Image(systemName: WidgetAppIdentity.symbol)
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
             }

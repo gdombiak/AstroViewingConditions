@@ -291,6 +291,56 @@ final class WidgetTonightTargetsTests: XCTestCase {
         }
     }
 
+    func testFreshPostMidnightConditionsRejectEveryInvalidPhaseTwoPayload() {
+        let referenceDate = date(day: 26, hour: 1)
+        let conditions = makeConditions(referenceDate: referenceDate, dataStartDay: 26)
+        let invalidPayloads: [WidgetTonightTargetsSummary?] = [
+            nil,
+            makeSummary(
+                generatedAt: date(day: 25, hour: 21).addingTimeInterval(-1),
+                observingDate: date(day: 25),
+                nightStart: date(day: 25, hour: 22),
+                nightEnd: date(day: 26, hour: 4)
+            ),
+            makeSummary(
+                generatedAt: date(day: 25, hour: 23), latitude: 47.6,
+                observingDate: date(day: 25),
+                nightStart: date(day: 25, hour: 22),
+                nightEnd: date(day: 26, hour: 4)
+            ),
+            makeSummary(
+                generatedAt: date(day: 25, hour: 23),
+                observingDate: date(day: 24),
+                nightStart: date(day: 24, hour: 22),
+                nightEnd: date(day: 25, hour: 4)
+            ),
+            makeSummary(
+                generatedAt: date(day: 25, hour: 23),
+                observingDate: date(day: 25),
+                nightStart: date(day: 25, hour: 22),
+                nightEnd: date(day: 26, hour: 4),
+                status: .available, targets: []
+            ),
+            makeSummary(
+                generatedAt: date(day: 25, hour: 23),
+                observingDate: date(day: 25),
+                nightStart: date(day: 25, hour: 22),
+                nightEnd: date(day: 26, hour: 4),
+                status: .unavailable, targets: []
+            )
+        ]
+
+        for payload in invalidPayloads {
+            let decision = TonightTargetsWidgetContextResolver.publicationDecision(
+                conditions: conditions, existingSummary: payload,
+                referenceDate: referenceDate, timeZone: timeZone
+            )
+            guard case .unavailable = decision else {
+                return XCTFail("Expected invalid Phase 2 payload to be rejected")
+            }
+        }
+    }
+
     func testFreshPostMidnightConditionsPublishUpcomingEveningAfterNightEnd() throws {
         let referenceDate = date(day: 26, hour: 4).addingTimeInterval(1)
         let conditions = makeConditions(
@@ -557,7 +607,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
             "Only the shared reduced-identity candidate may remove the full header"
         )
         XCTAssertTrue(source.contains("private func reducedIdentityCandidate("))
-        XCTAssertTrue(source.contains("Image(systemName: \"sparkles\")"))
+        XCTAssertTrue(source.contains("Image(systemName: WidgetAppIdentity.symbol)"))
         let reducedIdentitySection = try sourceSection(
             in: source,
             from: "private func reducedIdentityCandidate(",
@@ -672,16 +722,16 @@ final class WidgetTonightTargetsTests: XCTestCase {
         )
 
         XCTAssertTrue(entryViewSource.contains(
-            "Image(systemName: \"sparkles\")"
+            "Image(systemName: WidgetAppIdentity.symbol)"
         ))
         XCTAssertTrue(fullHeaderSection.contains(
-            "Image(systemName: \"sparkles\")"
+            "Image(systemName: WidgetAppIdentity.symbol)"
         ))
         XCTAssertTrue(reducedIdentitySection.contains(
-            "Image(systemName: \"sparkles\")"
+            "Image(systemName: WidgetAppIdentity.symbol)"
         ))
         XCTAssertTrue(widgetSource.contains(
-            "Label(\"Tonight’s Targets\", systemImage: \"sparkles\")"
+            "Label(\"Tonight’s Targets\", systemImage: WidgetAppIdentity.symbol)"
         ))
 
         for source in [entryViewSource, widgetSource] {
@@ -757,6 +807,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
 
     private func makeSummary(
         generatedAt: Date? = nil,
+        latitude: Double = 45.5,
         observingDate: Date? = nil,
         nightStart: Date? = nil,
         nightEnd: Date? = nil,
@@ -766,7 +817,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
         WidgetTonightTargetsSummary(
             generatedAt: generatedAt ?? date(day: 25, hour: 20),
             locationName: "Home",
-            latitude: 45.5,
+            latitude: latitude,
             longitude: -122.7,
             timeZoneIdentifier: timeZone.identifier,
             observingDate: observingDate ?? date(day: 25),

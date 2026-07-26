@@ -224,10 +224,10 @@ struct NightConditionsWidgetMediumEntryView: View {
     }
 
     private var identityIcon: some View {
-        Image(systemName: WidgetTonightPresentation.identitySymbol)
+        Image(systemName: WidgetAppIdentity.symbol)
             .font(.caption)
             .foregroundStyle(.secondary)
-            .accessibilityHidden(WidgetTonightPresentation.identitySymbolIsDecorative)
+            .accessibilityHidden(WidgetAppIdentity.symbolIsDecorative)
     }
 
     private var scoreColor: Color {
