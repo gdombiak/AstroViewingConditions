@@ -8,11 +8,10 @@ Help amateur astronomers decide where, when, and what to observe without requiri
 
 The strategic path for the next product work is:
 
-1. Make the score more truthful.
-2. Make the app usable in the field.
-3. Make recommendations personal.
-4. Make recommendations location-realistic.
-5. Turn the recommendations into an actionable observing plan.
+1. Make scores, difficulty, and personalized guidance easier to understand.
+2. Make recommendations location-realistic with simple horizon constraints.
+3. Evaluate offline modeled sky darkness without adding a required backend.
+4. Turn trustworthy recommendations into an actionable observing plan.
 
 ## Current Product
 
@@ -42,6 +41,17 @@ The strategic path for the next product work is:
 - [x] Moon recommendations suppressed when the Moon remains below the horizon during the useful observing window
 
 The catalog is intentionally curated rather than a complete Messier/NGC database. Recommendations should remain understandable and field-useful as it grows.
+
+### Equipment Personalization
+
+- [x] Persistent saved profiles for binoculars, visual telescopes, and Smart / EAA telescopes, with Naked Eye available as a built-in capability
+- [x] Session equipment selection using all saved equipment, Naked Eye only, or a custom set
+- [x] Target-specific matching with Excellent, Good, Challenging, and Poor fit labels
+- [x] Optional minimum-suitability filtering without changing numeric target scores or relative ordering
+- [x] Personalized equipment guidance in Target Details
+- [x] Shared equipment selection and filtering behavior between the Dashboard and View All
+
+Equipment suitability is deliberately separate from the intrinsic Easy, Standard, or Challenge observing intent. The current implementation does not calculate optical field of view; model focal length, eyepieces, filters, cameras, mounts, or imaging trains; persist the session selection as an observing plan; or personalize widget and Watch recommendations. Further equipment expansion should require evidence that it materially improves recommendations without imposing excessive setup burden.
 
 ### Locations
 
@@ -99,39 +109,52 @@ Made Best Targets more useful for the equipment an observer has available:
 
 ## Next Feature Release
 
-The next release should build on the new equipment guidance by accounting for the local observing site. The recommended sequence is:
+The recommended next major Best Targets feature is simple horizon constraints per saved location. Equipment-aware matching and filtering are already implemented; equipment should not alter numeric scoring or ordering unless field validation demonstrates a clear user benefit.
 
-1. Add simple horizon constraints per saved location.
-2. Add Sky Darkness / Light Pollution after selecting a suitable modeled atlas and confirming redistribution terms.
-3. Evaluate whether equipment fit should conservatively influence numeric scoring or ranking after field validation.
-
-### 1. Simple Horizon Constraints
+### Simple Horizon Constraints
 
 **Goal**: Account for trees, buildings, hills, and other site-specific obstructions.
 
 **User value**:
 
-- A target that is technically above the astronomical horizon but blocked from the user's backyard should be down-ranked or explained.
+- A target may be astronomically visible but blocked by trees, buildings, roofs, or hills at the observer's actual position.
 - Saved observing sites become meaningfully different beyond latitude/longitude/elevation.
 
-**Scope**:
+**Initial scope**:
 
-- Add per-saved-location minimum useful altitude by direction.
-- Start simple: four or eight direction bands rather than a drawing or AR editor.
-- Use target azimuth and altitude to determine whether a target clears the configured local horizon.
-- Apply a conservative penalty or warning before hiding targets entirely.
+- Store profiles only on saved locations, using eight sectors: N, NE, E, SE, S, SW, W, and NW.
+- Record one approximate minimum clear altitude per sector through manual editing, with interpolation between adjacent sectors.
+- Preserve current behavior for locations without a profile. Current Location remains unconstrained unless the user saves it.
+- Prefer clear portions of each target's visibility window and apply the same rules to deep-sky objects, the Moon, and planets.
+- Initially retain, clearly warn about, and conservatively down-rank fully blocked targets instead of silently hiding them.
+- Regenerate Tonight's Targets widget data when the selected saved location's profile changes.
 
-**Done when**:
+**Design constraints**:
 
-- Saved locations can store and edit simple horizon constraints.
-- Best Targets can explain when a target may be blocked by the local horizon profile.
-- Existing locations behave as they do today until constraints are configured.
+- A profile describes the observer's setup position, not necessarily an entire property or observing site.
+- Profile edits must update recommendations without requiring a weather refresh.
+- Persistence and shared snapshots must remain compatible with existing saved locations.
+- Obstruction warnings and explanations must be understandable to non-experts.
+- Field validation must precede final decisions about penalties, score caps, or filtering.
 
-### 4. Sky Darkness / Light Pollution
+**Deferred from the initial release**:
 
-Add location-specific modeled artificial sky brightness with target-specific impact, rather than changing the weather score. A manual Bortle/SQM override may be considered. Dataset selection and redistribution rights must be confirmed before implementation.
+- Phone-assisted compass and altitude capture
+- Hard exclusion of blocked targets
+- Complex or high-resolution skyline drawing
+- Watch horizon editing or presentation
+
+### Best Targets Explainability and Cleanup
+
+As a small polish item, make the distinction among the numeric target suitability score, intrinsic Easy / Standard / Challenge intent, and equipment fit discoverable inside the app. In a future behavior-neutral code cleanup, rename the internal `equipmentPenalty` symbol to `difficultyPenalty`; it currently represents intrinsic target difficulty, not the user's selected equipment.
 
 ## Later Product Backlog
+
+### Offline Sky Darkness / Light Pollution
+
+Use the permitted 2024 Light Pollution Atlas to add location-specific modeled artificial sky brightness with target-specific impact, rather than changing the weather score. Prefer preprocessing the source GeoTIFF into a compact bundled lookup asset so the feature remains offline and requires no backend.
+
+Preserve the atlas's artificial-sky-brightness semantics and do not present modeled values as direct Bortle classifications. Begin with a bounded feasibility spike covering bundled file size, resolution, interpolation, attribution, redistribution language, update strategy, and scoring calibration before committing to product scope.
 
 ### Imaging Windows
 
@@ -175,7 +198,7 @@ These remain valuable but are lower priority than the next-release foundation ab
 
 - [ ] Carefully expand the curated deep-sky catalog while retaining verified metadata and imagery rights
 - [ ] Add constellation and star-hopping context where it materially helps observers
-- [ ] Extend target context with modeled light pollution only after a suitable atlas and redistribution terms are confirmed
+- [ ] Extend target context with modeled light pollution only after the offline feasibility spike confirms practical packaging, attribution, and calibration
 - [ ] Shareable observing plan or conditions summary
 
 ## Reliability, Validation, and Release Polish
@@ -189,7 +212,7 @@ These remain valuable but are lower priority than the next-release foundation ab
 - [ ] Create a WatchConnectivity integration checklist covering first launch, unreachable phone, stale cache, and selection changes on both devices
 - [ ] Run watchOS UI smoke tests and location-permission edge cases
 - [ ] Continue the Swift concurrency and main-actor audit
-- [ ] Make score and difficulty explanations discoverable inside the app
+- [ ] Make target score, intrinsic difficulty, and equipment-fit explanations discoverable inside the app
 - [ ] Improve onboarding for location permission, forecast interpretation, and Best Targets
 - [ ] Continue VoiceOver, Dynamic Type, contrast, and reduced-motion review
 - [ ] Refine empty and stale-data states across iPhone, widgets, and Apple Watch
@@ -211,7 +234,8 @@ These require data-source, privacy, maintenance, and user-value evaluation befor
 - No dependence on an external visible-planets API; the app already calculates supported planet positions locally.
 - No claim that a recommendation score guarantees visibility. Terrain, local light pollution, smoke, equipment, eyesight, and atmospheric steadiness remain important.
 - No uncurated object dump that makes the target list harder to use in the field.
-- No full horizon drawing or AR obstruction editor until the simple directional model proves valuable.
+- No phone-assisted or high-resolution horizon editor until the simple directional model proves valuable.
+- No additional equipment inputs or equipment-driven numeric ranking without evidence that they materially improve recommendations.
 
 ## Release Readiness Checklist
 
