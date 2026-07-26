@@ -32,6 +32,7 @@ public struct DashboardView: View {
     @State private var hasRestoredSelectedDay = false
     @State private var dashboardScrollPosition = ScrollPosition(edge: .top)
     @State private var dashboardScrollCoordinator = DashboardScrollCoordinator()
+    @State private var lastUpdatedReferenceDate = Date()
     private let locationSession: DashboardLocationSession
     
     init(
@@ -256,6 +257,8 @@ public struct DashboardView: View {
             )
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            lastUpdatedReferenceDate = Date()
+
             if viewModel.isDataStale, !viewModel.isLoading, let location = activeLocation {
                 Task {
                     await viewModel.refresh(for: location)
@@ -349,7 +352,9 @@ public struct DashboardView: View {
 
                 if let fetchedAt = viewModel.viewingConditions?.fetchedAt {
                     TimelineView(.periodic(from: .now, by: 60)) { context in
-                        Text("Last updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: context.date))")
+                        let referenceDate = max(context.date, lastUpdatedReferenceDate)
+
+                        Text("Last updated: \(DateFormatters.timeAgo(from: fetchedAt, relativeTo: referenceDate))")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.top)
