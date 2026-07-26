@@ -62,6 +62,7 @@ public struct WidgetThreeNightOutlookSummary: Codable, Sendable, Hashable {
     public let locationName: String
     public let latitude: Double
     public let longitude: Double
+    public let savedLocationID: UUID?
     public let timeZoneIdentifier: String?
     public let status: WidgetThreeNightOutlookStatus
     public let nights: [WidgetThreeNightOutlookNight]
@@ -71,6 +72,7 @@ public struct WidgetThreeNightOutlookSummary: Codable, Sendable, Hashable {
         locationName: String,
         latitude: Double,
         longitude: Double,
+        savedLocationID: UUID? = nil,
         timeZoneIdentifier: String?,
         status: WidgetThreeNightOutlookStatus,
         nights: [WidgetThreeNightOutlookNight]
@@ -79,6 +81,7 @@ public struct WidgetThreeNightOutlookSummary: Codable, Sendable, Hashable {
         self.locationName = locationName
         self.latitude = latitude
         self.longitude = longitude
+        self.savedLocationID = savedLocationID
         self.timeZoneIdentifier = timeZoneIdentifier
         self.status = status
         self.nights = nights
@@ -89,8 +92,37 @@ public struct WidgetThreeNightOutlookSummary: Codable, Sendable, Hashable {
         return age >= 0 && age <= maximumAge
     }
 
-    public func locationMatches(latitude: Double, longitude: Double, tolerance: Double = 0.01) -> Bool {
-        abs(self.latitude - latitude) <= tolerance && abs(self.longitude - longitude) <= tolerance
+    public func locationMatches(_ selectedLocation: SelectedLocation) -> Bool {
+        WidgetLocationIdentity.matches(
+            summarySavedLocationID: savedLocationID,
+            selectedSavedLocationID: selectedLocation.source == .saved ? selectedLocation.id : nil,
+            summaryLatitude: latitude,
+            summaryLongitude: longitude,
+            selectedLatitude: selectedLocation.latitude,
+            selectedLongitude: selectedLocation.longitude
+        )
+    }
+
+    public func locationMatches(_ location: CachedLocation) -> Bool {
+        WidgetLocationIdentity.matches(
+            summarySavedLocationID: savedLocationID,
+            selectedSavedLocationID: location.id,
+            summaryLatitude: latitude,
+            summaryLongitude: longitude,
+            selectedLatitude: location.latitude,
+            selectedLongitude: location.longitude
+        )
+    }
+
+    public func locationMatches(latitude: Double, longitude: Double) -> Bool {
+        WidgetLocationIdentity.matches(
+            summarySavedLocationID: savedLocationID,
+            selectedSavedLocationID: nil,
+            summaryLatitude: self.latitude,
+            summaryLongitude: self.longitude,
+            selectedLatitude: latitude,
+            selectedLongitude: longitude
+        )
     }
 
     public func hasCorrectlyOrderedNights() -> Bool {

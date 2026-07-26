@@ -48,10 +48,7 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
             )
         }
 
-        guard summary.locationMatches(
-            latitude: location.latitude,
-            longitude: location.longitude
-        ) else {
+        guard summary.locationMatches(location) else {
             return TonightTargetsEntry(
                 date: referenceDate,
                 state: .unavailable(.locationMismatch)

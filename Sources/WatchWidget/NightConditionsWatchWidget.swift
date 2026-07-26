@@ -58,7 +58,7 @@ struct WatchProvider: TimelineProvider {
         let location: (latitude: Double, longitude: Double, name: String)
         
         if let saved = AppGroupStorage.loadSelectedLocationForWidget() {
-            location = saved
+            location = (saved.latitude, saved.longitude, saved.name)
         } else {
             widgetLogger.info("No saved location, requesting current GPS location")
             let locManager = await MainActor.run { LocationManager() }

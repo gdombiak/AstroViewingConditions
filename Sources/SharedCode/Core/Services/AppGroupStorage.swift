@@ -60,9 +60,8 @@ public struct AppGroupStorage: Sendable {
         }
     }
     
-    public static func loadSelectedLocationForWidget() -> (latitude: Double, longitude: Double, name: String)? {
-        guard let selected = loadSelectedLocation() else { return nil }
-        return (selected.latitude, selected.longitude, selected.name)
+    public static func loadSelectedLocationForWidget() -> SelectedLocation? {
+        loadSelectedLocation()
     }
     
     private static func writeWidgetNightSummary(_ summary: WidgetNightSummary) -> Bool {

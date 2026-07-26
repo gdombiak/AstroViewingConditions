@@ -52,10 +52,7 @@ enum TonightTargetsWidgetContextResolver {
             summary.observingDate,
             inSameDayAs: referenceDate
         ),
-        summary.locationMatches(
-            latitude: conditions.location.latitude,
-            longitude: conditions.location.longitude
-        ),
+        summary.locationMatches(conditions.location),
         summary.isWithinMaximumAge(
             WidgetTonightTargetsSummary.maximumAge,
             relativeTo: referenceDate

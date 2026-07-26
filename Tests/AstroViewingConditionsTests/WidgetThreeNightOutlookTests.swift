@@ -9,13 +9,24 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
 
     func testPayloadJSONRoundTrip() throws {
         let summary = makeSummary()
+        let encoded = try JSONEncoder().encode(summary)
         XCTAssertEqual(
             try JSONDecoder().decode(
                 WidgetThreeNightOutlookSummary.self,
-                from: JSONEncoder().encode(summary)
+                from: encoded
             ),
             summary
         )
+
+        var legacyPayload = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        legacyPayload.removeValue(forKey: "savedLocationID")
+        let legacyData = try JSONSerialization.data(withJSONObject: legacyPayload)
+        XCTAssertNil(try JSONDecoder().decode(
+            WidgetThreeNightOutlookSummary.self,
+            from: legacyData
+        ).savedLocationID)
     }
 
     func testSeparateCacheFilenameAtomicReplacementAndMissingCache() throws {
@@ -54,6 +65,34 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         XCTAssertFalse(summary.locationMatches(latitude: 47.6, longitude: -122.7))
     }
 
+    func testSavedLocationIdentityRejectsNearbyDifferentSiteAndAcceptsSameSite() {
+        let firstID = UUID()
+        let summary = makeSummary(savedLocationID: firstID)
+
+        XCTAssertFalse(summary.locationMatches(selectedLocation(
+            id: UUID(), latitude: 45.500001, longitude: -122.699999, source: .saved
+        )))
+        XCTAssertTrue(summary.locationMatches(selectedLocation(
+            id: firstID, latitude: 46.0, longitude: -123.0, source: .saved
+        )))
+        XCTAssertFalse(summary.locationMatches(selectedLocation(
+            latitude: 45.5, longitude: -122.7, source: .currentGPS
+        )))
+        XCTAssertFalse(summary.locationMatches(CachedLocation(
+            name: "Current Location", latitude: 45.5, longitude: -122.7
+        )))
+    }
+
+    func testLegacySummaryUsesStrictCoordinateFallback() {
+        let summary = makeSummary()
+        XCTAssertTrue(summary.locationMatches(selectedLocation()))
+        XCTAssertFalse(summary.locationMatches(selectedLocation(latitude: 45.50002)))
+        XCTAssertFalse(summary.locationMatches(selectedLocation(id: UUID(), source: .saved)))
+        XCTAssertFalse(summary.locationMatches(CachedLocation(
+            id: UUID(), name: "Home", latitude: 45.5, longitude: -122.7
+        )))
+    }
+
     func testExactlyThreeOrderedEntriesRequired() {
         let summary = makeSummary()
         XCTAssertTrue(summary.hasCorrectlyOrderedNights())
@@ -70,7 +109,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
 
     func testProviderStateResolution() {
         let referenceDate = date(day: 25, hour: 21)
-        let location = (latitude: 45.5, longitude: -122.7, name: "Home")
+        let location = selectedLocation()
         let valid = makeSummary(generatedAt: referenceDate)
 
         XCTAssertEqual(resolve(valid, nil, at: referenceDate), .noLocation)
@@ -131,12 +170,29 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
             .unavailable
         )
         XCTAssertEqual(resolve(valid, location, at: referenceDate), .available)
+        XCTAssertEqual(
+            resolve(
+                makeSummary(generatedAt: referenceDate, savedLocationID: UUID()),
+                location,
+                at: referenceDate
+            ),
+            .locationMismatch
+        )
+        XCTAssertEqual(
+            resolve(
+                makeSummary(generatedAt: referenceDate),
+                selectedLocation(id: UUID(), source: .saved),
+                at: referenceDate
+            ),
+            .locationMismatch
+        )
     }
 
     func testPublicationBeforeMidnightStartsWithCurrentObservingDate() {
         let referenceDate = date(day: 25, hour: 20)
+        let savedLocationID = UUID()
         let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
-            conditions: makeConditions(referenceDate: referenceDate),
+            conditions: makeConditions(referenceDate: referenceDate, locationID: savedLocationID),
             existingSummary: nil, referenceDate: referenceDate, timeZone: timeZone
         )
         guard case let .publish(summary) = decision else {
@@ -144,6 +200,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         }
         XCTAssertEqual(summary.nights.map(\.observingDate), [date(day: 25), date(day: 26), date(day: 27)])
         XCTAssertEqual(summary.nights.map(\.displayLabel), ["Tonight", "Tomorrow", "Day After"])
+        XCTAssertEqual(summary.savedLocationID, savedLocationID)
     }
 
     func testPublicationDuringReconstructableActiveNightKeepsPreviousDate() {
@@ -530,12 +587,14 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
     private func makeSummary(
         generatedAt: Date? = nil, locationName: String = "Home",
         latitude: Double = 45.5,
+        savedLocationID: UUID? = nil,
         status: WidgetThreeNightOutlookStatus = .available,
         nights: [WidgetThreeNightOutlookNight]? = nil
     ) -> WidgetThreeNightOutlookSummary {
         WidgetThreeNightOutlookSummary(
             generatedAt: generatedAt ?? date(day: 25, hour: 20),
             locationName: locationName, latitude: latitude, longitude: -122.7,
+            savedLocationID: savedLocationID,
             timeZoneIdentifier: timeZone.identifier, status: status,
             nights: nights ?? makeNights()
         )
@@ -544,7 +603,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
     private func makeConditions(
         referenceDate: Date,
         dataStartDay: Int = 25,
-        dailyCount: Int = 4
+        dailyCount: Int = 4,
+        locationID: UUID? = nil
     ) -> ViewingConditions {
         let start = date(day: dataStartDay)
         let forecasts = (0..<(4 * 24)).map { offset in
@@ -568,7 +628,9 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         }
         return ViewingConditions(
             fetchedAt: referenceDate,
-            location: CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7),
+            location: CachedLocation(
+                id: locationID, name: "Home", latitude: 45.5, longitude: -122.7
+            ),
             hourlyForecasts: forecasts, dailySunEvents: sunEvents,
             dailyMoonInfo: (0..<dailyCount).map {
                 MoonInfo(
@@ -583,11 +645,26 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
 
     private func resolve(
         _ summary: WidgetThreeNightOutlookSummary?,
-        _ location: (latitude: Double, longitude: Double, name: String)?,
+        _ location: SelectedLocation?,
         at date: Date
     ) -> ThreeNightOutlookResolvedState {
         ThreeNightOutlookEntryResolver.resolve(
             summary: summary, selectedLocation: location, referenceDate: date
+        )
+    }
+
+    private func selectedLocation(
+        id: UUID? = nil,
+        latitude: Double = 45.5,
+        longitude: Double = -122.7,
+        source: SelectedLocation.Source = .currentGPS
+    ) -> SelectedLocation {
+        SelectedLocation(
+            source: source,
+            id: id,
+            name: "Home",
+            latitude: latitude,
+            longitude: longitude
         )
     }
 

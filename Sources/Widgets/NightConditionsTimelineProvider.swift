@@ -34,7 +34,7 @@ struct Provider: TimelineProvider {
             return NightConditionsEntry(date: Date(), state: .unavailable(.noForecast))
         }
 
-        guard summary.locationMatches(latitude: location.latitude, longitude: location.longitude) else {
+        guard summary.locationMatches(location) else {
             widgetLogger.warning("Cached widget summary is for a different location")
             return NightConditionsEntry(date: Date(), state: .unavailable(.locationUnavailable))
         }

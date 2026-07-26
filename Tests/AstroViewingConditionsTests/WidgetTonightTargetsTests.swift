@@ -10,12 +10,23 @@ final class WidgetTonightTargetsTests: XCTestCase {
 
     func testPayloadJSONRoundTripAndFoundationOnlyDependency() throws {
         let summary = makeSummary()
+        let encoded = try JSONEncoder().encode(summary)
         let decoded = try JSONDecoder().decode(
             WidgetTonightTargetsSummary.self,
-            from: JSONEncoder().encode(summary)
+            from: encoded
         )
 
         XCTAssertEqual(decoded, summary)
+
+        var legacyPayload = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encoded) as? [String: Any]
+        )
+        legacyPayload.removeValue(forKey: "savedLocationID")
+        let legacyData = try JSONSerialization.data(withJSONObject: legacyPayload)
+        XCTAssertNil(try JSONDecoder().decode(
+            WidgetTonightTargetsSummary.self,
+            from: legacyData
+        ).savedLocationID)
 
         let source = try sourceText(
             "Sources/SharedCode/Core/Models/WidgetTonightTargetsSummary.swift"
@@ -64,6 +75,64 @@ final class WidgetTonightTargetsTests: XCTestCase {
         XCTAssertFalse(summary.matchesCurrentObservingNight(
             relativeTo: date(day: 27, hour: 1)
         ))
+    }
+
+    func testSavedLocationIdentityRejectsNearbyDifferentSiteAndAcceptsSameSite() {
+        let firstID = UUID()
+        let secondID = UUID()
+        let summary = makeSummary(savedLocationID: firstID)
+        let nearbySecondSite = SelectedLocation(
+            source: .saved,
+            id: secondID,
+            name: "Nearby",
+            latitude: 45.500001,
+            longitude: -122.699999
+        )
+        let sameSiteWithUpdatedCoordinates = SelectedLocation(
+            source: .saved,
+            id: firstID,
+            name: "Home",
+            latitude: 46.0,
+            longitude: -123.0
+        )
+
+        XCTAssertFalse(summary.locationMatches(nearbySecondSite))
+        XCTAssertTrue(summary.locationMatches(sameSiteWithUpdatedCoordinates))
+        XCTAssertFalse(summary.locationMatches(SelectedLocation(
+            source: .currentGPS,
+            name: "Current Location",
+            latitude: 45.5,
+            longitude: -122.7
+        )))
+        XCTAssertFalse(summary.locationMatches(CachedLocation(
+            name: "Current Location", latitude: 45.5, longitude: -122.7
+        )))
+    }
+
+    func testLegacyAndCurrentLocationUseStrictCoordinateFallback() {
+        let legacy = makeSummary()
+        XCTAssertTrue(legacy.locationMatches(SelectedLocation(
+            source: .currentGPS,
+            name: "Current Location",
+            latitude: 45.5,
+            longitude: -122.7
+        )))
+        XCTAssertFalse(legacy.locationMatches(SelectedLocation(
+            source: .currentGPS,
+            name: "Nearby",
+            latitude: 45.50002,
+            longitude: -122.7
+        )))
+        XCTAssertFalse(legacy.locationMatches(SelectedLocation(
+            source: .saved,
+            id: UUID(),
+            name: "Home",
+            latitude: 45.5,
+            longitude: -122.7
+        )))
+        XCTAssertFalse(legacy.locationMatches(CachedLocation(
+            id: UUID(), name: "Home", latitude: 45.5, longitude: -122.7
+        )))
     }
 
     func testContextBuilderPreservesTodayTomorrowAndDayAfterInputs() {
@@ -366,7 +435,10 @@ final class WidgetTonightTargetsTests: XCTestCase {
     }
 
     func testBuilderPreservesCanonicalOrderAndKeepsOnlyFirstThreeWithoutFiltering() {
-        let conditions = makeConditions(referenceDate: date(day: 25, hour: 12))
+        let savedLocationID = UUID()
+        let conditions = makeConditions(
+            referenceDate: date(day: 25, hour: 12), locationID: savedLocationID
+        )
         let resolution = TargetRecommendationContextBuilder.resolve(
             conditions: conditions,
             dayOffset: 0,
@@ -389,6 +461,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
         XCTAssertEqual(summary.targets.map(\.targetID), ["first", "second", "third"])
         XCTAssertEqual(summary.targets.map(\.score), [10, 95, 45])
         XCTAssertEqual(summary.generatedAt, conditions.fetchedAt)
+        XCTAssertEqual(summary.savedLocationID, savedLocationID)
         XCTAssertEqual(summary.status, .available)
     }
 
@@ -808,6 +881,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
     private func makeSummary(
         generatedAt: Date? = nil,
         latitude: Double = 45.5,
+        savedLocationID: UUID? = nil,
         observingDate: Date? = nil,
         nightStart: Date? = nil,
         nightEnd: Date? = nil,
@@ -819,6 +893,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
             locationName: "Home",
             latitude: latitude,
             longitude: -122.7,
+            savedLocationID: savedLocationID,
             timeZoneIdentifier: timeZone.identifier,
             observingDate: observingDate ?? date(day: 25),
             astronomicalNightStart: nightStart ?? date(day: 25, hour: 22),
@@ -845,7 +920,8 @@ final class WidgetTonightTargetsTests: XCTestCase {
     private func makeConditions(
         referenceDate: Date,
         includesForecasts: Bool = true,
-        dataStartDay: Int = 25
+        dataStartDay: Int = 25,
+        locationID: UUID? = nil
     ) -> ViewingConditions {
         let start = date(day: dataStartDay)
         let forecasts = includesForecasts ? (0..<(4 * 24)).map { offset in
@@ -877,6 +953,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
         return ViewingConditions(
             fetchedAt: referenceDate,
             location: CachedLocation(
+                id: locationID,
                 name: "Home",
                 latitude: 45.5,
                 longitude: -122.7

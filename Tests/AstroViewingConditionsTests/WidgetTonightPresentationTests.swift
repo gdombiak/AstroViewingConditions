@@ -273,6 +273,7 @@ final class WidgetTonightPresentationTests: XCTestCase {
         let decoded = try JSONDecoder().decode(WidgetNightSummary.self, from: data)
         XCTAssertEqual(decoded.primaryMessage, "Open Astro Conditions to update")
         XCTAssertTrue(decoded.factors.isEmpty)
+        XCTAssertNil(decoded.savedLocationID)
     }
 
     func testLegacyFullViewingConditionsCacheStillConverts() throws {
@@ -288,6 +289,106 @@ final class WidgetTonightPresentationTests: XCTestCase {
         let generatedAt = calendar.date(from: .init(year: 2026, month: 7, day: 25, hour: 23, minute: 45))!
         let referenceDate = calendar.date(from: .init(year: 2026, month: 7, day: 26, hour: 0, minute: 15))!
         XCTAssertFalse(summary(generatedAt: generatedAt).isFreshForLocalDay(within: 3600, relativeTo: referenceDate))
+    }
+
+    func testNightSummarySavedLocationIdentityAndStrictLegacyFallback() {
+        let savedID = UUID()
+        let identifiedSummary = summary(savedLocationID: savedID)
+        XCTAssertFalse(identifiedSummary.locationMatches(SelectedLocation(
+            source: .saved,
+            id: UUID(),
+            name: "Nearby",
+            latitude: 45.500001,
+            longitude: -122.699999
+        )))
+        XCTAssertTrue(identifiedSummary.locationMatches(SelectedLocation(
+            source: .saved,
+            id: savedID,
+            name: "Home",
+            latitude: 46.0,
+            longitude: -123.0
+        )))
+        XCTAssertFalse(identifiedSummary.locationMatches(CachedLocation(
+            name: "Current Location", latitude: 45.5, longitude: -122.7
+        )))
+
+        let legacySummary = summary()
+        XCTAssertTrue(legacySummary.locationMatches(SelectedLocation(
+            source: .currentGPS,
+            name: "Current Location",
+            latitude: 45.5,
+            longitude: -122.7
+        )))
+        XCTAssertFalse(legacySummary.locationMatches(SelectedLocation(
+            source: .currentGPS,
+            name: "Nearby",
+            latitude: 45.50002,
+            longitude: -122.7
+        )))
+        XCTAssertFalse(legacySummary.locationMatches(CachedLocation(
+            id: UUID(), name: "Home", latitude: 45.5, longitude: -122.7
+        )))
+    }
+
+    func testLocationIdentityTruthTableRejectsEveryMixedIdentityCase() {
+        let firstID = UUID()
+        let secondID = UUID()
+
+        XCTAssertFalse(WidgetLocationIdentity.matches(
+            summarySavedLocationID: firstID, selectedSavedLocationID: nil,
+            summaryLatitude: 45.5, summaryLongitude: -122.7,
+            selectedLatitude: 45.5, selectedLongitude: -122.7
+        ))
+        XCTAssertFalse(WidgetLocationIdentity.matches(
+            summarySavedLocationID: nil, selectedSavedLocationID: firstID,
+            summaryLatitude: 45.5, summaryLongitude: -122.7,
+            selectedLatitude: 45.5, selectedLongitude: -122.7
+        ))
+        XCTAssertFalse(WidgetLocationIdentity.matches(
+            summarySavedLocationID: firstID, selectedSavedLocationID: secondID,
+            summaryLatitude: 45.5, summaryLongitude: -122.7,
+            selectedLatitude: 45.5, selectedLongitude: -122.7
+        ))
+        XCTAssertTrue(WidgetLocationIdentity.matches(
+            summarySavedLocationID: firstID, selectedSavedLocationID: firstID,
+            summaryLatitude: 45.5, summaryLongitude: -122.7,
+            selectedLatitude: 46.0, selectedLongitude: -123.0
+        ))
+        XCTAssertTrue(WidgetLocationIdentity.matches(
+            summarySavedLocationID: nil, selectedSavedLocationID: nil,
+            summaryLatitude: 45.5, summaryLongitude: -122.7,
+            selectedLatitude: 45.500001, selectedLongitude: -122.699999
+        ))
+        XCTAssertFalse(WidgetLocationIdentity.matches(
+            summarySavedLocationID: nil, selectedSavedLocationID: nil,
+            summaryLatitude: 45.5, summaryLongitude: -122.7,
+            selectedLatitude: 45.50002, selectedLongitude: -122.7
+        ))
+    }
+
+    func testNightSummaryBuilderPublishesSavedLocationID() {
+        let savedLocationID = UUID()
+        let summary = WidgetNightSummary.make(from: legacyConditions(savedLocationID: savedLocationID))
+        XCTAssertEqual(summary?.savedLocationID, savedLocationID)
+    }
+
+    func testNightSummaryFreshnessRejectsFutureAndHonorsBoundaries() {
+        let generatedAt = date(hour: 20)
+        let summary = summary(generatedAt: generatedAt)
+
+        XCTAssertFalse(summary.isFreshForLocalDay(
+            within: 3600,
+            relativeTo: generatedAt.addingTimeInterval(-1)
+        ))
+        XCTAssertTrue(summary.isFreshForLocalDay(within: 3600, relativeTo: generatedAt))
+        XCTAssertTrue(summary.isFreshForLocalDay(
+            within: 3600,
+            relativeTo: generatedAt.addingTimeInterval(3600)
+        ))
+        XCTAssertFalse(summary.isFreshForLocalDay(
+            within: 3600,
+            relativeTo: generatedAt.addingTimeInterval(3601)
+        ))
     }
 
     private func assessment(
@@ -310,20 +411,27 @@ final class WidgetTonightPresentationTests: XCTestCase {
         .init(time: time ?? date(hour: 20), score: score, cloudCover: cloudCover, fogScore: 0, moonIllumination: moonIllumination, moonAltitude: moonAltitude, windSpeed: windSpeed, seeingScore: 0.4, transparencyScore: 0.4)
     }
 
-    private func summary(generatedAt: Date = Date(timeIntervalSince1970: 0), factors: [NightQualityDisplayFactor] = []) -> WidgetNightSummary {
+    private func summary(
+        generatedAt: Date = Date(timeIntervalSince1970: 0),
+        factors: [NightQualityDisplayFactor] = [],
+        savedLocationID: UUID? = nil
+    ) -> WidgetNightSummary {
         WidgetNightSummary(
             generatedAt: generatedAt, locationName: "Home", latitude: 45.5, longitude: -122.7,
+            savedLocationID: savedLocationID,
             timeZoneIdentifier: "America/Los_Angeles", score: 73, verdict: "Good", earlyQuality: "Fair",
             lateQuality: "Good", trend: .improving, bestWindow: nil, primaryMessage: "Shared assessment",
             factors: factors, hasAstronomicalNight: true
         )
     }
 
-    private func legacyConditions() -> ViewingConditions {
+    private func legacyConditions(savedLocationID: UUID? = nil) -> ViewingConditions {
         let today = utcCalendar.startOfDay(for: Date())
         let tomorrow = utcCalendar.date(byAdding: .day, value: 1, to: today)!
         return ViewingConditions(
-            fetchedAt: Date(), location: .init(name: "Home", latitude: 45.5, longitude: -122.7),
+            fetchedAt: Date(), location: .init(
+                id: savedLocationID, name: "Home", latitude: 45.5, longitude: -122.7
+            ),
             hourlyForecasts: [20, 21, 22].map { hour in HourlyForecast(time: utcCalendar.date(byAdding: .hour, value: hour, to: today)!, cloudCover: 20, humidity: 40, windSpeed: 2, windDirection: 180, temperature: 14, dewPoint: 5, visibility: 20_000, lowCloudCover: 5, midCloudCover: 5, highCloudCover: 5) },
             dailySunEvents: [sunEvents(for: today), sunEvents(for: tomorrow)],
             dailyMoonInfo: [.init(phase: 0.2, phaseName: "Waxing", altitude: 20, illumination: 20, emoji: "🌒")],

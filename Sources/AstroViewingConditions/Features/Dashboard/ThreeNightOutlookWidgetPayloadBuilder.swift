@@ -80,6 +80,7 @@ enum ThreeNightOutlookWidgetPayloadBuilder {
         return WidgetThreeNightOutlookSummary(
             generatedAt: conditions.fetchedAt, locationName: conditions.location.name,
             latitude: conditions.location.latitude, longitude: conditions.location.longitude,
+            savedLocationID: conditions.location.id,
             timeZoneIdentifier: firstResolution.timeZone.identifier, status: .available, nights: nights
         )
     }
@@ -111,6 +112,7 @@ enum ThreeNightOutlookWidgetPayloadBuilder {
         return WidgetThreeNightOutlookSummary(
             generatedAt: generatedAt, locationName: location.name,
             latitude: location.latitude, longitude: location.longitude,
+            savedLocationID: location.id,
             timeZoneIdentifier: timeZone.identifier, status: .unavailable, nights: nights
         )
     }
@@ -164,7 +166,7 @@ enum ThreeNightOutlookWidgetPayloadBuilder {
         guard summary.status == .available, summary.hasCorrectlyOrderedNights(),
               let first = summary.nights.first,
               !calendar.isDate(first.observingDate, inSameDayAs: referenceDate),
-              summary.locationMatches(latitude: conditions.location.latitude, longitude: conditions.location.longitude),
+              summary.locationMatches(conditions.location),
               summary.isWithinMaximumAge(WidgetThreeNightOutlookSummary.maximumAge, relativeTo: referenceDate),
               let start = first.astronomicalNightStart,
               let end = first.astronomicalNightEnd else { return false }

@@ -26,6 +26,32 @@ public struct NightQualityDisplayFactor: Codable, Sendable, Hashable {
     }
 }
 
+/// Shared location-identity rules for Home Screen widget cache payloads.
+/// Saved-location IDs are authoritative; older and coordinate-only payloads
+/// use a deliberately narrow fallback for the same physical location.
+public enum WidgetLocationIdentity {
+    public static let coordinateTolerance = 0.00001
+
+    public static func matches(
+        summarySavedLocationID: UUID?,
+        selectedSavedLocationID: UUID?,
+        summaryLatitude: Double,
+        summaryLongitude: Double,
+        selectedLatitude: Double,
+        selectedLongitude: Double
+    ) -> Bool {
+        switch (summarySavedLocationID, selectedSavedLocationID) {
+        case let (summaryID?, selectedID?):
+            return summaryID == selectedID
+        case (nil, nil):
+            return abs(summaryLatitude - selectedLatitude) <= coordinateTolerance
+                && abs(summaryLongitude - selectedLongitude) <= coordinateTolerance
+        case (nil, _?), (_?, nil):
+            return false
+        }
+    }
+}
+
 /// The compact, fully resolved payload used by the iOS Home Screen widget.
 /// The extension only formats dates and chooses how much of this already-ranked
 /// presentation fits in the selected widget family.
@@ -34,6 +60,7 @@ public struct WidgetNightSummary: Codable, Sendable, Hashable {
     public let locationName: String
     public let latitude: Double
     public let longitude: Double
+    public let savedLocationID: UUID?
     public let timeZoneIdentifier: String?
     public let score: Int
     public let verdict: String
@@ -50,6 +77,7 @@ public struct WidgetNightSummary: Codable, Sendable, Hashable {
         locationName: String,
         latitude: Double,
         longitude: Double,
+        savedLocationID: UUID? = nil,
         timeZoneIdentifier: String?,
         score: Int,
         verdict: String,
@@ -65,6 +93,7 @@ public struct WidgetNightSummary: Codable, Sendable, Hashable {
         self.locationName = locationName
         self.latitude = latitude
         self.longitude = longitude
+        self.savedLocationID = savedLocationID
         self.timeZoneIdentifier = timeZoneIdentifier
         self.score = score
         self.verdict = verdict
@@ -78,7 +107,7 @@ public struct WidgetNightSummary: Codable, Sendable, Hashable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case generatedAt, locationName, latitude, longitude, timeZoneIdentifier
+        case generatedAt, locationName, latitude, longitude, savedLocationID, timeZoneIdentifier
         case score, verdict, earlyQuality, lateQuality, trend, bestWindow
         case primaryMessage, factors, hasAstronomicalNight
     }
@@ -89,6 +118,7 @@ public struct WidgetNightSummary: Codable, Sendable, Hashable {
         locationName = try values.decode(String.self, forKey: .locationName)
         latitude = try values.decode(Double.self, forKey: .latitude)
         longitude = try values.decode(Double.self, forKey: .longitude)
+        savedLocationID = try values.decodeIfPresent(UUID.self, forKey: .savedLocationID)
         timeZoneIdentifier = try values.decodeIfPresent(String.self, forKey: .timeZoneIdentifier)
         score = try values.decodeIfPresent(Int.self, forKey: .score) ?? 0
         verdict = try values.decodeIfPresent(String.self, forKey: .verdict) ?? "Unavailable"
@@ -119,6 +149,7 @@ public struct WidgetNightSummary: Codable, Sendable, Hashable {
             locationName: conditions.location.name,
             latitude: conditions.location.latitude,
             longitude: conditions.location.longitude,
+            savedLocationID: conditions.location.id,
             timeZoneIdentifier: conditions.timeZoneIdentifier,
             score: assessment.calculatedScore,
             verdict: assessment.rating.shortLabel,
@@ -145,13 +176,43 @@ public struct WidgetNightSummary: Codable, Sendable, Hashable {
     }
 
     public func isFreshForLocalDay(within maxAge: TimeInterval, relativeTo referenceDate: Date = Date()) -> Bool {
-        guard referenceDate.timeIntervalSince(generatedAt) <= maxAge else { return false }
+        let age = referenceDate.timeIntervalSince(generatedAt)
+        guard age >= 0 && age <= maxAge else { return false }
         let timeZone = timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
             ?? LocationTimeZoneResolver.approximate(longitude: longitude)
         return LocationTimeZoneResolver.calendar(for: timeZone).isDate(generatedAt, inSameDayAs: referenceDate)
     }
 
-    public func locationMatches(latitude: Double, longitude: Double, tolerance: Double = 0.01) -> Bool {
-        abs(self.latitude - latitude) <= tolerance && abs(self.longitude - longitude) <= tolerance
+    public func locationMatches(_ selectedLocation: SelectedLocation) -> Bool {
+        WidgetLocationIdentity.matches(
+            summarySavedLocationID: savedLocationID,
+            selectedSavedLocationID: selectedLocation.source == .saved ? selectedLocation.id : nil,
+            summaryLatitude: latitude,
+            summaryLongitude: longitude,
+            selectedLatitude: selectedLocation.latitude,
+            selectedLongitude: selectedLocation.longitude
+        )
+    }
+
+    public func locationMatches(_ location: CachedLocation) -> Bool {
+        WidgetLocationIdentity.matches(
+            summarySavedLocationID: savedLocationID,
+            selectedSavedLocationID: location.id,
+            summaryLatitude: latitude,
+            summaryLongitude: longitude,
+            selectedLatitude: location.latitude,
+            selectedLongitude: location.longitude
+        )
+    }
+
+    public func locationMatches(latitude: Double, longitude: Double) -> Bool {
+        WidgetLocationIdentity.matches(
+            summarySavedLocationID: savedLocationID,
+            selectedSavedLocationID: nil,
+            summaryLatitude: self.latitude,
+            summaryLongitude: self.longitude,
+            selectedLatitude: latitude,
+            selectedLongitude: longitude
+        )
     }
 }

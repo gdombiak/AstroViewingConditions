@@ -15,16 +15,13 @@ enum ThreeNightOutlookResolvedState: Equatable {
 enum ThreeNightOutlookEntryResolver {
     static func resolve(
         summary: WidgetThreeNightOutlookSummary?,
-        selectedLocation: (latitude: Double, longitude: Double, name: String)?,
+        selectedLocation: SelectedLocation?,
         referenceDate: Date,
         maximumAge: TimeInterval = WidgetThreeNightOutlookSummary.maximumAge
     ) -> ThreeNightOutlookResolvedState {
         guard let selectedLocation else { return .noLocation }
         guard let summary else { return .noCache }
-        guard summary.locationMatches(
-            latitude: selectedLocation.latitude,
-            longitude: selectedLocation.longitude
-        ) else { return .locationMismatch }
+        guard summary.locationMatches(selectedLocation) else { return .locationMismatch }
         guard summary.isWithinMaximumAge(
             maximumAge,
             relativeTo: referenceDate
