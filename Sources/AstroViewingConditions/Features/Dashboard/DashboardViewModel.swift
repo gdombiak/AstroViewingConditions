@@ -553,25 +553,23 @@ public class DashboardViewModel {
 
     var currentBestTargetsPresentation: BestTargetsListPresentation {
         guard let conditions = viewingConditions,
-              let sunEventsToday = currentSunEvents,
-              let nightQuality = currentNightQuality,
-              let moonInfo = currentMoonInfo else {
+              let resolution = TargetRecommendationContextBuilder.resolve(
+                conditions: conditions,
+                dayOffset: selectedDay.rawValue,
+                referenceDate: now(),
+                timeZone: displayTimeZone
+              ) else {
             return BestTargetsListPresentation(recommendations: [])
         }
 
-        let context = TargetRecommendationContext(
-            location: conditions.location,
-            astronomicalNightStart: sunEventsToday.astronomicalNightStart,
-            astronomicalNightEnd: sunEventsToday.astronomicalNightEnd(using: nextSunEvents),
-            nightQuality: nightQuality,
-            moonInfo: moonInfo
+        let recommendations = targetRecommendationService.recommendations(
+            for: resolution.context,
+            limit: 100
         )
-
-        let recommendations = targetRecommendationService.recommendations(for: context, limit: 100)
         Self.logUITargetRecommendations(
             recommendations,
             selectedDay: selectedDay,
-            context: context,
+            context: resolution.context,
             timeZone: displayTimeZone
         )
         return BestTargetsListPresentation(recommendations: recommendations)
@@ -722,9 +720,65 @@ public class DashboardViewModel {
         if let widgetSummary = WidgetNightSummary.make(from: companionConditions) {
             await AppGroupStorage.saveWidgetNightSummaryAsync(widgetSummary)
         }
+        await publishTonightTargets(from: conditions)
         WatchConnectivityService.shared.sendConditionsToWatch(companionConditions)
         
         WidgetReloadService.shared.scheduleReload()
+    }
+
+    private func publishTonightTargets(from conditions: ViewingConditions) async {
+        let referenceDate = now()
+        let existingSummary = await AppGroupStorage.loadWidgetTonightTargetsSummaryAsync()
+        let decision = TonightTargetsWidgetContextResolver.publicationDecision(
+            conditions: conditions,
+            existingSummary: existingSummary,
+            referenceDate: referenceDate,
+            timeZone: displayTimeZone
+        )
+
+        let resolution: TargetRecommendationContextResolution
+        switch decision {
+        case let .publish(resolvedContext):
+            resolution = resolvedContext
+        case .preserveExisting:
+            return
+        case .unavailable:
+            let unavailable = TonightTargetsWidgetPayloadBuilder.makeUnavailableSummary(
+                generatedAt: conditions.fetchedAt,
+                location: conditions.location,
+                timeZone: displayTimeZone
+                    ?? LocationTimeZoneResolver.approximate(
+                        longitude: conditions.location.longitude
+                    ),
+                referenceDate: referenceDate
+            )
+            await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(unavailable)
+            return
+        }
+
+        let recommendations = targetRecommendationService.recommendations(
+            for: resolution.context,
+            limit: 100
+        )
+        let summary = TonightTargetsWidgetPayloadBuilder.makeSummary(
+            conditions: conditions,
+            resolution: resolution,
+            recommendations: recommendations
+        )
+        await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
+    }
+
+    private func publishUnavailableTonightTargets(for location: CachedLocation) async {
+        let referenceDate = now()
+        let timeZone = displayTimeZone
+            ?? LocationTimeZoneResolver.approximate(longitude: location.longitude)
+        let summary = TonightTargetsWidgetPayloadBuilder.makeUnavailableSummary(
+            generatedAt: referenceDate,
+            location: location,
+            timeZone: timeZone,
+            referenceDate: referenceDate
+        )
+        await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
     }
     
     private func loadFromCache(matching location: CachedLocation) async -> Bool {
@@ -779,8 +833,19 @@ public class DashboardViewModel {
         }
 
         if shouldFetchFreshConditions {
-            await refresh(for: location)
+            let refreshed = await refresh(for: location)
+            if refreshed {
+                return
+            }
         }
+
+        if let conditions = viewingConditions,
+           conditionsMatch(conditions, location: location) {
+            await publishTonightTargets(from: conditions)
+        } else {
+            await publishUnavailableTonightTargets(for: location)
+        }
+        WidgetReloadService.shared.scheduleReload()
     }
 
     private func currentConditionsMatch(_ location: CachedLocation) -> Bool {

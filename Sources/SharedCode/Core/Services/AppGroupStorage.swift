@@ -111,6 +111,61 @@ public struct AppGroupStorage: Sendable {
         }
     }
 
+    // MARK: - Tonight's Targets Widget
+
+    static func writeWidgetTonightTargetsSummary(
+        _ summary: WidgetTonightTargetsSummary,
+        baseURL: URL? = containerURL
+    ) -> Bool {
+        guard let baseURL else {
+            logger.error("App Group container not available")
+            return false
+        }
+
+        do {
+            let data = try JSONEncoder().encode(summary)
+            let fileURL = baseURL.appendingPathComponent("widgetTonightTargets.json")
+            try data.write(to: fileURL, options: .atomic)
+            return true
+        } catch {
+            logger.error("Failed to save widget targets: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    static func readWidgetTonightTargetsSummary(
+        baseURL: URL? = containerURL
+    ) -> WidgetTonightTargetsSummary? {
+        guard let baseURL else {
+            logger.error("App Group container not available")
+            return nil
+        }
+
+        let fileURL = baseURL.appendingPathComponent("widgetTonightTargets.json")
+
+        do {
+            let data = try Data(contentsOf: fileURL)
+            return try JSONDecoder().decode(WidgetTonightTargetsSummary.self, from: data)
+        } catch {
+            logger.warning("Failed to load widget targets: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    public static func saveWidgetTonightTargetsSummaryAsync(
+        _ summary: WidgetTonightTargetsSummary
+    ) async {
+        await performFileAccessAsync {
+            _ = writeWidgetTonightTargetsSummary(summary)
+        }
+    }
+
+    public static func loadWidgetTonightTargetsSummaryAsync() async -> WidgetTonightTargetsSummary? {
+        await performFileAccessAsync {
+            readWidgetTonightTargetsSummary()
+        }
+    }
+
     // MARK: - Watch Night Conditions
 
     private static func writeWatchNightConditions(_ conditions: ViewingConditions) -> Bool {

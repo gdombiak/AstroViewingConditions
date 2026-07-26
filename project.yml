@@ -90,6 +90,7 @@ targets:
     sources:
       - Tests/AstroViewingConditionsTests
       - Sources/Widgets/WidgetTonightPresentation.swift
+      - Sources/Widgets/WidgetTonightTargetsPresentation.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

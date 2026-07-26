@@ -22,6 +22,7 @@ public final class WidgetReloadService {
             }
             
             WidgetCenter.shared.reloadTimelines(ofKind: "NightConditionsWidget")
+            WidgetCenter.shared.reloadTimelines(ofKind: "TonightTargetsWidget")
             WidgetCenter.shared.reloadTimelines(ofKind: "NightConditionsWatchWidget")
         }
     }

@@ -6,5 +6,6 @@ import SwiftUI
 struct NightConditionsWidgetBundle: WidgetBundle {
     var body: some Widget {
         NightConditionsWidget()
+        TonightTargetsWidget()
     }
 }
