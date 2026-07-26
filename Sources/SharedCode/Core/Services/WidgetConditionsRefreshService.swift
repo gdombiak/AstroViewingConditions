@@ -42,7 +42,16 @@ public struct WidgetConditionsRefreshService: Sendable {
         referenceDate: Date = Date()
     ) async throws -> ViewingConditions {
         if let cached = await load(),
-           Self.isUsable(cached, for: location, maximumAge: maximumAge, referenceDate: referenceDate) {
+           Self.isUsable(
+               cached,
+               for: location,
+               maximumAge: maximumAge,
+               referenceDate: referenceDate
+           ),
+           Self.hasCompleteWidgetPayload(
+               cached,
+               referenceDate: referenceDate
+           ) {
             return cached
         }
 
@@ -80,9 +89,9 @@ public struct WidgetConditionsRefreshService: Sendable {
             && conditions.isFreshForLocalDay(within: maximumAge, relativeTo: referenceDate)
     }
 
-    /// Validates only a newly fetched payload before it can replace the shared
-    /// cache. Cache freshness and identity are intentionally handled by
-    /// `isUsable` above so an older payload can still be used as a fallback.
+    /// Validates that a payload can serve every widget. Cache freshness and
+    /// identity are intentionally handled by `isUsable` so an older or
+    /// incomplete payload can still be considered by provider-specific fallback.
     public static func hasCompleteWidgetPayload(
         _ conditions: ViewingConditions,
         referenceDate: Date = Date()

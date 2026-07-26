@@ -5,10 +5,12 @@ final class WidgetConditionsRefreshServiceTests: XCTestCase {
     private actor Store {
         var value: ViewingConditions?
         var saves = 0
+        var fetches = 0
 
         init(_ value: ViewingConditions? = nil) { self.value = value }
         func load() -> ViewingConditions? { value }
         func save(_ conditions: ViewingConditions) { value = conditions; saves += 1 }
+        func recordFetch() { fetches += 1 }
     }
 
     func testFreshMatchingConditionsAreReusedWithoutFetch() async throws {
@@ -24,6 +26,35 @@ final class WidgetConditionsRefreshServiceTests: XCTestCase {
         XCTAssertEqual(result.fetchedAt, now)
         let saves = await store.saves
         XCTAssertEqual(saves, 0)
+    }
+
+    func testFreshMatchingIncompleteCacheFetchesAndSavesCompleteReplacement() async throws {
+        let now = Self.referenceDate
+        let location = CachedLocation(id: UUID(), name: "Home", latitude: 45.5, longitude: -122.7)
+        let incomplete = ViewingConditions(
+            fetchedAt: now, location: location, hourlyForecasts: [], dailySunEvents: [],
+            dailyMoonInfo: [], issPasses: [], fogScore: FogScore(score: 0, factors: []),
+            timeZoneIdentifier: Self.timeZone.identifier
+        )
+        let complete = Self.conditions(location: location, fetchedAt: now)
+        let store = Store(incomplete)
+        let service = WidgetConditionsRefreshService(
+            load: { await store.load() },
+            save: { await store.save($0) },
+            fetch: { _ in
+                await store.recordFetch()
+                return complete
+            }
+        )
+
+        let result = try await service.conditions(for: location, referenceDate: now)
+        let saved = await store.load()
+        let fetches = await store.fetches
+        let saves = await store.saves
+        XCTAssertEqual(result.hourlyForecasts.count, Self.forecastDays)
+        XCTAssertEqual(saved?.hourlyForecasts.count, Self.forecastDays)
+        XCTAssertEqual(fetches, 1)
+        XCTAssertEqual(saves, 1)
     }
 
     func testStaleOrWrongLocationConditionsFetchAndReplaceSharedCache() async throws {
@@ -84,18 +115,28 @@ final class WidgetConditionsRefreshServiceTests: XCTestCase {
         XCTAssertEqual(fallback?.fetchedAt, stale.fetchedAt)
     }
 
-    func testIncompleteFetchedPayloadIsRejectedWithoutReplacingStaleCompleteCache() async {
+    func testIncompleteFetchedPayloadIsRejectedWithoutReplacingFreshIncompleteCache() async {
         let now = Self.referenceDate
         let location = CachedLocation(id: UUID(), name: "Home", latitude: 45.5, longitude: -122.7)
-        let stale = Self.conditions(location: location, fetchedAt: now.addingTimeInterval(-3601))
-        let incomplete = ViewingConditions(
+        let cached = ViewingConditions(
             fetchedAt: now, location: location, hourlyForecasts: [], dailySunEvents: [],
             dailyMoonInfo: [], issPasses: [], fogScore: FogScore(score: 0, factors: []),
             timeZoneIdentifier: Self.timeZone.identifier
         )
-        let store = Store(stale)
+        let fetched = ViewingConditions(
+            fetchedAt: now.addingTimeInterval(-1), location: location, hourlyForecasts: [],
+            dailySunEvents: [], dailyMoonInfo: [], issPasses: [],
+            fogScore: FogScore(score: 0, factors: []),
+            timeZoneIdentifier: Self.timeZone.identifier
+        )
+        let store = Store(cached)
         let service = WidgetConditionsRefreshService(
-            load: { await store.load() }, save: { await store.save($0) }, fetch: { _ in incomplete }
+            load: { await store.load() },
+            save: { await store.save($0) },
+            fetch: { _ in
+                await store.recordFetch()
+                return fetched
+            }
         )
 
         do {
@@ -110,8 +151,11 @@ final class WidgetConditionsRefreshServiceTests: XCTestCase {
         }
 
         let preserved = await store.load()
+        let fetches = await store.fetches
         let saves = await store.saves
-        XCTAssertEqual(preserved?.fetchedAt, stale.fetchedAt)
+        XCTAssertEqual(preserved?.fetchedAt, cached.fetchedAt)
+        XCTAssertEqual(preserved?.hourlyForecasts.count, 0)
+        XCTAssertEqual(fetches, 1)
         XCTAssertEqual(saves, 0)
     }
 
