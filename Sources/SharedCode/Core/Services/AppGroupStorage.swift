@@ -365,12 +365,6 @@ public struct AppGroupStorage: Sendable {
         }
     }
 
-    public static func saveConditionsAsync(_ conditions: ViewingConditions) async {
-        await performFileAccessAsync {
-            _ = writeConditions(conditions)
-        }
-    }
-
     public static func saveConditionsMetadataAsync(_ metadata: SharedConditionsMetadata) async {
         await performFileAccessAsync {
             _ = writeConditionsMetadata(metadata)

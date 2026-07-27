@@ -288,6 +288,13 @@ public struct SharedConditionsRepository: Sendable {
         return cached
     }
 
+    /// Returns the shared payload without freshness or location validation.
+    /// This is intentionally limited to last-known presentation fallbacks
+    /// after a normal repository acquisition has failed.
+    public func lastKnownCachedConditions() async -> ViewingConditions? {
+        await load()
+    }
+
     public static func isUsable(
         _ conditions: ViewingConditions,
         for location: CachedLocation,

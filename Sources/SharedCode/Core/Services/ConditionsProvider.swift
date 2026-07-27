@@ -108,32 +108,6 @@ public actor ConditionsProvider {
         }
     }
 
-    public func conditions(
-        for location: CachedLocation,
-        days: Int,
-        apiKey: String? = nil,
-        cacheService: CacheService,
-        cacheMaxAge: TimeInterval,
-        locationTolerance: Double = 0.01
-    ) async throws -> ViewingConditions {
-        if let cached = await cacheService.loadAsync(),
-           cached.isFreshForLocalDay(within: cacheMaxAge),
-           cached.locationMatches(
-               latitude: location.latitude,
-               longitude: location.longitude,
-               tolerance: locationTolerance
-           ) {
-            return cached
-        }
-
-        let freshConditions = try await fetchConditions(
-            for: location,
-            days: days,
-            apiKey: apiKey
-        )
-        await cacheService.saveAsync(freshConditions)
-        return freshConditions
-    }
 }
 
 public enum ISSFetchState: Sendable, Equatable {

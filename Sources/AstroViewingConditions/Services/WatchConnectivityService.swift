@@ -14,7 +14,63 @@ private final class WatchReplyHandler: @unchecked Sendable {
     }
 }
 
-private let watchRequestCacheMaxAge: TimeInterval = 3600
+struct WatchConditionsRequestAcquirer: Sendable {
+    private let conditionsRepository: SharedConditionsRepository
+
+    init(conditionsRepository: SharedConditionsRepository = SharedConditionsRepository()) {
+        self.conditionsRepository = conditionsRepository
+    }
+
+    /// Performs the normal shared acquisition first, then intentionally uses
+    /// the raw last-known payload only when it cannot acquire conditions.
+    func conditions(
+        for location: CachedLocation?,
+        apiKey: String,
+        referenceDate: Date = Date()
+    ) async -> ViewingConditions? {
+        guard let location else {
+            return await conditionsRepository.lastKnownCachedConditions()
+        }
+
+        do {
+            return try await conditionsRepository.conditions(
+                for: location,
+                apiKey: apiKey,
+                referenceDate: referenceDate
+            ).conditions
+        } catch {
+            return await conditionsRepository.lastKnownCachedConditions()
+        }
+    }
+}
+
+enum WatchConditionsRequestLocationResolver {
+    static func resolve(
+        selectedLocation: SelectedLocation?,
+        savedLocations: [CachedLocation],
+        cachedConditions: ViewingConditions?
+    ) -> CachedLocation? {
+        if let selectedLocation,
+           selectedLocation.source == .saved,
+           let selectedID = selectedLocation.id,
+           let savedLocation = savedLocations.first(where: { $0.id == selectedID }) {
+            return savedLocation
+        }
+
+        if let selectedLocation,
+           selectedLocation.latitude != 0,
+           selectedLocation.longitude != 0 {
+            return CachedLocation(
+                id: selectedLocation.source == .saved ? selectedLocation.id : nil,
+                name: selectedLocation.name,
+                latitude: selectedLocation.latitude,
+                longitude: selectedLocation.longitude
+            )
+        }
+
+        return cachedConditions?.location
+    }
+}
 
 @MainActor
 public class WatchConnectivityService: NSObject, ObservableObject {
@@ -24,7 +80,7 @@ public class WatchConnectivityService: NSObject, ObservableObject {
     @Published public var isPaired = false
     
     private var session: WCSession?
-    private let conditionsProvider = ConditionsProvider()
+    private let conditionsRepository = SharedConditionsRepository()
     
     private override init() {
         super.init()
@@ -189,15 +245,9 @@ extension WatchConnectivityService: WCSessionDelegate {
         let replyHandlerBox = WatchReplyHandler(replyHandler)
         
         Task {
-            let cacheService = CacheService()
             var reply: [String: Any] = ["status": "ok"]
-            
-            var conditions = await conditionsForWatchRequest(cacheService: cacheService)
-            if conditions == nil {
-                conditions = await cacheService.loadAsync()
-            }
 
-            if let conditions {
+            if let conditions = await conditionsForWatchRequest() {
                 let watchConditions = conditions.limitedToTonightCache()
                 if let data = try? JSONEncoder().encode(watchConditions) {
                     reply["conditions"] = data
@@ -220,61 +270,26 @@ extension WatchConnectivityService: WCSessionDelegate {
     }
 
     @MainActor
-    private func conditionsForWatchRequest(cacheService: CacheService) async -> ViewingConditions? {
-        guard let location = watchRequestLocation() else { return nil }
-
-        do {
-            return try await conditionsProvider.conditions(
-                for: CachedLocation(from: location),
-                days: 4,
-                apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? "",
-                cacheService: cacheService,
-                cacheMaxAge: watchRequestCacheMaxAge,
-                locationTolerance: 0.0001
-            )
-        } catch {
-            return nil
-        }
+    private func conditionsForWatchRequest() async -> ViewingConditions? {
+        let location = await watchRequestLocation()
+        return await WatchConditionsRequestAcquirer(
+            conditionsRepository: conditionsRepository
+        ).conditions(
+            for: location,
+            apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? "",
+            referenceDate: Date()
+        )
     }
 
     @MainActor
-    private func watchRequestLocation() -> SavedLocation? {
+    private func watchRequestLocation() async -> CachedLocation? {
         let selectedLocation = LocationStorageService.shared.loadSelectedLocation()
         let savedLocations = LocationStorageService.shared.loadSavedLocations()
-
-        if let selectedLocation,
-           selectedLocation.source == .saved,
-           let selectedID = selectedLocation.id,
-           let savedLocation = savedLocations.first(where: { $0.id == selectedID }) {
-            return SavedLocation(cachedLocation: savedLocation)
-        }
-
-        if let selectedLocation, selectedLocation.latitude != 0, selectedLocation.longitude != 0 {
-            return SavedLocation(
-                name: selectedLocation.name,
-                latitude: selectedLocation.latitude,
-                longitude: selectedLocation.longitude
-            )
-        }
-
-        if let cachedConditions = CacheService().load() {
-            return SavedLocation(cachedLocation: cachedConditions.location)
-        }
-
-        return nil
-    }
-}
-
-private extension SavedLocation {
-    convenience init(cachedLocation: CachedLocation) {
-        self.init(
-            name: cachedLocation.name,
-            latitude: cachedLocation.latitude,
-            longitude: cachedLocation.longitude,
-            elevation: cachedLocation.elevation
+        let cachedConditions = await conditionsRepository.lastKnownCachedConditions()
+        return WatchConditionsRequestLocationResolver.resolve(
+            selectedLocation: selectedLocation,
+            savedLocations: savedLocations,
+            cachedConditions: cachedConditions
         )
-        if let id = cachedLocation.id {
-            self.id = id
-        }
     }
 }
