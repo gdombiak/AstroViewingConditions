@@ -352,10 +352,9 @@ public class DashboardViewModel {
     }
 
     // Services
-    private let conditionsProvider: ConditionsProvider
-    private let cacheService: CacheService
+    private let conditionsRepository: SharedConditionsRepository
     private let targetRecommendationService: any TargetRecommendationProviding
-    private let now: () -> Date
+    private let now: @Sendable () -> Date
     
     // State
     public var viewingConditions: ViewingConditions?
@@ -363,13 +362,10 @@ public class DashboardViewModel {
     public var error: (any Error)?
     public private(set) var issError: ISSError?
     public var selectedDay: DaySelection = .today
-    public var lastSuccessfulFetch: Date?
     
     private var apiKey: String
     public private(set) var locationTimeZone: TimeZone?
     private var conditionsLoadOperations: [ConditionsLoadKey: ConditionsLoadOperation] = [:]
-    
-    private static let staleThresholdSeconds: TimeInterval = 60 * 60 // 1 hour
     
     public var hasISSConfigured: Bool {
         !apiKey.isEmpty
@@ -411,10 +407,11 @@ public class DashboardViewModel {
     }
     
     public var isDataStale: Bool {
-        guard let lastFetch = lastSuccessfulFetch else { return true }
-        let timeStale = Date().timeIntervalSince(lastFetch) > Self.staleThresholdSeconds
-        let dayRolledOver = !locationCalendar.isDate(lastFetch, inSameDayAs: Date())
-        return timeStale || dayRolledOver
+        guard let viewingConditions else { return true }
+        return !SharedConditionsRepository.isFreshForCurrentLocalDay(
+            viewingConditions,
+            referenceDate: now()
+        )
     }
     
     public var shouldFetchFreshConditions: Bool {
@@ -595,14 +592,14 @@ public class DashboardViewModel {
     
     public init(
         apiKey: String = "",
-        cacheService: CacheService = CacheService(),
         conditionsProvider: ConditionsProvider = ConditionsProvider(),
+        conditionsRepository: SharedConditionsRepository? = nil,
         targetRecommendationService: any TargetRecommendationProviding = DefaultTargetRecommendationService(),
-        now: @escaping () -> Date = Date.init
+        now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.apiKey = apiKey
-        self.cacheService = cacheService
-        self.conditionsProvider = conditionsProvider
+        self.conditionsRepository = conditionsRepository
+            ?? SharedConditionsRepository(provider: conditionsProvider, now: now)
         self.targetRecommendationService = targetRecommendationService
         self.now = now
     }
@@ -658,16 +655,17 @@ public class DashboardViewModel {
     }
     
     @discardableResult
-    private func loadConditions(for location: CachedLocation) async -> Bool {
+    private func loadConditions(for location: CachedLocation, forceRefresh: Bool = false) async -> Bool {
         isLoading = true
         error = nil
         defer { isLoading = false }
         
         do {
-            let result = try await conditionsProvider.fetchConditionsWithDiagnostics(
+            let result = try await conditionsRepository.conditions(
                 for: location,
-                days: 4,
-                apiKey: apiKey
+                apiKey: apiKey,
+                referenceDate: now(),
+                forceRefresh: forceRefresh
             )
             let newConditions = result.conditions
             issError = result.issError
@@ -677,7 +675,6 @@ public class DashboardViewModel {
                 locationTimeZone = LocationTimeZoneResolver.approximate(longitude: newConditions.location.longitude)
             }
             viewingConditions = newConditions
-            lastSuccessfulFetch = newConditions.fetchedAt
             return true
             
         } catch {
@@ -699,19 +696,12 @@ public class DashboardViewModel {
 
     @discardableResult
     public func refresh(for location: CachedLocation) async -> Bool {
-        guard await loadConditions(for: location) else {
+        guard await loadConditions(for: location, forceRefresh: true) else {
             return false
         }
 
-        await saveToCache()
         await publishCompanionConditions()
         return true
-    }
-    
-    private func saveToCache() async {
-        guard let conditions = viewingConditions else { return }
-        await cacheService.saveAsync(conditions)
-        await AppGroupStorage.saveConditionsAsync(conditions)
     }
 
     private func publishCompanionConditions() async {
@@ -807,19 +797,6 @@ public class DashboardViewModel {
         await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
     }
     
-    private func loadFromCache(matching location: CachedLocation) async -> Bool {
-        guard let conditions = await cacheService.loadAsync(),
-              conditionsMatch(conditions, location: location) else {
-            return false
-        }
-
-        self.viewingConditions = conditions
-        self.lastSuccessfulFetch = conditions.fetchedAt
-        self.issError = nil
-
-        return true
-    }
-    
     private func resolveTimeZone(for location: CachedLocation) async {
         locationTimeZone = await LocationTimeZoneResolver.resolve(
             latitude: location.latitude,
@@ -852,17 +829,14 @@ public class DashboardViewModel {
     private func loadConditionsIfNeededUncoalesced(for location: CachedLocation) async {
         await resolveTimeZone(for: location)
 
-        let loadedFromCache = await loadFromCache(matching: location)
-        if !loadedFromCache, !currentConditionsMatch(location) {
+        if !currentConditionsMatch(location) {
             viewingConditions = nil
-            lastSuccessfulFetch = nil
+            issError = nil
         }
 
-        if shouldFetchFreshConditions {
-            let refreshed = await refresh(for: location)
-            if refreshed {
-                return
-            }
+        if await loadConditions(for: location) {
+            await publishCompanionConditions()
+            return
         }
 
         if let conditions = viewingConditions,
@@ -882,13 +856,6 @@ public class DashboardViewModel {
     }
 
     private func conditionsMatch(_ conditions: ViewingConditions, location: CachedLocation) -> Bool {
-        let tolerance = 0.0001
-        let cachedLat = conditions.location.latitude
-        let cachedLon = conditions.location.longitude
-
-        guard cachedLat != 0, cachedLon != 0 else { return false }
-
-        return abs(cachedLat - location.latitude) < tolerance &&
-               abs(cachedLon - location.longitude) < tolerance
+        SharedConditionsRepository.locationMatches(conditions.location, location)
     }
 }

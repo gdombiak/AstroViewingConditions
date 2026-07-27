@@ -59,7 +59,7 @@ public struct WidgetThreeNightOutlookSummary: Codable, Sendable, Hashable {
 #if os(watchOS)
     public static let maximumAge: TimeInterval = 3600
 #else
-    public static let maximumAge: TimeInterval = WidgetConditionsRefreshService.maximumAge
+    public static let maximumAge: TimeInterval = SharedConditionsRepository.maximumAge
 #endif
 
     public let generatedAt: Date

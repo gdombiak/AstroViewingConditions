@@ -56,7 +56,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         let summary = makeSummary(generatedAt: generatedAt)
         let maximumAge = WidgetThreeNightOutlookSummary.maximumAge
 
-        XCTAssertEqual(maximumAge, WidgetConditionsRefreshService.maximumAge)
+        XCTAssertEqual(maximumAge, SharedConditionsRepository.maximumAge)
         XCTAssertTrue(summary.isWithinMaximumAge(
             maximumAge,
             relativeTo: generatedAt.addingTimeInterval(maximumAge)
@@ -410,7 +410,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         ] {
             XCTAssertFalse(widgetSources.contains(forbidden), forbidden)
         }
-        XCTAssertTrue(provider.contains("WidgetConditionsRefreshService().conditions"))
+        XCTAssertTrue(provider.contains("SharedConditionsRepository().conditions"))
         XCTAssertTrue(provider.contains("ThreeNightOutlookWidgetPayloadBuilder.publicationDecision"))
         XCTAssertTrue(provider.contains("saveWidgetThreeNightOutlookSummaryAsync"))
         XCTAssertTrue(provider.contains("cachedSummary.locationMatches(location)"))
@@ -421,7 +421,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         XCTAssertFalse(provider.contains("payloadMaximumAge"))
 
         let conditionsCall = try XCTUnwrap(
-            provider.range(of: "WidgetConditionsRefreshService().conditions")
+            provider.range(of: "SharedConditionsRepository().conditions")
         )
         let fallbackCheck = try XCTUnwrap(
             provider.range(of: "cachedSummary.locationMatches(location)")

@@ -41,7 +41,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
         let summary = makeSummary(generatedAt: generatedAt)
         let maximumAge = WidgetTonightTargetsSummary.maximumAge
 
-        XCTAssertEqual(maximumAge, WidgetConditionsRefreshService.maximumAge)
+        XCTAssertEqual(maximumAge, SharedConditionsRepository.maximumAge)
         XCTAssertTrue(summary.isWithinMaximumAge(
             maximumAge,
             relativeTo: generatedAt.addingTimeInterval(maximumAge)
@@ -658,7 +658,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
 
     func testTargetsProviderRefreshesThroughSharedPipelineAndSafelyFallsBack() throws {
         let source = try sourceText("Sources/Widgets/TonightTargetsTimelineProvider.swift")
-        XCTAssertTrue(source.contains("WidgetConditionsRefreshService().conditions"))
+        XCTAssertTrue(source.contains("SharedConditionsRepository().conditions"))
         XCTAssertTrue(source.contains("TonightTargetsWidgetRefreshPipeline.makeSummary"))
         XCTAssertTrue(source.contains("saveWidgetTonightTargetsSummaryAsync"))
         XCTAssertTrue(source.contains("cachedSummary.locationMatches(location)"))
@@ -670,7 +670,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
         XCTAssertFalse(source.contains("payloadMaximumAge"))
 
         let conditionsCall = try XCTUnwrap(
-            source.range(of: "WidgetConditionsRefreshService().conditions")
+            source.range(of: "SharedConditionsRepository().conditions")
         )
         let fallbackCheck = try XCTUnwrap(
             source.range(of: "cachedSummary.locationMatches(location)")
@@ -882,7 +882,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
         XCTAssertTrue(phaseOneProvider.contains(
             "timelineReevaluationInterval: TimeInterval = 3600"
         ))
-        XCTAssertTrue(phaseOneProvider.contains("WidgetConditionsRefreshService"))
+        XCTAssertTrue(phaseOneProvider.contains("SharedConditionsRepository"))
         XCTAssertTrue(phaseOneProvider.contains("WidgetNightSummary.make(from: conditions)"))
         XCTAssertTrue(phaseOneProvider.contains("saveWidgetNightSummaryAsync"))
         XCTAssertTrue(phaseOneProvider.contains("context.isPreview"))
@@ -896,7 +896,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
         XCTAssertTrue(reloadService.contains("\"TonightTargetsWidget\""))
 
         let conditionsCall = try XCTUnwrap(
-            phaseOneProvider.range(of: "refreshService.conditions")
+            phaseOneProvider.range(of: "conditionsRepository.conditions")
         )
         let fallbackCheck = try XCTUnwrap(
             phaseOneProvider.range(of: "within: Self.fallbackMaximumAge")

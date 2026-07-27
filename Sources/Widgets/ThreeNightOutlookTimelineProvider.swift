@@ -49,9 +49,10 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
             name: location.name, latitude: location.latitude, longitude: location.longitude
         )
         do {
-            let conditions = try await WidgetConditionsRefreshService().conditions(
+            let result = try await SharedConditionsRepository().conditions(
                 for: cachedLocation, referenceDate: referenceDate
             )
+            let conditions = result.conditions
             outlookWidgetLogger.info(
                 "Conditions returned; fetchedAt: \(conditions.fetchedAt.description, privacy: .public)"
             )

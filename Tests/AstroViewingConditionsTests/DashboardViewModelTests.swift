@@ -1054,7 +1054,6 @@ final class DashboardViewModelTests: XCTestCase {
         
         let viewModel = DashboardViewModel(now: { fetchDate })
         viewModel.viewingConditions = conditions
-        viewModel.lastSuccessfulFetch = fetchDate
         
         let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: fetchDate))!
         let actualDay2Title = viewModel.titleForSelectedDay(.dayAfter)
@@ -1151,7 +1150,6 @@ final class DashboardViewModelTests: XCTestCase {
         
         let viewModel = DashboardViewModel(now: { currentDate })
         viewModel.viewingConditions = conditions
-        viewModel.lastSuccessfulFetch = fetchDate
         
         // Tab labels use current date, not fetch date
         let currentDay2Date = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: currentDate))!
@@ -1249,7 +1247,6 @@ final class DashboardViewModelTests: XCTestCase {
         
         let viewModel = DashboardViewModel(now: { refreshDate })
         viewModel.viewingConditions = conditions
-        viewModel.lastSuccessfulFetch = refreshDate
         
         // Tab labels use current date, not refresh date
         let refreshStartOfDay0 = calendar.startOfDay(for: refreshDate)
@@ -1280,6 +1277,74 @@ final class DashboardViewModelTests: XCTestCase {
             XCTAssertEqual(forecastDate, refreshStartOfDay0,
                 "Tab 0 forecasts should be for refresh date")
         }
+    }
+
+    func testIsDataStaleIsFalseForFreshLoadedConditions() {
+        let now = Self.dashboardFreshnessReferenceDate
+        let viewModel = DashboardViewModel(now: { now })
+        viewModel.viewingConditions = Self.freshnessConditions(
+            fetchedAt: now.addingTimeInterval(-3_599)
+        )
+
+        XCTAssertFalse(viewModel.isDataStale)
+    }
+
+    func testIsDataStaleIsTrueAtExactlyOneHour() {
+        let now = Self.dashboardFreshnessReferenceDate
+        let viewModel = DashboardViewModel(now: { now })
+        viewModel.viewingConditions = Self.freshnessConditions(
+            fetchedAt: now.addingTimeInterval(-3_600)
+        )
+
+        XCTAssertTrue(viewModel.isDataStale)
+    }
+
+    func testIsDataStaleIsTrueForFutureLoadedConditions() {
+        let now = Self.dashboardFreshnessReferenceDate
+        let viewModel = DashboardViewModel(now: { now })
+        viewModel.viewingConditions = Self.freshnessConditions(
+            fetchedAt: now.addingTimeInterval(1)
+        )
+
+        XCTAssertTrue(viewModel.isDataStale)
+    }
+
+    func testIsDataStaleIsTrueAfterLocalDayRollover() {
+        let timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let calendar = LocationTimeZoneResolver.calendar(for: timeZone)
+        let now = calendar.date(from: DateComponents(
+            year: 2026, month: 7, day: 26, hour: 0, minute: 15
+        ))!
+        let viewModel = DashboardViewModel(now: { now })
+        viewModel.viewingConditions = Self.freshnessConditions(
+            fetchedAt: calendar.date(from: DateComponents(
+                year: 2026, month: 7, day: 25, hour: 23, minute: 30
+            ))!
+        )
+
+        XCTAssertTrue(viewModel.isDataStale)
+    }
+
+    private static let dashboardFreshnessReferenceDate: Date = {
+        let calendar = LocationTimeZoneResolver.calendar(
+            for: TimeZone(identifier: "America/Los_Angeles")!
+        )
+        return calendar.date(from: DateComponents(
+            year: 2026, month: 7, day: 25, hour: 12
+        ))!
+    }()
+
+    private static func freshnessConditions(fetchedAt: Date) -> ViewingConditions {
+        ViewingConditions(
+            fetchedAt: fetchedAt,
+            location: CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7),
+            hourlyForecasts: [],
+            dailySunEvents: [],
+            dailyMoonInfo: [],
+            issPasses: [],
+            fogScore: FogScore(score: 0, factors: []),
+            timeZoneIdentifier: "America/Los_Angeles"
+        )
     }
 }
 

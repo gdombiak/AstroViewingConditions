@@ -94,6 +94,10 @@ targets:
       - Sources/Widgets/WidgetThreeNightOutlookPresentation.swift
       - Sources/Widgets/ThreeNightOutlookEntryResolver.swift
       - Sources/Widgets/WidgetAppIdentity.swift
+      - Sources/Widgets/WidgetDataAsOfPresentation.swift
+      - Sources/Widgets/NightConditionsEntry.swift
+      - Sources/Widgets/TonightTargetsEntry.swift
+      - Sources/Widgets/ThreeNightOutlookEntry.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

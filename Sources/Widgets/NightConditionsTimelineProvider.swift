@@ -51,11 +51,12 @@ struct Provider: TimelineProvider {
             id: location.source == .saved ? location.id : nil,
             name: location.name, latitude: location.latitude, longitude: location.longitude
         )
-        let refreshService = WidgetConditionsRefreshService()
+        let conditionsRepository = SharedConditionsRepository()
         do {
-            let conditions = try await refreshService.conditions(
+            let result = try await conditionsRepository.conditions(
                 for: cachedLocation, referenceDate: referenceDate
             )
+            let conditions = result.conditions
             widgetLogger.info(
                 "Conditions returned; fetchedAt: \(conditions.fetchedAt.description, privacy: .public)"
             )
@@ -65,7 +66,7 @@ struct Provider: TimelineProvider {
                     cachedSummary: cachedSummary,
                     location: location,
                     cachedLocation: cachedLocation,
-                    refreshService: refreshService,
+                    conditionsRepository: conditionsRepository,
                     referenceDate: referenceDate
                 )
             }
@@ -84,7 +85,7 @@ struct Provider: TimelineProvider {
                 cachedSummary: cachedSummary,
                 location: location,
                 cachedLocation: cachedLocation,
-                refreshService: refreshService,
+                conditionsRepository: conditionsRepository,
                 referenceDate: referenceDate
             )
         }
@@ -94,7 +95,7 @@ struct Provider: TimelineProvider {
         cachedSummary: WidgetNightSummary?,
         location: SelectedLocation,
         cachedLocation: CachedLocation,
-        refreshService: WidgetConditionsRefreshService,
+        conditionsRepository: SharedConditionsRepository,
         referenceDate: Date
     ) async -> NightConditionsEntry {
         if let cachedSummary,
@@ -110,7 +111,7 @@ struct Provider: TimelineProvider {
                 dataStatus: .fallback(summary: cachedSummary)
             )
         }
-        if let staleConditions = await refreshService.matchingCachedConditions(for: cachedLocation),
+        if let staleConditions = await conditionsRepository.matchingCachedConditions(for: cachedLocation),
            staleConditions.isFreshForLocalDay(
                within: Self.fallbackMaximumAge,
                relativeTo: referenceDate
