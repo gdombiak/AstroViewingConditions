@@ -64,27 +64,11 @@ public actor ConditionsProvider {
             dailyMoonInfo.append(moonInfo)
         }
         
-        let issPasses: [ISSPass]
-        let issError: ISSError?
+        let issResult: ISSFetchResult
         if let apiKey, !apiKey.isEmpty {
-            let issService = issServiceFactory(apiKey)
-            do {
-                issPasses = try await issService.fetchPasses(
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                    altitude: location.elevation ?? 0
-                )
-                issError = nil
-            } catch let error as ISSError {
-                issPasses = []
-                issError = error
-            } catch {
-                issPasses = []
-                issError = .apiError(statusCode: nil, message: error.localizedDescription)
-            }
+            issResult = await fetchISSPasses(for: location, apiKey: apiKey)
         } else {
-            issPasses = []
-            issError = nil
+            issResult = ISSFetchResult(passes: [], state: .notRequested)
         }
         
         let conditions = ViewingConditions(
@@ -93,11 +77,35 @@ public actor ConditionsProvider {
             hourlyForecasts: forecasts,
             dailySunEvents: dailySunEvents,
             dailyMoonInfo: dailyMoonInfo,
-            issPasses: issPasses,
+            issPasses: issResult.passes,
             fogScore: FogCalculator.calculateCurrent(from: forecasts),
             timeZoneIdentifier: tz.identifier
         )
-        return ConditionsFetchResult(conditions: conditions, issError: issError)
+        return ConditionsFetchResult(
+            conditions: conditions,
+            issError: issResult.error,
+            issFetchState: issResult.state
+        )
+    }
+
+    /// Fetches only the ISS data needed to enrich an already-fresh weather
+    /// payload. A successful empty response is deliberately distinguishable
+    /// from a request that was never attempted.
+    public func fetchISSPasses(for location: CachedLocation, apiKey: String) async -> ISSFetchResult {
+        let issService = issServiceFactory(apiKey)
+        do {
+            let passes = try await issService.fetchPasses(
+                latitude: location.latitude,
+                longitude: location.longitude,
+                altitude: location.elevation ?? 0
+            )
+            return ISSFetchResult(passes: passes, state: .succeeded)
+        } catch let error as ISSError {
+            return ISSFetchResult(passes: [], state: .failed(error))
+        } catch {
+            let error = ISSError.apiError(statusCode: nil, message: error.localizedDescription)
+            return ISSFetchResult(passes: [], state: .failed(error))
+        }
     }
 
     public func conditions(
@@ -128,12 +136,41 @@ public actor ConditionsProvider {
     }
 }
 
+public enum ISSFetchState: Sendable, Equatable {
+    case notRequested
+    case succeeded
+    case failed(ISSError)
+}
+
+public struct ISSFetchResult: Sendable {
+    public let passes: [ISSPass]
+    public let state: ISSFetchState
+
+    public init(passes: [ISSPass], state: ISSFetchState) {
+        self.passes = passes
+        self.state = state
+    }
+
+    public var error: ISSError? {
+        guard case let .failed(error) = state else { return nil }
+        return error
+    }
+}
+
 public struct ConditionsFetchResult: Sendable {
     public let conditions: ViewingConditions
     public let issError: ISSError?
+    public let issFetchState: ISSFetchState
 
-    public init(conditions: ViewingConditions, issError: ISSError?) {
+    public init(
+        conditions: ViewingConditions,
+        issError: ISSError?,
+        issFetchState: ISSFetchState? = nil
+    ) {
         self.conditions = conditions
         self.issError = issError
+        self.issFetchState = issFetchState
+            ?? issError.map(ISSFetchState.failed)
+            ?? .notRequested
     }
 }

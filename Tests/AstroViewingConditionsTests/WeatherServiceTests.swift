@@ -164,6 +164,7 @@ final class WeatherServiceTests: XCTestCase {
 
         XCTAssertEqual(result.conditions.hourlyForecasts.count, 2)
         XCTAssertEqual(result.issError, .timeout)
+        XCTAssertEqual(result.issFetchState, .failed(.timeout))
     }
     
     func testOpenMeteoResponseDecoding() throws {

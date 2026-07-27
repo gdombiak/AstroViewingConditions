@@ -293,18 +293,37 @@ public struct AppGroupStorage: Sendable {
     
     // MARK: - Conditions
 
-    private static func writeConditions(_ conditions: ViewingConditions) {
+    private static func writeConditions(_ conditions: ViewingConditions) -> Bool {
         guard let baseURL = containerURL else {
             logger.error("App Group container not available")
-            return
+            return false
         }
 
         do {
             let data = try JSONEncoder().encode(conditions)
             let fileURL = baseURL.appendingPathComponent("conditions.json")
             try data.write(to: fileURL, options: .atomic)
+            return true
         } catch {
             logger.error("Failed to save conditions: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    private static func writeConditionsMetadata(_ metadata: SharedConditionsMetadata) -> Bool {
+        guard let baseURL = containerURL else {
+            logger.error("App Group container not available")
+            return false
+        }
+
+        do {
+            let data = try JSONEncoder().encode(metadata)
+            let fileURL = baseURL.appendingPathComponent("conditions-metadata.json")
+            try data.write(to: fileURL, options: .atomic)
+            return true
+        } catch {
+            logger.error("Failed to save conditions metadata: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -325,15 +344,55 @@ public struct AppGroupStorage: Sendable {
         }
     }
 
+    private static func readConditionsMetadata() -> SharedConditionsMetadata? {
+        guard let baseURL = containerURL else {
+            logger.error("App Group container not available")
+            return nil
+        }
+
+        do {
+            let data = try Data(contentsOf: baseURL.appendingPathComponent("conditions-metadata.json"))
+            return try JSONDecoder().decode(SharedConditionsMetadata.self, from: data)
+        } catch {
+            logger.warning("Failed to load conditions metadata: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
     public static func saveConditions(_ conditions: ViewingConditions) {
         performFileAccess {
-            writeConditions(conditions)
+            _ = writeConditions(conditions)
         }
     }
 
     public static func saveConditionsAsync(_ conditions: ViewingConditions) async {
         await performFileAccessAsync {
-            writeConditions(conditions)
+            _ = writeConditions(conditions)
+        }
+    }
+
+    public static func saveConditionsMetadataAsync(_ metadata: SharedConditionsMetadata) async {
+        await performFileAccessAsync {
+            _ = writeConditionsMetadata(metadata)
+        }
+    }
+
+    public static func loadConditionsMetadataAsync() async -> SharedConditionsMetadata? {
+        await performFileAccessAsync {
+            readConditionsMetadata()
+        }
+    }
+
+    /// Keeps the weather payload and its provenance under one file-access lock.
+    /// Metadata is written only after `conditions.json` succeeds, so it cannot
+    /// describe ISS freshness for weather data that was not persisted.
+    public static func saveConditionsAndMetadataAsync(
+        _ conditions: ViewingConditions,
+        metadata: SharedConditionsMetadata
+    ) async -> Bool {
+        await performFileAccessAsync {
+            guard writeConditions(conditions) else { return false }
+            return writeConditionsMetadata(metadata)
         }
     }
     
@@ -354,9 +413,11 @@ public struct AppGroupStorage: Sendable {
             guard let baseURL = containerURL else { return }
             
             let conditionsFile = baseURL.appendingPathComponent("conditions.json")
+            let conditionsMetadataFile = baseURL.appendingPathComponent("conditions-metadata.json")
             let timestampFile = baseURL.appendingPathComponent("conditionsTimestamp.json")
             
             try? FileManager.default.removeItem(at: conditionsFile)
+            try? FileManager.default.removeItem(at: conditionsMetadataFile)
             try? FileManager.default.removeItem(at: timestampFile)
             logger.info("Cleared conditions cache")
         }

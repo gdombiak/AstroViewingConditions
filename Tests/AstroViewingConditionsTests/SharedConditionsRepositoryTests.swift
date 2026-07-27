@@ -4,13 +4,18 @@ import XCTest
 final class SharedConditionsRepositoryTests: XCTestCase {
     private actor Store {
         var value: ViewingConditions?
+        var metadata: SharedConditionsMetadata?
         var saves = 0
         var fetches = 0
+        var issFetches = 0
 
         init(_ value: ViewingConditions? = nil) { self.value = value }
         func load() -> ViewingConditions? { value }
         func save(_ conditions: ViewingConditions) { value = conditions; saves += 1 }
+        func loadMetadata() -> SharedConditionsMetadata? { metadata }
+        func saveMetadata(_ metadata: SharedConditionsMetadata) { self.metadata = metadata }
         func recordFetch() { fetches += 1 }
+        func recordISSFetch() { issFetches += 1 }
     }
 
     func testFreshMatchingConditionsAreReusedWithoutFetch() async throws {
@@ -219,6 +224,201 @@ final class SharedConditionsRepositoryTests: XCTestCase {
         XCTAssertEqual(result.issError, diagnostic)
     }
 
+    func testFreshWeatherWithMatchingISSProvenanceUsesCacheWithoutAnyFetch() async throws {
+        let now = Self.referenceDate
+        let cached = Self.conditions(location: Self.location, fetchedAt: now.addingTimeInterval(-60))
+        let store = Store(cached)
+        await store.saveMetadata(Self.metadata(for: cached, issFetchedAt: now.addingTimeInterval(-30)))
+        let service = SharedConditionsRepository(
+            load: { await store.load() }, save: { await store.save($0) },
+            loadMetadata: { await store.loadMetadata() }, saveMetadata: { await store.saveMetadata($0) },
+            now: { now },
+            fetch: { _, _ in XCTFail("Fresh weather with fresh ISS must not refetch weather"); throw TestError.failed },
+            fetchISS: { _, _ in XCTFail("Fresh ISS provenance must not query ISS"); return ISSFetchResult(passes: [], state: .notRequested) }
+        )
+
+        let result = try await service.conditions(for: Self.location, apiKey: "key", referenceDate: now)
+
+        XCTAssertEqual(result.source, .cache)
+        XCTAssertNil(result.issError)
+        let fetches = await store.fetches
+        let issFetches = await store.issFetches
+        XCTAssertEqual(fetches, 0)
+        XCTAssertEqual(issFetches, 0)
+    }
+
+    func testFreshWeatherWithoutISSProvenanceEnrichesOnlyISSAndPreservesWeatherTimestamp() async throws {
+        let now = Self.referenceDate
+        let cached = Self.conditions(location: Self.location, fetchedAt: now.addingTimeInterval(-60))
+        let pass = ISSPass(riseTime: now.addingTimeInterval(600), duration: 120, maxElevation: 50)
+        let store = Store(cached)
+        let service = SharedConditionsRepository(
+            load: { await store.load() }, save: { await store.save($0) },
+            loadMetadata: { await store.loadMetadata() }, saveMetadata: { await store.saveMetadata($0) },
+            now: { now },
+            fetch: { _, _ in XCTFail("ISS enrichment must not refetch weather"); throw TestError.failed },
+            fetchISS: { _, _ in
+                await store.recordISSFetch()
+                return ISSFetchResult(passes: [pass], state: .succeeded)
+            }
+        )
+
+        let result = try await service.conditions(for: Self.location, apiKey: "key", referenceDate: now)
+        let saved = await store.load()
+        let metadata = await store.loadMetadata()
+
+        XCTAssertEqual(result.source, .issEnriched)
+        XCTAssertEqual(result.conditions.fetchedAt, cached.fetchedAt)
+        XCTAssertEqual(result.conditions.hourlyForecasts.count, cached.hourlyForecasts.count)
+        XCTAssertEqual(result.conditions.issPasses.map(\.id), [pass.id])
+        XCTAssertEqual(saved?.fetchedAt, cached.fetchedAt)
+        XCTAssertEqual(metadata?.weatherFetchedAt, cached.fetchedAt)
+        XCTAssertEqual(metadata?.issFetchedAt, now)
+        let fetches = await store.fetches
+        let issFetches = await store.issFetches
+        XCTAssertEqual(fetches, 0)
+        XCTAssertEqual(issFetches, 1)
+    }
+
+    func testSuccessfulEmptyISSResultIsReusableProvenance() async throws {
+        let now = Self.referenceDate
+        let cached = Self.conditions(location: Self.location, fetchedAt: now.addingTimeInterval(-60))
+        let store = Store(cached)
+        let service = SharedConditionsRepository(
+            load: { await store.load() }, save: { await store.save($0) },
+            loadMetadata: { await store.loadMetadata() }, saveMetadata: { await store.saveMetadata($0) },
+            now: { now },
+            fetch: { _, _ in XCTFail("Fresh weather must not fetch"); throw TestError.failed },
+            fetchISS: { _, _ in
+                await store.recordISSFetch()
+                return ISSFetchResult(passes: [], state: .succeeded)
+            }
+        )
+
+        let first = try await service.conditions(for: Self.location, apiKey: "key", referenceDate: now)
+        let second = try await service.conditions(for: Self.location, apiKey: "key", referenceDate: now)
+
+        XCTAssertEqual(first.source, .issEnriched)
+        XCTAssertEqual(second.source, .cache)
+        let issFetches = await store.issFetches
+        let metadata = await store.loadMetadata()
+        XCTAssertEqual(issFetches, 1)
+        XCTAssertEqual(metadata?.issFetchedAt, now)
+    }
+
+    func testExpiredOrMismatchedISSProvenanceTriggersISSOnlyRefresh() async throws {
+        let now = Self.referenceDate
+        let cached = Self.conditions(location: Self.location, fetchedAt: now.addingTimeInterval(-60))
+        let cases: [SharedConditionsMetadata] = [
+            Self.metadata(for: cached, issFetchedAt: now.addingTimeInterval(-SharedConditionsRepository.maximumAge)),
+            SharedConditionsMetadata(
+                locationID: UUID(), latitude: 1, longitude: 2,
+                weatherFetchedAt: cached.fetchedAt, issFetchedAt: now.addingTimeInterval(-30)
+            ),
+            SharedConditionsMetadata(
+                locationID: cached.location.id, latitude: cached.location.latitude, longitude: cached.location.longitude,
+                weatherFetchedAt: cached.fetchedAt.addingTimeInterval(-1), issFetchedAt: now.addingTimeInterval(-30)
+            )
+        ]
+
+        for metadata in cases {
+            let store = Store(cached)
+            await store.saveMetadata(metadata)
+            let service = SharedConditionsRepository(
+                load: { await store.load() }, save: { await store.save($0) },
+                loadMetadata: { await store.loadMetadata() }, saveMetadata: { await store.saveMetadata($0) },
+                now: { now },
+                fetch: { _, _ in XCTFail("ISS provenance refresh must not fetch weather"); throw TestError.failed },
+                fetchISS: { _, _ in
+                    await store.recordISSFetch()
+                    return ISSFetchResult(passes: [], state: .succeeded)
+                }
+            )
+
+            let result = try await service.conditions(for: Self.location, apiKey: "key", referenceDate: now)
+            let issFetches = await store.issFetches
+            XCTAssertEqual(result.source, .issEnriched)
+            XCTAssertEqual(issFetches, 1)
+        }
+    }
+
+    func testPreviousLocalDayISSProvenanceIsNotReusableEvenWithinOneHour() async throws {
+        let calendar = Self.timeZoneCalendar
+        let reference = calendar.date(from: DateComponents(year: 2026, month: 7, day: 26, hour: 0, minute: 30))!
+        let cached = Self.conditions(location: Self.location, fetchedAt: reference.addingTimeInterval(-60))
+        let previousDayISSFetch = calendar.date(
+            byAdding: .minute,
+            value: -45,
+            to: reference
+        )!
+        let store = Store(cached)
+        await store.saveMetadata(Self.metadata(for: cached, issFetchedAt: previousDayISSFetch))
+        let service = SharedConditionsRepository(
+            load: { await store.load() }, save: { await store.save($0) },
+            loadMetadata: { await store.loadMetadata() }, saveMetadata: { await store.saveMetadata($0) },
+            now: { reference },
+            fetch: { _, _ in XCTFail("Local-day provenance refresh must not fetch weather"); throw TestError.failed },
+            fetchISS: { _, _ in
+                await store.recordISSFetch()
+                return ISSFetchResult(passes: [], state: .succeeded)
+            }
+        )
+
+        let result = try await service.conditions(for: Self.location, apiKey: "key", referenceDate: reference)
+        let issFetches = await store.issFetches
+
+        XCTAssertEqual(result.source, .issEnriched)
+        XCTAssertEqual(issFetches, 1)
+    }
+
+    func testISSOnlyFailureKeepsFreshWeatherAndSuccessfulMetadataUntouched() async throws {
+        let now = Self.referenceDate
+        let cached = Self.conditions(location: Self.location, fetchedAt: now.addingTimeInterval(-60))
+        let staleMetadata = Self.metadata(for: cached, issFetchedAt: now.addingTimeInterval(-SharedConditionsRepository.maximumAge))
+        let store = Store(cached)
+        await store.saveMetadata(staleMetadata)
+        let error = ISSError.timeout
+        let service = SharedConditionsRepository(
+            load: { await store.load() }, save: { await store.save($0) },
+            loadMetadata: { await store.loadMetadata() }, saveMetadata: { await store.saveMetadata($0) },
+            now: { now },
+            fetch: { _, _ in XCTFail("ISS-only failure must not fetch weather"); throw TestError.failed },
+            fetchISS: { _, _ in
+                await store.recordISSFetch()
+                return ISSFetchResult(passes: [], state: .failed(error))
+            }
+        )
+
+        let result = try await service.conditions(for: Self.location, apiKey: "key", referenceDate: now)
+
+        XCTAssertEqual(result.source, .cache)
+        XCTAssertEqual(result.conditions.fetchedAt, cached.fetchedAt)
+        XCTAssertEqual(result.issError, error)
+        let saves = await store.saves
+        let metadata = await store.loadMetadata()
+        XCTAssertEqual(saves, 0)
+        XCTAssertEqual(metadata, staleMetadata)
+    }
+
+    func testStaleWeatherWithSuccessfulISSFetchRecordsProvenance() async throws {
+        let now = Self.referenceDate
+        let stale = Self.conditions(location: Self.location, fetchedAt: now.addingTimeInterval(-3601))
+        let refreshed = Self.conditions(location: Self.location, fetchedAt: now)
+        let store = Store(stale)
+        let service = SharedConditionsRepository(
+            load: { await store.load() }, save: { await store.save($0) },
+            loadMetadata: { await store.loadMetadata() }, saveMetadata: { await store.saveMetadata($0) },
+            now: { now },
+            fetch: { _, _ in ConditionsFetchResult(conditions: refreshed, issError: nil, issFetchState: .succeeded) }
+        )
+
+        let result = try await service.conditions(for: Self.location, apiKey: "key", referenceDate: now)
+
+        XCTAssertEqual(result.source, .fetched)
+        let metadata = await store.loadMetadata()
+        XCTAssertEqual(metadata, Self.metadata(for: refreshed, issFetchedAt: now))
+    }
+
     func testExactlyExpiredConditionsFetchOnceAndReplaceSharedCache() async throws {
         let now = Self.referenceDate
         let selected = CachedLocation(id: UUID(), name: "Home", latitude: 45.5, longitude: -122.7)
@@ -402,6 +602,19 @@ final class SharedConditionsRepositoryTests: XCTestCase {
             ), count: forecastDays),
             issPasses: issPasses, fogScore: FogScore(score: 0, factors: []),
             timeZoneIdentifier: timeZone.identifier
+        )
+    }
+
+    private static func metadata(
+        for conditions: ViewingConditions,
+        issFetchedAt: Date?
+    ) -> SharedConditionsMetadata {
+        SharedConditionsMetadata(
+            locationID: conditions.location.id,
+            latitude: conditions.location.latitude,
+            longitude: conditions.location.longitude,
+            weatherFetchedAt: conditions.fetchedAt,
+            issFetchedAt: issFetchedAt
         )
     }
 
