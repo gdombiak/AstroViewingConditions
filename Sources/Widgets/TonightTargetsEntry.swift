@@ -37,11 +37,19 @@ struct TonightTargetsEntry: TimelineEntry, Sendable {
 
     let date: Date
     let state: State
+    let dataStatus: WidgetDataStatus?
+
+    init(date: Date, state: State, dataStatus: WidgetDataStatus? = nil) {
+        self.date = date
+        self.state = state
+        self.dataStatus = dataStatus
+    }
 
     static var placeholder: TonightTargetsEntry {
         TonightTargetsEntry(
             date: Date(),
-            state: .available(.preview)
+            state: .available(.preview),
+            dataStatus: nil
         )
     }
 }

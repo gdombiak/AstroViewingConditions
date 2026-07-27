@@ -5,7 +5,19 @@ private enum OutlookRowStyle { case regular, compact, minimal }
 
 struct ThreeNightOutlookWidgetMediumEntryView: View {
     let summary: WidgetThreeNightOutlookSummary
+    let dataStatus: WidgetDataStatus?
+    let referenceDate: Date
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    init(
+        summary: WidgetThreeNightOutlookSummary,
+        dataStatus: WidgetDataStatus? = nil,
+        referenceDate: Date = Date()
+    ) {
+        self.summary = summary
+        self.dataStatus = dataStatus
+        self.referenceDate = referenceDate
+    }
 
     private var timeZone: TimeZone? {
         summary.timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
@@ -61,6 +73,7 @@ struct ThreeNightOutlookWidgetMediumEntryView: View {
                 if index > 0 { Divider() }
                 row(night, style: style, showsVerdict: showsVerdict)
             }
+            dataAsOfFooter
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
@@ -134,6 +147,13 @@ struct ThreeNightOutlookWidgetMediumEntryView: View {
         case .caution: .orange
         case .negative: .red
         case nil: .secondary
+        }
+    }
+
+    @ViewBuilder
+    private var dataAsOfFooter: some View {
+        if let dataStatus {
+            WidgetDataAsOfStatusView(status: dataStatus, referenceDate: referenceDate)
         }
     }
 }

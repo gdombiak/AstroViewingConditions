@@ -25,6 +25,11 @@
 		0EB8DA64741E8B0832EA4D24 /* WidgetTonightTargetsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D30D860F338D3C38B049A6F8 /* WidgetTonightTargetsTests.swift */; };
 		C10000000000000000000006 /* WidgetConditionsRefreshServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000016 /* WidgetConditionsRefreshServiceTests.swift */; };
 		0FB65A25241F63CEC831A855 /* CacheService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D5372F28293316B4B4958E /* CacheService.swift */; };
+		A12000000000000000000001 /* WidgetDataAsOfPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000003 /* WidgetDataAsOfPresentation.swift */; };
+		A12000000000000000000002 /* WidgetDataAsOfPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A12000000000000000000003 /* WidgetDataAsOfPresentation.swift */; };
+		A12000000000000000000004 /* NightConditionsEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30BE687AF9CFA3D567761843 /* NightConditionsEntry.swift */; };
+		A12000000000000000000005 /* TonightTargetsEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CCF1F20E23488D05E7364C1 /* TonightTargetsEntry.swift */; };
+		A12000000000000000000006 /* ThreeNightOutlookEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0729B2964BD20EC560068DC1 /* ThreeNightOutlookEntry.swift */; };
 		112E4A2CF29AE48533E82B96 /* Equipment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CAE569F41E2C76EEE25FA0E /* Equipment.swift */; };
 		13F45D9333768FDB249776D1 /* MoonRecommendationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBA1BCA6C5B8AF940A3122 /* MoonRecommendationService.swift */; };
 		143EBE16CD71B3766BE1DED2 /* BestSpotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99265B8958B03CCED578B749 /* BestSpotView.swift */; };
@@ -454,6 +459,7 @@
 		AC8772D9418812D0B637F247 /* LocationsListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationsListView.swift; sourceTree = "<group>"; };
 		ADE06EBEFA2C9FF9F117C927 /* TodayCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayCard.swift; sourceTree = "<group>"; };
 		AEB0886A5EE6B126547325EA /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
+		A12000000000000000000003 /* WidgetDataAsOfPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetDataAsOfPresentation.swift; sourceTree = "<group>"; };
 		B28EFC4C0C327C246584AEE4 /* CuratedDeepSkyCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuratedDeepSkyCatalogTests.swift; sourceTree = "<group>"; };
 		B3707FB5F528861A275D7EBE /* AsyncTimeout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncTimeout.swift; sourceTree = "<group>"; };
 		B581B80777CE9587A7AFA72D /* CornerComplicationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CornerComplicationView.swift; sourceTree = "<group>"; };
@@ -927,6 +933,7 @@
 				C65B9608844D9F6AA4328E59 /* TonightTargetsWidget.swift */,
 				BF60A81587C3FF2859544D02 /* TonightTargetsWidgetMediumEntryView.swift */,
 				C166C15E128B0BB38D8C4877 /* WidgetAppIdentity.swift */,
+				A12000000000000000000003 /* WidgetDataAsOfPresentation.swift */,
 				805CA950E64D22820061D607 /* WidgetThreeNightOutlookPresentation.swift */,
 				3E9363CB0A23E9F0B32F9063 /* WidgetTonightPresentation.swift */,
 				A7428D2E9B118FC8308666F5 /* WidgetTonightTargetsPresentation.swift */,
@@ -1332,6 +1339,10 @@
 				87DA88BB93B0934648A061AF /* ViewingConditionsModelTests.swift in Sources */,
 				03C85DB587BEACC839C4FE44 /* WeatherServiceTests.swift in Sources */,
 				4821B85205C533EFC586D211 /* WidgetAppIdentity.swift in Sources */,
+				A12000000000000000000001 /* WidgetDataAsOfPresentation.swift in Sources */,
+				A12000000000000000000004 /* NightConditionsEntry.swift in Sources */,
+				A12000000000000000000005 /* TonightTargetsEntry.swift in Sources */,
+				A12000000000000000000006 /* ThreeNightOutlookEntry.swift in Sources */,
 				719AFE10C069CDE2B690873B /* WidgetThreeNightOutlookPresentation.swift in Sources */,
 				57BA0B2AABFD37624F9CFE49 /* WidgetThreeNightOutlookTests.swift in Sources */,
 				8E675EB8B4BFC8191022E8CA /* WidgetTonightPresentation.swift in Sources */,
@@ -1362,6 +1373,7 @@
 				88A681822D7A74CEE19A96F0 /* TonightTargetsWidget.swift in Sources */,
 				77C856BC7CD433B26A96A2DA /* TonightTargetsWidgetMediumEntryView.swift in Sources */,
 				9E9E715429F72F7C323DCB6E /* WidgetAppIdentity.swift in Sources */,
+				A12000000000000000000002 /* WidgetDataAsOfPresentation.swift in Sources */,
 				44399C601DB2F61A3B716F9A /* WidgetThreeNightOutlookPresentation.swift in Sources */,
 				33B6044EB6984BEB204486FF /* WidgetTonightPresentation.swift in Sources */,
 				0625E2376333EA212ECE28CD /* WidgetTonightTargetsPresentation.swift in Sources */,

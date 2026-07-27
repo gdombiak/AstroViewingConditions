@@ -9,8 +9,20 @@ private enum TargetRowStyle {
 
 struct TonightTargetsWidgetMediumEntryView: View {
     let summary: WidgetTonightTargetsSummary
+    let dataStatus: WidgetDataStatus?
+    let referenceDate: Date
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    init(
+        summary: WidgetTonightTargetsSummary,
+        dataStatus: WidgetDataStatus? = nil,
+        referenceDate: Date = Date()
+    ) {
+        self.summary = summary
+        self.dataStatus = dataStatus
+        self.referenceDate = referenceDate
+    }
 
     var body: some View {
         Group {
@@ -194,6 +206,8 @@ struct TonightTargetsWidgetMediumEntryView: View {
                     rowStyle: rowStyle
                 )
             }
+
+            dataAsOfFooter
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
@@ -340,6 +354,13 @@ struct TonightTargetsWidgetMediumEntryView: View {
 
     private var timeZone: TimeZone? {
         summary.timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
+    }
+
+    @ViewBuilder
+    private var dataAsOfFooter: some View {
+        if let dataStatus {
+            WidgetDataAsOfStatusView(status: dataStatus, referenceDate: referenceDate)
+        }
     }
 
     private func scoreColor(_ tone: WidgetTargetScoreTone) -> Color {

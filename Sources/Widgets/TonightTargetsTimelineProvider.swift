@@ -79,11 +79,19 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
                 )
                 await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
                 targetsWidgetLogger.info("Rebuilt and saved Tonight’s Targets summary")
-                return entry(for: summary, date: referenceDate)
+                return entry(
+                    for: summary,
+                    date: referenceDate,
+                    dataStatus: .normal(conditions: conditions)
+                )
             case .preserveExisting:
                 if let cachedSummary {
                     targetsWidgetLogger.info("Preserving active previous-night Targets summary")
-                    return entry(for: cachedSummary, date: referenceDate)
+                    return entry(
+                        for: cachedSummary,
+                        date: referenceDate,
+                        dataStatus: .normal(summary: cachedSummary)
+                    )
                 }
             case .unavailable:
                 let summary = TonightTargetsWidgetPayloadBuilder.makeUnavailableSummary(
@@ -94,7 +102,11 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
                 )
                 await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
                 targetsWidgetLogger.info("Rebuilt and saved unavailable Targets summary")
-                return entry(for: summary, date: referenceDate)
+                return entry(
+                    for: summary,
+                    date: referenceDate,
+                    dataStatus: .normal(conditions: conditions)
+                )
             }
         } catch {
             targetsWidgetLogger.warning(
@@ -106,16 +118,24 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
            cachedSummary.locationMatches(location),
            cachedSummary.matchesCurrentObservingNight(relativeTo: referenceDate) {
             targetsWidgetLogger.info("Using matching last-known-good Targets summary")
-            return entry(for: cachedSummary, date: referenceDate)
+            return entry(
+                for: cachedSummary,
+                date: referenceDate,
+                dataStatus: .fallback(summary: cachedSummary)
+            )
         }
         targetsWidgetLogger.warning("No usable Targets summary fallback")
         return .init(date: referenceDate, state: .unavailable(cachedSummary == nil ? .noCache : .stale))
     }
 
-    private func entry(for summary: WidgetTonightTargetsSummary, date: Date) -> TonightTargetsEntry {
+    private func entry(
+        for summary: WidgetTonightTargetsSummary,
+        date: Date,
+        dataStatus: WidgetDataStatus
+    ) -> TonightTargetsEntry {
         switch summary.status {
         case .available where !summary.targets.isEmpty:
-            return TonightTargetsEntry(date: date, state: .available(summary))
+            return TonightTargetsEntry(date: date, state: .available(summary), dataStatus: dataStatus)
         case .noTargets:
             return TonightTargetsEntry(date: date, state: .noTargets)
         case .unavailable, .available:
@@ -125,4 +145,5 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
             )
         }
     }
+
 }

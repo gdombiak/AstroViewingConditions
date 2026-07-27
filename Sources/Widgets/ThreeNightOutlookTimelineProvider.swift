@@ -63,11 +63,21 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
             case let .publish(summary), let .unavailable(summary):
                 await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
                 outlookWidgetLogger.info("Rebuilt and saved Three-Night Outlook summary")
-                return entry(for: summary, location: location, date: referenceDate)
+                return entry(
+                    for: summary,
+                    location: location,
+                    date: referenceDate,
+                    dataStatus: .normal(conditions: conditions)
+                )
             case .preserveExisting:
                 if let cachedSummary {
                     outlookWidgetLogger.info("Preserving active previous-night Outlook summary")
-                    return entry(for: cachedSummary, location: location, date: referenceDate)
+                    return entry(
+                        for: cachedSummary,
+                        location: location,
+                        date: referenceDate,
+                        dataStatus: .normal(summary: cachedSummary)
+                    )
                 }
             }
         } catch {
@@ -82,7 +92,11 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
            cachedSummary.locationMatches(location),
            cachedSummary.matchesCurrentObservingNight(relativeTo: referenceDate) {
             outlookWidgetLogger.info("Using matching last-known-good Outlook summary")
-            return .init(date: referenceDate, state: .available(cachedSummary))
+            return .init(
+                date: referenceDate,
+                state: .available(cachedSummary),
+                dataStatus: .fallback(summary: cachedSummary)
+            )
         }
         outlookWidgetLogger.warning("No usable Outlook summary fallback")
         return .init(date: referenceDate, state: .unavailable(cachedSummary == nil ? .noCache : .stale))
@@ -91,12 +105,13 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
     private func entry(
         for summary: WidgetThreeNightOutlookSummary,
         location: SelectedLocation,
-        date: Date
+        date: Date,
+        dataStatus: WidgetDataStatus
     ) -> ThreeNightOutlookEntry {
         switch ThreeNightOutlookEntryResolver.resolve(
             summary: summary, selectedLocation: location, referenceDate: date
         ) {
-        case .available: return .init(date: date, state: .available(summary))
+        case .available: return .init(date: date, state: .available(summary), dataStatus: dataStatus)
         case .noLocation: return .init(date: date, state: .unavailable(.noLocation))
         case .noCache: return .init(date: date, state: .unavailable(.noCache))
         case .stale: return .init(date: date, state: .unavailable(.stale))
@@ -105,4 +120,5 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
         case .unavailable: return .init(date: date, state: .unavailable(.unavailable))
         }
     }
+
 }

@@ -9,7 +9,11 @@ struct ThreeNightOutlookWidget: Widget {
             Group {
                 switch entry.state {
                 case let .available(summary):
-                    ThreeNightOutlookWidgetMediumEntryView(summary: summary)
+                    ThreeNightOutlookWidgetMediumEntryView(
+                        summary: summary,
+                        dataStatus: entry.dataStatus,
+                        referenceDate: entry.date
+                    )
                 case let .unavailable(reason):
                     unavailable(reason.message)
                 }

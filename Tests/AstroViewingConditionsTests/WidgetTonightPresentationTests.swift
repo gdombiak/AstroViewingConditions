@@ -4,6 +4,127 @@ import SwiftUI
 import XCTest
 
 final class WidgetTonightPresentationTests: XCTestCase {
+    private let dataAsOfLocale = Locale(identifier: "en_US_POSIX")
+
+    func testDataAsOfTextUsesTimeOnlyForTheSameLocalDay() {
+        let timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        XCTAssertEqual(
+            WidgetDataAsOfPresentation.dataAsOfText(
+                dataDate: utcDate(year: 2026, month: 7, day: 26, hour: 0, minute: 2),
+                referenceDate: utcDate(year: 2026, month: 7, day: 26, hour: 3),
+                timeZone: timeZone,
+                locale: dataAsOfLocale
+            ),
+            "Data as of 5:02 PM"
+        )
+    }
+
+    func testDataAsOfTextIncludesMonthAndDayForPreviousLocalDay() {
+        let timeZone = TimeZone(secondsFromGMT: 0)!
+        XCTAssertEqual(
+            WidgetDataAsOfPresentation.dataAsOfText(
+                dataDate: utcDate(year: 2026, month: 7, day: 26, hour: 17, minute: 2),
+                referenceDate: utcDate(year: 2026, month: 7, day: 27, hour: 1),
+                timeZone: timeZone,
+                locale: dataAsOfLocale
+            ),
+            "Data as of Jul 26, 5:02 PM"
+        )
+    }
+
+    func testDataAsOfTextIncludesYearWhenLocalYearsDiffer() {
+        let timeZone = TimeZone(secondsFromGMT: 0)!
+        XCTAssertEqual(
+            WidgetDataAsOfPresentation.dataAsOfText(
+                dataDate: utcDate(year: 2025, month: 7, day: 26, hour: 17, minute: 2),
+                referenceDate: utcDate(year: 2026, month: 7, day: 26, hour: 1),
+                timeZone: timeZone,
+                locale: dataAsOfLocale
+            ),
+            "Data as of Jul 26, 2025, 5:02 PM"
+        )
+    }
+
+    func testDataAsOfDayComparisonUsesTheSuppliedLocationTimeZone() {
+        let timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        XCTAssertEqual(
+            WidgetDataAsOfPresentation.dataAsOfText(
+                dataDate: utcDate(year: 2026, month: 7, day: 26, hour: 6, minute: 30),
+                referenceDate: utcDate(year: 2026, month: 7, day: 26, hour: 7, minute: 2),
+                timeZone: timeZone,
+                locale: dataAsOfLocale
+            ),
+            "Data as of Jul 25, 11:30 PM"
+        )
+    }
+
+    func testDataAsOfIsVisibleAtNormalTextSizeAndSmallerOnly() {
+        let visible: [DynamicTypeSize] = [
+            .xSmall, .small, .medium, .large
+        ]
+        let hiddenLargerStandard: [DynamicTypeSize] = [
+            .xLarge, .xxLarge, .xxxLarge
+        ]
+        let accessibility: [DynamicTypeSize] = [
+            .accessibility1, .accessibility2, .accessibility3, .accessibility4, .accessibility5
+        ]
+
+        XCTAssertTrue(visible.allSatisfy(WidgetDataAsOfPresentation.isVisible(for:)))
+        XCTAssertTrue(hiddenLargerStandard.allSatisfy {
+            !WidgetDataAsOfPresentation.isVisible(for: $0)
+        })
+        XCTAssertTrue(accessibility.allSatisfy { !WidgetDataAsOfPresentation.isVisible(for: $0) })
+    }
+
+    func testTimelineEntryDataStatusIsTransientAndUnavailableOrPlaceholderEntriesHaveNone() {
+        let dataDate = utcDate(year: 2026, month: 7, day: 26, hour: 0, minute: 2)
+        let status = WidgetDataStatus(
+            dataAsOf: dataDate,
+            timeZoneIdentifier: "America/Los_Angeles",
+            longitude: -122.7,
+            provenance: .normal
+        )
+        let entry = TonightTargetsEntry(date: dataDate, state: .available(.preview), dataStatus: status)
+
+        XCTAssertEqual(entry.dataStatus?.dataAsOf, dataDate)
+        XCTAssertEqual(entry.dataStatus?.provenance, .normal)
+        XCTAssertNil(NightConditionsEntry.placeholder.dataStatus)
+        XCTAssertNil(TonightTargetsEntry.placeholder.dataStatus)
+        XCTAssertNil(ThreeNightOutlookEntry.placeholder.dataStatus)
+        XCTAssertNil(TonightTargetsEntry(date: dataDate, state: .unavailable(.stale)).dataStatus)
+    }
+
+    func testDataStatusUsesDisplayedSummaryTimestampForNormalAndFallbackStatuses() {
+        let conditions = legacyConditions()
+        let normal = WidgetDataStatus.normal(conditions: conditions)
+        XCTAssertEqual(normal.dataAsOf, conditions.fetchedAt)
+        XCTAssertEqual(normal.provenance, .normal)
+        XCTAssertEqual(normal.timeZone.secondsFromGMT(), 0)
+
+        let sourceDate = utcDate(year: 2026, month: 7, day: 25, hour: 20)
+        let nightFallback = WidgetDataStatus.fallback(summary: summary(generatedAt: sourceDate))
+        XCTAssertEqual(nightFallback.dataAsOf, sourceDate)
+        XCTAssertEqual(nightFallback.provenance, .fallback)
+
+        let targetsSummary = WidgetTonightTargetsSummary.preview
+        let targetsNormal = WidgetDataStatus.normal(summary: targetsSummary)
+        XCTAssertEqual(targetsNormal.dataAsOf, targetsSummary.generatedAt)
+        XCTAssertEqual(targetsNormal.provenance, .normal)
+
+        let targetsFallback = WidgetDataStatus.fallback(summary: targetsSummary)
+        XCTAssertEqual(targetsFallback.dataAsOf, targetsSummary.generatedAt)
+        XCTAssertEqual(targetsFallback.provenance, .fallback)
+
+        let outlookSummary = WidgetThreeNightOutlookSummary.preview
+        let outlookNormal = WidgetDataStatus.normal(summary: outlookSummary)
+        XCTAssertEqual(outlookNormal.dataAsOf, outlookSummary.generatedAt)
+        XCTAssertEqual(outlookNormal.provenance, .normal)
+
+        let outlookFallback = WidgetDataStatus.fallback(summary: outlookSummary)
+        XCTAssertEqual(outlookFallback.dataAsOf, outlookSummary.generatedAt)
+        XCTAssertEqual(outlookFallback.provenance, .fallback)
+    }
+
     func testWidgetPresentationHelperOnlyFormatsTrendAndTime() {
         XCTAssertEqual(WidgetTonightPresentation.trendLabel(for: .improving), "Improving")
         XCTAssertEqual(WidgetTonightPresentation.trendSymbol(for: .degrading), "↘")
@@ -452,6 +573,10 @@ final class WidgetTonightPresentationTests: XCTestCase {
 
     private func date(dayOffset: Int = 0, hour: Int, minute: Int = 0) -> Date {
         utcCalendar.date(from: .init(year: 2026, month: 7, day: 25 + dayOffset, hour: hour, minute: minute))!
+    }
+
+    private func utcDate(year: Int, month: Int, day: Int, hour: Int, minute: Int = 0) -> Date {
+        utcCalendar.date(from: .init(year: year, month: month, day: day, hour: hour, minute: minute))!
     }
 
     private func readableCompactRange(_ range: String?) -> String? {

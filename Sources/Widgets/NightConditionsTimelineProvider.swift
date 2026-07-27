@@ -71,7 +71,11 @@ struct Provider: TimelineProvider {
             }
             await AppGroupStorage.saveWidgetNightSummaryAsync(summary)
             widgetLogger.info("Rebuilt and saved Night Conditions summary")
-            return NightConditionsEntry(date: referenceDate, state: .available(summary))
+            return NightConditionsEntry(
+                date: referenceDate,
+                state: .available(summary),
+                dataStatus: .normal(conditions: conditions)
+            )
         } catch {
             widgetLogger.warning(
                 "Conditions service failed: \(error.localizedDescription, privacy: .public)"
@@ -100,7 +104,11 @@ struct Provider: TimelineProvider {
                relativeTo: referenceDate
            ) {
             widgetLogger.info("Using matching last-known-good Night Conditions summary")
-            return NightConditionsEntry(date: referenceDate, state: .available(cachedSummary))
+            return NightConditionsEntry(
+                date: referenceDate,
+                state: .available(cachedSummary),
+                dataStatus: .fallback(summary: cachedSummary)
+            )
         }
         if let staleConditions = await refreshService.matchingCachedConditions(for: cachedLocation),
            staleConditions.isFreshForLocalDay(
@@ -109,7 +117,11 @@ struct Provider: TimelineProvider {
            ),
            let summary = WidgetNightSummary.make(from: staleConditions) {
             widgetLogger.info("Using matching stale shared conditions fallback")
-            return NightConditionsEntry(date: referenceDate, state: .available(summary))
+            return NightConditionsEntry(
+                date: referenceDate,
+                state: .available(summary),
+                dataStatus: .fallback(conditions: staleConditions)
+            )
         }
         widgetLogger.warning("No usable Night Conditions fallback")
         return unavailableEntry(from: cachedSummary, location: location, date: referenceDate)
@@ -124,4 +136,5 @@ struct Provider: TimelineProvider {
             state: .unavailable(summary.locationMatches(location) ? .staleForecast : .locationUnavailable)
         )
     }
+
 }

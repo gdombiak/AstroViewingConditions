@@ -4,7 +4,19 @@ import WidgetKit
 
 struct NightConditionsWidgetMediumEntryView: View {
     let summary: WidgetNightSummary
+    let dataStatus: WidgetDataStatus?
+    let referenceDate: Date
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    init(
+        summary: WidgetNightSummary,
+        dataStatus: WidgetDataStatus? = nil,
+        referenceDate: Date = Date()
+    ) {
+        self.summary = summary
+        self.dataStatus = dataStatus
+        self.referenceDate = referenceDate
+    }
 
     var body: some View {
         switch density {
@@ -104,6 +116,8 @@ struct NightConditionsWidgetMediumEntryView: View {
             case .none:
                 EmptyView()
             }
+
+            dataAsOfFooter
         }
     }
 
@@ -161,6 +175,8 @@ struct NightConditionsWidgetMediumEntryView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+
+            dataAsOfFooter
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -189,6 +205,13 @@ struct NightConditionsWidgetMediumEntryView: View {
 
     private var density: WidgetContentDensity {
         WidgetContentDensity.resolve(for: dynamicTypeSize)
+    }
+
+    @ViewBuilder
+    private var dataAsOfFooter: some View {
+        if let dataStatus {
+            WidgetDataAsOfStatusView(status: dataStatus, referenceDate: referenceDate)
+        }
     }
 
     @ViewBuilder

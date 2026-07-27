@@ -24,7 +24,11 @@ private struct TonightTargetsWidgetEntryView: View {
     var body: some View {
         switch entry.state {
         case let .available(summary):
-            TonightTargetsWidgetMediumEntryView(summary: summary)
+            TonightTargetsWidgetMediumEntryView(
+                summary: summary,
+                dataStatus: entry.dataStatus,
+                referenceDate: entry.date
+            )
         case .noTargets:
             TonightTargetsUnavailableView(message: "No recommended targets tonight")
         case let .unavailable(reason):

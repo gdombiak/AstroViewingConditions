@@ -31,7 +31,11 @@ struct NightConditionsWidgetEntryView: View {
             case .systemSmall:
                 NightConditionsWidgetSmallEntryView(summary: summary)
             case .systemMedium:
-                NightConditionsWidgetMediumEntryView(summary: summary)
+                NightConditionsWidgetMediumEntryView(
+                    summary: summary,
+                    dataStatus: entry.dataStatus,
+                    referenceDate: entry.date
+                )
             default:
                 NightConditionsWidgetSmallEntryView(summary: summary)
             }
