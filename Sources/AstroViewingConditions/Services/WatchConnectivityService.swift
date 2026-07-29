@@ -21,15 +21,15 @@ struct WatchConditionsRequestAcquirer: Sendable {
         self.conditionsRepository = conditionsRepository
     }
 
-    /// Performs the normal shared acquisition first, then intentionally uses
-    /// the raw last-known payload only when it cannot acquire conditions.
+    /// Performs the normal shared acquisition first, then falls back only to
+    /// a cached payload that is proven to match the requested location.
     func conditions(
         for location: CachedLocation?,
         apiKey: String,
         referenceDate: Date = Date()
     ) async -> ViewingConditions? {
         guard let location else {
-            return await conditionsRepository.lastKnownCachedConditions()
+            return nil
         }
 
         do {
@@ -39,7 +39,7 @@ struct WatchConditionsRequestAcquirer: Sendable {
                 referenceDate: referenceDate
             ).conditions
         } catch {
-            return await conditionsRepository.lastKnownCachedConditions()
+            return await conditionsRepository.matchingCachedConditions(for: location)
         }
     }
 }

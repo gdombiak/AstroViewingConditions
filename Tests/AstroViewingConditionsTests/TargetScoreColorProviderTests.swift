@@ -2,6 +2,7 @@ import Combine
 import XCTest
 import UIKit
 import SwiftUI
+import SharedCode
 @testable import AstroViewingConditions
 
 final class TargetScoreColorProviderTests: XCTestCase {
@@ -11,6 +12,24 @@ final class TargetScoreColorProviderTests: XCTestCase {
         XCTAssertEqual(TargetScoreColorProvider.category(for: 76), .good)
         XCTAssertEqual(TargetScoreColorProvider.category(for: 55), .fair)
         XCTAssertEqual(TargetScoreColorProvider.category(for: 35), .poor)
+    }
+
+    func testSharedScoreCategoriesAndDashboardBandsAgreeAtEveryBoundary() {
+        let cases: [(score: Int, category: TargetScoreCategory, band: BestTargetsScoreBand?)] = [
+            (39, .poor, nil), (40, .poor, nil), (44, .poor, nil),
+            (45, .fair, .fair), (59, .fair, .fair), (60, .fair, .fair), (64, .fair, .fair),
+            (65, .good, .good), (79, .good, .good),
+            (80, .excellent, .excellent), (100, .excellent, .excellent)
+        ]
+
+        for testCase in cases {
+            XCTAssertEqual(TargetScoreCategory.resolve(testCase.score), testCase.category)
+            XCTAssertEqual(TargetScoreColorProvider.category(for: testCase.score), testCase.category)
+            XCTAssertEqual(
+                BestTargetsScoreBand.allCases.first { $0.contains(score: testCase.score) },
+                testCase.band
+            )
+        }
     }
 
     func testFieldModePreferenceDefaultsToDisabledAndPersistsChanges() {

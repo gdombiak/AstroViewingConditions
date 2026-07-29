@@ -78,8 +78,15 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
                     conditions: conditions,
                     resolution: resolution
                 )
-                await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
-                targetsWidgetLogger.info("Rebuilt and saved Tonight’s Targets summary")
+                if TonightTargetsPersistencePolicy.shouldSave(
+                    candidate: summary,
+                    existing: cachedSummary,
+                    targetLocation: cachedLocation,
+                    referenceDate: referenceDate
+                ) {
+                    await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
+                    targetsWidgetLogger.info("Rebuilt and saved Tonight’s Targets summary")
+                }
                 return entry(
                     for: summary,
                     date: referenceDate,
@@ -101,13 +108,18 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
                         ?? LocationTimeZoneResolver.approximate(longitude: conditions.location.longitude),
                     referenceDate: referenceDate
                 )
-                await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
-                targetsWidgetLogger.info("Rebuilt and saved unavailable Targets summary")
-                return entry(
-                    for: summary,
-                    date: referenceDate,
-                    dataStatus: .normal(conditions: conditions)
+                let selection = TonightTargetsUnavailableEntrySelector.select(
+                    candidate: summary,
+                    existing: cachedSummary,
+                    targetLocation: cachedLocation,
+                    referenceDate: referenceDate,
+                    candidateDataStatus: .normal(conditions: conditions)
                 )
+                if selection.shouldSaveCandidate {
+                    await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
+                    targetsWidgetLogger.info("Rebuilt and saved unavailable Targets summary")
+                }
+                return selection.entry
             }
         } catch {
             targetsWidgetLogger.warning(
@@ -116,8 +128,11 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
         }
 
         if let cachedSummary,
-           cachedSummary.locationMatches(location),
-           cachedSummary.matchesCurrentObservingNight(relativeTo: referenceDate) {
+           TonightTargetsPersistencePolicy.isValidLastKnownGood(
+            cachedSummary,
+            for: cachedLocation,
+            referenceDate: referenceDate
+        ) {
             targetsWidgetLogger.info("Using matching last-known-good Targets summary")
             return entry(
                 for: cachedSummary,
@@ -134,17 +149,11 @@ struct TonightTargetsTimelineProvider: TimelineProvider {
         date: Date,
         dataStatus: WidgetDataStatus
     ) -> TonightTargetsEntry {
-        switch summary.status {
-        case .available where !summary.targets.isEmpty:
-            return TonightTargetsEntry(date: date, state: .available(summary), dataStatus: dataStatus)
-        case .noTargets:
-            return TonightTargetsEntry(date: date, state: .noTargets)
-        case .unavailable, .available:
-            return TonightTargetsEntry(
-                date: date,
-                state: .unavailable(.unavailable)
-            )
-        }
+        TonightTargetsEntry.make(
+            summary: summary,
+            date: date,
+            dataStatus: dataStatus
+        )
     }
 
 }

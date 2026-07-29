@@ -9,9 +9,9 @@ public enum TargetScoreCategory: Sendable {
 
     public static func resolve(_ score: Int) -> Self {
         switch score {
-        case 80...100: return .excellent
-        case 60..<80: return .good
-        case 40..<60: return .fair
+        case 80...: return .excellent
+        case 65..<80: return .good
+        case 45..<65: return .fair
         default: return .poor
         }
     }

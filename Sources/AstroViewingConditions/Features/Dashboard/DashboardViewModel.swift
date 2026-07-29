@@ -20,10 +20,14 @@ enum BestTargetsScoreBand: String, CaseIterable, Identifiable {
     var id: Self { self }
 
     func contains(score: Int) -> Bool {
+        TargetScoreCategory.resolve(score) == category
+    }
+
+    private var category: TargetScoreCategory {
         switch self {
-        case .excellent: return score >= 80
-        case .good: return (65...79).contains(score)
-        case .fair: return (45...64).contains(score)
+        case .excellent: .excellent
+        case .good: .good
+        case .fair: .fair
         }
     }
 }
@@ -773,7 +777,14 @@ public class DashboardViewModel {
                     ),
                 referenceDate: referenceDate
             )
-            await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(unavailable)
+            if TonightTargetsPersistencePolicy.shouldSave(
+                candidate: unavailable,
+                existing: existingSummary,
+                targetLocation: conditions.location,
+                referenceDate: referenceDate
+            ) {
+                await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(unavailable)
+            }
             return
         }
 
@@ -786,7 +797,14 @@ public class DashboardViewModel {
             resolution: resolution,
             recommendations: recommendations
         )
-        await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
+        if TonightTargetsPersistencePolicy.shouldSave(
+            candidate: summary,
+            existing: existingSummary,
+            targetLocation: conditions.location,
+            referenceDate: referenceDate
+        ) {
+            await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
+        }
     }
 
     private func publishUnavailableTonightTargets(for location: CachedLocation) async {
@@ -799,7 +817,15 @@ public class DashboardViewModel {
             timeZone: timeZone,
             referenceDate: referenceDate
         )
-        await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
+        let existing = await AppGroupStorage.loadWidgetTonightTargetsSummaryAsync()
+        if TonightTargetsPersistencePolicy.shouldSave(
+            candidate: summary,
+            existing: existing,
+            targetLocation: location,
+            referenceDate: referenceDate
+        ) {
+            await AppGroupStorage.saveWidgetTonightTargetsSummaryAsync(summary)
+        }
     }
 
     private func publishUnavailableThreeNightOutlook(for location: CachedLocation) async {

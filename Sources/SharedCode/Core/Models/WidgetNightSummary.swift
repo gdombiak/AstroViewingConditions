@@ -177,7 +177,7 @@ public struct WidgetNightSummary: Codable, Sendable, Hashable {
 
     public func isFreshForLocalDay(within maxAge: TimeInterval, relativeTo referenceDate: Date = Date()) -> Bool {
         let age = referenceDate.timeIntervalSince(generatedAt)
-        guard age >= 0 && age <= maxAge else { return false }
+        guard age >= 0 && age < maxAge else { return false }
         let timeZone = timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
             ?? LocationTimeZoneResolver.approximate(longitude: longitude)
         return LocationTimeZoneResolver.calendar(for: timeZone).isDate(generatedAt, inSameDayAs: referenceDate)

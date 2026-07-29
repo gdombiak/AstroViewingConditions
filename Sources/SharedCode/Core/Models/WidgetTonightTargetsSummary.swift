@@ -96,7 +96,7 @@ public struct WidgetTonightTargetsSummary: Codable, Sendable, Hashable {
         relativeTo referenceDate: Date = Date()
     ) -> Bool {
         let age = referenceDate.timeIntervalSince(generatedAt)
-        return age >= 0 && age <= maximumAge
+        return age >= 0 && age < maximumAge
     }
 
     public func locationMatches(_ selectedLocation: SelectedLocation) -> Bool {

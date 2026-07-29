@@ -502,7 +502,7 @@ final class WidgetTonightPresentationTests: XCTestCase {
             relativeTo: generatedAt.addingTimeInterval(-1)
         ))
         XCTAssertTrue(summary.isFreshForLocalDay(within: 3600, relativeTo: generatedAt))
-        XCTAssertTrue(summary.isFreshForLocalDay(
+        XCTAssertFalse(summary.isFreshForLocalDay(
             within: 3600,
             relativeTo: generatedAt.addingTimeInterval(3600)
         ))

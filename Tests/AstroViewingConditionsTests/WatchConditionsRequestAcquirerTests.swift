@@ -93,7 +93,7 @@ final class WatchConditionsRequestAcquirerTests: XCTestCase {
         XCTAssertEqual(result?.fetchedAt, cached.fetchedAt)
     }
 
-    func testRepositoryFailureFallsBackToStaleLastKnownConditions() async {
+    func testRepositoryFailureFallsBackToMatchingStaleConditions() async {
         let stale = Self.conditions(fetchedAt: Self.now.addingTimeInterval(-7200))
         let store = Store(stale)
         let acquirer = WatchConditionsRequestAcquirer(conditionsRepository: Self.repository(
@@ -104,6 +104,58 @@ final class WatchConditionsRequestAcquirerTests: XCTestCase {
         let result = await acquirer.conditions(for: Self.location, apiKey: "", referenceDate: Self.now)
 
         XCTAssertEqual(result?.fetchedAt, stale.fetchedAt)
+    }
+
+    func testRepositoryFailureDoesNotReturnAnotherLocationCache() async {
+        let cachedForA = Self.conditions(fetchedAt: Self.now)
+        let requestedB = CachedLocation(id: UUID(), name: "Away", latitude: 47.6, longitude: -122.3)
+        let store = Store(cachedForA)
+        let acquirer = WatchConditionsRequestAcquirer(conditionsRepository: Self.repository(
+            store: store,
+            fetch: { _, _ in throw TestError.failed }
+        ))
+
+        let result = await acquirer.conditions(for: requestedB, apiKey: "", referenceDate: Self.now)
+
+        XCTAssertNil(result)
+    }
+
+    func testRepositoryFailureSupportsSavedIDAndCoordinateMatchingFallbacks() async {
+        let savedID = UUID()
+        let cachedForSavedLocation = Self.conditions(
+            fetchedAt: Self.now.addingTimeInterval(-7200),
+            location: CachedLocation(id: savedID, name: "Home", latitude: 45.5, longitude: -122.7)
+        )
+        let savedRequest = CachedLocation(id: savedID, name: "Renamed", latitude: 46, longitude: -123)
+        let savedAcquirer = WatchConditionsRequestAcquirer(conditionsRepository: Self.repository(
+            store: Store(cachedForSavedLocation),
+            fetch: { _, _ in throw TestError.failed }
+        ))
+        let savedResult = await savedAcquirer.conditions(
+            for: savedRequest, apiKey: "", referenceDate: Self.now
+        )
+        XCTAssertEqual(savedResult?.location.id, savedID)
+
+        let coordinateLocation = CachedLocation(name: "Current", latitude: 45.5, longitude: -122.7)
+        let coordinateAcquirer = WatchConditionsRequestAcquirer(conditionsRepository: Self.repository(
+            store: Store(Self.conditions(fetchedAt: Self.now.addingTimeInterval(-7200), location: coordinateLocation)),
+            fetch: { _, _ in throw TestError.failed }
+        ))
+        let coordinateResult = await coordinateAcquirer.conditions(
+            for: coordinateLocation, apiKey: "", referenceDate: Self.now
+        )
+        XCTAssertNotNil(coordinateResult)
+    }
+
+    func testNilRequestedLocationDoesNotReturnArbitraryCache() async {
+        let store = Store(Self.conditions(fetchedAt: Self.now))
+        let acquirer = WatchConditionsRequestAcquirer(conditionsRepository: Self.repository(
+            store: store,
+            fetch: { _, _ in throw TestError.failed }
+        ))
+
+        let result = await acquirer.conditions(for: nil, apiKey: "", referenceDate: Self.now)
+        XCTAssertNil(result)
     }
 
     func testNoConditionsProducesNoWatchPayload() async {
@@ -167,7 +219,11 @@ final class WatchConditionsRequestAcquirerTests: XCTestCase {
         )
     }
 
-    private static func conditions(fetchedAt: Date) -> ViewingConditions {
+    private static func conditions(
+        fetchedAt: Date,
+        location: CachedLocation? = nil
+    ) -> ViewingConditions {
+        let location = location ?? Self.location
         let calendar = LocationTimeZoneResolver.calendar(for: timeZone)
         let start = calendar.startOfDay(for: fetchedAt)
         let sun = SunEvents(

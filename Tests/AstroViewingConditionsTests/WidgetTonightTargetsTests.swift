@@ -44,6 +44,10 @@ final class WidgetTonightTargetsTests: XCTestCase {
         XCTAssertEqual(maximumAge, SharedConditionsRepository.maximumAge)
         XCTAssertTrue(summary.isWithinMaximumAge(
             maximumAge,
+            relativeTo: generatedAt.addingTimeInterval(maximumAge - 1)
+        ))
+        XCTAssertFalse(summary.isWithinMaximumAge(
+            maximumAge,
             relativeTo: generatedAt.addingTimeInterval(maximumAge)
         ))
         XCTAssertFalse(summary.isWithinMaximumAge(
@@ -325,7 +329,7 @@ final class WidgetTonightTargetsTests: XCTestCase {
             dataStartDay: 26
         )
         let activePayload = makeSummary(
-            generatedAt: date(day: 26),
+            generatedAt: referenceDate,
             observingDate: date(day: 25),
             nightStart: date(day: 25, hour: 22),
             nightEnd: date(day: 26, hour: 4)
@@ -534,9 +538,187 @@ final class WidgetTonightTargetsTests: XCTestCase {
 
         XCTAssertEqual(
             summary.targets.map(\.scoreTone),
-            [.positive, .informational, .caution]
+            [.positive, .caution, .negative]
         )
         XCTAssertEqual(TargetScoreColorProvider.category(for: 39), .poor)
+    }
+
+    func testTonightTargetsPersistencePolicyRetainsOnlyUsableActivePayloads() {
+        let referenceDate = date(day: 25, hour: 23)
+        let location = CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7)
+        let available = makeSummary(generatedAt: referenceDate)
+        let noTargets = makeSummary(
+            generatedAt: referenceDate,
+            status: .noTargets,
+            targets: []
+        )
+        let unavailable = makeSummary(
+            generatedAt: referenceDate,
+            status: .unavailable,
+            targets: []
+        )
+
+        XCTAssertTrue(TonightTargetsPersistencePolicy.shouldSave(
+            candidate: available, existing: nil, targetLocation: location, referenceDate: referenceDate
+        ))
+        XCTAssertTrue(TonightTargetsPersistencePolicy.shouldSave(
+            candidate: noTargets, existing: nil, targetLocation: location, referenceDate: referenceDate
+        ))
+        XCTAssertFalse(TonightTargetsPersistencePolicy.shouldSave(
+            candidate: unavailable, existing: available, targetLocation: location, referenceDate: referenceDate
+        ))
+        XCTAssertTrue(TonightTargetsPersistencePolicy.shouldSave(
+            candidate: unavailable,
+            existing: makeSummary(generatedAt: referenceDate.addingTimeInterval(
+                -WidgetTonightTargetsSummary.maximumAge
+            )),
+            targetLocation: location,
+            referenceDate: referenceDate
+        ))
+        XCTAssertTrue(TonightTargetsPersistencePolicy.shouldSave(
+            candidate: unavailable,
+            existing: makeSummary(generatedAt: referenceDate, latitude: 47.6),
+            targetLocation: location,
+            referenceDate: referenceDate
+        ))
+        XCTAssertTrue(TonightTargetsPersistencePolicy.shouldSave(
+            candidate: available, existing: unavailable, targetLocation: location, referenceDate: referenceDate
+        ))
+    }
+
+    func testTonightTargetsPersistencePolicyPreservesActivePreviousNightAfterMidnight() {
+        let referenceDate = date(day: 26, hour: 1)
+        let location = CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7)
+        let activePreviousNight = makeSummary(
+            generatedAt: referenceDate,
+            observingDate: date(day: 25),
+            nightStart: date(day: 25, hour: 22),
+            nightEnd: date(day: 26, hour: 4)
+        )
+        let unavailable = makeSummary(
+            generatedAt: referenceDate,
+            observingDate: date(day: 26),
+            nightStart: nil,
+            nightEnd: nil,
+            status: .unavailable,
+            targets: []
+        )
+
+        XCTAssertFalse(TonightTargetsPersistencePolicy.shouldSave(
+            candidate: unavailable,
+            existing: activePreviousNight,
+            targetLocation: location,
+            referenceDate: referenceDate
+        ))
+    }
+
+    func testTargetsFallbackAgeLocationAndNightBoundaries() {
+        let referenceDate = date(day: 25, hour: 23)
+        let location = CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7)
+        let maximumAge = WidgetTonightTargetsSummary.maximumAge
+        let cases: [(String, WidgetTonightTargetsSummary, Bool)] = [
+            ("just inside", makeSummary(generatedAt: referenceDate.addingTimeInterval(-maximumAge + 1)), true),
+            ("exactly maximum age", makeSummary(generatedAt: referenceDate.addingTimeInterval(-maximumAge)), false),
+            ("same night but old", makeSummary(generatedAt: referenceDate.addingTimeInterval(-maximumAge - 1)), false),
+            (
+                "fresh wrong observing night",
+                makeSummary(
+                    generatedAt: referenceDate,
+                    observingDate: date(day: 24),
+                    nightStart: date(day: 24, hour: 22),
+                    nightEnd: date(day: 25, hour: 4)
+                ),
+                false
+            ),
+            ("fresh wrong location", makeSummary(generatedAt: referenceDate, latitude: 47.6), false)
+        ]
+
+        for (name, summary, expected) in cases {
+            XCTAssertEqual(
+                TonightTargetsPersistencePolicy.isValidLastKnownGood(
+                    summary,
+                    for: location,
+                    referenceDate: referenceDate
+                ),
+                expected,
+                name
+            )
+        }
+    }
+
+    func testUnavailableEntrySelectionRetainsValidCachedTargetsAsFallback() {
+        let referenceDate = date(day: 25, hour: 23)
+        let cached = makeSummary(generatedAt: referenceDate)
+        let selection = selectUnavailableEntry(
+            existing: cached,
+            referenceDate: referenceDate
+        )
+
+        XCTAssertFalse(selection.shouldSaveCandidate)
+        guard case let .available(displayed) = selection.entry.state else {
+            return XCTFail("Expected cached targets to be displayed")
+        }
+        XCTAssertEqual(displayed, cached)
+        XCTAssertEqual(selection.displayedSummary, cached)
+        XCTAssertEqual(selection.entry.dataStatus?.provenance, .fallback)
+    }
+
+    func testUnavailableEntrySelectionUsesCandidateForExpiredCache() {
+        let referenceDate = date(day: 25, hour: 23)
+        let cached = makeSummary(generatedAt: referenceDate.addingTimeInterval(
+            -WidgetTonightTargetsSummary.maximumAge
+        ))
+        let selection = selectUnavailableEntry(
+            existing: cached,
+            referenceDate: referenceDate
+        )
+
+        assertUnavailableCandidateSelected(selection)
+    }
+
+    func testUnavailableEntrySelectionUsesCandidateForLocationMismatch() {
+        let referenceDate = date(day: 25, hour: 23)
+        let selection = selectUnavailableEntry(
+            existing: makeSummary(generatedAt: referenceDate, latitude: 47.6),
+            referenceDate: referenceDate
+        )
+
+        assertUnavailableCandidateSelected(selection)
+    }
+
+    func testUnavailableEntrySelectionUsesCandidateForUnavailableCache() {
+        let referenceDate = date(day: 25, hour: 23)
+        let selection = selectUnavailableEntry(
+            existing: makeSummary(
+                generatedAt: referenceDate,
+                status: .unavailable,
+                targets: []
+            ),
+            referenceDate: referenceDate
+        )
+
+        assertUnavailableCandidateSelected(selection)
+    }
+
+    func testUnavailableEntrySelectionRetainsValidNoTargetsAsFallback() {
+        let referenceDate = date(day: 25, hour: 23)
+        let cached = makeSummary(
+            generatedAt: referenceDate,
+            status: .noTargets,
+            targets: []
+        )
+        let selection = selectUnavailableEntry(
+            existing: cached,
+            referenceDate: referenceDate
+        )
+
+        XCTAssertFalse(selection.shouldSaveCandidate)
+        guard case .noTargets = selection.entry.state else {
+            return XCTFail("Expected cached no-targets state to be displayed")
+        }
+        XCTAssertEqual(selection.displayedSummary, cached)
+        XCTAssertEqual(selection.entry.dataStatus?.provenance, .fallback)
+        XCTAssertEqual(selection.entry.dataStatus?.dataAsOf, cached.generatedAt)
     }
 
     func testPositionCompositionIsAppSideAndHandlesAllOptionalCombinations() {
@@ -661,24 +843,12 @@ final class WidgetTonightTargetsTests: XCTestCase {
         XCTAssertTrue(source.contains("SharedConditionsRepository().conditions"))
         XCTAssertTrue(source.contains("TonightTargetsWidgetRefreshPipeline.makeSummary"))
         XCTAssertTrue(source.contains("saveWidgetTonightTargetsSummaryAsync"))
-        XCTAssertTrue(source.contains("cachedSummary.locationMatches(location)"))
-        XCTAssertTrue(source.contains("cachedSummary.matchesCurrentObservingNight"))
         XCTAssertTrue(source.contains("context.isPreview"))
         XCTAssertTrue(source.contains("Timeline invocation"))
         XCTAssertTrue(source.contains("Using matching last-known-good Targets summary"))
         XCTAssertFalse(source.contains("private func isCurrent("))
         XCTAssertFalse(source.contains("payloadMaximumAge"))
 
-        let conditionsCall = try XCTUnwrap(
-            source.range(of: "SharedConditionsRepository().conditions")
-        )
-        let fallbackCheck = try XCTUnwrap(
-            source.range(of: "cachedSummary.locationMatches(location)")
-        )
-        XCTAssertLessThan(
-            source.distance(from: source.startIndex, to: conditionsCall.lowerBound),
-            source.distance(from: source.startIndex, to: fallbackCheck.lowerBound)
-        )
     }
 
     func testLongNameViewUsesIntrinsicWrappingInsteadOfTruncation() throws {
@@ -1041,6 +1211,49 @@ final class WidgetTonightTargetsTests: XCTestCase {
             reasons: [.highAltitude],
             summary: "Resolved recommendation"
         )
+    }
+
+    private func selectUnavailableEntry(
+        existing: WidgetTonightTargetsSummary?,
+        referenceDate: Date
+    ) -> TonightTargetsUnavailableEntrySelection {
+        let candidate = makeSummary(
+            generatedAt: referenceDate,
+            status: .unavailable,
+            targets: []
+        )
+        return TonightTargetsUnavailableEntrySelector.select(
+            candidate: candidate,
+            existing: existing,
+            targetLocation: CachedLocation(
+                name: "Home",
+                latitude: 45.5,
+                longitude: -122.7
+            ),
+            referenceDate: referenceDate,
+            candidateDataStatus: .normal(summary: candidate)
+        )
+    }
+
+    private func assertUnavailableCandidateSelected(
+        _ selection: TonightTargetsUnavailableEntrySelection,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertTrue(selection.shouldSaveCandidate, file: file, line: line)
+        XCTAssertEqual(
+            selection.displayedSummary.status,
+            .unavailable,
+            file: file,
+            line: line
+        )
+        guard case .unavailable(.unavailable) = selection.entry.state else {
+            return XCTFail(
+                "Expected unavailable candidate to be displayed",
+                file: file,
+                line: line
+            )
+        }
     }
 
     private func sourceText(_ relativePath: String) throws -> String {

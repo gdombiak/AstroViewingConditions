@@ -52,6 +52,84 @@ struct TonightTargetsEntry: TimelineEntry, Sendable {
             dataStatus: nil
         )
     }
+
+    static func make(
+        summary: WidgetTonightTargetsSummary,
+        date: Date,
+        dataStatus: WidgetDataStatus
+    ) -> TonightTargetsEntry {
+        switch summary.status {
+        case .available where !summary.targets.isEmpty:
+            return TonightTargetsEntry(
+                date: date,
+                state: .available(summary),
+                dataStatus: dataStatus
+            )
+        case .noTargets:
+            return TonightTargetsEntry(
+                date: date,
+                state: .noTargets,
+                dataStatus: dataStatus
+            )
+        case .unavailable, .available:
+            return TonightTargetsEntry(
+                date: date,
+                state: .unavailable(.unavailable)
+            )
+        }
+    }
+}
+
+struct TonightTargetsUnavailableEntrySelection {
+    let entry: TonightTargetsEntry
+    let displayedSummary: WidgetTonightTargetsSummary
+    let shouldSaveCandidate: Bool
+}
+
+/// Pure selection shared by the provider and its behavioral tests.
+enum TonightTargetsUnavailableEntrySelector {
+    static func select(
+        candidate: WidgetTonightTargetsSummary,
+        existing: WidgetTonightTargetsSummary?,
+        targetLocation: CachedLocation,
+        referenceDate: Date,
+        candidateDataStatus: WidgetDataStatus
+    ) -> TonightTargetsUnavailableEntrySelection {
+        let shouldSaveCandidate = TonightTargetsPersistencePolicy.shouldSave(
+            candidate: candidate,
+            existing: existing,
+            targetLocation: targetLocation,
+            referenceDate: referenceDate
+        )
+
+        if !shouldSaveCandidate,
+           let existing,
+           TonightTargetsPersistencePolicy.isValidLastKnownGood(
+            existing,
+            for: targetLocation,
+            referenceDate: referenceDate
+           ) {
+            return TonightTargetsUnavailableEntrySelection(
+                entry: TonightTargetsEntry.make(
+                    summary: existing,
+                    date: referenceDate,
+                    dataStatus: .fallback(summary: existing)
+                ),
+                displayedSummary: existing,
+                shouldSaveCandidate: false
+            )
+        }
+
+        return TonightTargetsUnavailableEntrySelection(
+            entry: TonightTargetsEntry.make(
+                summary: candidate,
+                date: referenceDate,
+                dataStatus: candidateDataStatus
+            ),
+            displayedSummary: candidate,
+            shouldSaveCandidate: shouldSaveCandidate
+        )
+    }
 }
 
 extension WidgetTonightTargetsSummary {

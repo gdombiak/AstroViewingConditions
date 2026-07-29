@@ -252,7 +252,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         let referenceDate = date(day: 26, hour: 1)
         let location = selectedLocation()
         let cachedSummary = makeSummary(
-            generatedAt: date(day: 26),
+            generatedAt: referenceDate,
             nights: shiftedNights(startDay: 25)
         )
         let incompleteRetained = makeConditions(
@@ -444,6 +444,10 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
 
         XCTAssertEqual(maximumAge, SharedConditionsRepository.maximumAge)
         XCTAssertTrue(summary.isWithinMaximumAge(
+            maximumAge,
+            relativeTo: generatedAt.addingTimeInterval(maximumAge - 1)
+        ))
+        XCTAssertFalse(summary.isWithinMaximumAge(
             maximumAge,
             relativeTo: generatedAt.addingTimeInterval(maximumAge)
         ))
@@ -865,7 +869,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         let referenceDate = date(day: 26, hour: 1)
         let conditions = makeConditions(referenceDate: referenceDate, dataStartDay: 26)
         let valid = makeSummary(
-            generatedAt: date(day: 26),
+            generatedAt: referenceDate,
             nights: shiftedNights(startDay: 25)
         )
         assertPreserved(conditions: conditions, existing: valid, referenceDate: referenceDate)

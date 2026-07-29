@@ -93,7 +93,7 @@ public struct WidgetThreeNightOutlookSummary: Codable, Sendable, Hashable {
 
     public func isWithinMaximumAge(_ maximumAge: TimeInterval, relativeTo date: Date = Date()) -> Bool {
         let age = date.timeIntervalSince(generatedAt)
-        return age >= 0 && age <= maximumAge
+        return age >= 0 && age < maximumAge
     }
 
     public var isDataBearing: Bool {
