@@ -277,17 +277,26 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         XCTAssertEqual(entry.dataStatus?.provenance, .fallback)
     }
 
-    func testUnavailablePublicationDisplaysValidCachedSummaryWithoutSaving() async {
-        let referenceDate = date(day: 25, hour: 20)
+    func testUnavailablePublicationUsesBoundedLastKnownGoodSummaryWithoutSaving() async {
+        let referenceDate = date(day: 26, hour: 1)
         let location = selectedLocation()
-        let cachedSummary = makeSummary(generatedAt: referenceDate)
+        let cachedSummary = makeSummary(
+            generatedAt: date(day: 25, hour: 20),
+            nights: shiftedNights(startDay: 25)
+        )
         let saves = SummaryRecorder()
         let entry = await ThreeNightOutlookEntryResolver.buildEntry(
             location: location,
             cachedSummary: cachedSummary,
             cachedLocation: CachedLocation(name: location.name, latitude: location.latitude, longitude: location.longitude),
             referenceDate: referenceDate,
-            normalConditions: { makeConditions(referenceDate: referenceDate, dailyCount: 2) },
+            normalConditions: {
+                makeConditions(
+                    referenceDate: referenceDate,
+                    dataStartDay: 25,
+                    dailyCount: 2
+                )
+            },
             retainedConditions: { nil },
             save: { summary in await saves.record(summary) }
         )
@@ -297,6 +306,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         }
         XCTAssertEqual(summary, cachedSummary)
         XCTAssertEqual(entry.dataStatus?.provenance, .fallback)
+        XCTAssertEqual(entry.dataStatus?.dataAsOf, cachedSummary.generatedAt)
         let savedSummaries = await saves.values()
         XCTAssertTrue(savedSummaries.isEmpty)
     }
@@ -325,6 +335,41 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         }
         let savedSummaries = await saves.values()
         XCTAssertTrue(savedSummaries.isEmpty)
+    }
+
+    func testUnavailablePublicationRejectsInvalidLastKnownGoodSummaries() async {
+        let referenceDate = date(day: 26, hour: 1)
+        let validNights = shiftedNights(startDay: 25)
+        var malformedNights = validNights
+        malformedNights.swapAt(0, 1)
+        let invalidSummaries = [
+            makeSummary(generatedAt: date(day: 24, hour: 0), nights: validNights),
+            makeSummary(generatedAt: date(day: 25, hour: 20), latitude: 47.6, nights: validNights),
+            makeSummary(generatedAt: date(day: 25, hour: 20), nights: shiftedNights(startDay: 24)),
+            makeSummary(generatedAt: date(day: 25, hour: 20), nights: malformedNights),
+            makeSummary(
+                generatedAt: date(day: 25, hour: 20),
+                nights: validNights.map { night in
+                    self.night(
+                        label: night.displayLabel,
+                        day: calendar.component(.day, from: night.observingDate),
+                        score: nil,
+                        status: .available,
+                        isBest: false
+                    )
+                }
+            )
+        ]
+
+        for summary in invalidSummaries {
+            let entry = await unavailablePublicationEntry(
+                cachedSummary: summary,
+                referenceDate: referenceDate
+            )
+            guard case .unavailable = entry.state else {
+                return XCTFail("Invalid last-known-good summary must not remain visible")
+            }
+        }
     }
 
     func testUnavailablePublicationWithoutDataBearingCacheMaySaveUnavailableSummary() async {
@@ -543,6 +588,238 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
             ),
             .locationMismatch
         )
+    }
+
+    func testDashboardPreservesUsefulMatchingSummaryYoungerThanTwentyFourHours() {
+        let referenceDate = date(day: 25, hour: 20)
+        let targetLocation = CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7)
+        let existing = makeSummary(generatedAt: date(day: 25, hour: 1))
+        let unavailable = ThreeNightOutlookWidgetPayloadBuilder.makeUnavailableSummary(
+            generatedAt: referenceDate,
+            location: targetLocation,
+            timeZone: timeZone,
+            referenceDate: referenceDate
+        )
+
+        XCTAssertTrue(existing.isDataBearing)
+        XCTAssertFalse(ThreeNightOutlookPersistencePolicy.shouldSave(
+            decision: .unavailable(unavailable),
+            existing: existing,
+            targetLocation: targetLocation,
+            referenceDate: referenceDate
+        ))
+        XCTAssertFalse(ThreeNightOutlookPersistencePolicy.shouldSaveUnavailable(
+            existing: existing,
+            targetLocation: targetLocation,
+            referenceDate: referenceDate
+        ))
+    }
+
+    func testDashboardMayReplaceMatchingSummaryOlderThanTwentyFourHours() {
+        let referenceDate = date(day: 26, hour: 2)
+        let targetLocation = CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7)
+        let existing = makeSummary(generatedAt: date(day: 25, hour: 1))
+        let unavailable = ThreeNightOutlookWidgetPayloadBuilder.makeUnavailableSummary(
+            generatedAt: referenceDate,
+            location: targetLocation,
+            timeZone: timeZone,
+            referenceDate: referenceDate
+        )
+
+        XCTAssertTrue(ThreeNightOutlookPersistencePolicy.shouldSave(
+            decision: .unavailable(unavailable),
+            existing: existing,
+            targetLocation: targetLocation,
+            referenceDate: referenceDate
+        ))
+    }
+
+    func testDashboardAlwaysSavesNewDataBearingPublication() {
+        let referenceDate = date(day: 25, hour: 20)
+        let targetLocation = CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7)
+        let existing = makeSummary(generatedAt: referenceDate)
+
+        XCTAssertTrue(ThreeNightOutlookPersistencePolicy.shouldSave(
+            decision: .publish(existing),
+            existing: existing,
+            targetLocation: targetLocation,
+            referenceDate: referenceDate
+        ))
+    }
+
+    func testDashboardMaySaveUnavailableSummaryForWrongLocationOrMalformedExistingSummary() {
+        let referenceDate = date(day: 25, hour: 20)
+        let targetLocation = CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7)
+        let unavailable = ThreeNightOutlookWidgetPayloadBuilder.makeUnavailableSummary(
+            generatedAt: referenceDate,
+            location: targetLocation,
+            timeZone: timeZone,
+            referenceDate: referenceDate
+        )
+        let wrongLocation = makeSummary(generatedAt: referenceDate, latitude: 47.6)
+        var malformedNights = makeNights()
+        malformedNights.swapAt(0, 1)
+        let malformed = makeSummary(generatedAt: referenceDate, nights: malformedNights)
+
+        XCTAssertTrue(ThreeNightOutlookPersistencePolicy.shouldSave(
+            decision: .unavailable(unavailable),
+            existing: wrongLocation,
+            targetLocation: targetLocation,
+            referenceDate: referenceDate
+        ))
+        XCTAssertTrue(ThreeNightOutlookPersistencePolicy.shouldSaveUnavailable(
+            existing: malformed,
+            targetLocation: targetLocation,
+            referenceDate: referenceDate
+        ))
+    }
+
+    func testDashboardMaySaveUnavailableSummaryWithoutDataBearingExistingSummary() {
+        let referenceDate = date(day: 25, hour: 20)
+        let targetLocation = CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7)
+        let unavailable = ThreeNightOutlookWidgetPayloadBuilder.makeUnavailableSummary(
+            generatedAt: referenceDate,
+            location: targetLocation,
+            timeZone: timeZone,
+            referenceDate: referenceDate
+        )
+        let nonDataBearing = makeSummary(nights: makeNights().map { night in
+            self.night(
+                label: night.displayLabel,
+                day: calendar.component(.day, from: night.observingDate),
+                score: nil,
+                status: .unavailable,
+                isBest: false
+            )
+        })
+
+        XCTAssertTrue(ThreeNightOutlookPersistencePolicy.shouldSave(
+            decision: .unavailable(unavailable),
+            existing: nil,
+            targetLocation: targetLocation,
+            referenceDate: referenceDate
+        ))
+        XCTAssertTrue(ThreeNightOutlookPersistencePolicy.shouldSaveUnavailable(
+            existing: nonDataBearing,
+            targetLocation: targetLocation,
+            referenceDate: referenceDate
+        ))
+    }
+
+    func testDashboardBlocksNonDataBearingPublicationOnlyForUsefulRecentSummary() {
+        let referenceDate = date(day: 25, hour: 20)
+        let targetLocation = CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7)
+        let existing = makeSummary(generatedAt: referenceDate)
+        let nonDataBearing = ThreeNightOutlookWidgetPayloadBuilder.makeUnavailableSummary(
+            generatedAt: referenceDate,
+            location: targetLocation,
+            timeZone: timeZone,
+            referenceDate: referenceDate
+        )
+
+        XCTAssertFalse(ThreeNightOutlookPersistencePolicy.shouldSave(
+            decision: .publish(nonDataBearing),
+            existing: existing,
+            targetLocation: targetLocation,
+            referenceDate: referenceDate
+        ))
+        for invalidExisting in [
+            makeSummary(generatedAt: date(day: 24, hour: 19)),
+            makeSummary(generatedAt: referenceDate, latitude: 47.6),
+            makeSummary(generatedAt: referenceDate, nights: Array(existing.nights.prefix(2))),
+            nonDataBearing,
+            nil
+        ] as [WidgetThreeNightOutlookSummary?] {
+            XCTAssertTrue(ThreeNightOutlookPersistencePolicy.shouldSave(
+                decision: .publish(nonDataBearing),
+                existing: invalidExisting,
+                targetLocation: targetLocation,
+                referenceDate: referenceDate
+            ))
+        }
+    }
+
+    func testFailedRefreshUsesMatchingActiveSummaryThroughTwentyFourHours() {
+        let referenceDate = date(day: 26, hour: 1)
+        let cachedSummary = makeSummary(
+            generatedAt: date(day: 25, hour: 20),
+            nights: shiftedNights(startDay: 25)
+        )
+        let entry = ThreeNightOutlookEntryResolver.failedRefreshEntry(
+            cachedSummary: cachedSummary,
+            selectedLocation: selectedLocation(),
+            referenceDate: referenceDate
+        )
+
+        guard case let .available(summary) = entry.state else {
+            return XCTFail("Expected bounded last-known-good fallback")
+        }
+        XCTAssertEqual(summary, cachedSummary)
+        XCTAssertEqual(entry.dataStatus?.provenance, .fallback)
+        XCTAssertEqual(entry.dataStatus?.dataAsOf, cachedSummary.generatedAt)
+    }
+
+    func testFailedRefreshRejectsSummaryOlderThanTwentyFourHours() {
+        let entry = ThreeNightOutlookEntryResolver.failedRefreshEntry(
+            cachedSummary: makeSummary(
+                generatedAt: date(day: 24, hour: 0),
+                nights: shiftedNights(startDay: 25)
+            ),
+            selectedLocation: selectedLocation(),
+            referenceDate: date(day: 26, hour: 1)
+        )
+        guard case .unavailable = entry.state else {
+            return XCTFail("Expected fallback older than 24 hours to be rejected")
+        }
+    }
+
+    func testFailedRefreshRejectsWrongLocationSummary() {
+        let entry = ThreeNightOutlookEntryResolver.failedRefreshEntry(
+            cachedSummary: makeSummary(
+                generatedAt: date(day: 25, hour: 20),
+                latitude: 47.6,
+                nights: shiftedNights(startDay: 25)
+            ),
+            selectedLocation: selectedLocation(),
+            referenceDate: date(day: 26, hour: 1)
+        )
+        guard case .unavailable = entry.state else {
+            return XCTFail("Expected wrong-location fallback to be rejected")
+        }
+    }
+
+    func testFailedRefreshRejectsObservingNightMismatch() {
+        let entry = ThreeNightOutlookEntryResolver.failedRefreshEntry(
+            cachedSummary: makeSummary(
+                generatedAt: date(day: 25, hour: 20),
+                nights: shiftedNights(startDay: 24)
+            ),
+            selectedLocation: selectedLocation(),
+            referenceDate: date(day: 26, hour: 1)
+        )
+        guard case .unavailable = entry.state else {
+            return XCTFail("Expected wrong-night fallback to be rejected")
+        }
+    }
+
+    func testFailedRefreshRejectsNonDataBearingSummary() {
+        let nights = shiftedNights(startDay: 25).map { night in
+            self.night(
+                label: night.displayLabel,
+                day: calendar.component(.day, from: night.observingDate),
+                score: nil,
+                status: .available,
+                isBest: false
+            )
+        }
+        let entry = ThreeNightOutlookEntryResolver.failedRefreshEntry(
+            cachedSummary: makeSummary(generatedAt: date(day: 25, hour: 20), nights: nights),
+            selectedLocation: selectedLocation(),
+            referenceDate: date(day: 26, hour: 1)
+        )
+        guard case .unavailable = entry.state else {
+            return XCTFail("Expected non-data-bearing fallback to be rejected")
+        }
     }
 
     func testPublicationBeforeMidnightStartsWithCurrentObservingDate() {
@@ -964,6 +1241,32 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         calendar.date(from: DateComponents(
             year: 2026, month: 7, day: day, hour: hour, minute: minute
         ))!
+    }
+
+    private func unavailablePublicationEntry(
+        cachedSummary: WidgetThreeNightOutlookSummary,
+        referenceDate: Date
+    ) async -> ThreeNightOutlookEntry {
+        let location = selectedLocation()
+        return await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: cachedSummary,
+            cachedLocation: CachedLocation(
+                name: location.name,
+                latitude: location.latitude,
+                longitude: location.longitude
+            ),
+            referenceDate: referenceDate,
+            normalConditions: {
+                makeConditions(
+                    referenceDate: referenceDate,
+                    dataStartDay: 25,
+                    dailyCount: 2
+                )
+            },
+            retainedConditions: { nil },
+            save: { _ in }
+        )
     }
 
     private func night(

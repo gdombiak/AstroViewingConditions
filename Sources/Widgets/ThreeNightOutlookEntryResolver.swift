@@ -13,6 +13,7 @@ enum ThreeNightOutlookResolvedState: Equatable {
 
 /// Pure validation used by the cache-loading timeline provider and its tests.
 enum ThreeNightOutlookEntryResolver {
+
     static func resolve(
         summary: WidgetThreeNightOutlookSummary?,
         selectedLocation: SelectedLocation?,
@@ -42,12 +43,12 @@ enum ThreeNightOutlookEntryResolver {
         selectedLocation: SelectedLocation,
         referenceDate: Date
     ) -> ThreeNightOutlookEntry {
-        if resolve(
-            summary: cachedSummary,
-            selectedLocation: selectedLocation,
+        if let cachedSummary,
+           ThreeNightOutlookPersistencePolicy.isValidLastKnownGood(
+            cachedSummary,
+            for: cachedLocation(from: selectedLocation),
             referenceDate: referenceDate
-        ) == .available,
-           let cachedSummary {
+        ) {
             return .init(
                 date: referenceDate,
                 state: .available(cachedSummary),
@@ -138,13 +139,12 @@ enum ThreeNightOutlookEntryResolver {
                 )
             }
         case let .unavailable(summary):
-            if cachedSummary?.isDataBearing == true,
-               resolve(
-                summary: cachedSummary,
-                selectedLocation: location,
+            if let cachedSummary,
+               ThreeNightOutlookPersistencePolicy.isValidLastKnownGood(
+                cachedSummary,
+                for: cachedLocation(from: location),
                 referenceDate: referenceDate
-               ) == .available,
-               let cachedSummary {
+               ) {
                 return .init(
                     date: referenceDate,
                     state: .available(cachedSummary),
@@ -195,6 +195,15 @@ enum ThreeNightOutlookEntryResolver {
             summaryLongitude: conditions.location.longitude,
             selectedLatitude: cachedLocation.latitude,
             selectedLongitude: cachedLocation.longitude
+        )
+    }
+
+    private static func cachedLocation(from selectedLocation: SelectedLocation) -> CachedLocation {
+        CachedLocation(
+            id: selectedLocation.source == .saved ? selectedLocation.id : nil,
+            name: selectedLocation.name,
+            latitude: selectedLocation.latitude,
+            longitude: selectedLocation.longitude
         )
     }
 }

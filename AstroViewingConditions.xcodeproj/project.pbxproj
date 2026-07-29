@@ -11,6 +11,7 @@
 		01AD933650381CCBFC1422F3 /* WidgetDataAsOfPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B045824F30816624B506852 /* WidgetDataAsOfPresentation.swift */; };
 		02021BB7A13ACDE5B6DB98C5 /* WatchAstronomicalNightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E52A423875A101AEE2944EE /* WatchAstronomicalNightCard.swift */; };
 		02591405E181610B93BD423F /* TonightTargetsWidgetPayloadBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = E04BCE32AE054FFBCC38C5F4 /* TonightTargetsWidgetPayloadBuilder.swift */; };
+		037B4674A4E68CFEC4230B73 /* ThreeNightOutlookPersistencePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B38DE6F3A3448691E01F9871 /* ThreeNightOutlookPersistencePolicy.swift */; };
 		03C85DB587BEACC839C4FE44 /* WeatherServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81B52C3C0FB94395C6A64BAF /* WeatherServiceTests.swift */; };
 		0410E380341C44EDA61FBC49 /* FogCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABB23E856EFE612481F9FE0 /* FogCalculator.swift */; };
 		04962FE44AEEE5EAA8EF0069 /* ObservableTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A824729BC4996F8398678D4 /* ObservableTarget.swift */; };
@@ -171,6 +172,7 @@
 		AF1EC05C9C54A033EB9FF6A4 /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68269A38CA6984DA843607EB /* WeatherService.swift */; };
 		AF2DC462B6EB100967784DB5 /* UnitConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D610F1529AB262A03F49EB53 /* UnitConverter.swift */; };
 		AFF6272BEA680D98E48434AB /* SharedCode.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 7DE13674996F9DC96D419E3F /* SharedCode.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		B03BEB6C70C1590E1A16C44B /* ThreeNightOutlookPersistencePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B38DE6F3A3448691E01F9871 /* ThreeNightOutlookPersistencePolicy.swift */; };
 		B1D6071736E2FD6F2459C428 /* TargetAssetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D45032363219CEC7896BF0F6 /* TargetAssetProvider.swift */; };
 		B571244AE8EAF85642F04100 /* AstroViewingConditionsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAE2FB1C99BE13E2DAC757D /* AstroViewingConditionsApp.swift */; };
 		B72E301DBC70B746208E3737 /* AdaptiveFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1993647566ECC08937BF07 /* AdaptiveFont.swift */; };
@@ -465,6 +467,7 @@
 		AEB0886A5EE6B126547325EA /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
 		B28EFC4C0C327C246584AEE4 /* CuratedDeepSkyCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuratedDeepSkyCatalogTests.swift; sourceTree = "<group>"; };
 		B3707FB5F528861A275D7EBE /* AsyncTimeout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncTimeout.swift; sourceTree = "<group>"; };
+		B38DE6F3A3448691E01F9871 /* ThreeNightOutlookPersistencePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeNightOutlookPersistencePolicy.swift; sourceTree = "<group>"; };
 		B581B80777CE9587A7AFA72D /* CornerComplicationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CornerComplicationView.swift; sourceTree = "<group>"; };
 		B864D70EE1BB6EE975190E49 /* BestSpotResultCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotResultCard.swift; sourceTree = "<group>"; };
 		B8BED9D25015AEB31A937E84 /* LocationStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationStorageService.swift; sourceTree = "<group>"; };
@@ -858,6 +861,7 @@
 				BE294F3806AF2A57E0A71853 /* TargetRecommendationContextBuilder.swift */,
 				7DB147DCEAE4D89C4C6A2E89 /* TargetRecommendationService.swift */,
 				39D33FDCCE4710B5A415D1AB /* TargetScoreCategory.swift */,
+				B38DE6F3A3448691E01F9871 /* ThreeNightOutlookPersistencePolicy.swift */,
 				64DA0E8491618A25A7692648 /* ThreeNightOutlookWidgetPayloadBuilder.swift */,
 				E04BCE32AE054FFBCC38C5F4 /* TonightTargetsWidgetPayloadBuilder.swift */,
 				68269A38CA6984DA843607EB /* WeatherService.swift */,
@@ -1294,6 +1298,7 @@
 				915C2C58EA718CF3768A5058 /* TargetRecommendationContextBuilder.swift in Sources */,
 				3A7E573BEDA3699525D65A6C /* TargetRecommendationService.swift in Sources */,
 				17AA86B323FA86C1DA7E6E11 /* TargetScoreCategory.swift in Sources */,
+				037B4674A4E68CFEC4230B73 /* ThreeNightOutlookPersistencePolicy.swift in Sources */,
 				10F8A373479E5BC17F2385C7 /* ThreeNightOutlookWidgetPayloadBuilder.swift in Sources */,
 				469BF95C3CD8EEEC46B8C732 /* TonightTargetsWidgetPayloadBuilder.swift in Sources */,
 				F53970B4CD1F5E5308BD7B40 /* TransparencyCalculator.swift in Sources */,
@@ -1425,6 +1430,7 @@
 				2BE9DD55810A268A54D4D368 /* TargetRecommendationContextBuilder.swift in Sources */,
 				67EA83DD9E3073B47DC6A33B /* TargetRecommendationService.swift in Sources */,
 				68D2489CC7EBD18F0DB63B08 /* TargetScoreCategory.swift in Sources */,
+				B03BEB6C70C1590E1A16C44B /* ThreeNightOutlookPersistencePolicy.swift in Sources */,
 				1B3DCE14618ED103715F3060 /* ThreeNightOutlookWidgetPayloadBuilder.swift in Sources */,
 				02591405E181610B93BD423F /* TonightTargetsWidgetPayloadBuilder.swift in Sources */,
 				D0698CFEF4B82F84C0952351 /* TransparencyCalculator.swift in Sources */,

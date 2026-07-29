@@ -724,8 +724,24 @@ public class DashboardViewModel {
             conditions: conditions, existingSummary: existing,
             referenceDate: referenceDate, timeZone: displayTimeZone
         ) {
-        case let .publish(summary), let .unavailable(summary):
-            await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
+        case let .publish(summary):
+            if ThreeNightOutlookPersistencePolicy.shouldSave(
+                decision: .publish(summary),
+                existing: existing,
+                targetLocation: conditions.location,
+                referenceDate: referenceDate
+            ) {
+                await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
+            }
+        case let .unavailable(summary):
+            if ThreeNightOutlookPersistencePolicy.shouldSave(
+                decision: .unavailable(summary),
+                existing: existing,
+                targetLocation: conditions.location,
+                referenceDate: referenceDate
+            ) {
+                await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
+            }
         case .preserveExisting:
             break
         }
@@ -794,7 +810,14 @@ public class DashboardViewModel {
             generatedAt: referenceDate, location: location,
             timeZone: timeZone, referenceDate: referenceDate
         )
-        await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
+        let existing = await AppGroupStorage.loadWidgetThreeNightOutlookSummaryAsync()
+        if ThreeNightOutlookPersistencePolicy.shouldSaveUnavailable(
+            existing: existing,
+            targetLocation: location,
+            referenceDate: referenceDate
+        ) {
+            await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
+        }
     }
     
     private func resolveTimeZone(for location: CachedLocation) async {
