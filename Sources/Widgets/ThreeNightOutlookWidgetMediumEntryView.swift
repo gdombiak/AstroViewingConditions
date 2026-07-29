@@ -85,7 +85,7 @@ struct ThreeNightOutlookWidgetMediumEntryView: View {
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
             }
-            Text(style == .minimal ? "3-Night Outlook" : "Three-Night Outlook")
+            Text(style == .minimal ? "3-Night Forecast" : "Three-Night Forecast")
                 .font((style == .regular ? Font.subheadline : .caption).weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
@@ -115,9 +115,11 @@ struct ThreeNightOutlookWidgetMediumEntryView: View {
                         .fixedSize(horizontal: true, vertical: false)
                         .accessibilityLabel("Score \(score) out of 100")
                 } else {
-                    Text("—").font(.caption).accessibilityLabel("Score unavailable")
+                    Text(night.verdict == "N/A" ? "N/A" : "—")
+                        .font(.caption)
+                        .accessibilityLabel("Score unavailable")
                 }
-                if showsVerdict {
+                if showsVerdict, night.verdict != "N/A" {
                     Text(night.verdict)
                         .font(.caption)
                         .foregroundStyle(.secondary)

@@ -96,6 +96,12 @@ public struct WidgetThreeNightOutlookSummary: Codable, Sendable, Hashable {
         return age >= 0 && age <= maximumAge
     }
 
+    public var isDataBearing: Bool {
+        status == .available && nights.contains {
+            $0.status == .available && $0.score != nil
+        }
+    }
+
     public func locationMatches(_ selectedLocation: SelectedLocation) -> Bool {
         WidgetLocationIdentity.matches(
             summarySavedLocationID: savedLocationID,

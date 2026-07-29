@@ -3,22 +3,21 @@ import SharedCode
 import WidgetKit
 
 struct ThreeNightOutlookEntry: TimelineEntry, Sendable {
-    enum State: Sendable {
+    enum State: Sendable, Equatable {
         case available(WidgetThreeNightOutlookSummary)
         case unavailable(UnavailableReason)
     }
 
-    enum UnavailableReason: Sendable {
+    enum UnavailableReason: Sendable, Equatable {
         case noLocation, noCache, stale, locationMismatch, observingNightMismatch, unavailable
 
         var message: String {
             switch self {
             case .noLocation: "Open Astro Conditions to choose a location"
             case .noCache: "Open Astro Conditions to update"
-            case .stale: "Outlook needs an update"
-            case .locationMismatch: "Outlook needs an update for this location"
-            case .observingNightMismatch: "Three-night outlook needs an update"
-            case .unavailable: "Outlook is unavailable"
+            case .stale, .observingNightMismatch: "Open Astro Conditions to update"
+            case .locationMismatch: "Forecast is for another location"
+            case .unavailable: "Forecast unavailable"
             }
         }
     }

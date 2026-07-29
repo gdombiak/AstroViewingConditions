@@ -20,7 +20,7 @@ struct ThreeNightOutlookWidget: Widget {
             }
             .containerBackground(.fill.tertiary, for: .widget)
         }
-        .configurationDisplayName("Three-Night Outlook")
+        .configurationDisplayName("Three-Night Forecast")
         .description("Compare observing conditions for the next three nights.")
         .supportedFamilies([.systemMedium])
     }
@@ -28,7 +28,7 @@ struct ThreeNightOutlookWidget: Widget {
     private func unavailable(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Label(
-                "Three-Night Outlook",
+                "Three-Night Forecast",
                 systemImage: WidgetAppIdentity.symbol
             )
             .font(.headline)

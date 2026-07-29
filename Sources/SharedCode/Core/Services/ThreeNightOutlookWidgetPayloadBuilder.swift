@@ -67,11 +67,19 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         guard resolutions.count == labels.count else { return nil }
 
         var nights = resolutions.enumerated().map { index, resolution in
-            makeNight(resolution, label: labels[index], isBest: false)
+            makeNight(
+                resolution,
+                conditions: conditions,
+                label: labels[index],
+                isBest: false
+            )
         }
         if let bestIndex = bestNightIndex(in: nights) {
             nights[bestIndex] = makeNight(
-                resolutions[bestIndex], label: labels[bestIndex], isBest: true
+                resolutions[bestIndex],
+                conditions: conditions,
+                label: labels[bestIndex],
+                isBest: true
             )
         }
         return WidgetThreeNightOutlookSummary(
@@ -94,6 +102,31 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         }
     }
 
+    /// Verifies that the raw hourly forecast stream continuously covers the
+    /// full astronomical night. Hourly timestamps represent the start of their
+    /// interval, so an interval may contain a non-hour-aligned boundary.
+    public static func hasCompleteHourlyCoverage(
+        for resolution: TargetRecommendationContextResolution,
+        conditions: ViewingConditions
+    ) -> Bool {
+        let start = resolution.context.astronomicalNightStart
+        let end = resolution.context.astronomicalNightEnd
+        guard start < end else { return false }
+
+        let forecasts = conditions.hourlyForecasts.sorted { $0.time < $1.time }
+        guard let cadence = nominalHourlyCadence(in: forecasts) else { return false }
+        let relevant = forecasts.filter {
+            $0.time <= end && $0.time.addingTimeInterval(cadence) >= start
+        }
+        guard let first = relevant.first, let last = relevant.last,
+              first.time <= start,
+              last.time.addingTimeInterval(cadence) >= end else { return false }
+
+        return zip(relevant, relevant.dropFirst()).allSatisfy {
+            abs($1.time.timeIntervalSince($0.time) - cadence) <= cadenceTolerance
+        }
+    }
+
     public static func makeUnavailableSummary(
         generatedAt: Date, location: CachedLocation, timeZone: TimeZone, referenceDate: Date
     ) -> WidgetThreeNightOutlookSummary {
@@ -105,7 +138,7 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
                 id: "\(index)", displayLabel: label, observingDate: observingDate,
                 score: nil, verdict: "Unavailable", scoreTone: nil,
                 astronomicalNightStart: nil, astronomicalNightEnd: nil, bestWindow: nil,
-                statusText: "Outlook unavailable", status: .unavailable, isBestNight: false
+                statusText: "Forecast unavailable", status: .unavailable, isBestNight: false
             )
         }
         return WidgetThreeNightOutlookSummary(
@@ -117,17 +150,31 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
     }
 
     private static func makeNight(
-        _ resolution: TargetRecommendationContextResolution, label: String, isBest: Bool
+        _ resolution: TargetRecommendationContextResolution,
+        conditions: ViewingConditions,
+        label: String,
+        isBest: Bool
     ) -> WidgetThreeNightOutlookNight {
         let assessment = resolution.context.nightQuality
-        guard !assessment.hourlyRatings.isEmpty else {
+        let start = resolution.context.astronomicalNightStart
+        let end = resolution.context.astronomicalNightEnd
+        guard start < end else {
             return WidgetThreeNightOutlookNight(
                 id: String(resolution.observingDate.timeIntervalSinceReferenceDate),
                 displayLabel: label, observingDate: resolution.observingDate,
                 score: nil, verdict: "No night", scoreTone: nil,
-                astronomicalNightStart: resolution.context.astronomicalNightStart,
-                astronomicalNightEnd: resolution.context.astronomicalNightEnd, bestWindow: nil,
+                astronomicalNightStart: start, astronomicalNightEnd: end, bestWindow: nil,
                 statusText: "No astronomical night", status: .noAstronomicalNight, isBestNight: false
+            )
+        }
+        guard hasCompleteHourlyCoverage(for: resolution, conditions: conditions) else {
+            return WidgetThreeNightOutlookNight(
+                id: String(resolution.observingDate.timeIntervalSinceReferenceDate),
+                displayLabel: label, observingDate: resolution.observingDate,
+                score: nil, verdict: "N/A", scoreTone: nil,
+                astronomicalNightStart: start, astronomicalNightEnd: end,
+                bestWindow: nil, statusText: "Needs fresh data",
+                status: .unavailable, isBestNight: false
             )
         }
         let score = assessment.calculatedScore
@@ -141,6 +188,20 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
             statusText: assessment.bestWindow == nil ? "No best window available" : "Best window",
             status: .available, isBestNight: isBest
         )
+    }
+
+    private static let expectedHourlyCadence: TimeInterval = 60 * 60
+    private static let cadenceTolerance: TimeInterval = 60
+
+    private static func nominalHourlyCadence(in forecasts: [HourlyForecast]) -> TimeInterval? {
+        let intervals = zip(forecasts, forecasts.dropFirst()).compactMap { first, second -> TimeInterval? in
+            let interval = second.time.timeIntervalSince(first.time)
+            return interval > 0 ? interval : nil
+        }.sorted()
+        guard !intervals.isEmpty else { return nil }
+        let cadence = intervals[intervals.count / 2]
+        guard abs(cadence - expectedHourlyCadence) <= cadenceTolerance else { return nil }
+        return cadence
     }
 
     private static func tone(for rating: NightQualityAssessment.Rating) -> WidgetTargetScoreTone {

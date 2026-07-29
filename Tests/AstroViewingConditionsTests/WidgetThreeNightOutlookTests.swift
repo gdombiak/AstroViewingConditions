@@ -7,6 +7,347 @@ import XCTest
 final class WidgetThreeNightOutlookTests: XCTestCase {
     private let timeZone = TimeZone(identifier: "America/Los_Angeles")!
 
+    func testDayRolloverFailedRefreshRebuildsFromRetainedConditionsWithPartialThirdNight() async throws {
+        let referenceDate = date(day: 26, hour: 6)
+        let location = selectedLocation()
+        let cachedSummary = makeSummary(
+            generatedAt: date(day: 25, hour: 20),
+            nights: shiftedNights(startDay: 25)
+        )
+        let staleSharedConditions = makeFourCalendarDayHourlyConditions(
+            referenceDate: referenceDate,
+            fetchedAt: date(day: 25, hour: 23)
+        )
+        let fetchAttempts = FetchAttemptRecorder()
+        let saves = SummaryRecorder()
+        let cachedLocation = CachedLocation(
+            name: location.name,
+            latitude: location.latitude,
+            longitude: location.longitude
+        )
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: cachedSummary,
+            cachedLocation: cachedLocation,
+            referenceDate: referenceDate,
+            normalConditions: {
+                await fetchAttempts.record()
+                throw DayRolloverRefreshError.failed
+            },
+            retainedConditions: { staleSharedConditions },
+            save: { summary in await saves.record(summary) }
+        )
+        let attempts = await fetchAttempts.total()
+        XCTAssertEqual(attempts, 1)
+        guard case let .available(rebuiltSummary) = entry.state else {
+            return XCTFail("Expected retained conditions to rebuild the widget")
+        }
+        XCTAssertEqual(
+            rebuiltSummary.nights.map(\.observingDate),
+            [date(day: 26), date(day: 27), date(day: 28)]
+        )
+        XCTAssertTrue(rebuiltSummary.nights.prefix(2).allSatisfy {
+            $0.status == .available && $0.score != nil
+        })
+        let third = try XCTUnwrap(rebuiltSummary.nights.last)
+        XCTAssertEqual(third.status, .unavailable)
+        XCTAssertNil(third.score)
+        XCTAssertNil(third.bestWindow)
+        XCTAssertEqual(third.verdict, "N/A")
+        XCTAssertEqual(third.statusText, "Needs fresh data")
+        XCTAssertEqual(entry.dataStatus?.provenance, .fallback)
+        XCTAssertEqual(entry.dataStatus?.dataAsOf, staleSharedConditions.fetchedAt)
+        let savedSummaries = await saves.values()
+        XCTAssertEqual(savedSummaries, [rebuiltSummary])
+    }
+
+    func testFourCalendarDayHourlyForecastMarksPartialThirdNightUnavailable() throws {
+        let referenceDate = date(day: 26, hour: 6)
+        let conditions = makeFourCalendarDayHourlyConditions(
+            referenceDate: referenceDate
+        )
+        XCTAssertEqual(conditions.hourlyForecasts.first?.time, date(day: 25))
+        XCTAssertEqual(conditions.hourlyForecasts.last?.time, date(day: 28, hour: 23))
+        XCTAssertEqual(conditions.hourlyForecasts.count, 4 * 24)
+
+        let resolutions = try XCTUnwrap((0..<3).map { dayOffset in
+            TargetRecommendationContextBuilder.resolve(
+                conditions: conditions,
+                dayOffset: dayOffset,
+                referenceDate: referenceDate,
+                timeZone: timeZone
+            )
+        }.compactMap { $0 })
+        XCTAssertEqual(resolutions.count, 3)
+
+        let coverage = resolutions.map(hourlyCoverage(for:))
+        XCTAssertEqual(coverage.map(\.observingDate), [
+            date(day: 26), date(day: 27), date(day: 28)
+        ])
+        XCTAssertEqual(coverage.map(\.astronomicalNightStart), [
+            date(day: 26, hour: 22, minute: 18),
+            date(day: 27, hour: 22, minute: 18),
+            date(day: 28, hour: 22, minute: 18)
+        ])
+        XCTAssertEqual(coverage.map(\.astronomicalNightEnd), [
+            date(day: 27, hour: 4, minute: 37),
+            date(day: 28, hour: 4, minute: 37),
+            date(day: 29, hour: 4, minute: 37)
+        ])
+        XCTAssertEqual(coverage.map(\.firstRelevantHourlyTimestamp), [
+            date(day: 26, hour: 23), date(day: 27, hour: 23), date(day: 28, hour: 23)
+        ])
+        XCTAssertEqual(coverage.map(\.lastRelevantHourlyTimestamp), [
+            date(day: 27, hour: 4), date(day: 28, hour: 4), date(day: 28, hour: 23)
+        ])
+        XCTAssertEqual(coverage.map(\.reachesAstronomicalNightEnd), [true, true, false])
+
+        let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
+            conditions: conditions,
+            existingSummary: nil,
+            referenceDate: referenceDate,
+            timeZone: timeZone
+        )
+        guard case let .publish(summary) = decision else {
+            return XCTFail("Expected the current payload builder to publish")
+        }
+        let thirdNight = try XCTUnwrap(summary.nights.last)
+        XCTAssertTrue(summary.nights.prefix(2).allSatisfy {
+            $0.status == .available && $0.score != nil
+        })
+        XCTAssertEqual(thirdNight.status, .unavailable)
+        XCTAssertNil(thirdNight.score)
+        XCTAssertNil(thirdNight.bestWindow)
+        XCTAssertEqual(thirdNight.verdict, "N/A")
+        XCTAssertEqual(thirdNight.statusText, "Needs fresh data")
+    }
+
+    func testHourlyCoverageThroughThirdDawnScoresAllThreeNights() throws {
+        let referenceDate = date(day: 26, hour: 6)
+        let conditions = makeFourCalendarDayHourlyConditions(
+            referenceDate: referenceDate,
+            hourlyDayCount: 5
+        )
+        let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
+            conditions: conditions, existingSummary: nil,
+            referenceDate: referenceDate, timeZone: timeZone
+        )
+        guard case let .publish(summary) = decision else {
+            return XCTFail("Expected a published outlook")
+        }
+        XCTAssertTrue(summary.nights.allSatisfy {
+            $0.status == .available && $0.score != nil && $0.bestWindow != nil
+        })
+    }
+
+    func testMissingHourlyIntervalMarksOnlyThatNightUnavailable() throws {
+        let referenceDate = date(day: 26, hour: 6)
+        let conditions = makeFourCalendarDayHourlyConditions(
+            referenceDate: referenceDate,
+            hourlyDayCount: 5,
+            missingHours: [date(day: 27, hour: 1)]
+        )
+        let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
+            conditions: conditions, existingSummary: nil,
+            referenceDate: referenceDate, timeZone: timeZone
+        )
+        guard case let .publish(summary) = decision else {
+            return XCTFail("Expected a published outlook")
+        }
+        XCTAssertEqual(summary.nights[0].status, .unavailable)
+        XCTAssertNil(summary.nights[0].score)
+        XCTAssertEqual(summary.nights[0].statusText, "Needs fresh data")
+        XCTAssertTrue(summary.nights.dropFirst().allSatisfy { $0.status == .available })
+    }
+
+    func testZeroHourlySamplesWithAstronomicalNightMarksNightUnavailable() throws {
+        let referenceDate = date(day: 26, hour: 6)
+        let conditions = makeFourCalendarDayHourlyConditions(
+            referenceDate: referenceDate,
+            missingHours: [date(day: 28, hour: 22), date(day: 28, hour: 23)]
+        )
+        let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
+            conditions: conditions, existingSummary: nil,
+            referenceDate: referenceDate, timeZone: timeZone
+        )
+        guard case let .publish(summary) = decision,
+              let third = summary.nights.last else {
+            return XCTFail("Expected a three-night summary")
+        }
+        XCTAssertNotNil(third.astronomicalNightStart)
+        XCTAssertNotNil(third.astronomicalNightEnd)
+        XCTAssertEqual(third.status, .unavailable)
+        XCTAssertNil(third.score)
+        XCTAssertNil(third.bestWindow)
+        XCTAssertNil(third.scoreTone)
+        XCTAssertEqual(third.verdict, "N/A")
+        XCTAssertEqual(third.statusText, "Needs fresh data")
+        XCTAssertFalse(third.isBestNight)
+    }
+
+    func testInvalidAstronomicalNightBoundariesKeepNoAstronomicalNightBehavior() throws {
+        let referenceDate = date(day: 26, hour: 6)
+        let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
+            conditions: makeConditions(
+                referenceDate: referenceDate,
+                dataStartDay: 25,
+                dailyCount: 4
+            ),
+            existingSummary: nil,
+            referenceDate: referenceDate,
+            timeZone: timeZone
+        )
+        guard case let .publish(summary) = decision,
+              let third = summary.nights.last else {
+            return XCTFail("Expected a three-night summary")
+        }
+        XCTAssertEqual(third.status, .noAstronomicalNight)
+        XCTAssertEqual(third.verdict, "No night")
+        XCTAssertEqual(third.statusText, "No astronomical night")
+    }
+
+    func testWrongLocationRetainedConditionsAreNotUsed() async {
+        let referenceDate = date(day: 26, hour: 6)
+        let location = selectedLocation()
+        let cachedSummary = makeSummary(nights: shiftedNights(startDay: 25))
+        let wrongLocationConditions = makeFourCalendarDayHourlyConditions(
+            referenceDate: referenceDate,
+            fetchedAt: date(day: 25, hour: 23),
+            location: CachedLocation(name: "Elsewhere", latitude: 47.6, longitude: -122.7)
+        )
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: cachedSummary,
+            cachedLocation: CachedLocation(name: location.name, latitude: location.latitude, longitude: location.longitude),
+            referenceDate: referenceDate,
+            normalConditions: { throw DayRolloverRefreshError.failed },
+            retainedConditions: { wrongLocationConditions },
+            save: { _ in }
+        )
+        guard case let .unavailable(reason) = entry.state else {
+            return XCTFail("Wrong-location retained conditions must not be displayed")
+        }
+        XCTAssertEqual(reason, .stale)
+    }
+
+    func testNoRetainedConditionsKeepsNoCacheUnavailableBehavior() async {
+        let referenceDate = date(day: 26, hour: 6)
+        let location = selectedLocation()
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: nil,
+            cachedLocation: CachedLocation(name: location.name, latitude: location.latitude, longitude: location.longitude),
+            referenceDate: referenceDate,
+            normalConditions: { throw DayRolloverRefreshError.failed },
+            retainedConditions: { nil },
+            save: { _ in }
+        )
+        guard case let .unavailable(reason) = entry.state else {
+            return XCTFail("Expected no-cache unavailable state")
+        }
+        XCTAssertEqual(reason, .noCache)
+    }
+
+    func testActiveNightCachedSummaryRemainsFallbackAfterRetainedRebuildCannotPublish() async {
+        let referenceDate = date(day: 26, hour: 1)
+        let location = selectedLocation()
+        let cachedSummary = makeSummary(
+            generatedAt: date(day: 26),
+            nights: shiftedNights(startDay: 25)
+        )
+        let incompleteRetained = makeConditions(
+            referenceDate: referenceDate,
+            fetchedAt: date(day: 25, hour: 23),
+            dataStartDay: 25,
+            dailyCount: 2
+        )
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: cachedSummary,
+            cachedLocation: CachedLocation(name: location.name, latitude: location.latitude, longitude: location.longitude),
+            referenceDate: referenceDate,
+            normalConditions: { throw DayRolloverRefreshError.failed },
+            retainedConditions: { incompleteRetained },
+            save: { _ in }
+        )
+        guard case let .available(summary) = entry.state else {
+            return XCTFail("Expected active cached summary fallback")
+        }
+        XCTAssertEqual(summary, cachedSummary)
+        XCTAssertEqual(entry.dataStatus?.provenance, .fallback)
+    }
+
+    func testUnavailablePublicationDisplaysValidCachedSummaryWithoutSaving() async {
+        let referenceDate = date(day: 25, hour: 20)
+        let location = selectedLocation()
+        let cachedSummary = makeSummary(generatedAt: referenceDate)
+        let saves = SummaryRecorder()
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: cachedSummary,
+            cachedLocation: CachedLocation(name: location.name, latitude: location.latitude, longitude: location.longitude),
+            referenceDate: referenceDate,
+            normalConditions: { makeConditions(referenceDate: referenceDate, dailyCount: 2) },
+            retainedConditions: { nil },
+            save: { summary in await saves.record(summary) }
+        )
+        XCTAssertTrue(cachedSummary.isDataBearing)
+        guard case let .available(summary) = entry.state else {
+            return XCTFail("Expected valid active cached summary to remain visible")
+        }
+        XCTAssertEqual(summary, cachedSummary)
+        XCTAssertEqual(entry.dataStatus?.provenance, .fallback)
+        let savedSummaries = await saves.values()
+        XCTAssertTrue(savedSummaries.isEmpty)
+    }
+
+    func testUnavailablePublicationDoesNotDisplayInvalidPreviousNightSummary() async {
+        let referenceDate = date(day: 26, hour: 6)
+        let location = selectedLocation()
+        let cachedSummary = makeSummary(
+            generatedAt: referenceDate,
+            nights: shiftedNights(startDay: 25)
+        )
+        let saves = SummaryRecorder()
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: cachedSummary,
+            cachedLocation: CachedLocation(name: location.name, latitude: location.latitude, longitude: location.longitude),
+            referenceDate: referenceDate,
+            normalConditions: {
+                makeConditions(referenceDate: referenceDate, dataStartDay: 25, dailyCount: 2)
+            },
+            retainedConditions: { nil },
+            save: { summary in await saves.record(summary) }
+        )
+        guard case .unavailable = entry.state else {
+            return XCTFail("Previous-night cached summary must not be relabeled as current")
+        }
+        let savedSummaries = await saves.values()
+        XCTAssertTrue(savedSummaries.isEmpty)
+    }
+
+    func testUnavailablePublicationWithoutDataBearingCacheMaySaveUnavailableSummary() async {
+        let referenceDate = date(day: 25, hour: 20)
+        let location = selectedLocation()
+        let saves = SummaryRecorder()
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: nil,
+            cachedLocation: CachedLocation(name: location.name, latitude: location.latitude, longitude: location.longitude),
+            referenceDate: referenceDate,
+            normalConditions: { makeConditions(referenceDate: referenceDate, dailyCount: 2) },
+            retainedConditions: { nil },
+            save: { summary in await saves.record(summary) }
+        )
+        guard case .unavailable = entry.state else {
+            return XCTFail("Expected unavailable result without a data-bearing cache")
+        }
+        let savedSummaries = await saves.values()
+        XCTAssertEqual(savedSummaries.count, 1)
+        XCTAssertEqual(savedSummaries.first?.status, .unavailable)
+    }
+
     func testPayloadJSONRoundTrip() throws {
         let summary = makeSummary()
         let encoded = try JSONEncoder().encode(summary)
@@ -397,9 +738,11 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
 
     func testTimelineAndExtensionArchitectureSourceConstraints() throws {
         let provider = try source("Sources/Widgets/ThreeNightOutlookTimelineProvider.swift")
+        let resolver = try source("Sources/Widgets/ThreeNightOutlookEntryResolver.swift")
         XCTAssertTrue(provider.contains("timelineReevaluationInterval: TimeInterval = 3600"))
         let widgetSources = try [
             "Sources/Widgets/ThreeNightOutlookTimelineProvider.swift",
+            "Sources/Widgets/ThreeNightOutlookEntryResolver.swift",
             "Sources/Widgets/ThreeNightOutlookWidgetMediumEntryView.swift",
             "Sources/Widgets/WidgetThreeNightOutlookPresentation.swift"
         ].map(source).joined()
@@ -410,26 +753,61 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         ] {
             XCTAssertFalse(widgetSources.contains(forbidden), forbidden)
         }
-        XCTAssertTrue(provider.contains("SharedConditionsRepository().conditions"))
-        XCTAssertTrue(provider.contains("ThreeNightOutlookWidgetPayloadBuilder.publicationDecision"))
+        XCTAssertTrue(provider.contains("let repository = SharedConditionsRepository()"))
+        XCTAssertTrue(provider.contains("repository.conditions("))
+        XCTAssertTrue(provider.contains("repository.matchingCachedConditions"))
         XCTAssertTrue(provider.contains("saveWidgetThreeNightOutlookSummaryAsync"))
-        XCTAssertTrue(provider.contains("cachedSummary.locationMatches(location)"))
-        XCTAssertTrue(provider.contains("cachedSummary.matchesCurrentObservingNight"))
+        XCTAssertTrue(provider.contains("ThreeNightOutlookEntryResolver.buildEntry"))
+        XCTAssertTrue(resolver.contains("ThreeNightOutlookWidgetPayloadBuilder.publicationDecision"))
+        XCTAssertTrue(resolver.contains("retainedConditions"))
+        XCTAssertTrue(resolver.contains("failedRefreshEntry"))
         XCTAssertTrue(provider.contains("context.isPreview"))
         XCTAssertTrue(provider.contains("Timeline invocation"))
-        XCTAssertTrue(provider.contains("Using matching last-known-good Outlook summary"))
         XCTAssertFalse(provider.contains("payloadMaximumAge"))
+    }
 
-        let conditionsCall = try XCTUnwrap(
-            provider.range(of: "SharedConditionsRepository().conditions")
+    func testVisibleWidgetTerminologyUsesForecast() throws {
+        let entry = try source("Sources/Widgets/ThreeNightOutlookEntry.swift")
+        let widget = try source("Sources/Widgets/ThreeNightOutlookWidget.swift")
+        let view = try source("Sources/Widgets/ThreeNightOutlookWidgetMediumEntryView.swift")
+        let presentation = try source("Sources/Widgets/WidgetThreeNightOutlookPresentation.swift")
+        let visibleSources = [entry, widget, view].joined(separator: "\n")
+        XCTAssertTrue(visibleSources.contains("Three-Night Forecast"))
+        XCTAssertTrue(visibleSources.contains("Forecast unavailable"))
+        XCTAssertTrue(visibleSources.contains("Forecast is for another location"))
+        XCTAssertTrue(view.contains("night.verdict == \"N/A\" ? \"N/A\" : \"—\""))
+        XCTAssertTrue(view.contains("if showsVerdict, night.verdict != \"N/A\""))
+        XCTAssertTrue(presentation.contains("return night.statusText"))
+        XCTAssertFalse(visibleSources.contains("Outlook needs an update"))
+        XCTAssertFalse(visibleSources.contains("Three-Night Outlook"))
+    }
+
+    func testIncompleteRowUsesOneNAAndOneNeedsFreshDataLineAcrossLayoutModes() throws {
+        let row = WidgetThreeNightOutlookNight(
+            id: "Day After", displayLabel: "Day After", observingDate: date(day: 28),
+            score: nil, verdict: "N/A", scoreTone: nil,
+            astronomicalNightStart: date(day: 28, hour: 22),
+            astronomicalNightEnd: date(day: 29, hour: 4), bestWindow: nil,
+            statusText: "Needs fresh data", status: .unavailable, isBestNight: false
         )
-        let fallbackCheck = try XCTUnwrap(
-            provider.range(of: "cachedSummary.locationMatches(location)")
+        XCTAssertEqual(
+            WidgetThreeNightOutlookPresentation.windowText(
+                for: row, timeZone: timeZone, compact: false
+            ),
+            "Needs fresh data"
         )
-        XCTAssertLessThan(
-            provider.distance(from: provider.startIndex, to: conditionsCall.lowerBound),
-            provider.distance(from: provider.startIndex, to: fallbackCheck.lowerBound)
+        XCTAssertEqual(
+            WidgetThreeNightOutlookPresentation.windowText(
+                for: row, timeZone: timeZone, compact: true
+            ),
+            "Needs fresh data"
         )
+
+        let view = try source("Sources/Widgets/ThreeNightOutlookWidgetMediumEntryView.swift")
+        XCTAssertTrue(view.contains("private func standardCandidates()"))
+        XCTAssertTrue(view.contains("private func largestStandardCandidates()"))
+        XCTAssertTrue(view.contains("private func accessibilityCandidates()"))
+        XCTAssertTrue(view.contains("if showsVerdict, night.verdict != \"N/A\""))
     }
 
     func testEveryLayoutCandidateRetainsThreeRowLoopAndSharedIdentity() throws {
@@ -582,8 +960,10 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         return calendar
     }
 
-    private func date(day: Int, hour: Int = 0) -> Date {
-        calendar.date(from: DateComponents(year: 2026, month: 7, day: day, hour: hour))!
+    private func date(day: Int, hour: Int = 0, minute: Int = 0) -> Date {
+        calendar.date(from: DateComponents(
+            year: 2026, month: 7, day: day, hour: hour, minute: minute
+        ))!
     }
 
     private func night(
@@ -638,13 +1018,14 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
 
     private func makeConditions(
         referenceDate: Date,
+        fetchedAt: Date? = nil,
         dataStartDay: Int = 25,
         dailyCount: Int = 4,
         locationID: UUID? = nil
     ) -> ViewingConditions {
         let start = date(day: dataStartDay)
         let forecasts = (0..<(4 * 24)).map { offset in
-            HourlyForecast(
+            return HourlyForecast(
                 time: start.addingTimeInterval(TimeInterval(offset) * 3600),
                 cloudCover: 20 + offset % 10, humidity: 45, windSpeed: 2,
                 windDirection: 180, temperature: 12, dewPoint: 5, visibility: 20_000
@@ -663,7 +1044,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
             )
         }
         return ViewingConditions(
-            fetchedAt: referenceDate,
+            fetchedAt: fetchedAt ?? referenceDate,
             location: CachedLocation(
                 id: locationID, name: "Home", latitude: 45.5, longitude: -122.7
             ),
@@ -676,6 +1057,71 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
             },
             issPasses: [], fogScore: FogScore(score: 0, factors: []),
             timeZoneIdentifier: timeZone.identifier
+        )
+    }
+
+    /// Uses four calendar days of hourly data, plus July 29 solar ephemeris
+    /// solely to express the final July 28 astronomical-night boundary.
+    private func makeFourCalendarDayHourlyConditions(
+        referenceDate: Date,
+        fetchedAt: Date? = nil,
+        hourlyDayCount: Int = 4,
+        missingHours: Set<Date> = [],
+        location: CachedLocation = CachedLocation(name: "Home", latitude: 45.5, longitude: -122.7)
+    ) -> ViewingConditions {
+        let forecasts = (0..<(hourlyDayCount * 24)).compactMap { offset -> HourlyForecast? in
+            let time = date(day: 25).addingTimeInterval(TimeInterval(offset) * 3600)
+            guard !missingHours.contains(time) else { return nil }
+            return HourlyForecast(
+                time: time,
+                cloudCover: 20, humidity: 45, windSpeed: 2,
+                windDirection: 180, temperature: 12, dewPoint: 5, visibility: 20_000
+            )
+        }
+        let sunEvents = (25...29).map { day in
+            SunEvents(
+                sunrise: date(day: day, hour: 6), sunset: date(day: day, hour: 20),
+                civilTwilightBegin: date(day: day, hour: 5),
+                civilTwilightEnd: date(day: day, hour: 21),
+                nauticalTwilightBegin: date(day: day, hour: 4),
+                nauticalTwilightEnd: date(day: day, hour: 21),
+                astronomicalTwilightBegin: date(day: day, hour: 4, minute: 37),
+                astronomicalTwilightEnd: date(day: day, hour: 22, minute: 18)
+            )
+        }
+        return ViewingConditions(
+            fetchedAt: fetchedAt ?? referenceDate,
+            location: location,
+            hourlyForecasts: forecasts,
+            dailySunEvents: sunEvents,
+            dailyMoonInfo: (0..<sunEvents.count).map { offset in
+                MoonInfo(
+                    phase: 0.2, phaseName: "Waxing", altitude: 10,
+                    illumination: 20 + offset, emoji: "🌒"
+                )
+            },
+            issPasses: [], fogScore: FogScore(score: 0, factors: []),
+            timeZoneIdentifier: timeZone.identifier
+        )
+    }
+
+    private func hourlyCoverage(
+        for resolution: TargetRecommendationContextResolution
+    ) -> HourlyCoverage {
+        let start = resolution.context.astronomicalNightStart
+        let end = resolution.context.astronomicalNightEnd
+        let forecasts = resolution.context.nightQuality.hourlyRatings
+        let first = forecasts.first?.time
+        let last = forecasts.last?.time
+        return HourlyCoverage(
+            observingDate: resolution.observingDate,
+            astronomicalNightStart: start,
+            astronomicalNightEnd: end,
+            firstRelevantHourlyTimestamp: first,
+            lastRelevantHourlyTimestamp: last,
+            reachesAstronomicalNightEnd: last.map {
+                $0.addingTimeInterval(60 * 60) >= end
+            } ?? false
         )
     }
 
@@ -771,4 +1217,37 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
                 .joined(separator: " ")
         }
     }
+}
+
+private struct HourlyCoverage: Equatable {
+    let observingDate: Date
+    let astronomicalNightStart: Date
+    let astronomicalNightEnd: Date
+    let firstRelevantHourlyTimestamp: Date?
+    let lastRelevantHourlyTimestamp: Date?
+    let reachesAstronomicalNightEnd: Bool
+}
+
+private enum DayRolloverRefreshError: Error, Equatable {
+    case failed
+}
+
+private actor FetchAttemptRecorder {
+    private var count = 0
+
+    func record() {
+        count += 1
+    }
+
+    func total() -> Int { count }
+}
+
+private actor SummaryRecorder {
+    private var summaries: [WidgetThreeNightOutlookSummary] = []
+
+    func record(_ summary: WidgetThreeNightOutlookSummary) {
+        summaries.append(summary)
+    }
+
+    func values() -> [WidgetThreeNightOutlookSummary] { summaries }
 }
