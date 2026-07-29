@@ -280,7 +280,7 @@ struct BestSpotView: View {
                     Text("\(bestSpot.score)")
                         .font(.largeTitle)
                         .fontWeight(.bold)
-                        .foregroundStyle(TargetScoreColorProvider.color(for: bestSpot.score, palette: palette))
+                        .foregroundStyle(LocationScoreColorProvider.color(for: bestSpot.score, palette: palette))
                 }
                 
                 if bestSpot.canOpenInMaps {
@@ -546,7 +546,7 @@ struct BestSpotMapAnnotation: View {
     }
 
     private var scoreTint: Color {
-        TargetScoreColorProvider.color(for: score, palette: palette)
+        LocationScoreColorProvider.color(for: score, palette: palette)
     }
 
     private var markerSize: CGFloat {
@@ -583,7 +583,7 @@ struct BestSpotSelectedMapLocationView: View {
                 .foregroundStyle(
                     rank == nil
                         ? palette.secondaryText
-                        : TargetScoreColorProvider.color(for: location.score, palette: palette)
+                        : LocationScoreColorProvider.color(for: location.score, palette: palette)
                 )
 
             VStack(alignment: .leading, spacing: 3) {

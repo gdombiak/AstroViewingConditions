@@ -62,6 +62,23 @@ public enum LocationSuitabilityStatus: Sendable, Hashable {
     }
 }
 
+/// Shared score bands used by location-quality presentation.
+public enum LocationScoreCategory: Sendable {
+    case excellent
+    case good
+    case fair
+    case poor
+
+    public static func resolve(_ score: Int) -> Self {
+        switch score {
+        case 80...: return .excellent
+        case 60..<80: return .good
+        case 40..<60: return .fair
+        default: return .poor
+        }
+    }
+}
+
 /// Represents a scored location for viewing conditions
 public struct LocationScore: Sendable, Identifiable, Hashable {
     public let id: UUID
@@ -172,24 +189,20 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
     }
     
     public var scoreColor: String {
-        switch score {
-        case 80...100:
-            return "green"
-        case 60..<80:
-            return "blue"
-        case 40..<60:
-            return "orange"
-        default:
-            return "red"
+        switch LocationScoreCategory.resolve(score) {
+        case .excellent: return "green"
+        case .good: return "blue"
+        case .fair: return "orange"
+        case .poor: return "red"
         }
     }
     
     public var color: Color {
-        switch score {
-        case 80...100: return .green
-        case 60..<80: return .blue
-        case 40..<60: return .orange
-        default: return .red
+        switch LocationScoreCategory.resolve(score) {
+        case .excellent: return .green
+        case .good: return .blue
+        case .fair: return .orange
+        case .poor: return .red
         }
     }
 }

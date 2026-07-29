@@ -31,7 +31,7 @@ struct BestSpotResultCard: View {
                     Text("\(locationScore.score)")
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundStyle(TargetScoreColorProvider.color(for: locationScore.score, palette: palette))
+                        .foregroundStyle(LocationScoreColorProvider.color(for: locationScore.score, palette: palette))
                     
                     Text("/100")
                         .font(.caption)
