@@ -40,6 +40,9 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
 
     func buildEntry(referenceDate: Date = Date()) async -> ThreeNightOutlookEntry {
         guard let location = AppGroupStorage.loadSelectedLocationForWidget() else {
+            outlookWidgetLogger.error(
+                "ThreeNight unavailable reason=noLocation stage=location cache=missing path=noCache"
+            )
             return .init(date: referenceDate, state: .unavailable(.noLocation))
         }
         outlookWidgetLogger.info("Selected location: \(location.name, privacy: .public)")
@@ -70,8 +73,52 @@ struct ThreeNightOutlookTimelineProvider: TimelineProvider {
             save: { summary in
                 await AppGroupStorage.saveWidgetThreeNightOutlookSummaryAsync(summary)
                 outlookWidgetLogger.info("Rebuilt and saved Three-Night Outlook summary")
+            },
+            postWorkValidationDate: Date.init,
+            logUnavailable: { context in
+                outlookWidgetLogger.error(
+                    "\(unavailableLogLine(context), privacy: .public)"
+                )
             }
         )
     }
 
+}
+
+private func unavailableLogLine(
+    _ context: ThreeNightOutlookUnavailableLogContext
+) -> String {
+    var fields = [
+        "ThreeNight unavailable",
+        "reason=\(unavailableReasonName(context.reason))",
+        "stage=\(context.stage)",
+        "cache=\(context.cache)",
+        "path=\(context.path)"
+    ]
+    if let age = context.age {
+        fields.append("age=\(Int(age.rounded()))")
+    }
+    if let maximumAge = context.maximumAge {
+        fields.append("maxAge=\(Int(maximumAge))")
+    }
+    if let category = context.fetchFailureCategory {
+        fields.append("fetch=\(category)")
+    }
+    if let observingDate = context.cachedObservingDate {
+        fields.append("cachedNight=\(observingDate.timeIntervalSince1970)")
+    }
+    return fields.joined(separator: " ")
+}
+
+private func unavailableReasonName(
+    _ reason: ThreeNightOutlookEntry.UnavailableReason
+) -> String {
+    switch reason {
+    case .noLocation: "noLocation"
+    case .noCache: "noCache"
+    case .stale: "stale"
+    case .locationMismatch: "locationMismatch"
+    case .observingNightMismatch: "observingNightMismatch"
+    case .unavailable: "unavailable"
+    }
 }

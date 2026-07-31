@@ -14,9 +14,9 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
             generatedAt: date(day: 25, hour: 20),
             nights: shiftedNights(startDay: 25)
         )
-        let staleSharedConditions = makeFourCalendarDayHourlyConditions(
+        let retainedConditions = makeFourCalendarDayHourlyConditions(
             referenceDate: referenceDate,
-            fetchedAt: date(day: 25, hour: 23)
+            fetchedAt: date(day: 26, hour: 5, minute: 30)
         )
         let fetchAttempts = FetchAttemptRecorder()
         let saves = SummaryRecorder()
@@ -34,7 +34,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
                 await fetchAttempts.record()
                 throw DayRolloverRefreshError.failed
             },
-            retainedConditions: { staleSharedConditions },
+            retainedConditions: { retainedConditions },
             save: { summary in await saves.record(summary) }
         )
         let attempts = await fetchAttempts.total()
@@ -56,7 +56,7 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         XCTAssertEqual(third.verdict, "N/A")
         XCTAssertEqual(third.statusText, "Needs fresh data")
         XCTAssertEqual(entry.dataStatus?.provenance, .fallback)
-        XCTAssertEqual(entry.dataStatus?.dataAsOf, staleSharedConditions.fetchedAt)
+        XCTAssertEqual(entry.dataStatus?.dataAsOf, retainedConditions.fetchedAt)
         let savedSummaries = await saves.values()
         XCTAssertEqual(savedSummaries, [rebuiltSummary])
     }
@@ -246,6 +246,197 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
             return XCTFail("Expected no-cache unavailable state")
         }
         XCTAssertEqual(reason, .noCache)
+    }
+
+    func testNormalPublicationValidatesAtPostWorkDateWhileBuildingForTimelineReference() async {
+        let timelineReferenceDate = date(day: 26, hour: 1)
+        let fetchedAt = timelineReferenceDate.addingTimeInterval(2)
+        let validationDate = timelineReferenceDate.addingTimeInterval(3)
+        let location = selectedLocation()
+        let conditions = makeConditions(
+            referenceDate: timelineReferenceDate,
+            fetchedAt: fetchedAt,
+            dataStartDay: 25
+        )
+        let saves = SummaryRecorder()
+
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: nil,
+            cachedLocation: CachedLocation(
+                name: location.name,
+                latitude: location.latitude,
+                longitude: location.longitude
+            ),
+            referenceDate: timelineReferenceDate,
+            normalConditions: { conditions },
+            retainedConditions: { nil },
+            save: { summary in await saves.record(summary) },
+            postWorkValidationDate: { validationDate }
+        )
+
+        guard case let .available(summary) = entry.state else {
+            return XCTFail("A just-fetched summary must remain available")
+        }
+        XCTAssertEqual(summary.generatedAt, fetchedAt)
+        XCTAssertEqual(summary.nights.first?.observingDate, date(day: 25))
+        XCTAssertEqual(entry.date, validationDate)
+        XCTAssertEqual(
+            ThreeNightOutlookEntryResolver.resolve(
+                summary: summary,
+                selectedLocation: location,
+                referenceDate: validationDate
+            ),
+            .available
+        )
+        XCTAssertEqual(
+            ThreeNightOutlookEntryResolver.resolve(
+                summary: summary,
+                selectedLocation: location,
+                referenceDate: timelineReferenceDate
+            ),
+            .stale,
+            "This is the former negative-age failure"
+        )
+        let savedSummaries = await saves.values()
+        XCTAssertEqual(savedSummaries, [summary])
+    }
+
+    func testRetainedPublicationUsesPostWorkEntryDateAndRemainsAvailable() async {
+        let timelineReferenceDate = date(day: 26, hour: 6)
+        let validationDate = timelineReferenceDate.addingTimeInterval(3)
+        let location = selectedLocation()
+        let retained = makeFourCalendarDayHourlyConditions(
+            referenceDate: timelineReferenceDate,
+            fetchedAt: timelineReferenceDate.addingTimeInterval(-2)
+        )
+
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: nil,
+            cachedLocation: CachedLocation(
+                name: location.name,
+                latitude: location.latitude,
+                longitude: location.longitude
+            ),
+            referenceDate: timelineReferenceDate,
+            normalConditions: { throw DayRolloverRefreshError.failed },
+            retainedConditions: { retained },
+            save: { _ in },
+            postWorkValidationDate: { validationDate }
+        )
+
+        guard case let .available(summary) = entry.state else {
+            return XCTFail("Recent retained conditions must remain available")
+        }
+        XCTAssertEqual(summary.generatedAt, timelineReferenceDate.addingTimeInterval(-2))
+        XCTAssertEqual(entry.date, validationDate)
+        XCTAssertEqual(entry.dataStatus?.provenance, .fallback)
+    }
+
+    func testRetainedPublicationGeneratedMeaningfullyAfterValidationIsRejected() async {
+        let timelineReferenceDate = date(day: 26, hour: 6)
+        let validationDate = timelineReferenceDate.addingTimeInterval(3)
+        let location = selectedLocation()
+        let retained = makeFourCalendarDayHourlyConditions(
+            referenceDate: timelineReferenceDate,
+            fetchedAt: validationDate.addingTimeInterval(3600)
+        )
+        let saves = SummaryRecorder()
+        var loggedContext: ThreeNightOutlookUnavailableLogContext?
+
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: nil,
+            cachedLocation: CachedLocation(
+                name: location.name,
+                latitude: location.latitude,
+                longitude: location.longitude
+            ),
+            referenceDate: timelineReferenceDate,
+            normalConditions: { throw DayRolloverRefreshError.failed },
+            retainedConditions: { retained },
+            save: { summary in await saves.record(summary) },
+            postWorkValidationDate: { validationDate },
+            logUnavailable: { loggedContext = $0 }
+        )
+
+        guard case let .unavailable(reason) = entry.state else {
+            return XCTFail("Future-dated retained publication must be rejected")
+        }
+        XCTAssertEqual(reason, .stale)
+        XCTAssertEqual(entry.date, validationDate)
+        XCTAssertEqual(loggedContext?.stage, "presentationAge")
+        XCTAssertEqual(loggedContext?.path, "retained")
+        XCTAssertEqual(loggedContext?.age ?? 0, -3600, accuracy: 0.001)
+        let savedSummaries = await saves.values()
+        XCTAssertEqual(savedSummaries.count, 1, "Save behavior must remain unchanged")
+    }
+
+    func testRetainedPublicationAtPresentationAgeLimitIsRejected() async {
+        let timelineReferenceDate = date(day: 26, hour: 6)
+        let validationDate = timelineReferenceDate.addingTimeInterval(3)
+        let location = selectedLocation()
+        let retained = makeFourCalendarDayHourlyConditions(
+            referenceDate: timelineReferenceDate,
+            fetchedAt: validationDate.addingTimeInterval(
+                -WidgetThreeNightOutlookSummary.maximumAge
+            )
+        )
+        var loggedContext: ThreeNightOutlookUnavailableLogContext?
+
+        let entry = await ThreeNightOutlookEntryResolver.buildEntry(
+            location: location,
+            cachedSummary: nil,
+            cachedLocation: CachedLocation(
+                name: location.name,
+                latitude: location.latitude,
+                longitude: location.longitude
+            ),
+            referenceDate: timelineReferenceDate,
+            normalConditions: { throw DayRolloverRefreshError.failed },
+            retainedConditions: { retained },
+            save: { _ in },
+            postWorkValidationDate: { validationDate },
+            logUnavailable: { loggedContext = $0 }
+        )
+
+        guard case let .unavailable(reason) = entry.state else {
+            return XCTFail("Retained publication at the one-hour limit must be rejected")
+        }
+        XCTAssertEqual(reason, .stale)
+        XCTAssertEqual(entry.date, validationDate)
+        XCTAssertEqual(loggedContext?.stage, "presentationAge")
+        XCTAssertEqual(loggedContext?.path, "retained")
+        XCTAssertEqual(
+            loggedContext?.age ?? 0,
+            WidgetThreeNightOutlookSummary.maximumAge,
+            accuracy: 0.001
+        )
+    }
+
+    func testMeaningfullyFutureDatedCachedSummaryRemainsRejected() {
+        let validationDate = date(day: 26, hour: 1)
+        var loggedContext: ThreeNightOutlookUnavailableLogContext?
+        let entry = ThreeNightOutlookEntryResolver.failedRefreshEntry(
+            cachedSummary: makeSummary(
+                generatedAt: validationDate.addingTimeInterval(3600),
+                nights: shiftedNights(startDay: 25)
+            ),
+            selectedLocation: selectedLocation(),
+            referenceDate: validationDate,
+            fetchFailureCategory: "test-failure",
+            logUnavailable: { loggedContext = $0 }
+        )
+
+        guard case let .unavailable(reason) = entry.state else {
+            return XCTFail("Future-dated cache must remain rejected")
+        }
+        XCTAssertEqual(reason, .stale)
+        XCTAssertEqual(loggedContext?.stage, "fallbackAge")
+        XCTAssertEqual(loggedContext?.path, "rejectedCache")
+        XCTAssertEqual(loggedContext?.fetchFailureCategory, "test-failure")
+        XCTAssertEqual(loggedContext?.age ?? 0, -3600, accuracy: 0.001)
     }
 
     func testActiveNightCachedSummaryRemainsFallbackAfterRetainedRebuildCannotPublish() async {
@@ -1061,6 +1252,23 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         XCTAssertTrue(presentation.contains("return night.statusText"))
         XCTAssertFalse(visibleSources.contains("Outlook needs an update"))
         XCTAssertFalse(visibleSources.contains("Three-Night Outlook"))
+    }
+
+    func testReleaseUnavailableUIUsesNormalMessageWithoutFieldDiagnostics() throws {
+        let entry = try source("Sources/Widgets/ThreeNightOutlookEntry.swift")
+        let widget = try source("Sources/Widgets/ThreeNightOutlookWidget.swift")
+        let visibleSources = [entry, widget].joined(separator: "\n")
+
+        XCTAssertTrue(visibleSources.contains("Open Astro Conditions to update"))
+        for diagnosticText in [
+            "ThreeNightOutlookDiagnostic",
+            "PRESENTATION-AGE",
+            "FALLBACK-AGE",
+            "ENTRY-",
+            "Diag "
+        ] {
+            XCTAssertFalse(visibleSources.contains(diagnosticText), diagnosticText)
+        }
     }
 
     func testIncompleteRowUsesOneNAAndOneNeedsFreshDataLineAcrossLayoutModes() throws {
