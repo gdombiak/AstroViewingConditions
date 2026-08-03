@@ -190,6 +190,20 @@ Format specification: [BINARY_FORMAT.md](BINARY_FORMAT.md).
   --latitude 45.45 --longitude -122.75
 ```
 
+### Dense urban validation
+
+Deterministic multi-city fidelity study (source TIFF vs LPATLAS1; does **not** regenerate the artifact):
+
+```bash
+.venv/bin/python -m light_pollution urban-validation \
+  --source ~/Downloads/zenith_brightness_v22_2025.tiff \
+  --artifact output/artifacts/light_pollution_global_v1.bin \
+  --output output/urban_validation
+```
+
+Region boxes and sampling: `config/urban_validation_regions.json`.  
+Generated reports (gitignored): `output/urban_validation/`.
+
 ### Cross-language fixture
 
 Tiny synthetic artifact (checked in under `fixtures/`) is produced by Python and consumed by Swift unit tests so both languages share one serializer:

@@ -84,6 +84,29 @@ def main(argv: list[str] | None = None) -> int:
     p_lookup.add_argument("--latitude", type=float, required=True)
     p_lookup.add_argument("--longitude", type=float, required=True)
 
+    p_urban = sub.add_parser(
+        "urban-validation",
+        help="Dense urban fidelity study: source TIFF vs LPATLAS1 artifact (no artifact changes)",
+    )
+    p_urban.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
+    p_urban.add_argument(
+        "--artifact",
+        type=Path,
+        default=OUTPUT / "artifacts" / "light_pollution_global_v1.bin",
+    )
+    p_urban.add_argument(
+        "--regions",
+        type=Path,
+        default=None,
+        help="Path to urban_validation_regions.json (default: config/)",
+    )
+    p_urban.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Output directory (default: output/urban_validation/)",
+    )
+
     p_serve = sub.add_parser("serve-viewer", help="Serve local viewer over HTTP")
     p_serve.add_argument("--port", type=int, default=8765)
     p_serve.add_argument("--bind", default="127.0.0.1")
@@ -92,14 +115,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "inspect":
         from .pipeline import run_inspect
-        from .paths import OUTPUT
 
         run_inspect(args.source, OUTPUT / "oregon", sha256=not args.skip_sha256)
         return 0
 
     if args.cmd == "global-minmax":
         from .pipeline import run_global_minmax
-        from .paths import OUTPUT
 
         run_global_minmax(args.source, OUTPUT / "oregon")
         return 0
@@ -141,7 +162,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "world-hierarchical-census":
         from .hierarchical_census import run_hierarchical_world_census
-        from .paths import CONFIG, OUTPUT
+        from .paths import CONFIG
         import json
         import numpy as np
         bands = json.loads((CONFIG / "product_bands.json").read_text())["bands"]
@@ -170,7 +191,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "hierarchical-benchmark":
         from .hierarchical_census import benchmark_hierarchical_row
-        from .paths import CONFIG, OUTPUT
+        from .paths import CONFIG
         import json
         import numpy as np
         bands = json.loads((CONFIG / "product_bands.json").read_text())["bands"]
@@ -223,6 +244,22 @@ def main(argv: list[str] | None = None) -> int:
             print("unavailable")
             return 2
         print(f"{v:.10f}")
+        return 0
+
+    if args.cmd == "urban-validation":
+        from .urban_validation import (
+            DEFAULT_ARTIFACT,
+            DEFAULT_OUTPUT_DIR,
+            DEFAULT_REGIONS_CONFIG,
+            run_urban_validation,
+        )
+
+        run_urban_validation(
+            source=args.source,
+            artifact_path=args.artifact or DEFAULT_ARTIFACT,
+            regions_config=args.regions or DEFAULT_REGIONS_CONFIG,
+            output_dir=args.output or DEFAULT_OUTPUT_DIR,
+        )
         return 0
 
     if args.cmd == "serve-viewer":

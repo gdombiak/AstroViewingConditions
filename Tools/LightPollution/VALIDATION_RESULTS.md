@@ -111,6 +111,27 @@ Single-coordinate app use is effectively instantaneous.
 
 **Permission:** David Lorenz granted explicit permission to use his work and TIFF files. In-app credit should appear in About/data-sources when productized.
 
+## Dense urban validation (LPATLAS1 v1, unchanged artifact)
+
+Reproducible multi-metro study (`python -m light_pollution urban-validation`, config `config/urban_validation_regions.json`). Generated detail under ignored `output/urban_validation/`.
+
+Headline (N≈59.5k valid urban-grid samples, 26 metros):
+
+| Metric | Urban study | Prior global random |
+|--------|-------------|---------------------|
+| MAE | **0.050** mag | 0.024 mag |
+| P95 | **0.137** mag | 0.066 mag |
+| P99 | **0.191** mag | 0.098 mag |
+| Max | **0.42** mag | 0.43 mag |
+| % > 0.10 | **12.6%** | 0.62% |
+| % > 0.20 | **0.74%** | 0.06% |
+
+Errors concentrate on **high/extreme local gradients** (3×3 source range), not root boundaries (mean signed error ≈ 0). Worst metros by P95: Mumbai, Singapore, Miami, SF Bay, Sydney.
+
+**Product impact (approved scoring, unchanged calibration):** rounded observing-quality score changes are almost always **0 or 1** point (never ≥2 in this sample) across NCS 50–93. Nearby pair order reversals under equal NCS are rare (~**0.68%** of pairs with stratified sampling; mostly near-tied sites). Score rounding in the harness matches Swift ties-away-from-zero.
+
+**Recommendation from this study:** keep the current LPATLAS1 artifact for packaging; urban fidelity is weaker than the global random sample but product score impact remains small.
+
 ### Rationale
 
 - Visually competitive with uniform **0.05°** UInt8 for Oregon review, with selective **0.025°** detail where the tree refines
