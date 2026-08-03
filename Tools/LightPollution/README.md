@@ -194,7 +194,9 @@ Format specification: [BINARY_FORMAT.md](BINARY_FORMAT.md).
 
 See [CROSS_SURFACE_ARCHITECTURE.md](CROSS_SURFACE_ARCHITECTURE.md): hybrid model (main app local LPATLAS1; widgets/watch planned via shared calculator + brightness/score payloads, not necessarily embedding the 10 MiB artifact). Composition root owns bootstrap—not feature views.
 
-**Phase 1 foundation (SharedCode):** `LightPollutionDatasetIdentity`, `ModeledZenithBrightnessSample`, `ModeledZenithBrightnessValidity` (shared 1000 m haversine + dataset checks), `ModeledZenithBrightnessResolver`. No App Group / WC behavior yet.
+**Phase 1 foundation (SharedCode):** `LightPollutionDatasetIdentity`, `ModeledZenithBrightnessSample`, `ModeledZenithBrightnessValidity` (shared 1000 m haversine + dataset checks), `ModeledZenithBrightnessResolver`.
+
+**Phase 2 (SharedCode):** durable saved-location companion metadata in App Group `savedLocationModeledBrightness.json`; sole-writer `SavedLocationModeledBrightnessCoordinator`; read-only `SavedLocationModeledBrightnessReading`. Not iCloud; no widget score changes yet.
 
 ### Production app packaging
 

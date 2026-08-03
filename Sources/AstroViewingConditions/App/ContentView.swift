@@ -52,6 +52,21 @@ struct ContentView: View {
                 didStartObservingQualityBootstrap = true
                 await observingQualitySession.bootstrap(preferredBundles: [Bundle.main])
                 dashboardViewModel.syncLightPollutionReadinessFromEnvironment()
+
+                // Phase 2: backfill durable saved-location modeled-brightness metadata.
+                // Stamp revision before awaiting provider so a concurrent CRUD publication
+                // (higher revision) is never overwritten by this backfill.
+                // Provider already loaded by bootstrap — do not start another atlas load.
+                let cached = LocationStorageService.shared.getSavedLocations(context: modelContext)
+                let anchors = cached.compactMap(SavedLocationBrightnessAnchor.init(cachedLocation:))
+                let publication = SavedLocationBrightnessPublication.makeAuthoritative(
+                    locations: anchors
+                )
+                let provider = await LightPollutionProviderBootstrap.shared.currentProvider()
+                await SavedLocationModeledBrightnessCoordinator.shared.synchronize(
+                    publication: publication,
+                    provider: provider
+                )
             }
     }
 

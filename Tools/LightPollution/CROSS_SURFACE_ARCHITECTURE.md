@@ -131,6 +131,8 @@ Widgets already:
 | `ModeledZenithBrightnessSample` | Portable versioned brightness + lookup coords + optional `savedLocationID` |
 | `ModeledZenithBrightnessValidity` | **Shared** dataset / range / haversine (1000 m) validity — all surfaces must use this |
 | `ModeledZenithBrightnessResolver` | Thin sample/resolve over a ready provider (no bundle I/O) |
+| `SavedLocationModeledBrightnessCoordinator` | **Sole writer** actor for durable saved-location brightness companion metadata |
+| `SavedLocationModeledBrightnessReading` | Public **read-only** facade (widgets/extensions; independent process load) |
 | `ObservingQualityEnvironment` | assess + readiness (UI/composition) |
 | `ObservingQualityService` / `ObservingQualityAssessing` | Thread-safe assess path |
 | `ObservingQualityCalculator` | Pure score |
@@ -150,7 +152,12 @@ Byte count / SHA-256 remain packaging + integration-test diagnostics only.
 
 **Watch (Phase 4 design):** Current Location brightness must be sampled at **watch-supplied** coordinates; do not assume phone selection equals watch GPS. Validate returns with `ModeledZenithBrightnessValidity.coordinatesMatch`.
 
-**Saved-location metadata (Phase 2):** App Group companion cache keyed by stable SavedLocation ID is the durable derived-metadata implementation (not an optional optimization); lifecycle: rename preserves, coordinate edit invalidates, delete prunes, create populates when provider ready, widgets can read, not mirrored via iCloud.
+**Saved-location metadata (Phase 2 — shipped):** Durable App Group companion file `savedLocationModeledBrightness.json` (`group.com.astroviewing.conditions`), schema v1, keyed by stable `SavedLocation.id`. Samples are Phase 1 `ModeledZenithBrightnessSample` values (not OQ scores).
+
+- **Sole writer:** `SavedLocationModeledBrightnessCoordinator` actor (in-memory document after first load; sticky unsupported-schema write-disable).
+- **Authoritative sync:** full snapshot from `LocationStorageService.publishLocationsToWatch` (enqueue) + composition-root backfill after bootstrap (`currentProvider()`, no second atlas load).
+- **Lifecycle:** rename preserves (ID stable); coord change uses Phase 1 1000 m validity; delete pruned via snapshot; create enriched when provider ready; dataset revision refreshes lazily via resolver; **not** mirrored via iCloud.
+- **Readers:** `SavedLocationModeledBrightnessReading.loadValidSample` (Phase 4 widget use; no write).
 
 **Pending UI (Phase 5):** full-card placeholder remains until score-slot-only refinement; not Phase 1.
 

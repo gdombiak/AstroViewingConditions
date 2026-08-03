@@ -53,6 +53,18 @@ public final class LocationStorageService: @unchecked Sendable {
     public func publishLocationsToWatch(context: ModelContext) -> [CachedLocation] {
         let locations = getSavedLocations(context: context)
         saveSavedLocations(locations)
+        // Authoritative companion-metadata sync: single lifecycle owner (coordinator).
+        // Stamp revision synchronously here so delayed provider Tasks cannot reorder
+        // snapshots; coordinator ignores lower revisions.
+        let anchors = locations.compactMap(SavedLocationBrightnessAnchor.init(cachedLocation:))
+        let publication = SavedLocationBrightnessPublication.makeAuthoritative(locations: anchors)
+        Task {
+            let provider = await LightPollutionProviderBootstrap.shared.currentProvider()
+            await SavedLocationModeledBrightnessCoordinator.shared.enqueueSynchronize(
+                publication: publication,
+                provider: provider
+            )
+        }
         return locations
     }
 }
