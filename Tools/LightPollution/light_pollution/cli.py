@@ -66,6 +66,24 @@ def main(argv: list[str] | None = None) -> int:
     p_hbench.add_argument("--workers", type=int, default=None)
     p_hbench.add_argument("--root-j", type=int, default=4, help="Root row index (default 4 ~ mid latitudes)")
 
+    p_gen = sub.add_parser(
+        "generate-global",
+        help="Generate production light_pollution_global_v1.bin from source TIFF",
+    )
+    p_gen.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
+    p_gen.add_argument("--output", type=Path, default=None)
+    p_gen.add_argument("--report", type=Path, default=None)
+    p_gen.add_argument("--workers", type=int, default=None)
+    p_gen.add_argument("--skip-sha256", action="store_true")
+
+    p_ainfo = sub.add_parser("artifact-info", help="Inspect LPATLAS1 binary artifact")
+    p_ainfo.add_argument("--artifact", type=Path, required=True)
+
+    p_lookup = sub.add_parser("lookup", help="Lookup modeled zenith brightness from artifact")
+    p_lookup.add_argument("--artifact", type=Path, required=True)
+    p_lookup.add_argument("--latitude", type=float, required=True)
+    p_lookup.add_argument("--longitude", type=float, required=True)
+
     p_serve = sub.add_parser("serve-viewer", help="Serve local viewer over HTTP")
     p_serve.add_argument("--port", type=int, default=8765)
     p_serve.add_argument("--bind", default="127.0.0.1")
@@ -177,6 +195,34 @@ def main(argv: list[str] | None = None) -> int:
             u16=UInt16Params(),
             product_bands=bands,
         )
+        return 0
+
+    if args.cmd == "generate-global":
+        from .generate_global import generate_global_artifact
+        generate_global_artifact(
+            source=args.source,
+            output_path=args.output,
+            report_path=args.report,
+            workers=args.workers,
+            skip_sha256=args.skip_sha256,
+        )
+        return 0
+
+    if args.cmd == "artifact-info":
+        from .binary_format import LightPollutionArtifact
+        import json
+        art = LightPollutionArtifact.load(args.artifact)
+        print(json.dumps(art.info(), indent=2))
+        return 0
+
+    if args.cmd == "lookup":
+        from .binary_format import LightPollutionArtifact
+        art = LightPollutionArtifact.load(args.artifact)
+        v = art.lookup(args.latitude, args.longitude)
+        if v is None:
+            print("unavailable")
+            return 2
+        print(f"{v:.10f}")
         return 0
 
     if args.cmd == "serve-viewer":

@@ -8,6 +8,8 @@ Durable constraints for work under `Tools/LightPollution/`.
 - Average magnitude values directly in the **preferred** aggregation path (linear-brightness average is required).
 - Call atlas values or product test bands "Bortle classes."
 - Modify production Swift code or app resources unless explicitly requested.
+- Wire `BinaryLightPollutionProvider` into NightQualityAnalyzer, Best Nearby, UI, widgets, or watch unless that integration is the explicit task.
+- Commit multi-megabyte generated production binaries without an explicit packaging decision.
 - Load the complete global raster into memory.
 - Write multiple full-world reconstructed candidate rasters during validation.
 - Claim that a hierarchical candidate **meets** its configured max-error budget when any finest-cap leaf or valid-cell violations remain.

@@ -59,6 +59,58 @@ Corresponding candidate id pattern:
 
 `hierarchical_adaptive_uint8_budget0.1_error_cap0.025`
 
+## Production binary (LPATLAS1 v1) — generated locally
+
+Format: [BINARY_FORMAT.md](BINARY_FORMAT.md). Artifact name: `light_pollution_global_v1.bin` (gitignored under `output/artifacts/`).
+
+| Metric | Value |
+|--------|--------|
+| Artifact size | **10,328,230 bytes ≈ 9.85 MiB** |
+| Prior census estimate | **9.61 MiB** (≈ +0.24 MiB / +2.5% vs real DFS payload) |
+| Generation (8 workers) | ≈ **247 s** |
+| Algorithm | hierarchical_adaptive_uint8_budget0.1_error_cap0.025 |
+| Quantization | UInt8 over **[13.01, 22.5]** mag/arcsec²; dequant step ≈ 0.0374 mag |
+| Roots | 1254 (22 constant, 535 default_pristine, 697 children) |
+| Finest-cap budget violations (roots) | 609 (expected; not a packaging blocker) |
+
+### Global accuracy (deterministic sample, seed=70, N=5000)
+
+| Metric | Value |
+|--------|--------|
+| Valid samples | 5000 |
+| MAE | **0.0235** mag |
+| Median AE | 0.0143 mag |
+| P90 / P95 / P99 | 0.056 / **0.066** / 0.098 mag |
+| Max AE | **0.43** mag |
+| % > 0.05 / 0.10 / 0.20 | 11.6% / **0.62%** / 0.06% |
+
+Sky bands (same sample): dark (≥21.5) MAE 0.022; moderate (19–21.5) MAE 0.049, 11.9% >0.10; bright (<19) n=11, MAE 0.084 (sparse in random global sample).
+
+Oregon study remains the denser regional fidelity check (MAE ~0.036, P95 ~0.085); global random sample is **slightly better on average** than Oregon because dark ocean/land dominate the globe.
+
+### Named points (source TIFF vs Python LPATLAS1; Swift matches Python to 1e-6)
+
+| Site | Source | Artifact | \|error\| |
+|------|--------|----------|-----------|
+| Home (45.45, −122.75) | 18.5897 | 18.5396 | **0.050** |
+| Stub Stewart (45.736, −123.192) | 21.3461 | 21.3418 | **0.004** |
+| Downtown Portland | 17.9724 | 18.0913 | 0.119 |
+| NYC | 16.9655 | 17.0451 | 0.080 |
+
+Out-of-coverage latitudes return unavailable (`nil`); open ocean is typically modeled near pristine (~22), not NoData.
+
+### Runtime (local)
+
+| Path | Timing |
+|------|--------|
+| Python lookup | ~430–440 µs/point (no root-blob cache) |
+| Swift init (mmap) | < 1 ms wall for open |
+| Swift lookup | ~230 µs/point warm (2000 pts × 5) |
+
+Single-coordinate app use is effectively instantaneous.
+
+**Permission:** David Lorenz granted explicit permission to use his work and TIFF files. In-app credit should appear in About/data-sources when productized.
+
 ### Rationale
 
 - Visually competitive with uniform **0.05°** UInt8 for Oregon review, with selective **0.025°** detail where the tree refines

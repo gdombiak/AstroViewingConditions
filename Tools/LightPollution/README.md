@@ -2,15 +2,19 @@
 
 Mac-only offline tooling to measure compact representations of **David Lorenz’s 2025 global zenith-sky-brightness atlas** for a future light-pollution-aware feature in Astro Viewing Conditions.
 
-**Scope:** Fidelity validation is **Oregon-focused** (reconstruction, metrics, named points, viewer). The harness also runs **worldwide streaming censuses** for fixed-tile adaptive and hierarchical candidates so global sizes are credible. It does **not** modify production Swift code or bundle an app resource.
+**Scope:** Fidelity validation is **Oregon-focused** (reconstruction, metrics, named points, viewer). The harness also runs **worldwide streaming censuses** and can generate a **production LPATLAS1 binary** for offline app lookup. Wiring the binary into observing-quality scoring / UI is a separate product step.
 
 For the completed experiment’s headline results and recommendation, see [VALIDATION_RESULTS.md](VALIDATION_RESULTS.md). That document also defines the **[atlas update procedure](VALIDATION_RESULTS.md#updating-to-a-new-atlas-release)** (incumbent 2025 configuration, revalidation steps, and review triggers). Detailed generated reports live under ignored `output/`.
+
+Binary layout: [BINARY_FORMAT.md](BINARY_FORMAT.md).
 
 ## Attribution
 
 Source values are **modeled zenith sky brightness** in **magnitudes per square arcsecond** (mag/arcsec²). Larger values mean darker skies. These are **not** Bortle classes.
 
-Atlas by [David Lorenz](https://djlorenz.github.io/astronomy/lp/). The validation work in this repository uses his Light Pollution Atlas products (2025 zenith-brightness GeoTIFF in the completed experiment). Redistribution or bundling of each atlas release remains subject to the **applicable license or explicit permission for that release**. This harness does **not** grant redistribution rights.
+Atlas by [David Lorenz](https://djlorenz.github.io/astronomy/lp/) — product used here: **zenith_brightness_v22_2025** (2025 global zenith-brightness GeoTIFF). **Explicit permission to use the work and TIFF files was obtained directly from the author.** This harness and any derived offline binary do **not** themselves grant third-party redistribution rights.
+
+**In-app attribution (when the atlas is productized):** surface David Lorenz / Light Pollution Atlas credit in About or data-source UI, linking to https://djlorenz.github.io/astronomy/lp/.
 
 ## Prerequisites
 
@@ -151,6 +155,53 @@ Streaming passes over the global GeoTIFF estimate packaging size without writing
 | **Hierarchical adaptive** | Streaming `world-hierarchical-census` | **Census-derived** — takes precedence over Oregon-scaled placeholders |
 
 **Do not** treat Oregon-scaled fixed-adaptive MiB figures (often hundreds of MiB in generated Oregon-only tables) as the packaging size. Earlier exact worldwide fixed-adaptive census results are on the order of **~87–138 MiB** depending on budget/storage; always prefer `output/world_adaptive_quant_census.json` when present, and label any remaining Oregon-scaled figures as preliminary.
+
+## Production global binary (LPATLAS1)
+
+Selected representation: **`hierarchical_adaptive_uint8_budget0.1_error_cap0.025`**
+(UInt8 quantized hierarchical adaptive, 0.10 mag error target, 0.025° finest cap, no native fallback).
+
+Format specification: [BINARY_FORMAT.md](BINARY_FORMAT.md).
+
+### Generate
+
+```bash
+.venv/bin/python -m light_pollution generate-global \
+  --source ~/Downloads/zenith_brightness_v22_2025.tiff \
+  --output output/artifacts/light_pollution_global_v1.bin \
+  --report output/artifacts/light_pollution_global_v1.manifest.json \
+  --workers 8 \
+  --skip-sha256
+```
+
+- Writes the binary **atomically** (temp file then replace).
+- Manifest records source metadata, algorithm, quant range, root stats, size, and attribution.
+- Does **not** load the entire Float32 raster at once (windowed roots).
+- Generated path is **gitignored** (`output/artifacts/`). Decide deliberately before committing a binary.
+
+### Inspect and lookup
+
+```bash
+.venv/bin/python -m light_pollution artifact-info \
+  --artifact output/artifacts/light_pollution_global_v1.bin
+
+.venv/bin/python -m light_pollution lookup \
+  --artifact output/artifacts/light_pollution_global_v1.bin \
+  --latitude 45.45 --longitude -122.75
+```
+
+### Cross-language fixture
+
+Tiny synthetic artifact (checked in under `fixtures/`) is produced by Python and consumed by Swift unit tests so both languages share one serializer:
+
+- `fixtures/lpatlas1_tiny_constant.bin`
+- `fixtures/lpatlas1_tiny_constant.lookups.json`
+
+Named geographic validation points (no embedded results): `config/points/global_validation_points.json`.
+
+### Swift runtime
+
+`BinaryLightPollutionProvider` in SharedCode implements `LightPollutionProviding` and reads LPATLAS1 without TIFF/GDAL. It is **not** wired into `NightQualityAnalyzer` / observing score yet.
 
 ## Hierarchical budget semantics
 

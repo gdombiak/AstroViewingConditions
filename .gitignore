@@ -73,3 +73,12 @@ Tools/LightPollution/**/*.tif
 Tools/LightPollution/**/*.npy
 Tools/LightPollution/**/*.npz
 Tools/LightPollution/**/*.f32
+
+# Light-pollution generated binaries and local fixtures (large)
+Tools/LightPollution/output/artifacts/
+Tools/LightPollution/**/*.bin
+# Tiny checked-in LPATLAS1 fixtures for cross-language tests
+!Tools/LightPollution/fixtures/
+!Tools/LightPollution/fixtures/**
+Tools/LightPollution/**/hierarchical_census_checkpoint/
+Tools/LightPollution/**/hierarchical_bench_ckpt/
