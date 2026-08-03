@@ -60,3 +60,16 @@ playground.xcworkspace
 
 # Kilo
 .kilo/
+
+# Light-pollution validation harness (Tools/LightPollution)
+Tools/LightPollution/cache/
+Tools/LightPollution/output/
+Tools/LightPollution/.venv/
+Tools/LightPollution/**/__pycache__/
+Tools/LightPollution/**/*.pyc
+Tools/LightPollution/**/.pytest_cache/
+Tools/LightPollution/**/*.tiff
+Tools/LightPollution/**/*.tif
+Tools/LightPollution/**/*.npy
+Tools/LightPollution/**/*.npz
+Tools/LightPollution/**/*.f32

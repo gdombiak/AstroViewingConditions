@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oregon Light Pollution Atlas Comparison</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Oregon zenith sky brightness — candidate comparison</h1>
+    <label>Candidate
+      <select id="candidate"></select>
+    </label>
+    <label>Layer
+      <select id="layer">
+        <option value="value">Values</option>
+        <option value="signed">Signed error</option>
+        <option value="abs">Absolute error</option>
+      </select>
+    </label>
+    <label>Hierarchy overlay
+      <input type="checkbox" id="hierarchyOverlay" />
+    </label>
+    <label>Layout
+      <select id="mode">
+        <option value="side">Side by side</option>
+        <option value="swipe">Single (synced pan)</option>
+      </select>
+    </label>
+    <button type="button" id="fit">Fit</button>
+    <span id="status" class="hint"></span>
+  </header>
+  <main>
+    <div class="stage-wrap">
+      <div class="stage" id="stage">
+        <div class="panel">
+          <div class="tag" id="leftTag">Original</div>
+          <canvas id="leftCanvas"></canvas>
+        </div>
+        <div class="panel">
+          <div class="tag" id="rightTag">Candidate</div>
+          <canvas id="rightCanvas"></canvas>
+          <div class="swipe-handle" id="swipeHandle" hidden></div>
+        </div>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <h2>Metrics</h2>
+      <div id="metrics"></div>
+      <h2>Probe</h2>
+      <div id="probe" class="hint">Move cursor over a raster</div>
+      <h2>Top absolute errors</h2>
+      <div id="topErrors" class="hint">Select a candidate</div>
+      <button type="button" id="gotoWorst">Go to worst error</button>
+      <p class="hint">
+        Pan: drag · Zoom: scroll · Rendering is nearest-neighbor (pixelated) so coarse candidates show true resolution.
+        Values are modeled zenith brightness in mag/arcsec² (larger = darker). Not Bortle classes.
+        Atlas: David Lorenz 2025. Offline static viewer.
+      </p>
+    </aside>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

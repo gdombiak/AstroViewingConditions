@@ -1,0 +1,12 @@
+{
+  "description": "Provisional product test bands for classification-stability checks only. NOT Bortle classes. Values are zenith sky brightness in mag/arcsec² (larger = darker).",
+  "label_note": "product_test_band_not_bortle",
+  "bands": [
+    {"id": "very_bright", "label": "Very bright (urban core)", "min_mag": null, "max_mag": 18.5},
+    {"id": "bright", "label": "Bright suburban", "min_mag": 18.5, "max_mag": 19.5},
+    {"id": "transitional", "label": "Transitional", "min_mag": 19.5, "max_mag": 20.5},
+    {"id": "rural", "label": "Rural", "min_mag": 20.5, "max_mag": 21.3},
+    {"id": "dark", "label": "Dark", "min_mag": 21.3, "max_mag": 21.75},
+    {"id": "very_dark", "label": "Very dark / near-pristine", "min_mag": 21.75, "max_mag": null}
+  ]
+}

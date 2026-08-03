@@ -1,0 +1,17 @@
+{
+  "description": "Quantization parameters. UInt8 bounds should be set from streaming global min/max or conservative documented bounds with saturation analysis.",
+  "uint16": {
+    "m_min": 16.0,
+    "step": 0.01,
+    "nodata_code": 65535,
+    "note": "Preserves approximately hundredths of a magnitude over a wide range."
+  },
+  "uint8": {
+    "m_min": 16.0,
+    "m_max": 22.5,
+    "nodata_code": 255,
+    "note": "Codes 0..254 map linearly from m_min to m_max; 255 = NoData. Bounds refined after streaming scan."
+  },
+  "pristine_default_mag": 22.0,
+  "pristine_default_note": "Valid-cell default for omitted pristine tiles; all-NoData tiles use NoData, not this value. Measure error vs true values."
+}

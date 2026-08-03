@@ -1,0 +1,12 @@
+{
+  "root_cells": 768,
+  "level_cells": [768, 384, 192, 96, 48, 24, 12, 6, 3],
+  "pristine_default_mag": 22.0,
+  "band_disagree_frac": 0.05,
+  "dilution_range_mag": 0.5,
+  "serialization_primary": "dfs_inline",
+  "header_bytes": 256,
+  "root_index_entry_bytes": 20,
+  "node_tag_bytes": 1,
+  "description": "Regular 768-cell conceptual roots; structural NoData padding outside source extent; no native 1-cell fallback."
+}

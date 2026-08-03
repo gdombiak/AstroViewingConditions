@@ -1,0 +1,9 @@
+{
+  "id": "oregon",
+  "name": "Oregon primary comparison region",
+  "description": "Covers Portland metro, coast, Willamette Valley, Cascades, Bend, eastern and southeastern Oregon.",
+  "lon_min": -125.0,
+  "lon_max": -116.0,
+  "lat_min": 42.0,
+  "lat_max": 47.0
+}
