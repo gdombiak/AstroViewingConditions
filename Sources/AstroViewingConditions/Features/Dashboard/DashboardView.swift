@@ -36,6 +36,8 @@ public struct DashboardView: View {
     private let locationSession: DashboardLocationSession
     
     init(
+        // Default uses UnavailableObservingQualityEnvironment (not a loading session).
+        // Production ContentView injects a process-owned ObservingQualitySession.
         viewModel: DashboardViewModel = DashboardViewModel(
             apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
         ),
@@ -205,6 +207,7 @@ public struct DashboardView: View {
             hasRestoredSelectedDay = true
             viewModel.updateAPIKey(n2yoApiKey)
             locationLoader.restoreSelection(using: savedLocations.map(CachedLocation.init))
+            // Observing-quality / LPATLAS1 bootstrap is owned by ContentView composition root.
             await resolveCurrentLocationIfNeeded()
             await loadActiveLocationConditionsIfNeeded()
         }
@@ -292,9 +295,16 @@ public struct DashboardView: View {
                 daySelector
                     .id(DashboardSection.top)
 
-                if let nightQuality = viewModel.currentNightQuality {
+                if viewModel.isObservingQualityHeadlinePending {
+                    // Night conditions ready but LPATLAS1 not resolved — avoid flashing
+                    // night-only score as if it were finalized observing quality.
+                    NightQualityCardHeadlinePending()
+                        .id(DashboardSection.nightQuality)
+                } else if let nightQuality = viewModel.currentNightQuality,
+                          let headline = viewModel.currentObservingQualityHeadline {
                     NightQualityCard(
-                        assessment: nightQuality
+                        assessment: nightQuality,
+                        headline: headline
                     )
                     .id(DashboardSection.nightQuality)
                 }

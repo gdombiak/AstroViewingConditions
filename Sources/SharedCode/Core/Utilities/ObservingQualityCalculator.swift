@@ -12,7 +12,8 @@ import Foundation
 /// ```
 /// Clamped to 0…100. No second Moon term (Moon is already in night conditions).
 ///
-/// Not yet wired into NightQualityAnalyzer, Best Nearby, UI, widgets, or watch.
+/// Wired into the main iOS dashboard headline via `ObservingQualityService`.
+/// Not yet used by Best Nearby, widgets, watch, or Best Targets.
 public enum ObservingQualityCalculator: Sendable {
 
     // MARK: - Product calibration anchors (not Bortle classes; internal)

@@ -1325,6 +1325,262 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertTrue(viewModel.isDataStale)
     }
 
+    // MARK: - Observing quality boundary
+
+    func testObservingQualityUnavailableEqualsNightScoreExactly() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .unavailable, brightness: nil)
+        let (viewModel, nightScore) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+
+        XCTAssertNotNil(viewModel.currentNightQuality)
+        XCTAssertFalse(viewModel.isObservingQualityHeadlinePending)
+        let oq = try! XCTUnwrap(viewModel.currentObservingQuality)
+        XCTAssertEqual(oq.score, nightScore)
+        XCTAssertEqual(oq.nightConditionsScore, nightScore)
+        XCTAssertNil(oq.lightPollution)
+    }
+
+    func testObservingQualityPendingWhileLoadingDoesNotExposeInterimScore() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .loading, brightness: 18.5)
+        let (viewModel, _) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+
+        XCTAssertNotNil(viewModel.currentNightQuality)
+        XCTAssertTrue(viewModel.isObservingQualityHeadlinePending)
+        XCTAssertNil(viewModel.currentObservingQuality)
+        XCTAssertNil(viewModel.currentObservingQualityHeadline)
+        XCTAssertEqual(env.assessCallCount, 0)
+    }
+
+    func testObservingQualityUsesProviderWhenReadyWithoutReplacingConditions() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let (viewModel, nightScore) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        let conditionsBefore = viewModel.viewingConditions
+
+        let oq = try! XCTUnwrap(viewModel.currentObservingQuality)
+        XCTAssertLessThan(oq.score, nightScore)
+        XCTAssertNotNil(oq.lightPollution)
+        XCTAssertEqual(env.lastLatitude ?? 0, 45.45, accuracy: 1e-9)
+        XCTAssertEqual(env.lastLongitude ?? 0, -122.75, accuracy: 1e-9)
+        XCTAssertEqual(env.lastNightScore, nightScore)
+
+        viewModel.syncLightPollutionReadinessFromEnvironment()
+        XCTAssertEqual(viewModel.viewingConditions?.fetchedAt, conditionsBefore?.fetchedAt)
+        XCTAssertEqual(viewModel.viewingConditions?.location.latitude, conditionsBefore?.location.latitude)
+    }
+
+    func testObservingQualityUsesCurrentLocationCoordinates() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let (viewModel, _) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.lastLatitude ?? 0, 45.45, accuracy: 1e-9)
+
+        let prior = viewModel.viewingConditions!
+        viewModel.viewingConditions = ViewingConditions(
+            fetchedAt: prior.fetchedAt,
+            location: CachedLocation(name: "Stub", latitude: 45.736, longitude: -123.192),
+            hourlyForecasts: prior.hourlyForecasts,
+            dailySunEvents: prior.dailySunEvents,
+            dailyMoonInfo: prior.dailyMoonInfo,
+            issPasses: prior.issPasses,
+            fogScore: prior.fogScore,
+            timeZoneIdentifier: prior.timeZoneIdentifier
+        )
+        env.brightness = 21.3
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.lastLatitude ?? 0, 45.736, accuracy: 1e-9)
+        XCTAssertEqual(env.lastLongitude ?? 0, -123.192, accuracy: 1e-9)
+    }
+
+    func testObservingQualityUsesSelectedDayNightScore() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: nil)
+        let (viewModel, todayScore) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.5,
+            longitude: -122.7
+        )
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.lastNightScore, todayScore)
+
+        viewModel.selectedDay = .tomorrow
+        if let nq = viewModel.currentNightQuality {
+            _ = viewModel.currentObservingQuality
+            XCTAssertEqual(env.lastNightScore, nq.calculatedScore)
+            XCTAssertEqual(env.lastLatitude ?? 0, 45.5, accuracy: 1e-9)
+        }
+    }
+
+    func testDefaultConstructionUsesUnavailableEnvironmentNotPermanentLoading() {
+        // No observingQualityEnvironment argument → UnavailableObservingQualityEnvironment.
+        let (viewModel, nightScore) = Self.makeViewModelWithNightQuality(
+            environment: nil,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        XCTAssertEqual(viewModel.lightPollutionReadiness, .unavailable)
+        XCTAssertFalse(viewModel.isObservingQualityHeadlinePending)
+        let oq = try! XCTUnwrap(viewModel.currentObservingQuality)
+        XCTAssertEqual(oq.score, nightScore)
+        XCTAssertEqual(oq.nightConditionsScore, nightScore)
+        XCTAssertNil(oq.lightPollution)
+        XCTAssertNotNil(viewModel.currentObservingQualityHeadline)
+    }
+
+    func testBestTargetsRemainOnNightConditionsScoreNotObservingHeadline() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let fixedTargets = [
+            Self.makeRecommendation(id: "a", name: "A", score: 70)
+        ]
+        let targetService = RecordingDashboardTargetRecommendationService(
+            recommendations: fixedTargets
+        )
+        let (viewModel, nightScore) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75,
+            targetRecommendationService: targetService
+        )
+        let oq = try! XCTUnwrap(viewModel.currentObservingQuality)
+        XCTAssertNotEqual(
+            oq.score,
+            nightScore,
+            "LP brightness must adjust headline so night and OQ scores differ"
+        )
+
+        // Trigger Best Targets path (uses TargetRecommendationContext.nightQuality).
+        let recommendations = viewModel.currentTargetRecommendations
+        XCTAssertEqual(recommendations.map(\.score), [70])
+        XCTAssertEqual(targetService.requestedLimits, [100])
+        XCTAssertEqual(targetService.capturedContexts.count, 1)
+
+        let contextNightScore = try! XCTUnwrap(
+            targetService.capturedContexts.first?.nightQuality.calculatedScore
+        )
+        XCTAssertEqual(
+            contextNightScore,
+            nightScore,
+            "Best Targets must receive night-conditions score, not OQ headline"
+        )
+        XCTAssertEqual(contextNightScore, viewModel.currentNightQuality?.calculatedScore)
+        XCTAssertNotEqual(
+            contextNightScore,
+            oq.score,
+            "Captured Best Targets night score must differ from adjusted observing headline"
+        )
+    }
+
+    func testObservingQualityDeterministicForSameInputs() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 19.5)
+        let (viewModel, _) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 40.0,
+            longitude: -74.0
+        )
+        XCTAssertEqual(viewModel.currentObservingQuality, viewModel.currentObservingQuality)
+    }
+
+    func testHeadlineBandMatchesObservingScoreNotNightScore() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 17.5)
+        let (viewModel, nightScore) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        let headline = try! XCTUnwrap(viewModel.currentObservingQualityHeadline)
+        let nightBand = ObservingQualityScoreBand.from(score: nightScore)
+        let oqBand = ObservingQualityScoreBand.from(score: headline.score)
+        if nightBand != oqBand {
+            XCTAssertEqual(headline.band, oqBand)
+            XCTAssertNotEqual(headline.band, nightBand)
+        }
+        XCTAssertEqual(headline.score, viewModel.currentObservingQuality?.score)
+        XCTAssertTrue(headline.accessibilityLabel.contains("\(headline.score)"))
+    }
+
+    private static func makeViewModelWithNightQuality(
+        environment: (any ObservingQualityEnvironment)?,
+        latitude: Double,
+        longitude: Double,
+        targetRecommendationService: (any TargetRecommendationProviding)? = nil
+    ) -> (DashboardViewModel, Int) {
+        let timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let referenceDate = calendar.date(from: DateComponents(
+            year: 2026, month: 6, day: 29, hour: 12
+        ))!
+        let startOfDay = calendar.startOfDay(for: referenceDate)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: startOfDay)!
+        let sunEvents = [
+            makeSunEvents(for: startOfDay, calendar: calendar),
+            makeSunEvents(for: tomorrow, calendar: calendar)
+        ]
+        let forecasts = (20...28).map { hour -> HourlyForecast in
+            let date = calendar.date(
+                bySettingHour: hour % 24,
+                minute: 0,
+                second: 0,
+                of: hour >= 24 ? tomorrow : startOfDay
+            )!
+            return HourlyForecast(
+                time: date,
+                cloudCover: 10,
+                humidity: 40,
+                windSpeed: 2,
+                windDirection: 180,
+                temperature: 15,
+                dewPoint: 5,
+                visibility: 20_000,
+                lowCloudCover: 0,
+                midCloudCover: 0,
+                highCloudCover: 10,
+                windSpeed200hPa: 40
+            )
+        }
+        let viewModel = DashboardViewModel(
+            targetRecommendationService: targetRecommendationService
+                ?? FixedDashboardTargetRecommendationService(recommendations: []),
+            observingQualityEnvironment: environment,
+            now: { referenceDate }
+        )
+        viewModel.viewingConditions = ViewingConditions(
+            fetchedAt: referenceDate,
+            location: CachedLocation(
+                name: "Test",
+                latitude: latitude,
+                longitude: longitude,
+                elevation: 50
+            ),
+            hourlyForecasts: forecasts,
+            dailySunEvents: sunEvents,
+            dailyMoonInfo: [
+                MoonInfo(phase: 0.1, phaseName: "New Moon", altitude: 20, illumination: 5, emoji: "🌑"),
+                MoonInfo(phase: 0.1, phaseName: "New Moon", altitude: 18, illumination: 5, emoji: "🌑")
+            ],
+            issPasses: [],
+            fogScore: FogScore(score: 0, factors: []),
+            timeZoneIdentifier: timeZone.identifier
+        )
+        viewModel.syncLightPollutionReadinessFromEnvironment()
+        let nightScore = viewModel.currentNightQuality?.calculatedScore ?? -1
+        XCTAssertGreaterThan(nightScore, 0, "fixture must produce night quality")
+        return (viewModel, nightScore)
+    }
+
     private static let dashboardFreshnessReferenceDate: Date = {
         let calendar = LocationTimeZoneResolver.calendar(
             for: TimeZone(identifier: "America/Los_Angeles")!
@@ -1344,6 +1600,38 @@ final class DashboardViewModelTests: XCTestCase {
             issPasses: [],
             fogScore: FogScore(score: 0, factors: []),
             timeZoneIdentifier: "America/Los_Angeles"
+        )
+    }
+}
+
+@MainActor
+private final class ObservingQualityEnvironmentSpy: ObservingQualityEnvironment {
+    var readiness: LightPollutionReadiness
+    var brightness: Double?
+    private(set) var assessCallCount = 0
+    private(set) var lastNightScore: Int?
+    private(set) var lastLatitude: Double?
+    private(set) var lastLongitude: Double?
+
+    init(readiness: LightPollutionReadiness, brightness: Double?) {
+        self.readiness = readiness
+        self.brightness = brightness
+    }
+
+    var lightPollutionReadiness: LightPollutionReadiness { readiness }
+
+    func assess(
+        nightConditionsScore: Int,
+        latitude: Double,
+        longitude: Double
+    ) -> ObservingQualityAssessment {
+        assessCallCount += 1
+        lastNightScore = nightConditionsScore
+        lastLatitude = latitude
+        lastLongitude = longitude
+        return ObservingQualityCalculator.assess(
+            nightConditionsScore: nightConditionsScore,
+            modeledZenithSkyBrightness: brightness
         )
     }
 }
@@ -1531,6 +1819,26 @@ private final class FixedDashboardTargetRecommendationService: TargetRecommendat
         limit: Int
     ) -> [TargetRecommendation] {
         requestedLimits.append(limit)
+        return Array(recommendations.prefix(limit))
+    }
+}
+
+/// Records TargetRecommendationContext so callers can assert which night score was used.
+private final class RecordingDashboardTargetRecommendationService: TargetRecommendationProviding, @unchecked Sendable {
+    let recommendations: [TargetRecommendation]
+    private(set) var requestedLimits: [Int] = []
+    private(set) var capturedContexts: [TargetRecommendationContext] = []
+
+    init(recommendations: [TargetRecommendation]) {
+        self.recommendations = recommendations
+    }
+
+    func recommendations(
+        for context: TargetRecommendationContext,
+        limit: Int
+    ) -> [TargetRecommendation] {
+        requestedLimits.append(limit)
+        capturedContexts.append(context)
         return Array(recommendations.prefix(limit))
     }
 }

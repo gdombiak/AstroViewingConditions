@@ -190,6 +190,26 @@ Format specification: [BINARY_FORMAT.md](BINARY_FORMAT.md).
   --latitude 45.45 --longitude -122.75
 ```
 
+### Cross-surface scoring architecture
+
+See [CROSS_SURFACE_ARCHITECTURE.md](CROSS_SURFACE_ARCHITECTURE.md): hybrid model (main app local LPATLAS1; widgets/watch planned via shared calculator + brightness/score payloads, not necessarily embedding the 10 MiB artifact). Composition root owns bootstrap—not feature views.
+
+**Phase 1 foundation (SharedCode):** `LightPollutionDatasetIdentity`, `ModeledZenithBrightnessSample`, `ModeledZenithBrightnessValidity` (shared 1000 m haversine + dataset checks), `ModeledZenithBrightnessResolver`. No App Group / WC behavior yet.
+
+### Production app packaging
+
+The validated production artifact is **copied into the iOS app target** (not generated at build time):
+
+| Item | Value |
+|------|--------|
+| Source of truth (tooling) | `output/artifacts/light_pollution_global_v1.bin` (gitignored) |
+| Bundled app resource | `Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin` (**committed**) |
+| Bytes | 10,328,230 |
+| SHA-256 | `b9c60e83d866f28e781dcc89a4ad302597012cdb9df6c94743efdd44be86dce4` |
+| Targets | Main iOS app only (not widget/watch in this phase) |
+
+Regenerate tooling output with `generate-global`, verify size/SHA-256, then replace the Resources copy and update `BundledLightPollutionResource` constants if needed. Runtime falls back to the night-conditions score when the resource is missing or fails validation.
+
 ### Dense urban validation
 
 Deterministic multi-city fidelity study (source TIFF vs LPATLAS1; does **not** regenerate the artifact):

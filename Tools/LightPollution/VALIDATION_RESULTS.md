@@ -132,6 +132,16 @@ Errors concentrate on **high/extreme local gradients** (3×3 source range), not 
 
 **Recommendation from this study:** keep the current LPATLAS1 artifact for packaging; urban fidelity is weaker than the global random sample but product score impact remains small.
 
+### Production packaging (iOS dashboard)
+
+| Item | Value |
+|------|--------|
+| Bundled path | `Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin` |
+| Target | Main iOS app only (not widget/watch) |
+| Bytes / SHA-256 | 10,328,230 / `b9c60e83…dce4` |
+| Runtime | `LightPollutionProviderBootstrap` (async once) → `ObservingQualityService` → dashboard headline |
+| Fallback | Missing/failed/out-of-coverage → exact `nightConditionsScore`; no pristine default |
+
 ### Rationale
 
 - Visually competitive with uniform **0.05°** UInt8 for Oregon review, with selective **0.025°** detail where the tree refines

@@ -5,7 +5,20 @@ struct NightQualityCard: View {
     @Environment(\.appPalette) private var palette
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// Weather/Moon/darkness assessment (details, early/late, factor pills).
     let assessment: NightQualityAssessment
+    /// Headline observing-quality presentation (number, band, a11y) — not night rating bands.
+    let headline: ObservingQualityHeadlinePresentation
+
+    init(assessment: NightQualityAssessment, headline: ObservingQualityHeadlinePresentation) {
+        self.assessment = assessment
+        self.headline = headline
+    }
+
+    init(assessment: NightQualityAssessment, headlineScore: Int) {
+        self.assessment = assessment
+        self.headline = ObservingQualityHeadlinePresentation(score: headlineScore)
+    }
     
     private var unitConverter: AstroUnitConverter {
         AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
@@ -18,25 +31,29 @@ struct NightQualityCard: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                 Spacer()
-                Text("\(assessment.calculatedScore)")
+                Text("\(headline.score)")
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundStyle(scoreColor(for: assessment.calculatedScore))
+                    .foregroundStyle(scoreColor(for: headline.band))
+                    .accessibilityLabel(headline.accessibilityLabel)
                 Text("/100")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             
             HStack(alignment: .top, spacing: 12) {
+                // Condition-specific night rating (weather/Moon trajectory), not headline band.
                 Text(assessment.rating.emoji)
                     .font(.title2)
+                    .accessibilityLabel("Night conditions \(assessment.rating.shortLabel)")
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(assessment.summary)
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .foregroundStyle(ratingColor)
+                        .foregroundStyle(conditionRatingColor)
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel("Night conditions summary: \(assessment.summary)")
                     
                     if let firstHalf = assessment.firstHalfScore,
                        let secondHalf = assessment.secondHalfScore {
@@ -70,7 +87,8 @@ struct NightQualityCard: View {
         .dashboardCardStyle()
     }
     
-    private var ratingColor: Color {
+    /// Color for weather/Moon night-rating narrative (not the 0…100 headline score).
+    private var conditionRatingColor: Color {
         switch assessment.rating {
         case .excellent: return palette.statusColor(.positive)
         case .good: return palette.statusColor(.informational)
@@ -79,12 +97,13 @@ struct NightQualityCard: View {
         }
     }
     
-    private func scoreColor(for score: Int) -> Color {
-        switch score {
-        case 80...100: return palette.statusColor(.positive)
-        case 60..<80: return palette.statusColor(.informational)
-        case 40..<60: return palette.statusColor(.caution)
-        default: return palette.statusColor(.negative)
+    /// Color for the headline observing-quality score only.
+    private func scoreColor(for band: ObservingQualityScoreBand) -> Color {
+        switch band {
+        case .excellent: return palette.statusColor(.positive)
+        case .good: return palette.statusColor(.informational)
+        case .fair: return palette.statusColor(.caution)
+        case .poor: return palette.statusColor(.negative)
         }
     }
 
@@ -164,6 +183,28 @@ struct NightQualityCard: View {
                 }
             }
         }
+    }
+}
+
+/// Placeholder while night conditions exist but light-pollution readiness is still loading.
+/// Avoids presenting night-only score as finalized observing quality.
+struct NightQualityCardHeadlinePending: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Night Conditions", systemImage: "sparkles")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Spacer()
+                ProgressView()
+                    .accessibilityLabel("Loading observing quality score")
+            }
+            Text("Preparing observing quality…")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .dashboardCardStyle()
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -248,7 +289,8 @@ private struct FactorPill: View {
             trend: .degrading,
             firstHalfScore: 0.15,
             secondHalfScore: 1.4
-        )
+        ),
+        headlineScore: 86
     )
     .padding()
 }

@@ -358,6 +358,7 @@ public class DashboardViewModel {
     // Services
     private let conditionsRepository: SharedConditionsRepository
     private let targetRecommendationService: any TargetRecommendationProviding
+    private let observingQualityEnvironment: any ObservingQualityEnvironment
     private let now: @Sendable () -> Date
     
     // State
@@ -366,6 +367,10 @@ public class DashboardViewModel {
     public var error: (any Error)?
     public private(set) var issError: ISSError?
     public var selectedDay: DaySelection = .today
+    /// Mirror of process light-pollution readiness (set by composition root, not views).
+    public private(set) var lightPollutionReadiness: LightPollutionReadiness = .loading
+    /// Bumped when readiness/provider changes so @Observable clients refresh.
+    private var observingQualityRevision: UInt = 0
     
     private var apiKey: String
     public private(set) var locationTimeZone: TimeZone?
@@ -520,36 +525,6 @@ public class DashboardViewModel {
         }
         return nil
     }
-    
-    public var currentNightQuality: NightQualityAssessment? {
-        guard let conditions = viewingConditions,
-              let sunEventsToday = currentSunEvents,
-              let moonInfo = currentMoonInfo else {
-            return nil
-        }
-        
-        let calendar = locationCalendar
-        let tomorrowIndex = conditionsDayIndex + 1
-        let sunEventsTomorrow = tomorrowIndex >= 0 && tomorrowIndex < conditions.dailySunEvents.count
-            ? conditions.dailySunEvents[tomorrowIndex]
-            : nil
-        guard let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: now())) else {
-            return nil
-        }
-        
-        let nightForecasts = nightTimeForecasts
-        
-        return NightQualityAnalyzer.analyzeNight(
-            forecasts: nightForecasts,
-            sunEventsToday: sunEventsToday,
-            sunEventsTomorrow: sunEventsTomorrow,
-            moonInfo: moonInfo,
-            latitude: conditions.location.latitude,
-            longitude: conditions.location.longitude,
-            for: targetDate,
-            calendar: calendar
-        )
-    }
 
     var currentBestTargetsPresentation: BestTargetsListPresentation {
         guard let conditions = viewingConditions,
@@ -599,13 +574,89 @@ public class DashboardViewModel {
         conditionsProvider: ConditionsProvider = ConditionsProvider(),
         conditionsRepository: SharedConditionsRepository? = nil,
         targetRecommendationService: any TargetRecommendationProviding = DefaultTargetRecommendationService(),
+        observingQualityEnvironment: (any ObservingQualityEnvironment)? = nil,
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.apiKey = apiKey
         self.conditionsRepository = conditionsRepository
             ?? SharedConditionsRepository(provider: conditionsProvider, now: now)
         self.targetRecommendationService = targetRecommendationService
+        // Safe default: exact night-score fallback. Never an unbootstrapped `.loading` session.
+        // ContentView injects the process-owned ObservingQualitySession that it bootstraps.
+        let environment = observingQualityEnvironment ?? UnavailableObservingQualityEnvironment.shared
+        self.observingQualityEnvironment = environment
+        self.lightPollutionReadiness = environment.lightPollutionReadiness
         self.now = now
+    }
+
+    /// Called by the process composition root after light-pollution bootstrap completes
+    /// (or when test installs a provider). Feature views must not call LPATLAS1 loaders.
+    public func syncLightPollutionReadinessFromEnvironment() {
+        lightPollutionReadiness = observingQualityEnvironment.lightPollutionReadiness
+        observingQualityRevision &+= 1
+    }
+
+    /// Night-conditions assessment (weather/Moon/darkness details). Unchanged by light pollution.
+    public var currentNightQuality: NightQualityAssessment? {
+        guard let conditions = viewingConditions,
+              let sunEventsToday = currentSunEvents,
+              let moonInfo = currentMoonInfo else {
+            return nil
+        }
+
+        let calendar = locationCalendar
+        let tomorrowIndex = conditionsDayIndex + 1
+        let sunEventsTomorrow = tomorrowIndex >= 0 && tomorrowIndex < conditions.dailySunEvents.count
+            ? conditions.dailySunEvents[tomorrowIndex]
+            : nil
+        guard let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: now())) else {
+            return nil
+        }
+
+        let nightForecasts = nightTimeForecasts
+
+        return NightQualityAnalyzer.analyzeNight(
+            forecasts: nightForecasts,
+            sunEventsToday: sunEventsToday,
+            sunEventsTomorrow: sunEventsTomorrow,
+            moonInfo: moonInfo,
+            latitude: conditions.location.latitude,
+            longitude: conditions.location.longitude,
+            for: targetDate,
+            calendar: calendar
+        )
+    }
+
+    /// True when night conditions exist but the headline must wait for LP readiness.
+    /// Avoids flashing night-only score as if it were finalized observing quality.
+    public var isObservingQualityHeadlinePending: Bool {
+        _ = observingQualityRevision
+        return currentNightQuality != nil && lightPollutionReadiness == .loading
+    }
+
+    /// Observing quality for the dashboard headline once light-pollution readiness is resolved.
+    ///
+    /// - Returns `nil` while `lightPollutionReadiness == .loading` (do not show interim score).
+    /// - When `.ready` or `.unavailable`, always returns an assessment if night quality exists
+    ///   (unavailable → exact night-conditions score, `lightPollution == nil`).
+    public var currentObservingQuality: ObservingQualityAssessment? {
+        _ = observingQualityRevision
+        guard lightPollutionReadiness != .loading else { return nil }
+        guard let nightQuality = currentNightQuality,
+              let conditions = viewingConditions else {
+            return nil
+        }
+        return observingQualityEnvironment.assess(
+            nightConditionsScore: nightQuality.calculatedScore,
+            latitude: conditions.location.latitude,
+            longitude: conditions.location.longitude
+        )
+    }
+
+    /// Headline presentation derived only from observing-quality score (not night rating bands).
+    public var currentObservingQualityHeadline: ObservingQualityHeadlinePresentation? {
+        guard let assessment = currentObservingQuality else { return nil }
+        return ObservingQualityHeadlinePresentation(assessment: assessment)
     }
 
     private static func logUITargetRecommendations(

@@ -28,12 +28,31 @@ struct ContentView: View {
     @Environment(\.appPalette) private var palette
     @SceneStorage("selectedAppTab") private var selectedTab: AppTab = .dashboard
     @State private var dashboardLocationSession = DashboardLocationSession()
-    @State private var dashboardViewModel = DashboardViewModel(
-        apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
-    )
+    /// Process composition: owns LPATLAS1 readiness for this app process (not a feature view).
+    @State private var observingQualitySession: ObservingQualitySession
+    @State private var dashboardViewModel: DashboardViewModel
+    @State private var didStartObservingQualityBootstrap = false
+
+    init() {
+        let session = ObservingQualitySession()
+        _observingQualitySession = State(initialValue: session)
+        _dashboardViewModel = State(
+            initialValue: DashboardViewModel(
+                apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? "",
+                observingQualityEnvironment: session
+            )
+        )
+    }
     
     var body: some View {
         sharedRoot
+            .task {
+                // Composition-root bootstrap: parallel to user navigation; not owned by DashboardView.
+                guard !didStartObservingQualityBootstrap else { return }
+                didStartObservingQualityBootstrap = true
+                await observingQualitySession.bootstrap(preferredBundles: [Bundle.main])
+                dashboardViewModel.syncLightPollutionReadinessFromEnvironment()
+            }
     }
 
     private var sharedRoot: some View {
