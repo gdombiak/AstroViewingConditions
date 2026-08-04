@@ -67,6 +67,22 @@ struct ContentView: View {
                     publication: publication,
                     provider: provider
                 )
+
+                // Phase 3: backfill Current Location brightness when a resolved
+                // (non-placeholder) coordinate is already known. Same app-boundary
+                // gates as AppCurrentLocationBrightnessPublisher (not Phase 1 changes).
+                if let current = dashboardLocationSession.currentLocation {
+                    AppCurrentLocationBrightnessPublisher.shared.publishResolvedCurrentLocation(
+                        latitude: current.latitude,
+                        longitude: current.longitude
+                    )
+                } else if let selected = LocationStorageService.shared.loadSelectedLocation(),
+                          selected.source == .currentGPS {
+                    AppCurrentLocationBrightnessPublisher.shared.publishResolvedCurrentLocation(
+                        latitude: selected.latitude,
+                        longitude: selected.longitude
+                    )
+                }
             }
     }
 

@@ -170,6 +170,7 @@ final class DashboardLocationLoader {
     private let saveSelection: (SelectedLocation) -> Void
     private let hadPersistedSelection: Bool
     private let locationSession: DashboardLocationSession
+    private let brightnessPublisher: any CurrentLocationBrightnessPublishing
     private var selectionGeneration = 0
     private var internallyResolvedSelection: SelectedLocation?
 
@@ -177,7 +178,8 @@ final class DashboardLocationLoader {
         persistedSelection: SelectedLocation?,
         provider: any DashboardCurrentLocationProviding,
         saveSelection: @escaping (SelectedLocation) -> Void,
-        locationSession: DashboardLocationSession = DashboardLocationSession()
+        locationSession: DashboardLocationSession = DashboardLocationSession(),
+        brightnessPublisher: any CurrentLocationBrightnessPublishing = AppCurrentLocationBrightnessPublisher.shared
     ) {
         let selection = persistedSelection ?? Self.currentLocationSelection
         self.selectedLocation = selection
@@ -185,6 +187,7 @@ final class DashboardLocationLoader {
         self.saveSelection = saveSelection
         self.hadPersistedSelection = persistedSelection != nil
         self.locationSession = locationSession
+        self.brightnessPublisher = brightnessPublisher
     }
 
     func restoreSelection(using savedLocations: [CachedLocation]) {
@@ -251,6 +254,12 @@ final class DashboardLocationLoader {
             selectedLocation = selection
             internallyResolvedSelection = selection
             saveSelection(selection)
+            // Injected publisher: stamps revision + enqueues CL brightness sync.
+            // Not hard-wired to bootstrap/coordinator; tests inject no-op/recording.
+            brightnessPublisher.publishResolvedCurrentLocation(
+                latitude: resolved.latitude,
+                longitude: resolved.longitude
+            )
             return .resolvedSelectionUpdated
         } catch {
             guard requestGeneration == selectionGeneration,

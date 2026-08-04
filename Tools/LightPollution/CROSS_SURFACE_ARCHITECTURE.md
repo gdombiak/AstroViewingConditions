@@ -159,6 +159,13 @@ Byte count / SHA-256 remain packaging + integration-test diagnostics only.
 - **Lifecycle:** rename preserves (ID stable); coord change uses Phase 1 1000 m validity; delete pruned via snapshot; create enriched when provider ready; dataset revision refreshes lazily via resolver; **not** mirrored via iCloud.
 - **Readers:** `SavedLocationModeledBrightnessReading.loadValidSample` (Phase 4 widget use; no write).
 
+**Current Location metadata (Phase 3 — shipped):** Separate App Group file `currentLocationModeledBrightness.json` (schema v1, optional single sample with `savedLocationID == nil`).
+
+- **Sole writer:** `CurrentLocationModeledBrightnessCoordinator` (own process-local revision stream).
+- **Publication:** injected `CurrentLocationBrightnessPublishing` from `DashboardLocationLoader` after still-current GPS resolve; production `AppCurrentLocationBrightnessPublisher` stamps revision then `currentProvider()` + enqueue (no second atlas load). App boundary rejects invalid geo and unresolved placeholder `(0,0)` without changing Phase 1.
+- **Retain** sample when switching to a saved location; re-validate on return via Phase 1 1000 m rules.
+- **Readers:** `CurrentLocationModeledBrightnessReading` for later widgets.
+
 **Pending UI (Phase 5):** full-card placeholder remains until score-slot-only refinement; not Phase 1.
 
 ---

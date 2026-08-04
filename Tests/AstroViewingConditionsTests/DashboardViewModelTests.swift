@@ -15,7 +15,8 @@ final class DashboardViewModelTests: XCTestCase {
         let loader = DashboardLocationLoader(
             persistedSelection: nil,
             provider: provider,
-            saveSelection: recorder.record
+            saveSelection: recorder.record,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         loader.restoreSelection(using: [])
@@ -36,7 +37,8 @@ final class DashboardViewModelTests: XCTestCase {
         let loader = DashboardLocationLoader(
             persistedSelection: persisted,
             provider: LocationProviderSpy(),
-            saveSelection: { _ in }
+            saveSelection: { _ in },
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         loader.restoreSelection(using: [saved])
@@ -58,7 +60,8 @@ final class DashboardViewModelTests: XCTestCase {
                 longitude: 34
             ),
             provider: LocationProviderSpy(),
-            saveSelection: recorder.record
+            saveSelection: recorder.record,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         loader.restoreSelection(using: [])
@@ -73,7 +76,8 @@ final class DashboardViewModelTests: XCTestCase {
         let loader = DashboardLocationLoader(
             persistedSelection: savedSelection(for: saved),
             provider: provider,
-            saveSelection: { _ in }
+            saveSelection: { _ in },
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         loader.restoreSelection(using: [saved])
@@ -89,7 +93,8 @@ final class DashboardViewModelTests: XCTestCase {
         let loader = DashboardLocationLoader(
             persistedSelection: savedSelection(for: saved),
             provider: provider,
-            saveSelection: { _ in }
+            saveSelection: { _ in },
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         provider.authorizationStatus = .authorizedWhenInUse
@@ -105,7 +110,8 @@ final class DashboardViewModelTests: XCTestCase {
         let loader = DashboardLocationLoader(
             persistedSelection: savedSelection(for: saved),
             provider: provider,
-            saveSelection: { _ in }
+            saveSelection: { _ in },
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
         loader.restoreSelection(using: [saved])
         loader.select(SelectedLocation(
@@ -127,7 +133,8 @@ final class DashboardViewModelTests: XCTestCase {
         let loader = DashboardLocationLoader(
             persistedSelection: nil,
             provider: provider,
-            saveSelection: { _ in }
+            saveSelection: { _ in },
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
         loader.restoreSelection(using: [saved])
         loader.select(savedSelection(for: saved))
@@ -146,13 +153,15 @@ final class DashboardViewModelTests: XCTestCase {
             persistedSelection: savedSelection(for: saved),
             provider: provider,
             saveSelection: { _ in },
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
         let recreatedLoader = DashboardLocationLoader(
             persistedSelection: savedSelection(for: saved),
             provider: provider,
             saveSelection: { _ in },
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         firstLoader.restoreSelection(using: [saved])
@@ -170,7 +179,8 @@ final class DashboardViewModelTests: XCTestCase {
             persistedSelection: nil,
             provider: provider,
             saveSelection: { _ in },
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
         firstLoader.restoreSelection(using: [])
         _ = try? await firstLoader.resolveCurrentLocationIfNeeded()
@@ -179,7 +189,8 @@ final class DashboardViewModelTests: XCTestCase {
             persistedSelection: firstLoader.selectedLocation,
             provider: provider,
             saveSelection: { _ in },
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         recreatedLoader.restoreSelection(using: [])
@@ -200,7 +211,8 @@ final class DashboardViewModelTests: XCTestCase {
             ),
             provider: provider,
             saveSelection: { _ in },
-            locationSession: DashboardLocationSession()
+            locationSession: DashboardLocationSession(),
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         XCTAssertNil(loader.activeLocation)
@@ -222,7 +234,8 @@ final class DashboardViewModelTests: XCTestCase {
                 longitude: 0
             ),
             provider: provider,
-            saveSelection: recorder.record
+            saveSelection: recorder.record,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         let resolution = Task { try? await loader.resolveCurrentLocationIfNeeded() }
@@ -248,7 +261,8 @@ final class DashboardViewModelTests: XCTestCase {
                 longitude: 0
             ),
             provider: provider,
-            saveSelection: recorder.record
+            saveSelection: recorder.record,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         let resolution = Task { () -> Result<DashboardCurrentLocationResolutionResult, Error> in
@@ -283,7 +297,8 @@ final class DashboardViewModelTests: XCTestCase {
                 longitude: 0
             ),
             provider: provider,
-            saveSelection: { _ in }
+            saveSelection: { _ in },
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         let result = try? await loader.resolveCurrentLocationIfNeeded()
@@ -298,7 +313,8 @@ final class DashboardViewModelTests: XCTestCase {
         let loader = DashboardLocationLoader(
             persistedSelection: nil,
             provider: LocationProviderSpy(),
-            saveSelection: { _ in }
+            saveSelection: { _ in },
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         loader.select(savedSelection(for: fixedLocation))
@@ -346,7 +362,8 @@ final class DashboardViewModelTests: XCTestCase {
             persistedSelection: unresolvedCurrentLocation,
             provider: provider,
             saveSelection: firstRecorder.record,
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         let firstResolution = Task { try? await firstLoader.resolveCurrentLocationIfNeeded() }
@@ -356,7 +373,8 @@ final class DashboardViewModelTests: XCTestCase {
             persistedSelection: unresolvedCurrentLocation,
             provider: provider,
             saveSelection: secondRecorder.record,
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
         let secondResolution = Task { try? await recreatedLoader.resolveCurrentLocationIfNeeded() }
         await Task.yield()
@@ -385,7 +403,8 @@ final class DashboardViewModelTests: XCTestCase {
             ),
             provider: provider,
             saveSelection: { _ in },
-            locationSession: DashboardLocationSession()
+            locationSession: DashboardLocationSession(),
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         do {
@@ -414,7 +433,8 @@ final class DashboardViewModelTests: XCTestCase {
             ),
             provider: provider,
             saveSelection: recorder.record,
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         let requestA = Task { try? await loader.resolveCurrentLocationIfNeeded() }
@@ -461,7 +481,8 @@ final class DashboardViewModelTests: XCTestCase {
         let loader = DashboardLocationLoader(
             persistedSelection: nil,
             provider: provider,
-            saveSelection: { _ in }
+            saveSelection: { _ in },
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         loader.restoreSelection(using: [fixedLocation])
@@ -491,7 +512,8 @@ final class DashboardViewModelTests: XCTestCase {
             ),
             provider: provider,
             saveSelection: { _ in },
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         XCTAssertEqual(loader.activeLocation?.latitude, 0)
@@ -512,7 +534,8 @@ final class DashboardViewModelTests: XCTestCase {
             ),
             provider: provider,
             saveSelection: { _ in },
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         XCTAssertEqual(loader.activeLocation?.latitude, 10)
@@ -529,7 +552,8 @@ final class DashboardViewModelTests: XCTestCase {
                 longitude: 0
             ),
             provider: LocationProviderSpy(),
-            saveSelection: { _ in }
+            saveSelection: { _ in },
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         XCTAssertNil(loader.activeLocation)
@@ -549,7 +573,8 @@ final class DashboardViewModelTests: XCTestCase {
             ),
             provider: provider,
             saveSelection: recorder.record,
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         loader.select(SelectedLocation(
@@ -584,7 +609,8 @@ final class DashboardViewModelTests: XCTestCase {
             ),
             provider: provider,
             saveSelection: recorder.record,
-            locationSession: session
+            locationSession: session,
+            brightnessPublisher: NoOpCurrentLocationBrightnessPublisher()
         )
 
         loader.select(savedSelection(for: fixedLocation))

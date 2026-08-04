@@ -198,6 +198,8 @@ See [CROSS_SURFACE_ARCHITECTURE.md](CROSS_SURFACE_ARCHITECTURE.md): hybrid model
 
 **Phase 2 (SharedCode):** durable saved-location companion metadata in App Group `savedLocationModeledBrightness.json`; sole-writer `SavedLocationModeledBrightnessCoordinator`; read-only `SavedLocationModeledBrightnessReading`. Not iCloud; no widget score changes yet.
 
+**Phase 3 (SharedCode):** Current Location companion `currentLocationModeledBrightness.json`; sole-writer `CurrentLocationModeledBrightnessCoordinator`; injected `CurrentLocationBrightnessPublishing` from GPS resolve; read-only `CurrentLocationModeledBrightnessReading`.
+
 ### Production app packaging
 
 The validated production artifact is **copied into the iOS app target** (not generated at build time):
