@@ -207,15 +207,21 @@ public struct AppGroupStorage: Sendable {
 
     // MARK: - Watch Night Conditions
 
-    private static func writeWatchNightConditions(_ conditions: ViewingConditions) -> Bool {
-        guard let baseURL = containerURL else {
+    public static let watchNightConditionsFileName = "watchNightConditions.json"
+
+    /// Synchronous write (used by accepted-update coordinator pair persistence).
+    static func writeWatchNightConditions(
+        _ conditions: ViewingConditions,
+        baseURL: URL? = containerURL
+    ) -> Bool {
+        guard let baseURL else {
             logger.error("App Group container not available")
             return false
         }
 
         do {
             let data = try JSONEncoder().encode(conditions)
-            let fileURL = baseURL.appendingPathComponent("watchNightConditions.json")
+            let fileURL = baseURL.appendingPathComponent(watchNightConditionsFileName)
             try data.write(to: fileURL, options: .atomic)
             return true
         } catch {
@@ -224,13 +230,13 @@ public struct AppGroupStorage: Sendable {
         }
     }
 
-    private static func readWatchNightConditions() -> ViewingConditions? {
-        guard let baseURL = containerURL else {
+    static func readWatchNightConditions(baseURL: URL? = containerURL) -> ViewingConditions? {
+        guard let baseURL else {
             logger.error("App Group container not available")
             return nil
         }
 
-        let fileURL = baseURL.appendingPathComponent("watchNightConditions.json")
+        let fileURL = baseURL.appendingPathComponent(watchNightConditionsFileName)
 
         do {
             let data = try Data(contentsOf: fileURL)
@@ -251,6 +257,202 @@ public struct AppGroupStorage: Sendable {
         await performFileAccessAsync {
             readWatchNightConditions()
         }
+    }
+
+    // MARK: - Watch Observing Quality (Phase 4B)
+
+    public static let watchObservingQualityFileName = "watchObservingQuality.json"
+
+    static func writeWatchObservingQuality(
+        _ document: WatchObservingQualityDocument,
+        baseURL: URL? = containerURL
+    ) -> Bool {
+        guard let baseURL else {
+            logger.error("App Group container not available")
+            return false
+        }
+        do {
+            let data = try JSONEncoder().encode(document)
+            try data.write(
+                to: baseURL.appendingPathComponent(watchObservingQualityFileName),
+                options: .atomic
+            )
+            return true
+        } catch {
+            logger.error("Failed to save watch OQ: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    static func readWatchObservingQuality(
+        baseURL: URL? = containerURL
+    ) -> WatchObservingQualityDocument? {
+        guard let baseURL else { return nil }
+        let fileURL = baseURL.appendingPathComponent(watchObservingQualityFileName)
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let document = try JSONDecoder().decode(WatchObservingQualityDocument.self, from: data)
+            guard document.schemaVersion > 0,
+                  document.schemaVersion <= WatchObservingQualityDocument.currentSchemaVersion else {
+                return nil
+            }
+            return document
+        } catch {
+            logger.warning("Failed to load watch OQ: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Synchronous clear (best-effort). Prefer `persistWatchConditionsPair` for paired updates.
+    static func clearWatchObservingQuality(baseURL: URL? = containerURL) {
+        guard let baseURL else { return }
+        let fileURL = baseURL.appendingPathComponent(watchObservingQualityFileName)
+        try? FileManager.default.removeItem(at: fileURL)
+    }
+
+    public static func saveWatchObservingQualityAsync(_ document: WatchObservingQualityDocument) async {
+        await performFileAccessAsync {
+            _ = writeWatchObservingQuality(document)
+        }
+    }
+
+    public static func loadWatchObservingQualityAsync() async -> WatchObservingQualityDocument? {
+        await performFileAccessAsync {
+            readWatchObservingQuality()
+        }
+    }
+
+    public static func clearWatchObservingQualityAsync() async {
+        await performFileAccessAsync {
+            clearWatchObservingQuality()
+        }
+    }
+
+    // MARK: - Staged transactional pair (Phase 4B)
+
+    /// Persist conditions + OQ as a **staged transactional pair** with rollback.
+    ///
+    /// Algorithm:
+    /// 1. Encode both payloads (fail → no disk mutation).
+    /// 2. Stage to `*.tmp` (individually atomic writes of temps).
+    /// 3. If final conditions exist: **must** read and stage backup; failure aborts
+    ///    before either final is changed (temps cleaned). “Missing prior” ≠ “read failed.”
+    /// 4. Promote staged conditions temp → final (individually atomic write of staged bytes).
+    /// 5. Promote staged OQ temp → final, or clear final OQ for night-only.
+    /// 6. If step 5 fails: roll back conditions from backup (or remove if no prior);
+    ///    prior OQ is untouched so the complete prior pair remains.
+    ///
+    /// Staged files **are** the commit source (promoted), not decorative.
+    static func persistWatchConditionsPair(
+        conditions: ViewingConditions,
+        observingQuality: WatchObservingQualityDocument?,
+        baseURL: URL? = containerURL,
+        fileSystem: any WatchConditionsPairFileSystem = FoundationWatchConditionsPairFileSystem()
+    ) throws {
+        guard let baseURL else {
+            throw WatchConditionsPersistError.containerUnavailable
+        }
+
+        let conditionsPath = baseURL.appendingPathComponent(watchNightConditionsFileName).path
+        let oqPath = baseURL.appendingPathComponent(watchObservingQualityFileName).path
+        let conditionsTmpPath = baseURL.appendingPathComponent(watchNightConditionsFileName + ".tmp").path
+        let oqTmpPath = baseURL.appendingPathComponent(watchObservingQualityFileName + ".tmp").path
+        let conditionsBakPath = baseURL.appendingPathComponent(watchNightConditionsFileName + ".bak").path
+
+        func cleanupArtifacts() {
+            try? fileSystem.removeItem(atPath: conditionsTmpPath)
+            try? fileSystem.removeItem(atPath: oqTmpPath)
+            try? fileSystem.removeItem(atPath: conditionsBakPath)
+        }
+
+        let conditionsData: Data
+        let oqData: Data?
+        do {
+            conditionsData = try JSONEncoder().encode(conditions)
+            if let observingQuality {
+                oqData = try JSONEncoder().encode(observingQuality)
+            } else {
+                oqData = nil
+            }
+        } catch {
+            throw WatchConditionsPersistError.encodingFailed(error.localizedDescription)
+        }
+
+        // Stage temps — these bytes will be promoted to finals.
+        do {
+            try fileSystem.writeData(conditionsData, toPath: conditionsTmpPath, options: .atomic)
+            if let oqData {
+                try fileSystem.writeData(oqData, toPath: oqTmpPath, options: .atomic)
+            }
+        } catch {
+            cleanupArtifacts()
+            throw WatchConditionsPersistError.stagingFailed(error.localizedDescription)
+        }
+
+        // Prior conditions: distinguish missing vs unreadable.
+        let priorConditionsData: Data?
+        if fileSystem.fileExists(atPath: conditionsPath) {
+            let prior: Data
+            do {
+                prior = try fileSystem.readData(atPath: conditionsPath)
+            } catch {
+                cleanupArtifacts()
+                throw WatchConditionsPersistError.priorBackupFailed(
+                    "Prior conditions exist but cannot be read: \(error.localizedDescription)"
+                )
+            }
+            do {
+                try fileSystem.writeData(prior, toPath: conditionsBakPath, options: .atomic)
+            } catch {
+                cleanupArtifacts()
+                throw WatchConditionsPersistError.priorBackupFailed(
+                    "Failed to stage prior conditions backup: \(error.localizedDescription)"
+                )
+            }
+            priorConditionsData = prior
+        } else {
+            priorConditionsData = nil
+        }
+
+        // Promote staged conditions → final (read from staged file to prove staging participates).
+        do {
+            let stagedConditions = try fileSystem.readData(atPath: conditionsTmpPath)
+            try fileSystem.writeData(stagedConditions, toPath: conditionsPath, options: .atomic)
+        } catch {
+            cleanupArtifacts()
+            throw WatchConditionsPersistError.commitConditionsFailed(error.localizedDescription)
+        }
+
+        // Promote OQ or clear.
+        do {
+            if oqData != nil {
+                let stagedOQ = try fileSystem.readData(atPath: oqTmpPath)
+                try fileSystem.writeData(stagedOQ, toPath: oqPath, options: .atomic)
+            } else if fileSystem.fileExists(atPath: oqPath) {
+                try fileSystem.removeItem(atPath: oqPath)
+            }
+        } catch {
+            // Roll back conditions; leave prior OQ as-is.
+            do {
+                if let priorConditionsData {
+                    try fileSystem.writeData(priorConditionsData, toPath: conditionsPath, options: .atomic)
+                } else if fileSystem.fileExists(atPath: conditionsPath) {
+                    try fileSystem.removeItem(atPath: conditionsPath)
+                }
+            } catch {
+                cleanupArtifacts()
+                throw WatchConditionsPersistError.rollbackFailed(error.localizedDescription)
+            }
+            cleanupArtifacts()
+            if oqData != nil {
+                throw WatchConditionsPersistError.commitObservingQualityFailed(error.localizedDescription)
+            } else {
+                throw WatchConditionsPersistError.clearObservingQualityFailed(error.localizedDescription)
+            }
+        }
+
+        cleanupArtifacts()
     }
     
     // MARK: - Saved Locations

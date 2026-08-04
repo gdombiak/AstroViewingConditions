@@ -19,7 +19,11 @@ enum WatchConnectivityError: Error, LocalizedError {
 
 protocol WatchConnectivityManagerDelegate: AnyObject {
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveLocations locations: [CachedLocation], selectedLocation: SelectedLocation?)
-    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveConditions conditions: ViewingConditions)
+    func connectivityManager(
+        _ manager: WatchConnectivityManager,
+        didReceiveConditions conditions: ViewingConditions,
+        observingQuality: WatchObservingQualityPayload?
+    )
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveSelectedLocation location: SelectedLocation)
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveUnitSystem unitSystem: UnitSystem)
 }
@@ -68,7 +72,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
     }
     
     private var locationContinuations: [UUID: CheckedContinuation<([CachedLocation], SelectedLocation?), Error>] = [:]
-    private var conditionsContinuations: [UUID: CheckedContinuation<(ViewingConditions, SelectedLocation?), Error>] = [:]
+    private var conditionsContinuations: [UUID: CheckedContinuation<(ViewingConditions, SelectedLocation?, WatchObservingQualityPayload?), Error>] = [:]
     
     private override init() {
         super.init()
@@ -105,7 +109,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         }
     }
     
-    func requestConditions() async throws -> (ViewingConditions, SelectedLocation?) {
+    func requestConditions() async throws -> (ViewingConditions, SelectedLocation?, WatchObservingQualityPayload?) {
         guard WCSession.default.isReachable else {
             throw WatchConnectivityError.sessionNotReachable
         }
@@ -194,7 +198,14 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
                     self.notifyDelegates { $0.connectivityManager(self, didReceiveSelectedLocation: location) }
                 }
             }
-            resumeConditionsRequest(id: id, with: .success((conditions, selectedLocation)))
+            // Optional OQ block — decode failure must not lose conditions.
+            let oq: WatchObservingQualityPayload?
+            if let oqData = reply["observingQuality"] as? Data {
+                oq = try? JSONDecoder().decode(WatchObservingQualityPayload.self, from: oqData)
+            } else {
+                oq = nil
+            }
+            resumeConditionsRequest(id: id, with: .success((conditions, selectedLocation, oq)))
         } else {
             resumeConditionsRequest(id: id, with: .failure(WatchConnectivityError.decodeFailed("Failed to decode conditions")))
         }
@@ -212,17 +223,12 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
 
     private func resumeConditionsRequest(
         id: UUID,
-        with result: Result<(ViewingConditions, SelectedLocation?), Error>
+        with result: Result<(ViewingConditions, SelectedLocation?, WatchObservingQualityPayload?), Error>
     ) {
         continuationQueue.async { [weak self] in
             guard let continuation = self?.conditionsContinuations.removeValue(forKey: id) else { return }
             continuation.resume(with: result)
         }
-    }
-    
-    private func reloadComplications() {
-        print("WatchConnectivityManager: Reloading complications")
-        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 
@@ -248,6 +254,7 @@ extension WatchConnectivityManager: WCSessionDelegate {
         let conditionsData = incomingData["conditions"] as? Data
         let selectedLocationData = incomingData["selectedLocation"] as? Data
         let unitSystemData = incomingData["unitSystem"] as? Data
+        let observingQualityData = incomingData["observingQuality"] as? Data
         
         DispatchQueue.main.async {
             switch type {
@@ -262,7 +269,15 @@ extension WatchConnectivityManager: WCSessionDelegate {
                 if let data = conditionsData,
                    let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
                     print("WatchConnectivityManager: Received conditions from \(source)")
-                    self.notifyDelegates { $0.connectivityManager(self, didReceiveConditions: conditions) }
+                    let oq: WatchObservingQualityPayload?
+                    if let oqData = observingQualityData {
+                        oq = try? JSONDecoder().decode(WatchObservingQualityPayload.self, from: oqData)
+                    } else {
+                        oq = nil
+                    }
+                    self.notifyDelegates {
+                        $0.connectivityManager(self, didReceiveConditions: conditions, observingQuality: oq)
+                    }
                 }
                 
             case "locationSync", "selectedLocation":

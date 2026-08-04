@@ -3,16 +3,22 @@ import SharedCode
 
 struct CornerComplicationView: View {
     var assessment: NightQualityAssessment
+    var headlineScore: Int
+
+    init(assessment: NightQualityAssessment, headlineScore: Int? = nil) {
+        self.assessment = assessment
+        self.headlineScore = headlineScore ?? assessment.calculatedScore
+    }
     
-    private var score: CGFloat { CGFloat(assessment.calculatedScore) }
-    private var scoreColor: Color { assessment.scoreColor }
+    private var score: CGFloat { CGFloat(headlineScore) }
+    private var scoreColor: Color { assessment.scoreColor(for: headlineScore) }
     
     var progress: Double {
         score / 100
     }
     
     var body: some View {
-        Text("\(assessment.calculatedScore)")
+        Text("\(headlineScore)")
             .font(.system(size: 30, weight: .semibold, design: .rounded))
             .monospacedDigit()
             .foregroundColor(scoreColor)

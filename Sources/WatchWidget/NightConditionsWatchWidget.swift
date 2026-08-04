@@ -9,28 +9,34 @@ private let watchWidgetCacheMaxAge: TimeInterval = 3600
 struct NightConditionsEntry: TimelineEntry, Sendable {
     let date: Date
     let assessment: NightQualityAssessment
+    /// Overall headline (OQ when Phase 4B saved-location enhancement is associated).
+    let headlineScore: Int
+
+    init(date: Date, assessment: NightQualityAssessment, headlineScore: Int? = nil) {
+        self.date = date
+        self.assessment = assessment
+        self.headlineScore = headlineScore ?? assessment.calculatedScore
+    }
 
     static var placeholder: NightConditionsEntry {
-        NightConditionsEntry(
-            date: Date(),
-            assessment: NightQualityAssessment(
-                rating: .good,
-                summary: "Good conditions for stargazing tonight.",
-                details: NightQualityAssessment.Details(
-                    cloudCoverScore: 25,
-                    fogScoreAvg: 15,
-                    moonIlluminationAvg: 12,
-                    windSpeedAvg: 2.5
-                ),
-                bestWindow: nil,
-                hourlyRatings: [],
-                nightStart: Date(),
-                nightEnd: Date().addingTimeInterval(8 * 3600),
-                trend: .stable,
-                firstHalfScore: nil,
-                secondHalfScore: nil
-            )
+        let assessment = NightQualityAssessment(
+            rating: .good,
+            summary: "Good conditions for stargazing tonight.",
+            details: NightQualityAssessment.Details(
+                cloudCoverScore: 25,
+                fogScoreAvg: 15,
+                moonIlluminationAvg: 12,
+                windSpeedAvg: 2.5
+            ),
+            bestWindow: nil,
+            hourlyRatings: [],
+            nightStart: Date(),
+            nightEnd: Date().addingTimeInterval(8 * 3600),
+            trend: .stable,
+            firstHalfScore: nil,
+            secondHalfScore: nil
         )
+        return NightConditionsEntry(date: Date(), assessment: assessment, headlineScore: assessment.calculatedScore)
     }
 }
 
@@ -143,7 +149,33 @@ struct WatchProvider: TimelineProvider {
             calendar: calendar
         )
 
-        return NightConditionsEntry(date: Date(), assessment: assessment)
+        let headlineScore = await Self.resolveHeadlineScore(
+            conditions: conditions,
+            nightScore: assessment.calculatedScore
+        )
+        return NightConditionsEntry(date: Date(), assessment: assessment, headlineScore: headlineScore)
+    }
+
+    /// Loads recomputed watch OQ when associated with these conditions (saved location only).
+    private static func resolveHeadlineScore(
+        conditions: ViewingConditions,
+        nightScore: Int
+    ) async -> Int {
+        guard let document = await AppGroupStorage.loadWatchObservingQualityAsync() else {
+            return nightScore
+        }
+        let selected = AppGroupStorage.loadSelectedLocationForWidget()
+        guard WatchObservingQualityCanonicalizer.isAssociated(
+            document: document,
+            conditions: conditions,
+            selectedLocation: selected
+        ) else {
+            return nightScore
+        }
+        guard document.snapshot.brightnessAvailability == .available else {
+            return nightScore
+        }
+        return document.snapshot.observingQualityScore
     }
 }
 
@@ -161,19 +193,34 @@ struct WatchWidgetEntryView: View {
     var body: some View {
         switch family {
         case .accessoryCircular:
-            CircularComplicationView(assessment: entry.assessment)
-                .containerBackground(.clear, for: .widget)
+            CircularComplicationView(
+                assessment: entry.assessment,
+                headlineScore: entry.headlineScore
+            )
+            .containerBackground(.clear, for: .widget)
         case .accessoryRectangular:
-            RectangularComplicationView(assessment: entry.assessment)
-                .containerBackground(.clear, for: .widget)
+            RectangularComplicationView(
+                assessment: entry.assessment,
+                headlineScore: entry.headlineScore
+            )
+            .containerBackground(.clear, for: .widget)
         case .accessoryInline:
-            InlineComplicationView(assessment: entry.assessment)
-                .containerBackground(.clear, for: .widget)
+            InlineComplicationView(
+                assessment: entry.assessment,
+                headlineScore: entry.headlineScore
+            )
+            .containerBackground(.clear, for: .widget)
          case .accessoryCorner:
-             CornerComplicationView(assessment: entry.assessment)
+             CornerComplicationView(
+                assessment: entry.assessment,
+                headlineScore: entry.headlineScore
+             )
         default:
-            CircularComplicationView(assessment: entry.assessment)
-                .containerBackground(.clear, for: .widget)
+            CircularComplicationView(
+                assessment: entry.assessment,
+                headlineScore: entry.headlineScore
+            )
+            .containerBackground(.clear, for: .widget)
         }
     }
 }

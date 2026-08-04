@@ -3,16 +3,40 @@ import SharedCode
 
 struct WatchNightQualityCard: View {
     let assessment: NightQualityAssessment
+    /// Overall headline score (OQ when Phase 4B enhancement is valid).
+    var headlineScore: Int
+    var headlineVerdict: String
+    /// Category emoji from the same score band as `headlineScore` (not night `assessment.rating`).
+    var headlineEmoji: String
+
+    init(
+        assessment: NightQualityAssessment,
+        headlineScore: Int? = nil,
+        headlineVerdict: String? = nil,
+        headlineEmoji: String? = nil
+    ) {
+        self.assessment = assessment
+        let score = headlineScore ?? assessment.calculatedScore
+        self.headlineScore = score
+        self.headlineVerdict = headlineVerdict
+            ?? CrossSurfaceHeadlineScorePresentation.verdict(for: score)
+        self.headlineEmoji = headlineEmoji
+            ?? CrossSurfaceHeadlineScorePresentation.emoji(for: score)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(assessment.rating.emoji)
+                Text(headlineEmoji)
                     .font(.title2)
-                Text("\(assessment.calculatedScore)/100")
+                    .accessibilityHidden(true)
+                Text("\(headlineScore)/100")
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundStyle(scoreColor)
+                    .accessibilityLabel(
+                        "Observing quality score \(headlineScore) out of 100, \(headlineVerdict)"
+                    )
             }
 
             Text(assessment.summary)
@@ -49,7 +73,8 @@ struct WatchNightQualityCard: View {
     }
 
     private var scoreColor: Color {
-        assessment.scoreColor
+        // Same 0…100 bands as ObservingQualityScoreBand / Night Conditions widgets.
+        assessment.scoreColor(for: headlineScore)
     }
 }
 

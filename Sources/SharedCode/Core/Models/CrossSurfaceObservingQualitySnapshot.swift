@@ -1,7 +1,7 @@
 import Foundation
 
 /// Whether modeled zenith brightness was used for observing quality.
-public enum BrightnessAvailability: String, Sendable, Equatable, Hashable {
+public enum BrightnessAvailability: String, Codable, Sendable, Equatable, Hashable {
     case available
     case unavailable
 

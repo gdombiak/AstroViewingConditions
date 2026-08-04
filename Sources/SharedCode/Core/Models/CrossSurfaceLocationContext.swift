@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Never infer saved vs Current Location from weather coordinates, names, or
 /// presence/absence of a CachedLocation id.
-public struct CrossSurfaceLocationContext: Sendable, Equatable, Hashable {
+public struct CrossSurfaceLocationContext: Codable, Sendable, Equatable, Hashable {
     public var source: SelectedLocation.Source
     public var latitude: Double
     public var longitude: Double

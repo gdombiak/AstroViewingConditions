@@ -101,7 +101,7 @@ public struct CachedLocation: Codable, Sendable {
 }
 
 public struct SelectedLocation: Codable, Equatable, Sendable {
-    public enum Source: String, Codable, Sendable {
+    public enum Source: String, Codable, Sendable, Hashable {
         case currentGPS
         case saved
     }

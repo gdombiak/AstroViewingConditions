@@ -3,6 +3,12 @@ import SharedCode
 
 struct RectangularComplicationView: View {
     var assessment: NightQualityAssessment
+    var headlineScore: Int
+
+    init(assessment: NightQualityAssessment, headlineScore: Int? = nil) {
+        self.assessment = assessment
+        self.headlineScore = headlineScore ?? assessment.calculatedScore
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -10,9 +16,9 @@ struct RectangularComplicationView: View {
                 Label("Night Conditions", systemImage: "sparkles")
                     .font(.system(size: 12, weight: .medium))
                 Spacer()
-                Text("\(assessment.calculatedScore)")
+                Text("\(headlineScore)")
                     .font(.system(size: 19, weight: .bold, design: .rounded))
-                    .foregroundStyle(assessment.scoreColor(for: assessment.calculatedScore))
+                    .foregroundStyle(assessment.scoreColor(for: headlineScore))
                 Text("/100")
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)

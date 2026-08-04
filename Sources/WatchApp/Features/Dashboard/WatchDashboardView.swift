@@ -60,7 +60,12 @@ struct WatchDashboardView: View {
                     }
 
                     if let assessment = conditionsManager.nightQuality {
-                        WatchNightQualityCard(assessment: assessment)
+                        WatchNightQualityCard(
+                            assessment: assessment,
+                            headlineScore: conditionsManager.headlineScore,
+                            headlineVerdict: conditionsManager.headlineVerdict,
+                            headlineEmoji: conditionsManager.headlineEmoji
+                        )
                     }
 
                     if let currentHourForecast {

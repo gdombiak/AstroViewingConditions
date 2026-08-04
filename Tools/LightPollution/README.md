@@ -200,7 +200,9 @@ See [CROSS_SURFACE_ARCHITECTURE.md](CROSS_SURFACE_ARCHITECTURE.md): hybrid model
 
 **Phase 3 (SharedCode):** Current Location companion `currentLocationModeledBrightness.json`; sole-writer `CurrentLocationModeledBrightnessCoordinator`; injected `CurrentLocationBrightnessPublishing` from GPS resolve; read-only `CurrentLocationModeledBrightnessReading`.
 
-**Phase 4A (SharedCode + iOS widgets, on feature branch):** `CrossSurfaceObservingQualityResolver` + enriched `WidgetNightSummary` dual scores for Night Conditions and Three-Night Outlook; no watch transport yet.
+**Phase 4A (SharedCode + iOS widgets, on feature branch):** `CrossSurfaceObservingQualityResolver` + enriched `WidgetNightSummary` dual scores for Night Conditions and Three-Night Outlook.
+
+**Phase 4B (SharedCode + watch, on feature branch — not shipped):** saved-location-only watch transport of optional versioned `WatchObservingQualityPayload` beside `ViewingConditions`; watch validates, recomputes via `CrossSurfaceObservingQualityResolver`, persists via **staged transactional pair** (promote `*.tmp` → finals; rollback conditions on OQ failure). Live ordering uses **synchronous claim-at-ingress** (`WatchConditionsLiveEventIngress` / `claimLiveUpdate()` via lock-backed `WatchLiveIngressSequencer`) before any unstructured `Task`; persist + apply + fingerprint + reload run inside a **current-token commit boundary** so a new claim cannot split persistence from publication. Deferred cache uses live generation + deferred sequence (latest-started wins). Missing/malformed/unsupported/mismatched OQ → exact night score. Current Location remains night-only until Phase 4C.
 
 ### Production app packaging
 

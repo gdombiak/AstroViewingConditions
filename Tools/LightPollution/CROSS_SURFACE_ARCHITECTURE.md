@@ -37,15 +37,16 @@ Later rollout **must** define freshness/staleness indicators or retention rules 
 
 ## Current phased-rollout behavior
 
-| Surface | Now | Public score |
-|---------|-----|--------------|
+| Surface | Now (feature branch) | Public score |
+|---------|----------------------|--------------|
 | Main iOS dashboard | LPATLAS1 bundled; process composition root bootstraps provider | **Observing quality** (or pending until ready; then OQ or exact night fallback) |
 | Best Targets (in-app) | Unchanged | Still driven by **night-conditions** context |
 | Best Nearby | Unchanged | Night-conditions based ranking |
-| iOS widgets | Unchanged | Night-conditions / existing snapshot scores |
-| Watch / complications | Unchanged | Night-conditions based |
+| iOS widgets | Phase 4A on feature branch | **Observing quality** when Phase 2/3 companions valid; else exact night |
+| Watch dashboard / complications | Phase 4B on feature branch (**saved locations only**) | Phone transports optional OQ block; watch **recomputes** via `CrossSurfaceObservingQualityResolver`; else exact night |
+| Watch Current Location | Night-only until Phase 4C | Exact night (no Phase 3 brightness transport in 4B) |
 
-**Same-input/same-score across all public surfaces is the final goal, not the current shipping state for non-dashboard surfaces.**
+**Same-input/same-score across all public surfaces is the final goal.** Phase 4B is implemented on the feature branch, not marked shipped/released.
 
 ---
 
@@ -166,7 +167,24 @@ Byte count / SHA-256 remain packaging + integration-test diagnostics only.
 - **Retain** sample when switching to a saved location; re-validate on return via Phase 1 1000 m rules.
 - **Readers:** `CurrentLocationModeledBrightnessReading` for later widgets.
 
-**Cross-surface OQ on iOS widgets (Phase 4A — implemented on feature branch):** Shared `CrossSurfaceLocationContext`, versioned `CrossSurfaceObservingQualitySnapshot`, pure `CrossSurfaceObservingQualityResolver`, and `WidgetNightSummaryPublisher.makeEnriched(from:location:brightness:)` for both phone and widget `widgetConditions.json` writers. Night Conditions + Three-Night Outlook headlines use observing quality when Phase 2/3 companions are valid; otherwise exact night score. **Watch transport / UI is Phase 4B–4C.**
+**Cross-surface OQ on iOS widgets (Phase 4A — implemented on feature branch):** Shared `CrossSurfaceLocationContext`, versioned `CrossSurfaceObservingQualitySnapshot`, pure `CrossSurfaceObservingQualityResolver`, and `WidgetNightSummaryPublisher.makeEnriched(from:location:brightness:)` for both phone and widget `widgetConditions.json` writers. Night Conditions + Three-Night Outlook headlines use observing quality when Phase 2/3 companions are valid; otherwise exact night score.
+
+**Watch saved-location OQ (Phase 4B — implemented on feature branch, not shipped):** Optional versioned `WatchObservingQualityPayload` (payloadVersion 1) travels **beside** existing `ViewingConditions` over WatchConnectivity (`observingQuality` key) on phone push and `requestConditions` reply. Built only via `WatchObservingQualityPayloadBuilder.makeSavedLocationPayload` when authoritative `SelectedLocation.Source.saved`, matching conditions location, and a valid Phase 2 sample resolves to brightness **available**.
+
+- **Watch never trusts transported OQ scores.** `WatchObservingQualityCanonicalizer` validates version/source/ID/coords/dataset/plausible brightness, reconstructs `ModeledZenithBrightnessSample`, recomputes with `CrossSurfaceObservingQualityResolver`, and requires recomputed vs transported agreement. Failures → exact night score.
+- **Persistence files:** conditions in `watchNightConditions.json`; recomputed snapshot (+ association) in `watchObservingQuality.json`. Transported payload is not display authority.
+- **Actor-serialized updates:** `WatchConditionsAcceptedUpdateCoordinator` owns:
+  - **Live sequence:** lock-backed `WatchLiveIngressSequencer` claimed via **nonisolated** `claimLiveUpdate()` at **callback/refresh ingress** (before any unstructured `Task`). Task run order cannot reorder events. Persist + `appliedState` + fingerprint + reload run inside `withCurrentToken` (same lock as `claim`): a concurrent claim **waits** for the full commit boundary; a non-current token never writes.
+  - **Deferred sequence:** `beginDeferredApplication()` bumps deferred under the same lock as live claims. `applyCached` resolves pure presentation outside the lock, then publishes fingerprint/`appliedState` inside `withAuthorizedCachePublication` (live + deferred re-check).
+  - **Manager UI publication:** each applied state carries `WatchConditionsAppliedStateIdentity` (live sequence or cache live+deferred). `WatchConditionsObservablePublisher` (MainActor) applies observables only via `publishIfCurrent`, which re-validates identity under the ingress lock so a delayed `MainActor` hop cannot publish after a newer claim/commit.
+- **Persistence:** **staged transactional pair** — encode → write `*.tmp` → backup prior conditions (hard-fail if prior exists but unreadable) → **promote staged temps** to finals → on OQ commit/clear failure **rollback conditions** (prior OQ untouched). Injectable `WatchConditionsPairFileSystem` for tests. Not a single multi-file FS atomic.
+- **Persist failure:** coordinator returns `.persistFailed` without changing `appliedState`, fingerprint, or reloading; manager logs and keeps prior UI. A newer ingress claim still invalidates older pending UI publication even if the newer update fails to persist.
+- **UI:** watch dashboard overall headline and all score-bearing complications use resolved OQ when associated; early/late half-night, weather, timing stay night-derived.
+- **Reload coalescing:** `ObservingQualityDisplayFingerprint` (no timestamps) — one complication timeline reload when material display state changes after **successful** persist.
+- **Compatibility:** old phone → new watch (no OQ block) and new phone → old watch (ignores additive key) keep exact night; unknown version / malformed OQ never loses conditions.
+- **Out of scope for 4B:** watch Current Location coordinate requests, watch GPS brightness lookup, atlas on watch, Phase 3 Current Location brightness transport, Best Nearby / Tonight’s Targets OQ.
+
+**Watch Current Location (Phase 4C — not implemented):** required for coordinate-echo / watch-supplied Current Location brightness; Phase 4B leaves Current Location night-only on watch.
 
 **Pending UI (Phase 5):** full-card placeholder remains until score-slot-only refinement; not Phase 1.
 

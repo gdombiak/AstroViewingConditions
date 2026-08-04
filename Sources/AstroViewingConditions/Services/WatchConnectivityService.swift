@@ -103,7 +103,17 @@ public class WatchConnectivityService: NSObject, ObservableObject {
     
     public func sendConditionsToWatch(_ conditions: ViewingConditions) {
         guard let data = try? JSONEncoder().encode(conditions) else { return }
-        sendViaApplicationContext(type: "conditions", payload: ["conditions": data])
+        var payload: [String: Any] = ["conditions": data]
+        // Phase 4B: optional saved-location OQ block (old watch ignores unknown keys).
+        if let selected = LocationStorageService.shared.loadSelectedLocation(),
+           let oq = WatchObservingQualityPayloadBuilder.makeSavedLocationPayload(
+            conditions: conditions,
+            selectedLocation: selected
+           ),
+           let oqData = try? JSONEncoder().encode(oq) {
+            payload["observingQuality"] = oqData
+        }
+        sendViaApplicationContext(type: "conditions", payload: payload)
     }
     
     public func sendSelectedLocationToWatch(_ location: SelectedLocation) {
@@ -254,6 +264,16 @@ extension WatchConnectivityService: WCSessionDelegate {
                 } else {
                     replyHandlerBox.reply(["status": "error", "message": "Failed to encode conditions"])
                     return
+                }
+                // Phase 4B: same saved-location OQ builder as push path.
+                let selectedLoc = LocationStorageService.shared.loadSelectedLocation()
+                if let selectedLoc,
+                   let oq = WatchObservingQualityPayloadBuilder.makeSavedLocationPayload(
+                    conditions: watchConditions,
+                    selectedLocation: selectedLoc
+                   ),
+                   let oqData = try? JSONEncoder().encode(oq) {
+                    reply["observingQuality"] = oqData
                 }
             } else {
                 replyHandlerBox.reply(["status": "error", "message": "No cached conditions"])

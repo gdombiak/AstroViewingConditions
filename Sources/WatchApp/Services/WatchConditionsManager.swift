@@ -21,6 +21,13 @@ protocol WatchConditionsManagerDelegate: AnyObject {
     func conditionsManager(_ manager: WatchConditionsManager, didReceiveConditions conditions: ViewingConditions)
 }
 
+/// Bridges WidgetKit reload into the SharedCode protocol used by the update coordinator.
+final class WidgetCenterComplicationReloader: WatchComplicationReloadReporting, @unchecked Sendable {
+    func reloadComplications() {
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+}
+
 class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnectivityManagerDelegate {
     static let shared = WatchConditionsManager()
     private static let freshConditionsInterval: TimeInterval = 3600
@@ -28,15 +35,46 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     
     weak var delegate: WatchConditionsManagerDelegate?
     
-    private let connectivityManager = WatchConnectivityManager.shared
-    private let locationManager = WatchLocationManager.shared
-    private let conditionsProvider = ConditionsProvider()
-    
+    private let connectivityManager: WatchConnectivityManager
+    private let locationManager: WatchLocationManager
+    private let conditionsProvider: ConditionsProvider
+    /// Production serialized accept path (resolve → persist pair → state → reload).
+    private let updateCoordinator: WatchConditionsAcceptedUpdateCoordinator
+    /// Claims live sequence at event receipt (before unstructured Tasks).
+    private let liveIngress: WatchConditionsLiveEventIngress
+    /// Generation-aware MainActor publication of coordinator applied state.
+    private let observablePublisher: WatchConditionsObservablePublisher
+
     @Published var conditions: ViewingConditions?
     @Published var nightQuality: NightQualityAssessment?
+    /// Canonical recomputed OQ headline (saved location only when available).
+    @Published private(set) var observingQualityHeadline: WatchObservingQualityHeadline?
     @Published private(set) var locationTimeZone: TimeZone?
     @Published var isLoading = false
     @Published var error: Error?
+
+    /// Headline score for dashboard / complications (OQ when valid, else night).
+    var headlineScore: Int {
+        if let observingQualityHeadline {
+            return observingQualityHeadline.observingQualityScore
+        }
+        return nightQuality?.calculatedScore ?? 0
+    }
+
+    var headlineVerdict: String {
+        if let observingQualityHeadline {
+            return observingQualityHeadline.verdict
+        }
+        if let nightQuality {
+            return CrossSurfaceHeadlineScorePresentation.verdict(for: nightQuality.calculatedScore)
+        }
+        return "Unavailable"
+    }
+
+    /// Category emoji from the same OQ/night headline band as `headlineScore`.
+    var headlineEmoji: String {
+        CrossSurfaceHeadlineScorePresentation.emoji(for: headlineScore)
+    }
     
     var locationCalendar: Calendar {
         if let timeZone = displayTimeZone {
@@ -59,7 +97,25 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         return nil
     }
     
-    private init() {
+    private init(
+        connectivityManager: WatchConnectivityManager = .shared,
+        locationManager: WatchLocationManager = .shared,
+        conditionsProvider: ConditionsProvider = ConditionsProvider(),
+        updateCoordinator: WatchConditionsAcceptedUpdateCoordinator? = nil
+    ) {
+        self.connectivityManager = connectivityManager
+        self.locationManager = locationManager
+        self.conditionsProvider = conditionsProvider
+        let coordinator = updateCoordinator ?? WatchConditionsAcceptedUpdateCoordinator(
+            store: AppGroupWatchConditionsStore(),
+            reloader: WidgetCenterComplicationReloader()
+        )
+        self.updateCoordinator = coordinator
+        // nonisolated claim — no actor hop; order = call order at ingress.
+        self.liveIngress = WatchConditionsLiveEventIngress(claim: {
+            coordinator.claimLiveUpdate()
+        })
+        self.observablePublisher = WatchConditionsObservablePublisher(coordinator: coordinator)
         connectivityManager.addDelegate(self)
         loadCachedConditions()
     }
@@ -72,36 +128,55 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
 
     private func loadCachedConditions() {
         Task {
+            let token = await updateCoordinator.beginDeferredApplication()
             guard let conditions = await AppGroupStorage.loadWatchNightConditionsAsync() else { return }
             let timeZone = await Self.resolveTimeZone(for: conditions)
-            await MainActor.run {
-                self.locationTimeZone = timeZone
-                self.conditions = conditions
+            let document = await AppGroupStorage.loadWatchObservingQualityAsync()
+            let selected = await MainActor.run { locationManager.selectedLocation }
+            let result = await updateCoordinator.applyCached(
+                conditions: conditions,
+                selectedLocation: selected,
+                persistedDocument: document,
+                locationTimeZone: timeZone,
+                token: token
+            )
+            if case .applied(let state) = result {
+                await self.publishIfCurrent(state)
             }
         }
     }
-    
-    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveConditions conditions: ViewingConditions) {
-        Task {
+
+    func connectivityManager(
+        _ manager: WatchConnectivityManager,
+        didReceiveConditions conditions: ViewingConditions,
+        observingQuality: WatchObservingQualityPayload?
+    ) {
+        // Claim at callback receipt — synchronous, before any unstructured Task.
+        // Task run order must not determine live sequence.
+        let token = liveIngress.claimPushIngress()
+        liveIngress.scheduleProcessing { [weak self] in
+            guard let self else { return }
             if !Self.isFresh(conditions) {
+                // Token still invalidates older outstanding work.
                 return
             }
 
-            let selectedLocation = await MainActor.run { locationManager.selectedLocation }
+            let selectedLocation = await MainActor.run { self.locationManager.selectedLocation }
             if let selectedLocation,
                !Self.conditions(conditions, match: selectedLocation) {
                 return
             }
 
-            await AppGroupStorage.saveWatchNightConditionsAsync(conditions)
-            let timeZone = await Self.resolveTimeZone(for: conditions)
+            await self.completeLiveUpdate(
+                conditions: conditions,
+                transported: observingQuality,
+                selectedLocation: selectedLocation,
+                token: token
+            )
             await MainActor.run {
-                self.locationTimeZone = timeZone
-                self.conditions = conditions
                 self.error = nil
                 self.isLoading = false
             }
-            WidgetCenter.shared.reloadAllTimelines()
         }
     }
     
@@ -115,28 +190,34 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     }
     
     func refresh() async {
+        // First operation of this refresh: synchronous live claim (before any await).
+        let token = liveIngress.claimRefreshIngress()
+
         await MainActor.run {
             isLoading = true
             error = nil
         }
-        
+
         do {
-            let conditions = try await fetchConditions()
-            let timeZone = await Self.resolveTimeZone(for: conditions)
+            // requestConditions result and local fallback share this refresh token.
+            let result = try await fetchConditionsWithOQ()
+            await completeLiveUpdate(
+                conditions: result.conditions,
+                transported: result.oq,
+                selectedLocation: locationManager.selectedLocation,
+                token: token
+            )
             await MainActor.run {
-                self.locationTimeZone = timeZone
-                self.conditions = conditions
                 self.error = nil
                 self.isLoading = false
             }
-            await AppGroupStorage.saveWatchNightConditionsAsync(conditions)
-            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             print("WatchConditionsManager: Failed to refresh conditions: \(error)")
             await MainActor.run {
                 self.error = error
                 self.isLoading = false
             }
+            // Token remains claimed: a failed newer refresh still invalidates older work.
         }
     }
 
@@ -156,36 +237,91 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
 
         guard shouldUseCached else { return }
 
+        let token = await updateCoordinator.beginDeferredApplication()
+        let document = await AppGroupStorage.loadWatchObservingQualityAsync()
         let timeZone = await Self.resolveTimeZone(for: cached)
-        await MainActor.run {
-            self.locationTimeZone = timeZone
-            self.conditions = cached
+        let result = await updateCoordinator.applyCached(
+            conditions: cached,
+            selectedLocation: selectedLocation,
+            persistedDocument: document,
+            locationTimeZone: timeZone,
+            token: token
+        )
+        if case .applied(let state) = result {
+            await publishIfCurrent(state)
         }
     }
     
-    private func fetchConditions() async throws -> ViewingConditions {
+    private func fetchConditionsWithOQ() async throws -> (
+        conditions: ViewingConditions,
+        oq: WatchObservingQualityPayload?
+    ) {
         guard let selectedLocation = locationManager.selectedLocation else {
             throw ConditionsError.noLocationSelected
         }
         
         do {
-            let (conditions, _) = try await connectivityManager.requestConditions()
+            let (conditions, _, oq) = try await connectivityManager.requestConditions()
             guard Self.isFresh(conditions) else {
                 throw ConditionsError.fetchFailed("iOS returned stale conditions")
             }
             guard Self.conditions(conditions, match: selectedLocation) else {
                 throw ConditionsError.fetchFailed("iOS returned conditions for a different location")
             }
-            return conditions
+            return (conditions, oq)
         } catch {
             print("WatchConditionsManager: Watch connectivity failed: \(error.localizedDescription), computing locally")
             let coordinate = try await locationManager.getCurrentCoordinate()
-            return try await AsyncTimeout.run(seconds: 20, error: ConditionsError.timeout) { [self] in
+            let conditions = try await AsyncTimeout.run(seconds: 20, error: ConditionsError.timeout) { [self] in
                 try await computeConditionsLocally(
                     latitude: coordinate.latitude,
                     longitude: coordinate.longitude,
                     locationName: selectedLocation.name
                 )
+            }
+            // Local fetch: no phone OQ transport (Phase 4B saved-location only via phone).
+            // Same live token as the refresh that invoked this path.
+            return (conditions, nil)
+        }
+    }
+
+    /// Timezone resolution then coordinator accept using a pre-claimed live token.
+    private func completeLiveUpdate(
+        conditions: ViewingConditions,
+        transported: WatchObservingQualityPayload?,
+        selectedLocation: SelectedLocation?,
+        token: WatchConditionsLiveUpdateToken
+    ) async {
+        let timeZone = await Self.resolveTimeZone(for: conditions)
+        let result = await updateCoordinator.accept(
+            conditions: conditions,
+            transported: transported,
+            selectedLocation: selectedLocation,
+            locationTimeZone: timeZone,
+            reloadComplications: true,
+            token: token
+        )
+        switch result {
+        case .discardedStale:
+            return
+        case .persistFailed(let error):
+            print("WatchConditionsManager: Failed to persist conditions/OQ pair: \(error)")
+            return
+        case .applied(let state):
+            await publishIfCurrent(state)
+        }
+    }
+
+    /// Generation-aware transfer from coordinator applied state to observable properties.
+    ///
+    /// Validation + mutation are one MainActor-ordered operation under the ingress lock.
+    private func publishIfCurrent(_ state: WatchConditionsAppliedState) async {
+        await MainActor.run {
+            _ = self.observablePublisher.publish(state) { applied in
+                self.conditions = applied.conditions
+                self.nightQuality = applied.nightQuality
+                self.observingQualityHeadline = applied.observingQualityHeadline
+                self.locationTimeZone = applied.locationTimeZone
             }
         }
     }

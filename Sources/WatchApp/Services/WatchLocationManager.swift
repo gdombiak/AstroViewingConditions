@@ -46,7 +46,11 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
         }
     }
     
-    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveConditions conditions: ViewingConditions) {
+    func connectivityManager(
+        _ manager: WatchConnectivityManager,
+        didReceiveConditions conditions: ViewingConditions,
+        observingQuality: WatchObservingQualityPayload?
+    ) {
     }
     
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveSelectedLocation location: SelectedLocation) {

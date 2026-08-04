@@ -39,6 +39,19 @@ public enum ObservingQualityScoreBand: Sendable, Equatable {
         }
     }
 
+    /// Category indicator emoji aligned with the 0…100 headline band (watch/dashboard).
+    ///
+    /// Same symbols as `NightQualityAssessment.Rating.emoji` for visual continuity, but
+    /// selected via **headline score bands** (not night weather rating thresholds).
+    public var emoji: String {
+        switch self {
+        case .excellent: return "🥇"
+        case .good: return "🥈"
+        case .fair: return "⚠️"
+        case .poor: return "❌"
+        }
+    }
+
     /// Tone for model-level widget presentation (e.g. Three-Night Outlook).
     public var widgetTargetScoreTone: WidgetTargetScoreTone {
         switch self {
@@ -58,6 +71,10 @@ public enum CrossSurfaceHeadlineScorePresentation: Sendable {
 
     public static func verdict(for score: Int) -> String {
         ObservingQualityScoreBand.from(score: score).shortLabel
+    }
+
+    public static func emoji(for score: Int) -> String {
+        ObservingQualityScoreBand.from(score: score).emoji
     }
 
     public static func widgetTargetScoreTone(for score: Int) -> WidgetTargetScoreTone {
