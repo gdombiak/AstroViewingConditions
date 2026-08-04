@@ -28,6 +28,13 @@ public struct WatchConditionsLiveEventIngress: Sendable {
         claim()
     }
 
+    /// Claim live sequence for a selected-location mutation (call synchronously at mutation).
+    ///
+    /// Same sequence authority as push/refresh — invalidates all prior outstanding work.
+    public func claimLocationSelectionIngress() -> WatchConditionsLiveUpdateToken {
+        claim()
+    }
+
     /// Schedule async processing that carries a **pre-claimed** token.
     /// Task run order is irrelevant to live ordering.
     public func scheduleProcessing(

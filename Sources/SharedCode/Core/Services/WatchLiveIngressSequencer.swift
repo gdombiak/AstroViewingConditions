@@ -65,6 +65,10 @@ public final class WatchLiveIngressSequencer: @unchecked Sendable {
     }
 
     /// Runs `perform` only if `sequence` is still the latest **live** claim.
+    ///
+    /// Holds the same lock as ``claim()`` for the entire body. Concurrent `claim()` waits.
+    /// **Non-reentrant:** `perform` must not call `claim`, `withCurrentToken`, or other
+    /// methods on this sequencer (would deadlock). Never `await` inside `perform`.
     @discardableResult
     public func withCurrentToken(
         _ sequence: UInt64,
@@ -77,6 +81,41 @@ public final class WatchLiveIngressSequencer: @unchecked Sendable {
         }
         try perform()
         return true
+    }
+
+    /// Runs `perform` only if `sequence` is still the latest **live** claim.
+    ///
+    /// - Returns: `perform`'s result when current; `nil` when stale (closure not executed).
+    /// - Important: Holds the claim lock for the whole closure. No `await` inside.
+    @discardableResult
+    public func withCurrentTokenResult<R>(
+        _ sequence: UInt64,
+        perform: () throws -> R
+    ) rethrows -> R? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard sequence == self.sequence else {
+            return nil
+        }
+        return try perform()
+    }
+
+    /// Token-typed convenience for live refresh/push UI and commit boundaries.
+    @discardableResult
+    public func withCurrentToken(
+        _ token: WatchConditionsLiveUpdateToken,
+        perform: () throws -> Void
+    ) rethrows -> Bool {
+        try withCurrentToken(token.sequence, perform: perform)
+    }
+
+    /// Token-typed result convenience for live refresh/push UI and commit boundaries.
+    @discardableResult
+    public func withCurrentTokenResult<R>(
+        _ token: WatchConditionsLiveUpdateToken,
+        perform: () throws -> R
+    ) rethrows -> R? {
+        try withCurrentTokenResult(token.sequence, perform: perform)
     }
 
     /// Cache publication under live + deferred currency (same lock as claim).

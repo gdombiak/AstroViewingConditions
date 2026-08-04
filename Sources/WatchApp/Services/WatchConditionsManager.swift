@@ -47,7 +47,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
 
     @Published var conditions: ViewingConditions?
     @Published var nightQuality: NightQualityAssessment?
-    /// Canonical recomputed OQ headline (saved location only when available).
+    /// Canonical recomputed OQ headline when available.
     @Published private(set) var observingQualityHeadline: WatchObservingQualityHeadline?
     @Published private(set) var locationTimeZone: TimeZone?
     @Published var isLoading = false
@@ -116,7 +116,13 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             coordinator.claimLiveUpdate()
         })
         self.observablePublisher = WatchConditionsObservablePublisher(coordinator: coordinator)
+        // Conditions manager connectivity (conditions payloads) — independent of location selection delivery.
         connectivityManager.addDelegate(self)
+        // Explicit one-time activation: install this fully-initialized handler, then enable
+        // location-manager connectivity selection delivery (handler before addDelegate).
+        locationManager.activateSelectionHandling(handler: self)
+        // Cached conditions load is generation-aware; any selection claimed during activation
+        // supersedes stale cache via live-token acceptance rules.
         loadCachedConditions()
     }
 
@@ -152,18 +158,17 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         observingQuality: WatchObservingQualityPayload?
     ) {
         // Claim at callback receipt — synchronous, before any unstructured Task.
-        // Task run order must not determine live sequence.
         let token = liveIngress.claimPushIngress()
         liveIngress.scheduleProcessing { [weak self] in
             guard let self else { return }
-            if !Self.isFresh(conditions) {
-                // Token still invalidates older outstanding work.
-                return
-            }
 
+            // Bind to selection at process time (after claim; location mutations claim higher).
             let selectedLocation = await MainActor.run { self.locationManager.selectedLocation }
-            if let selectedLocation,
-               !Self.conditions(conditions, match: selectedLocation) {
+            // Production pure acceptance seam (fresh + selection association).
+            guard WatchConditionsPushAcceptance.shouldAccept(
+                conditions: conditions,
+                selectedLocation: selectedLocation
+            ) else {
                 return
             }
 
@@ -173,10 +178,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
                 selectedLocation: selectedLocation,
                 token: token
             )
-            await MainActor.run {
-                self.error = nil
-                self.isLoading = false
-            }
+            await self.applyTerminalUIIfCurrent(token: token, error: nil)
         }
     }
     
@@ -188,38 +190,24 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveUnitSystem unitSystem: UnitSystem) {
     }
-    
+
+    /// Manual / automatic refresh: claims its own live token and binds current selection.
     func refresh() async {
-        // First operation of this refresh: synchronous live claim (before any await).
-        let token = liveIngress.claimRefreshIngress()
-
-        await MainActor.run {
-            isLoading = true
-            error = nil
-        }
-
-        do {
-            // requestConditions result and local fallback share this refresh token.
-            let result = try await fetchConditionsWithOQ()
-            await completeLiveUpdate(
-                conditions: result.conditions,
-                transported: result.oq,
-                selectedLocation: locationManager.selectedLocation,
+        guard let selectedLocation = locationManager.selectedLocation else {
+            let token = liveIngress.claimRefreshIngress()
+            await applyTerminalUIIfCurrent(
                 token: token,
-                expectedCurrentLocationRequest: result.expectedCurrentLocationRequest
+                error: ConditionsError.noLocationSelected
             )
-            await MainActor.run {
-                self.error = nil
-                self.isLoading = false
-            }
-        } catch {
-            print("WatchConditionsManager: Failed to refresh conditions: \(error)")
-            await MainActor.run {
-                self.error = error
-                self.isLoading = false
-            }
-            // Token remains claimed: a failed newer refresh still invalidates older work.
+            return
         }
+        let token = liveIngress.claimRefreshIngress()
+        await performRefresh(
+            context: WatchConditionsRefreshContext(
+                token: token,
+                selectedLocation: selectedLocation
+            )
+        )
     }
 
     func loadNewerSharedCacheIfAvailable() async {
@@ -252,22 +240,51 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             await publishIfCurrent(state)
         }
     }
-    
-    private struct FetchResult {
-        var conditions: ViewingConditions
-        var oq: WatchObservingQualityPayload?
-        var expectedCurrentLocationRequest: WatchCurrentLocationRequestContext?
+
+    // MARK: - Bound refresh pipeline
+
+    /// Full refresh for an immutable context (pre-claimed token + selection).
+    private func performRefresh(context: WatchConditionsRefreshContext) async {
+        await beginLoadingIfCurrent(token: context.token)
+
+        // Superseded before acquisition starts.
+        guard isTokenCurrent(context.token) else { return }
+
+        do {
+            let result = try await fetchConditionsWithOQ(
+                selectedLocation: context.selectedLocation,
+                token: context.token
+            )
+            // Stale after acquisition — zero side effects.
+            guard isTokenCurrent(context.token) else { return }
+
+            await completeLiveUpdate(
+                conditions: result.conditions,
+                transported: result.transported,
+                selectedLocation: result.selectedLocation,
+                token: result.token,
+                expectedCurrentLocationRequest: result.expectedCurrentLocationRequest
+            )
+            await applyTerminalUIIfCurrent(token: context.token, error: nil)
+        } catch {
+            print("WatchConditionsManager: Failed to refresh conditions: \(error)")
+            // Token remains claimed: a failed newer refresh still invalidates older work.
+            await applyTerminalUIIfCurrent(token: context.token, error: error)
+        }
     }
 
-    private func fetchConditionsWithOQ() async throws -> FetchResult {
-        guard let selectedLocation = locationManager.selectedLocation else {
-            throw ConditionsError.noLocationSelected
-        }
-
+    private func fetchConditionsWithOQ(
+        selectedLocation: SelectedLocation,
+        token: WatchConditionsLiveUpdateToken
+    ) async throws -> WatchConditionsFetchResult {
         // Phase 4C: obtain watch GPS and build request context for Current Location only.
         let currentLocationRequest: WatchCurrentLocationRequestContext?
         if selectedLocation.source == .currentGPS {
+            // May await; re-check token after GPS (selection may have changed).
             let coordinate = try await locationManager.getCurrentCoordinate()
+            guard isTokenCurrent(token) else {
+                throw ConditionsError.fetchFailed("Refresh superseded")
+            }
             guard ModeledZenithBrightnessValidity.isValidGeographicCoordinate(
                 latitude: coordinate.latitude,
                 longitude: coordinate.longitude
@@ -282,16 +299,23 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         } else {
             currentLocationRequest = nil
         }
+
+        // Bail before phone request if superseded during GPS.
+        guard isTokenCurrent(token) else {
+            throw ConditionsError.fetchFailed("Refresh superseded")
+        }
         
         do {
             let (conditions, _, oq) = try await connectivityManager.requestConditions(
                 currentLocationRequest: currentLocationRequest
             )
+            guard isTokenCurrent(token) else {
+                throw ConditionsError.fetchFailed("Refresh superseded")
+            }
             guard Self.isFresh(conditions) else {
                 throw ConditionsError.fetchFailed("iOS returned stale conditions")
             }
             if let currentLocationRequest {
-                // Conditions must match watch-requested coordinates (not phone selection).
                 guard WatchObservingQualityCurrentLocationAssociation.matches(
                     request: currentLocationRequest,
                     conditionsLocation: conditions.location
@@ -303,18 +327,27 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
                     throw ConditionsError.fetchFailed("iOS returned conditions for a different location")
                 }
             }
-            return FetchResult(
+            return WatchConditionsFetchResult(
                 conditions: conditions,
-                oq: oq,
-                expectedCurrentLocationRequest: currentLocationRequest
+                transported: oq,
+                expectedCurrentLocationRequest: currentLocationRequest,
+                selectedLocation: selectedLocation,
+                token: token
             )
         } catch {
+            // If already superseded, do not run local fallback (avoid side work / commit attempts).
+            guard isTokenCurrent(token) else {
+                throw ConditionsError.fetchFailed("Refresh superseded")
+            }
             print("WatchConditionsManager: Watch connectivity failed: \(error.localizedDescription), computing locally")
             let coordinate: (latitude: Double, longitude: Double)
             if let currentLocationRequest {
                 coordinate = (currentLocationRequest.latitude, currentLocationRequest.longitude)
             } else {
                 coordinate = try await locationManager.getCurrentCoordinate()
+                guard isTokenCurrent(token) else {
+                    throw ConditionsError.fetchFailed("Refresh superseded")
+                }
             }
             let conditions = try await AsyncTimeout.run(seconds: 20, error: ConditionsError.timeout) { [self] in
                 try await computeConditionsLocally(
@@ -323,12 +356,16 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
                     locationName: selectedLocation.name
                 )
             }
+            guard isTokenCurrent(token) else {
+                throw ConditionsError.fetchFailed("Refresh superseded")
+            }
             // Local compute: no phone OQ / atlas — exact night-only.
-            // Same live token; drop CL request correlation (no correlated transport).
-            return FetchResult(
+            return WatchConditionsFetchResult(
                 conditions: conditions,
-                oq: nil,
-                expectedCurrentLocationRequest: nil
+                transported: nil,
+                expectedCurrentLocationRequest: nil,
+                selectedLocation: selectedLocation,
+                token: token
             )
         }
     }
@@ -341,7 +378,13 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         token: WatchConditionsLiveUpdateToken,
         expectedCurrentLocationRequest: WatchCurrentLocationRequestContext? = nil
     ) async {
+        // Fast path: already superseded before timezone work.
+        guard isTokenCurrent(token) else { return }
+
         let timeZone = await Self.resolveTimeZone(for: conditions)
+        // Re-check after timezone await — selection change may have claimed.
+        guard isTokenCurrent(token) else { return }
+
         let result = await updateCoordinator.accept(
             conditions: conditions,
             transported: transported,
@@ -363,8 +406,6 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     }
 
     /// Generation-aware transfer from coordinator applied state to observable properties.
-    ///
-    /// Validation + mutation are one MainActor-ordered operation under the ingress lock.
     private func publishIfCurrent(_ state: WatchConditionsAppliedState) async {
         await MainActor.run {
             _ = self.observablePublisher.publish(state) { applied in
@@ -376,38 +417,53 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         }
     }
 
-    private static func isFresh(_ conditions: ViewingConditions) -> Bool {
-        conditions.isFreshForLocalDay(within: freshConditionsInterval)
+    // MARK: - Generation-aware loading / error (atomic with live-token claims)
+
+    /// Best-effort stale check for skipping acquisition work (not a UI/publish authority).
+    private func isTokenCurrent(_ token: WatchConditionsLiveUpdateToken) -> Bool {
+        token.sequence == updateCoordinator.currentLiveSequence
     }
 
-    private static func conditions(_ conditions: ViewingConditions, match selectedLocation: SelectedLocation) -> Bool {
-        if let selectedID = selectedLocation.id,
-           let conditionsID = conditions.location.id {
-            return selectedID == conditionsID
+    /// MainActor hop, then **atomic** currency check + loading mutation under the claim lock.
+    private func beginLoadingIfCurrent(token: WatchConditionsLiveUpdateToken) async {
+        await MainActor.run {
+            _ = self.updateCoordinator.withCurrentLiveTokenForRefreshUI(
+                token,
+                kind: .beginLoading
+            ) {
+                self.isLoading = true
+                self.error = nil
+            }
         }
+    }
 
-        if selectedLocation.source == .currentGPS,
-           selectedLocation.latitude == 0,
-           selectedLocation.longitude == 0 {
-            return true
+    /// MainActor hop, then **atomic** currency check + terminal mutation under the claim lock.
+    private func applyTerminalUIIfCurrent(
+        token: WatchConditionsLiveUpdateToken,
+        error: Error?
+    ) async {
+        await MainActor.run {
+            _ = self.updateCoordinator.withCurrentLiveTokenForRefreshUI(
+                token,
+                kind: .terminal
+            ) {
+                self.error = error
+                self.isLoading = false
+            }
         }
+    }
 
-        return coordinates(
-            latitude: conditions.location.latitude,
-            longitude: conditions.location.longitude,
-            matchLatitude: selectedLocation.latitude,
-            matchLongitude: selectedLocation.longitude
+    private static func isFresh(_ conditions: ViewingConditions) -> Bool {
+        conditions.isFreshForLocalDay(
+            within: WatchConditionsPushAcceptance.freshConditionsInterval
         )
     }
 
-    private static func coordinates(
-        latitude: Double,
-        longitude: Double,
-        matchLatitude: Double,
-        matchLongitude: Double
+    private static func conditions(
+        _ conditions: ViewingConditions,
+        match selectedLocation: SelectedLocation
     ) -> Bool {
-        abs(latitude - matchLatitude) <= locationMatchTolerance
-            && abs(longitude - matchLongitude) <= locationMatchTolerance
+        WatchConditionsPushAcceptance.conditionsMatch(conditions, selected: selectedLocation)
     }
     
     private func computeConditionsLocally(
@@ -439,5 +495,28 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             latitude: location.latitude,
             longitude: location.longitude
         )
+    }
+}
+
+// MARK: - Selected location change handling
+
+extension WatchConditionsManager: WatchSelectedLocationChangeHandling {
+    /// Synchronous invalidation at the location mutation boundary (before any await/Task).
+    func claimSelectedLocationChange() -> WatchConditionsLiveUpdateToken {
+        liveIngress.claimLocationSelectionIngress()
+    }
+
+    /// Replacement refresh for the new selection using the **same** pre-claimed token.
+    func startRefresh(
+        for location: SelectedLocation,
+        token: WatchConditionsLiveUpdateToken
+    ) {
+        let context = WatchConditionsRefreshContext(
+            token: token,
+            selectedLocation: location
+        )
+        liveIngress.scheduleProcessing { [weak self] in
+            await self?.performRefresh(context: context)
+        }
     }
 }

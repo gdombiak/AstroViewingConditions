@@ -36,6 +36,14 @@ public protocol WatchComplicationReloadReporting: Sendable {
 }
 
 /// Suspension points for tests (live prepare / persist / deferred cache apply).
+/// Kind of generation-aware refresh UI mutation under the live-token lock.
+public enum WatchRefreshUIPublicationKind: Sendable, Equatable {
+    /// Set `isLoading = true` and clear `error`.
+    case beginLoading
+    /// Apply terminal success/failure (`error` + `isLoading = false`).
+    case terminal
+}
+
 public protocol WatchConditionsUpdateGate: Sendable {
     /// After live token is claimed and accept begins, before resolve/persist.
     func beforePersist() async
@@ -45,11 +53,17 @@ public protocol WatchConditionsUpdateGate: Sendable {
     func beforeCachePublication() async
     /// Called **inside** the protected cache publication section (must not claim or await).
     func onCachePublicationEntered()
+    /// Called **inside** the live-token lock after currency is verified, before loading/error mutation.
+    ///
+    /// Must not claim live tokens, re-enter the sequencer, or block indefinitely without
+    /// a deterministic test release (production default is a no-op).
+    func onRefreshUIPublicationEntered(_ kind: WatchRefreshUIPublicationKind)
 }
 
 extension WatchConditionsUpdateGate {
     public func beforeCachePublication() async {}
     public func onCachePublicationEntered() {}
+    public func onRefreshUIPublicationEntered(_ kind: WatchRefreshUIPublicationKind) {}
 }
 
 /// Production gate: no delay.
@@ -59,6 +73,7 @@ public struct ImmediateWatchConditionsUpdateGate: WatchConditionsUpdateGate {
     public func beforeApplyCached() async {}
     public func beforeCachePublication() async {}
     public func onCachePublicationEntered() {}
+    public func onRefreshUIPublicationEntered(_ kind: WatchRefreshUIPublicationKind) {}
 }
 
 /// Default App Group-backed persistence for production watch manager.
@@ -237,6 +252,26 @@ public actor WatchConditionsAcceptedUpdateCoordinator: WatchLiveIngressClaiming 
         mutate: () -> Void
     ) -> Bool {
         liveIngress.withPublishableIdentity(state.identity, perform: mutate)
+    }
+
+    /// Atomically: verify live token is still current, then run `mutate` under the claim lock.
+    ///
+    /// Use from MainActor for `isLoading` / `error` so a concurrent location/push/refresh
+    /// claim cannot interleave between the currency check and the property write.
+    ///
+    /// - Parameter kind: Distinguishes begin-loading vs terminal mutation for test hooks.
+    /// - Returns: `true` if `mutate` ran; `false` if the token was already stale.
+    @discardableResult
+    nonisolated public func withCurrentLiveTokenForRefreshUI(
+        _ token: WatchConditionsLiveUpdateToken,
+        kind: WatchRefreshUIPublicationKind,
+        mutate: () -> Void
+    ) -> Bool {
+        liveIngress.withCurrentToken(token.sequence) {
+            // Sync hook while lock is held — must not claim or await.
+            gate.onRefreshUIPublicationEntered(kind)
+            mutate()
+        }
     }
 
     /// Actor-hopping alias of ``claimLiveUpdate()``. Prefer the nonisolated claim at ingress;
