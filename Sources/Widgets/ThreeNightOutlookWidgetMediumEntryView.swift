@@ -108,7 +108,7 @@ struct ThreeNightOutlookWidgetMediumEntryView: View {
                     .fontWeight(.semibold)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 3)
-                if let score = night.score {
+                if let score = night.observingQualityScore ?? night.score {
                     Text("\(score)")
                         .font((style == .regular ? Font.subheadline : .caption).weight(.bold))
                         .foregroundStyle(scoreColor(night.scoreTone))

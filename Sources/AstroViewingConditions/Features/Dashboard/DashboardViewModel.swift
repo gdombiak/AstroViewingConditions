@@ -771,22 +771,62 @@ public class DashboardViewModel {
     private func publishCompanionConditions() async {
         guard let conditions = viewingConditions else { return }
         let companionConditions = conditions.limitedToTonightCache()
-        if let widgetSummary = WidgetNightSummary.make(from: companionConditions) {
+        // Authoritative selection only — never infer source from conditions.location / CachedLocation.id.
+        let locationContext = Self.authoritativeLocationContext(
+            selected: LocationStorageService.shared.loadSelectedLocation(),
+            conditionsLocation: companionConditions.location
+        )
+        let widgetSummary: WidgetNightSummary?
+        if let locationContext {
+            widgetSummary = WidgetNightSummaryPublisher.makeEnriched(
+                from: companionConditions,
+                location: locationContext
+            )
+        } else {
+            widgetSummary = WidgetNightSummaryPublisher.makeNightOnlyV1(from: companionConditions)
+        }
+        if let widgetSummary {
             await AppGroupStorage.saveWidgetNightSummaryAsync(widgetSummary)
         }
         await publishTonightTargets(from: conditions)
-        await publishThreeNightOutlook(from: conditions)
+        await publishThreeNightOutlook(from: conditions, locationContext: locationContext)
         WatchConnectivityService.shared.sendConditionsToWatch(companionConditions)
         
         WidgetReloadService.shared.scheduleReload()
     }
 
-    private func publishThreeNightOutlook(from conditions: ViewingConditions) async {
+    /// Builds OQ context only when selection is authoritative and matches conditions location.
+    private static func authoritativeLocationContext(
+        selected: SelectedLocation?,
+        conditionsLocation: CachedLocation
+    ) -> CrossSurfaceLocationContext? {
+        guard let selected,
+              let context = CrossSurfaceLocationContext.make(from: selected) else {
+            return nil
+        }
+        // Require same effective site as published conditions (ID when saved; else tight coord match).
+        let matches = WidgetLocationIdentity.matches(
+            summarySavedLocationID: conditionsLocation.id,
+            selectedSavedLocationID: selected.source == .saved ? selected.id : nil,
+            summaryLatitude: conditionsLocation.latitude,
+            summaryLongitude: conditionsLocation.longitude,
+            selectedLatitude: selected.latitude,
+            selectedLongitude: selected.longitude
+        )
+        guard matches else { return nil }
+        return context
+    }
+
+    private func publishThreeNightOutlook(
+        from conditions: ViewingConditions,
+        locationContext: CrossSurfaceLocationContext?
+    ) async {
         let referenceDate = now()
         let existing = await AppGroupStorage.loadWidgetThreeNightOutlookSummaryAsync()
         switch ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
             conditions: conditions, existingSummary: existing,
-            referenceDate: referenceDate, timeZone: displayTimeZone
+            referenceDate: referenceDate, timeZone: displayTimeZone,
+            locationContext: locationContext
         ) {
         case let .publish(summary):
             if ThreeNightOutlookPersistencePolicy.shouldSave(
@@ -950,8 +990,12 @@ public class DashboardViewModel {
 
         if let conditions = viewingConditions,
            conditionsMatch(conditions, location: location) {
+            let locationContext = Self.authoritativeLocationContext(
+                selected: LocationStorageService.shared.loadSelectedLocation(),
+                conditionsLocation: conditions.location
+            )
             await publishTonightTargets(from: conditions)
-            await publishThreeNightOutlook(from: conditions)
+            await publishThreeNightOutlook(from: conditions, locationContext: locationContext)
         } else {
             await publishUnavailableTonightTargets(for: location)
             await publishUnavailableThreeNightOutlook(for: location)

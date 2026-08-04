@@ -64,10 +64,10 @@ struct NightConditionsWidgetSmallEntryView: View {
 
     private func minimalScoreVerdictHeader(showIdentityIcon: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text("\(summary.score)")
+            Text("\(summary.observingQualityScore)")
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .foregroundStyle(scoreColor)
-                .accessibilityLabel("Score \(summary.score)")
+                .accessibilityLabel("Score \(summary.observingQualityScore)")
                 .fixedSize(horizontal: true, vertical: false)
             Text(summary.verdict)
                 .font(.subheadline.weight(.semibold))
@@ -83,10 +83,10 @@ struct NightConditionsWidgetSmallEntryView: View {
 
     private var minimalScoreVerdictStackedHeader: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("\(summary.score)")
+            Text("\(summary.observingQualityScore)")
                 .font(.system(.title3, design: .rounded).weight(.bold))
                 .foregroundStyle(scoreColor)
-                .accessibilityLabel("Score \(summary.score)")
+                .accessibilityLabel("Score \(summary.observingQualityScore)")
                 .fixedSize(horizontal: true, vertical: false)
             Text(summary.verdict)
                 .font(.subheadline.weight(.semibold))
@@ -117,10 +117,10 @@ struct NightConditionsWidgetSmallEntryView: View {
 
     private func compactScoreVerdictHeader(showIdentityIcon: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text("\(summary.score)")
+            Text("\(summary.observingQualityScore)")
                 .font(.system(.title2, design: .rounded).weight(.bold))
                 .foregroundStyle(scoreColor)
-                .accessibilityLabel("Score \(summary.score)")
+                .accessibilityLabel("Score \(summary.observingQualityScore)")
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
             Text(summary.verdict)
@@ -168,10 +168,10 @@ struct NightConditionsWidgetSmallEntryView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(summary.score)")
+                Text("\(summary.observingQualityScore)")
                     .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .foregroundStyle(scoreColor)
-                    .accessibilityLabel("Score \(summary.score)")
+                    .accessibilityLabel("Score \(summary.observingQualityScore)")
                 Text(summary.verdict)
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(scoreColor)
@@ -251,7 +251,7 @@ struct NightConditionsWidgetSmallEntryView: View {
     }
 
     private var scoreColor: Color {
-        switch summary.score {
+        switch summary.observingQualityScore {
         case 80...100: return .green
         case 60..<80: return .blue
         case 40..<60: return .orange

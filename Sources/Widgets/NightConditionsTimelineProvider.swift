@@ -60,7 +60,11 @@ struct Provider: TimelineProvider {
             widgetLogger.info(
                 "Conditions returned; fetchedAt: \(conditions.fetchedAt.description, privacy: .public)"
             )
-            guard let summary = WidgetNightSummary.make(from: conditions) else {
+            guard let locationContext = CrossSurfaceLocationContext.make(from: location),
+                  let summary = WidgetNightSummaryPublisher.makeEnriched(
+                    from: conditions,
+                    location: locationContext
+                  ) else {
                 widgetLogger.warning("Returned conditions could not build a Night Conditions summary")
                 return await fallbackEntry(
                     cachedSummary: cachedSummary,
@@ -116,7 +120,11 @@ struct Provider: TimelineProvider {
                within: Self.fallbackMaximumAge,
                relativeTo: referenceDate
            ),
-           let summary = WidgetNightSummary.make(from: staleConditions) {
+           let locationContext = CrossSurfaceLocationContext.make(from: location),
+           let summary = WidgetNightSummaryPublisher.makeEnriched(
+            from: staleConditions,
+            location: locationContext
+           ) {
             widgetLogger.info("Using matching stale shared conditions fallback")
             return NightConditionsEntry(
                 date: referenceDate,

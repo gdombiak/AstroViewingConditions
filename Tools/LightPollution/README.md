@@ -200,6 +200,8 @@ See [CROSS_SURFACE_ARCHITECTURE.md](CROSS_SURFACE_ARCHITECTURE.md): hybrid model
 
 **Phase 3 (SharedCode):** Current Location companion `currentLocationModeledBrightness.json`; sole-writer `CurrentLocationModeledBrightnessCoordinator`; injected `CurrentLocationBrightnessPublishing` from GPS resolve; read-only `CurrentLocationModeledBrightnessReading`.
 
+**Phase 4A (SharedCode + iOS widgets, on feature branch):** `CrossSurfaceObservingQualityResolver` + enriched `WidgetNightSummary` dual scores for Night Conditions and Three-Night Outlook; no watch transport yet.
+
 ### Production app packaging
 
 The validated production artifact is **copied into the iOS app target** (not generated at build time):

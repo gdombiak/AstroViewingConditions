@@ -166,6 +166,8 @@ Byte count / SHA-256 remain packaging + integration-test diagnostics only.
 - **Retain** sample when switching to a saved location; re-validate on return via Phase 1 1000 m rules.
 - **Readers:** `CurrentLocationModeledBrightnessReading` for later widgets.
 
+**Cross-surface OQ on iOS widgets (Phase 4A — implemented on feature branch):** Shared `CrossSurfaceLocationContext`, versioned `CrossSurfaceObservingQualitySnapshot`, pure `CrossSurfaceObservingQualityResolver`, and `WidgetNightSummaryPublisher.makeEnriched(from:location:brightness:)` for both phone and widget `widgetConditions.json` writers. Night Conditions + Three-Night Outlook headlines use observing quality when Phase 2/3 companions are valid; otherwise exact night score. **Watch transport / UI is Phase 4B–4C.**
+
 **Pending UI (Phase 5):** full-card placeholder remains until score-slot-only refinement; not Phase 1.
 
 ---

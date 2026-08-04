@@ -13,14 +13,23 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         conditions: ViewingConditions,
         existingSummary: WidgetThreeNightOutlookSummary?,
         referenceDate: Date,
-        timeZone: TimeZone?
+        timeZone: TimeZone?,
+        locationContext: CrossSurfaceLocationContext?,
+        brightness: CrossSurfaceBrightnessInput = .loadFromAppGroup,
+        baseURL: URL? = AppGroupStorage.containerURL
     ) -> ThreeNightOutlookPublicationDecision {
+        // `locationContext == nil` means night-only OQ (no identity inference).
         switch ActiveObservingNightResolver.resolve(
             conditions: conditions, referenceDate: referenceDate, timeZone: timeZone
         ) {
         case let .resolved(first):
             guard let summary = makeSummary(
-                conditions: conditions, firstResolution: first, referenceDate: referenceDate
+                conditions: conditions,
+                firstResolution: first,
+                referenceDate: referenceDate,
+                locationContext: locationContext,
+                brightness: brightness,
+                baseURL: baseURL
             ) else {
                 return .unavailable(makeUnavailableSummary(
                     generatedAt: conditions.fetchedAt, location: conditions.location,
@@ -51,7 +60,10 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
     public static func makeSummary(
         conditions: ViewingConditions,
         firstResolution: TargetRecommendationContextResolution,
-        referenceDate: Date
+        referenceDate: Date,
+        locationContext: CrossSurfaceLocationContext?,
+        brightness: CrossSurfaceBrightnessInput = .loadFromAppGroup,
+        baseURL: URL? = AppGroupStorage.containerURL
     ) -> WidgetThreeNightOutlookSummary? {
         let calendar = LocationTimeZoneResolver.calendar(for: firstResolution.timeZone)
         let referenceDay = calendar.startOfDay(for: referenceDate)
@@ -66,12 +78,26 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         }
         guard resolutions.count == labels.count else { return nil }
 
+        // Authoritative context only — nil ⇒ night-only (exact night scores, no brightness).
+        let sample: ModeledZenithBrightnessSample?
+        if let locationContext, locationContext.isValidForBrightnessAssociation {
+            sample = CrossSurfaceBrightnessSampleLoading.resolve(
+                brightness, for: locationContext, baseURL: baseURL
+            )
+        } else {
+            sample = nil
+        }
+        let effectiveContext: CrossSurfaceLocationContext? =
+            (locationContext?.isValidForBrightnessAssociation == true) ? locationContext : nil
+
         var nights = resolutions.enumerated().map { index, resolution in
             makeNight(
                 resolution,
                 conditions: conditions,
                 label: labels[index],
-                isBest: false
+                isBest: false,
+                locationContext: effectiveContext,
+                sample: sample
             )
         }
         if let bestIndex = bestNightIndex(in: nights) {
@@ -79,7 +105,9 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
                 resolutions[bestIndex],
                 conditions: conditions,
                 label: labels[bestIndex],
-                isBest: true
+                isBest: true,
+                locationContext: effectiveContext,
+                sample: sample
             )
         }
         return WidgetThreeNightOutlookSummary(
@@ -153,7 +181,9 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         _ resolution: TargetRecommendationContextResolution,
         conditions: ViewingConditions,
         label: String,
-        isBest: Bool
+        isBest: Bool,
+        locationContext: CrossSurfaceLocationContext?,
+        sample: ModeledZenithBrightnessSample?
     ) -> WidgetThreeNightOutlookNight {
         let assessment = resolution.context.nightQuality
         let start = resolution.context.astronomicalNightStart
@@ -177,16 +207,35 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
                 status: .unavailable, isBestNight: false
             )
         }
-        let score = assessment.calculatedScore
+        let nightScore = assessment.calculatedScore
+        let oqScore: Int
+        if let locationContext {
+            let snapshot = CrossSurfaceObservingQualityResolver.resolve(
+                .init(
+                    nightConditionsScore: nightScore,
+                    location: locationContext,
+                    sample: sample,
+                    assessedAt: conditions.fetchedAt
+                )
+            )
+            oqScore = snapshot.observingQualityScore
+        } else {
+            oqScore = nightScore
+        }
+        // Headline category/tone from OQ; best window and weather remain night-derived.
+        let headlineVerdict = CrossSurfaceHeadlineScorePresentation.verdict(for: oqScore)
+        let headlineTone = CrossSurfaceHeadlineScorePresentation.widgetTargetScoreTone(for: oqScore)
         return WidgetThreeNightOutlookNight(
             id: String(resolution.observingDate.timeIntervalSinceReferenceDate),
-            displayLabel: label, observingDate: resolution.observingDate, score: score,
-            verdict: assessment.rating.shortLabel, scoreTone: tone(for: assessment.rating),
+            displayLabel: label, observingDate: resolution.observingDate, score: oqScore,
+            verdict: headlineVerdict, scoreTone: headlineTone,
             astronomicalNightStart: resolution.context.astronomicalNightStart,
             astronomicalNightEnd: resolution.context.astronomicalNightEnd,
             bestWindow: assessment.bestWindow,
             statusText: assessment.bestWindow == nil ? "No best window available" : "Best window",
-            status: .available, isBestNight: isBest
+            status: .available, isBestNight: isBest,
+            nightConditionsScore: nightScore,
+            observingQualityScore: oqScore
         )
     }
 
@@ -202,15 +251,6 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         let cadence = intervals[intervals.count / 2]
         guard abs(cadence - expectedHourlyCadence) <= cadenceTolerance else { return nil }
         return cadence
-    }
-
-    private static func tone(for rating: NightQualityAssessment.Rating) -> WidgetTargetScoreTone {
-        switch rating {
-        case .excellent: .positive
-        case .good: .informational
-        case .fair: .caution
-        case .poor: .negative
-        }
     }
 
     private static func isValidActivePreviousPayload(

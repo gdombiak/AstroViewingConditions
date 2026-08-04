@@ -1053,7 +1053,8 @@ final class WidgetTonightTargetsTests: XCTestCase {
             "timelineReevaluationInterval: TimeInterval = 3600"
         ))
         XCTAssertTrue(phaseOneProvider.contains("SharedConditionsRepository"))
-        XCTAssertTrue(phaseOneProvider.contains("WidgetNightSummary.make(from: conditions)"))
+        XCTAssertTrue(phaseOneProvider.contains("WidgetNightSummaryPublisher.makeEnriched"))
+        XCTAssertTrue(phaseOneProvider.contains("CrossSurfaceLocationContext.make(from: location)"))
         XCTAssertTrue(phaseOneProvider.contains("saveWidgetNightSummaryAsync"))
         XCTAssertTrue(phaseOneProvider.contains("context.isPreview"))
         XCTAssertTrue(phaseOneProvider.contains("fallbackMaximumAge: TimeInterval = 24 * 3600"))

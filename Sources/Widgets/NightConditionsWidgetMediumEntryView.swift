@@ -68,7 +68,7 @@ struct NightConditionsWidgetMediumEntryView: View {
                         .font((density == .minimal ? Font.caption2 : .caption).weight(.semibold))
                 }
                 Spacer(minLength: 4)
-                Text("\(summary.score)")
+                Text("\(summary.observingQualityScore)")
                     .font(.system(density == .minimal ? .title3 : .title2, design: .rounded).weight(.bold))
                     .foregroundStyle(scoreColor)
                 Text(summary.verdict)
@@ -139,7 +139,7 @@ struct NightConditionsWidgetMediumEntryView: View {
                 }
                 Spacer(minLength: 8)
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("\(summary.score)")
+                    Text("\(summary.observingQualityScore)")
                         .font(.system(.title, design: .rounded).weight(.bold))
                         .foregroundStyle(scoreColor)
                     Text(summary.verdict)
@@ -254,7 +254,7 @@ struct NightConditionsWidgetMediumEntryView: View {
     }
 
     private var scoreColor: Color {
-        switch summary.score {
+        switch summary.observingQualityScore {
         case 80...100: return .green
         case 60..<80: return .blue
         case 40..<60: return .orange
