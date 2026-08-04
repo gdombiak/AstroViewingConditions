@@ -168,7 +168,12 @@ private enum Phase4BFixtures {
         if let nightOverride {
             snap.nightConditionsScore = nightOverride
         }
-        return WatchObservingQualityPayload(location: ctx, transportedSnapshot: snap)
+        return WatchObservingQualityPayload(
+            payloadVersion: WatchObservingQualityPayload.savedLocationPayloadVersion,
+            location: ctx,
+            transportedSnapshot: snap,
+            requestContext: nil
+        )
     }
 }
 
@@ -187,7 +192,9 @@ final class WatchObservingQualityPayloadBuilderTests: XCTestCase {
             baseURL: nil
         )
         XCTAssertNotNil(payload)
-        XCTAssertEqual(payload?.payloadVersion, WatchObservingQualityPayload.currentPayloadVersion)
+        // Saved-location transport remains v1; currentPayloadVersion is 2 after Phase 4C.
+        XCTAssertEqual(payload?.payloadVersion, WatchObservingQualityPayload.savedLocationPayloadVersion)
+        XCTAssertNil(payload?.requestContext)
         XCTAssertEqual(payload?.location.savedLocationID, id)
         XCTAssertEqual(payload?.transportedSnapshot.brightnessAvailability, .available)
         let night = Phase4BFixtures.nightScore(for: conditions)
@@ -631,7 +638,12 @@ final class WatchObservingQualityCanonicalizerTests: XCTestCase {
             nightConditionsScore: night,
             assessedAt: conditions.fetchedAt
         )
-        let payload = WatchObservingQualityPayload(location: ctx, transportedSnapshot: snap)
+        let payload = WatchObservingQualityPayload(
+            payloadVersion: WatchObservingQualityPayload.savedLocationPayloadVersion,
+            location: ctx,
+            transportedSnapshot: snap,
+            requestContext: nil
+        )
         let outcome = WatchObservingQualityCanonicalizer.resolve(
             conditions: conditions,
             transported: payload,
@@ -654,12 +666,8 @@ final class WatchObservingQualityCanonicalizerTests: XCTestCase {
             selectedLocation: Phase4BFixtures.selectedSaved(id: id)
         )
         let doc = WatchObservingQualityCanonicalizer.document(from: outcome, conditions: conditions)
-        // Night-only document may exist, but must not carry tampered OQ 99
-        XCTAssertNotEqual(doc?.snapshot.observingQualityScore, 99)
-        if let doc {
-            XCTAssertEqual(doc.snapshot.observingQualityScore, doc.snapshot.nightConditionsScore)
-            XCTAssertEqual(doc.snapshot.brightnessAvailability, .unavailable)
-        }
+        // Night-only clears OQ document; never persist tampered OQ.
+        XCTAssertNil(doc)
     }
 
     func testResolverParityWithPhoneForIdenticalInputs() {
@@ -676,7 +684,12 @@ final class WatchObservingQualityCanonicalizerTests: XCTestCase {
         let phoneSnap = CrossSurfaceObservingQualityResolver.resolve(
             .init(nightConditionsScore: night, location: ctx, sample: sample)
         )
-        let payload = WatchObservingQualityPayload(location: ctx, transportedSnapshot: phoneSnap)
+        let payload = WatchObservingQualityPayload(
+            payloadVersion: WatchObservingQualityPayload.savedLocationPayloadVersion,
+            location: ctx,
+            transportedSnapshot: phoneSnap,
+            requestContext: nil
+        )
         let outcome = WatchObservingQualityCanonicalizer.resolve(
             conditions: conditions,
             transported: payload,
@@ -799,15 +812,12 @@ final class WatchObservingQualityPersistenceTests: XCTestCase {
         guard case .nightOnly = nightOutcome else {
             return XCTFail("Expected night-only")
         }
+        // Night-only clears OQ persistence (no unavailable durable document).
         let nightDoc = WatchObservingQualityCanonicalizer.document(
             from: nightOutcome,
             conditions: conditions
         )
-        XCTAssertEqual(nightDoc?.snapshot.brightnessAvailability, .unavailable)
-        XCTAssertEqual(
-            nightDoc?.snapshot.observingQualityScore,
-            nightDoc?.snapshot.nightConditionsScore
-        )
+        XCTAssertNil(nightDoc)
     }
 
     func testZeroPreservedAsValidScoreInDocument() {
@@ -1172,10 +1182,11 @@ final class WatchObservingQualityHeadlineAndFingerprintTests: XCTestCase {
     }
 }
 
-// MARK: - Current Location remains night-only (Phase 4C not implemented)
+// MARK: - Current Location guards for Phase 4B path (saved builder / uncorrelated CL)
 
 final class WatchObservingQualityCurrentLocationGuardTests: XCTestCase {
     func testBuilderNeverEnhancesCurrentLocation() {
+        // Saved-location builder must never enhance `.currentGPS` (Phase 4C uses a separate factory).
         let conditions = Phase4BFixtures.analyzableConditions(locationID: nil)
         let selected = Phase4BFixtures.selectedCurrent()
         let payload = WatchObservingQualityPayloadBuilder.makeSavedLocationPayload(
@@ -1188,6 +1199,7 @@ final class WatchObservingQualityCurrentLocationGuardTests: XCTestCase {
     }
 
     func testCanonicalizerRejectsCurrentGPSTransportedSource() {
+        // Uncorrelated CL transport (no expected request / no requestContext) remains night-only.
         let conditions = Phase4BFixtures.analyzableConditions(locationID: nil)
         let night = Phase4BFixtures.nightScore(for: conditions)
         let ctx = CrossSurfaceLocationContext(
@@ -1200,7 +1212,6 @@ final class WatchObservingQualityCurrentLocationGuardTests: XCTestCase {
         let snap = CrossSurfaceObservingQualityResolver.resolve(
             .init(nightConditionsScore: night, location: ctx, sample: sample)
         )
-        // Even if phone wrongly sent currentGPS OQ (not Phase 4B path), watch requires .saved
         let payload = WatchObservingQualityPayload(location: ctx, transportedSnapshot: snap)
         let outcome = WatchObservingQualityCanonicalizer.resolve(
             conditions: conditions,
@@ -1210,7 +1221,7 @@ final class WatchObservingQualityCurrentLocationGuardTests: XCTestCase {
         if case let .nightOnly(score, _) = outcome {
             XCTAssertEqual(score, night)
         } else {
-            XCTFail("Current Location transport must not enhance in 4B")
+            XCTFail("Uncorrelated Current Location transport must not enhance")
         }
     }
 

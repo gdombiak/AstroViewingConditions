@@ -205,7 +205,8 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
                 conditions: result.conditions,
                 transported: result.oq,
                 selectedLocation: locationManager.selectedLocation,
-                token: token
+                token: token,
+                expectedCurrentLocationRequest: result.expectedCurrentLocationRequest
             )
             await MainActor.run {
                 self.error = nil
@@ -252,26 +253,69 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         }
     }
     
-    private func fetchConditionsWithOQ() async throws -> (
-        conditions: ViewingConditions,
-        oq: WatchObservingQualityPayload?
-    ) {
+    private struct FetchResult {
+        var conditions: ViewingConditions
+        var oq: WatchObservingQualityPayload?
+        var expectedCurrentLocationRequest: WatchCurrentLocationRequestContext?
+    }
+
+    private func fetchConditionsWithOQ() async throws -> FetchResult {
         guard let selectedLocation = locationManager.selectedLocation else {
             throw ConditionsError.noLocationSelected
         }
+
+        // Phase 4C: obtain watch GPS and build request context for Current Location only.
+        let currentLocationRequest: WatchCurrentLocationRequestContext?
+        if selectedLocation.source == .currentGPS {
+            let coordinate = try await locationManager.getCurrentCoordinate()
+            guard ModeledZenithBrightnessValidity.isValidGeographicCoordinate(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude
+            ),
+            !(coordinate.latitude == 0 && coordinate.longitude == 0) else {
+                throw ConditionsError.fetchFailed("Invalid watch Current Location coordinates")
+            }
+            currentLocationRequest = WatchCurrentLocationRequestContext(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude
+            )
+        } else {
+            currentLocationRequest = nil
+        }
         
         do {
-            let (conditions, _, oq) = try await connectivityManager.requestConditions()
+            let (conditions, _, oq) = try await connectivityManager.requestConditions(
+                currentLocationRequest: currentLocationRequest
+            )
             guard Self.isFresh(conditions) else {
                 throw ConditionsError.fetchFailed("iOS returned stale conditions")
             }
-            guard Self.conditions(conditions, match: selectedLocation) else {
-                throw ConditionsError.fetchFailed("iOS returned conditions for a different location")
+            if let currentLocationRequest {
+                // Conditions must match watch-requested coordinates (not phone selection).
+                guard WatchObservingQualityCurrentLocationAssociation.matches(
+                    request: currentLocationRequest,
+                    conditionsLocation: conditions.location
+                ) else {
+                    throw ConditionsError.fetchFailed("iOS returned conditions for a different location")
+                }
+            } else {
+                guard Self.conditions(conditions, match: selectedLocation) else {
+                    throw ConditionsError.fetchFailed("iOS returned conditions for a different location")
+                }
             }
-            return (conditions, oq)
+            return FetchResult(
+                conditions: conditions,
+                oq: oq,
+                expectedCurrentLocationRequest: currentLocationRequest
+            )
         } catch {
             print("WatchConditionsManager: Watch connectivity failed: \(error.localizedDescription), computing locally")
-            let coordinate = try await locationManager.getCurrentCoordinate()
+            let coordinate: (latitude: Double, longitude: Double)
+            if let currentLocationRequest {
+                coordinate = (currentLocationRequest.latitude, currentLocationRequest.longitude)
+            } else {
+                coordinate = try await locationManager.getCurrentCoordinate()
+            }
             let conditions = try await AsyncTimeout.run(seconds: 20, error: ConditionsError.timeout) { [self] in
                 try await computeConditionsLocally(
                     latitude: coordinate.latitude,
@@ -279,9 +323,13 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
                     locationName: selectedLocation.name
                 )
             }
-            // Local fetch: no phone OQ transport (Phase 4B saved-location only via phone).
-            // Same live token as the refresh that invoked this path.
-            return (conditions, nil)
+            // Local compute: no phone OQ / atlas — exact night-only.
+            // Same live token; drop CL request correlation (no correlated transport).
+            return FetchResult(
+                conditions: conditions,
+                oq: nil,
+                expectedCurrentLocationRequest: nil
+            )
         }
     }
 
@@ -290,7 +338,8 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         conditions: ViewingConditions,
         transported: WatchObservingQualityPayload?,
         selectedLocation: SelectedLocation?,
-        token: WatchConditionsLiveUpdateToken
+        token: WatchConditionsLiveUpdateToken,
+        expectedCurrentLocationRequest: WatchCurrentLocationRequestContext? = nil
     ) async {
         let timeZone = await Self.resolveTimeZone(for: conditions)
         let result = await updateCoordinator.accept(
@@ -299,7 +348,8 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             selectedLocation: selectedLocation,
             locationTimeZone: timeZone,
             reloadComplications: true,
-            token: token
+            token: token,
+            expectedCurrentLocationRequest: expectedCurrentLocationRequest
         )
         switch result {
         case .discardedStale:

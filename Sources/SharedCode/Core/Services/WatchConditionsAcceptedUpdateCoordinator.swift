@@ -265,7 +265,8 @@ public actor WatchConditionsAcceptedUpdateCoordinator: WatchLiveIngressClaiming 
         selectedLocation: SelectedLocation?,
         locationTimeZone: TimeZone?,
         reloadComplications: Bool,
-        token: WatchConditionsLiveUpdateToken
+        token: WatchConditionsLiveUpdateToken,
+        expectedCurrentLocationRequest: WatchCurrentLocationRequestContext? = nil
     ) async -> WatchConditionsAcceptResult {
         // Optional test suspension *before* the commit boundary (not holding the ingress lock).
         await gate.beforePersist()
@@ -279,7 +280,8 @@ public actor WatchConditionsAcceptedUpdateCoordinator: WatchLiveIngressClaiming 
         let outcome = WatchObservingQualityCanonicalizer.resolve(
             conditions: conditions,
             transported: transported,
-            selectedLocation: selectedLocation
+            selectedLocation: selectedLocation,
+            expectedCurrentLocationRequest: expectedCurrentLocationRequest
         )
         let document = WatchObservingQualityCanonicalizer.document(
             from: outcome,
@@ -356,24 +358,14 @@ public actor WatchConditionsAcceptedUpdateCoordinator: WatchLiveIngressClaiming 
         await gate.beforeApplyCached()
 
         // Pure resolution (no mutation). May race with live claims; publication is re-validated.
+        // Durable OQ: full canonical recompute — never trust raw persisted scores as display authority.
         let nightQuality = NightQualityAnalyzer.analyzeConditions(conditions)
         let nightScore = nightQuality?.calculatedScore ?? 0
-        let outcome: WatchObservingQualityCanonicalizer.Outcome
-        if let persistedDocument,
-           WatchObservingQualityCanonicalizer.isAssociated(
+        let outcome = WatchObservingQualityCanonicalizer.resolvePersisted(
             document: persistedDocument,
             conditions: conditions,
             selectedLocation: selectedLocation
-           ) {
-            if persistedDocument.snapshot.brightnessAvailability == .available {
-                outcome = .enhanced(persistedDocument.snapshot, persistedDocument.location)
-            } else {
-                outcome = .nightOnly(nightScore: nightScore, location: persistedDocument.location)
-            }
-        } else {
-            let loc = selectedLocation.flatMap(CrossSurfaceLocationContext.make(from:))
-            outcome = .nightOnly(nightScore: nightScore, location: loc)
-        }
+        )
         let headline = Self.makeHeadline(
             outcome: outcome,
             conditions: conditions,

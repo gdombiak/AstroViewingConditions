@@ -184,7 +184,16 @@ Byte count / SHA-256 remain packaging + integration-test diagnostics only.
 - **Compatibility:** old phone → new watch (no OQ block) and new phone → old watch (ignores additive key) keep exact night; unknown version / malformed OQ never loses conditions.
 - **Out of scope for 4B:** watch Current Location coordinate requests, watch GPS brightness lookup, atlas on watch, Phase 3 Current Location brightness transport, Best Nearby / Tonight’s Targets OQ.
 
-**Watch Current Location (Phase 4C — not implemented):** required for coordinate-echo / watch-supplied Current Location brightness; Phase 4B leaves Current Location night-only on watch.
+**Watch Current Location OQ (Phase 4C — implemented on feature branch, not shipped):**
+
+- Watch refresh for `.currentGPS` claims live ingress, obtains watch GPS, builds `WatchCurrentLocationRequestContext` (request UUID + coords), and sends it with `requestConditions`.
+- Phone uses **watch-supplied** coordinates (not phone-selected GPS) for conditions acquisition and brightness sampling via the process `LightPollutionProviderBootstrap.currentProvider()` — no second atlas load.
+- Response may include optional OQ payload **v2** with echoed `requestContext`; v1 saved-location payloads remain supported.
+- Unsolicited Current Location pushes are **not** OQ-enriched (correlation required).
+- Watch canonicalizer requires request UUID match, nil saved IDs, strict coordinate identity (1e-5°), Phase 1 sample validity (1000 m lookup association via resolver), and recomputed-score agreement; failures → exact night score without losing conditions.
+- Durable `watchObservingQuality.json` is restored only via `resolvePersisted`: schema, identity, Phase 1 sample validity, and **canonical recompute agreement** — raw persisted scores are never display authority. Request UUID is not required for restart restore. Night-only live outcomes **clear** the OQ file (no unavailable document).
+- Local watch weather fallback remains night-only (no atlas on watch).
+- Conditions request continuations use production `WatchRequestLifecycleController` (single-complete registry + injectable timeout scheduler).
 
 **Pending UI (Phase 5):** full-card placeholder remains until score-slot-only refinement; not Phase 1.
 

@@ -2,23 +2,35 @@ import Foundation
 
 /// Optional versioned OQ block transported beside `ViewingConditions` over WatchConnectivity.
 ///
-/// Phone builds this for **saved locations only**. Watch validates, recomputes with
-/// `CrossSurfaceObservingQualityResolver`, and persists only the recomputed snapshot.
+/// - **v1 (Phase 4B):** saved-location OQ; `requestContext` is nil.
+/// - **v2 (Phase 4C):** Current Location OQ may include correlated `requestContext`.
+///
+/// Watch validates, recomputes with `CrossSurfaceObservingQualityResolver`, and persists
+/// only the recomputed snapshot. Transported scores are diagnostic only.
 public struct WatchObservingQualityPayload: Codable, Sendable, Equatable {
-    public static let currentPayloadVersion = 1
+    /// Highest version this binary can author (includes Current Location context).
+    public static let currentPayloadVersion = 2
+    /// Phase 4B saved-location payloads.
+    public static let savedLocationPayloadVersion = 1
+    /// Phase 4C Current Location payloads with request correlation.
+    public static let currentLocationPayloadVersion = 2
 
     public var payloadVersion: Int
     public var location: CrossSurfaceLocationContext
     public var transportedSnapshot: CrossSurfaceObservingQualitySnapshot
+    /// Echoed watch request context for Current Location (v2). Nil for saved-location v1.
+    public var requestContext: WatchCurrentLocationRequestContext?
 
     public init(
         payloadVersion: Int = currentPayloadVersion,
         location: CrossSurfaceLocationContext,
-        transportedSnapshot: CrossSurfaceObservingQualitySnapshot
+        transportedSnapshot: CrossSurfaceObservingQualitySnapshot,
+        requestContext: WatchCurrentLocationRequestContext? = nil
     ) {
         self.payloadVersion = payloadVersion
         self.location = location
         self.transportedSnapshot = transportedSnapshot
+        self.requestContext = requestContext
     }
 
     /// Reconstruct a sample from transported metadata when availability is `.available`.

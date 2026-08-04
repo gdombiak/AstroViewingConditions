@@ -202,7 +202,9 @@ See [CROSS_SURFACE_ARCHITECTURE.md](CROSS_SURFACE_ARCHITECTURE.md): hybrid model
 
 **Phase 4A (SharedCode + iOS widgets, on feature branch):** `CrossSurfaceObservingQualityResolver` + enriched `WidgetNightSummary` dual scores for Night Conditions and Three-Night Outlook.
 
-**Phase 4B (SharedCode + watch, on feature branch — not shipped):** saved-location-only watch transport of optional versioned `WatchObservingQualityPayload` beside `ViewingConditions`; watch validates, recomputes via `CrossSurfaceObservingQualityResolver`, persists via **staged transactional pair** (promote `*.tmp` → finals; rollback conditions on OQ failure). Live ordering uses **synchronous claim-at-ingress** (`WatchConditionsLiveEventIngress` / `claimLiveUpdate()` via lock-backed `WatchLiveIngressSequencer`) before any unstructured `Task`; persist + apply + fingerprint + reload run inside a **current-token commit boundary** so a new claim cannot split persistence from publication. Deferred cache uses live generation + deferred sequence (latest-started wins). Missing/malformed/unsupported/mismatched OQ → exact night score. Current Location remains night-only until Phase 4C.
+**Phase 4B (SharedCode + watch, on feature branch — not shipped):** saved-location watch OQ transport, watch canonical recompute, staged pair persistence, claim-at-ingress + commit-boundary ordering, generation-aware MainActor publication.
+
+**Phase 4C (SharedCode + watch, on feature branch — not shipped):** watch Current Location OQ using **watch-supplied coordinates**. Watch sends `WatchCurrentLocationRequestContext` with `requestConditions`; phone returns conditions + optional correlated OQ payload v2 using the existing phone LPATLAS1 bootstrap (no second load, no atlas on watch). Watch validates request UUID + coordinate identity and recomputes OQ; failures → exact night. Local watch weather fallback remains night-only. Unsolicited CL pushes are not OQ-enriched.
 
 ### Production app packaging
 
