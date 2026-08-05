@@ -360,6 +360,32 @@ public class DashboardViewModel {
         }
     }
 
+    /// Identity of a dashboard observing-quality assessment.
+    ///
+    /// Exact coordinate bit patterns + night score + readiness + environment revision.
+    /// Not score-only: two sites with the same night score can differ in OQ.
+    private struct ObservingQualityCacheKey: Equatable {
+        let nightConditionsScore: Int
+        let latitudeBits: UInt64
+        let longitudeBits: UInt64
+        let readiness: LightPollutionReadiness
+        let environmentRevision: UInt
+
+        init(
+            nightConditionsScore: Int,
+            latitude: Double,
+            longitude: Double,
+            readiness: LightPollutionReadiness,
+            environmentRevision: UInt
+        ) {
+            self.nightConditionsScore = nightConditionsScore
+            self.latitudeBits = latitude.bitPattern
+            self.longitudeBits = longitude.bitPattern
+            self.readiness = readiness
+            self.environmentRevision = environmentRevision
+        }
+    }
+
     private final class ConditionsLoadOperation {
         var task: Task<Void, Never>!
     }
@@ -380,6 +406,16 @@ public class DashboardViewModel {
     public private(set) var lightPollutionReadiness: LightPollutionReadiness = .loading
     /// Bumped when readiness/provider changes so @Observable clients refresh.
     private var observingQualityRevision: UInt = 0
+
+    /// Single-entry in-memory cache for dashboard observing-quality assessments.
+    /// Prevents repeated atlas `assess` calls during SwiftUI body re-evaluation.
+    /// Not persisted; never shared across processes.
+    ///
+    /// `@ObservationIgnored`: filling this memoization entry must not invalidate observing
+    /// clients (SwiftUI body) — only real inputs (`viewingConditions`, readiness, revision, day)
+    /// should trigger reevaluation.
+    @ObservationIgnored
+    private var observingQualityCache: (key: ObservingQualityCacheKey, assessment: ObservingQualityAssessment)?
     
     private var apiKey: String
     public private(set) var locationTimeZone: TimeZone?
@@ -648,18 +684,39 @@ public class DashboardViewModel {
     /// - Returns `nil` while `lightPollutionReadiness == .loading` (do not show interim score).
     /// - When `.ready` or `.unavailable`, always returns an assessment if night quality exists
     ///   (unavailable → exact night-conditions score, `lightPollution == nil`).
+    /// - Uses a single-entry in-memory cache keyed by night score, exact coordinates,
+    ///   readiness, and environment revision so SwiftUI re-renders do not re-hit the atlas.
     public var currentObservingQuality: ObservingQualityAssessment? {
         _ = observingQualityRevision
-        guard lightPollutionReadiness != .loading else { return nil }
+        guard lightPollutionReadiness != .loading else {
+            // Never cache interim/loading as a finalized result.
+            return nil
+        }
         guard let nightQuality = currentNightQuality,
               let conditions = viewingConditions else {
             return nil
         }
-        return observingQualityEnvironment.assess(
+
+        let latitude = conditions.location.latitude
+        let longitude = conditions.location.longitude
+        let key = ObservingQualityCacheKey(
             nightConditionsScore: nightQuality.calculatedScore,
-            latitude: conditions.location.latitude,
-            longitude: conditions.location.longitude
+            latitude: latitude,
+            longitude: longitude,
+            readiness: lightPollutionReadiness,
+            environmentRevision: observingQualityRevision
         )
+        if let cached = observingQualityCache, cached.key == key {
+            return cached.assessment
+        }
+
+        let assessment = observingQualityEnvironment.assess(
+            nightConditionsScore: nightQuality.calculatedScore,
+            latitude: latitude,
+            longitude: longitude
+        )
+        observingQualityCache = (key, assessment)
+        return assessment
     }
 
     /// Headline presentation derived only from observing-quality score (not night rating bands).

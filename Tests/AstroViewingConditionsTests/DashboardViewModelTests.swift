@@ -1519,6 +1519,280 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.currentObservingQuality, viewModel.currentObservingQuality)
     }
 
+    // MARK: - Observing quality dashboard cache
+
+    func testObservingQualityCacheAssessesOnceForRepeatedIdenticalReads() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let (viewModel, _) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        let first = try! XCTUnwrap(viewModel.currentObservingQuality)
+        for _ in 0..<20 {
+            let next = try! XCTUnwrap(viewModel.currentObservingQuality)
+            XCTAssertEqual(next, first)
+            _ = viewModel.currentObservingQualityHeadline
+        }
+        XCTAssertEqual(env.assessCallCount, 1, "identical dashboard reads must not re-hit assess")
+    }
+
+    func testObservingQualityCacheMissesForSameScoreDifferentCoordinates() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let (viewModel, nightScore) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.assessCallCount, 1)
+        XCTAssertEqual(env.lastNightScore, nightScore)
+
+        // Flip only the least-significant coordinate bit so night-integer score stays equal
+        // while the OQ cache key (exact bit pattern) differs.
+        let prior = viewModel.viewingConditions!
+        let newLatitude = Double(bitPattern: prior.location.latitude.bitPattern &+ 1)
+        XCTAssertNotEqual(newLatitude.bitPattern, prior.location.latitude.bitPattern)
+        viewModel.viewingConditions = ViewingConditions(
+            fetchedAt: prior.fetchedAt,
+            location: CachedLocation(
+                name: prior.location.name,
+                latitude: newLatitude,
+                longitude: prior.location.longitude,
+                elevation: prior.location.elevation
+            ),
+            hourlyForecasts: prior.hourlyForecasts,
+            dailySunEvents: prior.dailySunEvents,
+            dailyMoonInfo: prior.dailyMoonInfo,
+            issPasses: prior.issPasses,
+            fogScore: prior.fogScore,
+            timeZoneIdentifier: prior.timeZoneIdentifier
+        )
+        let scoreAfterMove = try! XCTUnwrap(viewModel.currentNightQuality?.calculatedScore)
+        XCTAssertEqual(
+            scoreAfterMove,
+            nightScore,
+            "fixture precondition: integer night score must be unchanged for same-score/different-coord test"
+        )
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.assessCallCount, 2, "different coordinates must recompute even when night score matches")
+        XCTAssertEqual(env.lastNightScore, nightScore)
+        XCTAssertEqual(env.lastLatitude ?? 0, newLatitude, accuracy: 0)
+        XCTAssertEqual(env.lastLongitude ?? 0, prior.location.longitude, accuracy: 0)
+    }
+
+    func testObservingQualityCacheMissesForDifferentNightScore() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let (viewModel, firstScore) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.5,
+            longitude: -122.7
+        )
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.assessCallCount, 1)
+        XCTAssertEqual(env.lastNightScore, firstScore)
+
+        // Deterministically degrade night weather so the integer score must drop.
+        Self.applyDegradedNightWeather(to: viewModel)
+        let secondScore = try! XCTUnwrap(viewModel.currentNightQuality?.calculatedScore)
+        XCTAssertNotEqual(
+            secondScore,
+            firstScore,
+            "fixture precondition: degraded weather must change integer night score"
+        )
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.assessCallCount, 2)
+        XCTAssertEqual(env.lastNightScore, secondScore)
+    }
+
+    func testObservingQualityLoadingDoesNotCallAssessOrCacheAsFinal() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .loading, brightness: 18.5)
+        let (viewModel, _) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        // makeViewModel syncs readiness from env (.loading).
+        XCTAssertTrue(viewModel.isObservingQualityHeadlinePending)
+        XCTAssertNil(viewModel.currentObservingQuality)
+        XCTAssertNil(viewModel.currentObservingQualityHeadline)
+        XCTAssertEqual(env.assessCallCount, 0)
+
+        // Repeated pending reads still must not assess.
+        for _ in 0..<5 {
+            XCTAssertNil(viewModel.currentObservingQuality)
+        }
+        XCTAssertEqual(env.assessCallCount, 0)
+    }
+
+    func testObservingQualityLoadingToReadyAssessesOnceWithoutConditionsFetch() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .loading, brightness: 18.5)
+        let (viewModel, _) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        let conditionsBefore = viewModel.viewingConditions
+        XCTAssertNil(viewModel.currentObservingQuality)
+        XCTAssertEqual(env.assessCallCount, 0)
+
+        env.readiness = .ready
+        viewModel.syncLightPollutionReadinessFromEnvironment()
+        XCTAssertFalse(viewModel.isObservingQualityHeadlinePending)
+        _ = try! XCTUnwrap(viewModel.currentObservingQuality)
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.assessCallCount, 1)
+        // Readiness sync must not replace loaded conditions (no weather re-fetch side effect).
+        XCTAssertEqual(viewModel.viewingConditions?.fetchedAt, conditionsBefore?.fetchedAt)
+        XCTAssertEqual(
+            viewModel.viewingConditions?.location.latitude,
+            conditionsBefore?.location.latitude
+        )
+    }
+
+    func testObservingQualityReadyToUnavailableUsesExactFallbackAndDropsStaleReady() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let (viewModel, nightScore) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        let ready = try! XCTUnwrap(viewModel.currentObservingQuality)
+        XCTAssertLessThan(ready.score, nightScore)
+        XCTAssertNotNil(ready.lightPollution)
+        XCTAssertEqual(env.assessCallCount, 1)
+
+        env.readiness = .unavailable
+        env.brightness = nil
+        viewModel.syncLightPollutionReadinessFromEnvironment()
+        let fallback = try! XCTUnwrap(viewModel.currentObservingQuality)
+        XCTAssertEqual(fallback.score, nightScore)
+        XCTAssertEqual(fallback.nightConditionsScore, nightScore)
+        XCTAssertNil(fallback.lightPollution)
+        XCTAssertEqual(env.assessCallCount, 2, "revision invalidates ready cache")
+        XCTAssertNotEqual(fallback, ready)
+    }
+
+    func testObservingQualityProviderReplacementInvalidatesEvenWhenReadinessStaysReady() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let (viewModel, _) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        let first = try! XCTUnwrap(viewModel.currentObservingQuality)
+        XCTAssertEqual(env.assessCallCount, 1)
+
+        // Simulate provider/session replacement: different brightness, readiness still ready.
+        env.brightness = 21.5
+        viewModel.syncLightPollutionReadinessFromEnvironment()
+        let second = try! XCTUnwrap(viewModel.currentObservingQuality)
+        XCTAssertEqual(env.assessCallCount, 2)
+        XCTAssertNotEqual(first.score, second.score)
+        // Subsequent reads reuse the new entry.
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.assessCallCount, 2)
+    }
+
+    func testObservingQualitySyncAlwaysIncrementsRevisionThenReuses() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 19.0)
+        let (viewModel, _) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.assessCallCount, 1)
+
+        // Same readiness/provider values — sync still bumps revision by design.
+        viewModel.syncLightPollutionReadinessFromEnvironment()
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.assessCallCount, 2)
+        _ = viewModel.currentObservingQuality
+        _ = viewModel.currentObservingQualityHeadline
+        XCTAssertEqual(env.assessCallCount, 2)
+    }
+
+    func testObservingQualityRefreshedConditionsWithChangedNightScoreRecomputes() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let (viewModel, firstScore) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.assessCallCount, 1)
+
+        Self.applyDegradedNightWeather(to: viewModel)
+        let secondNight = try! XCTUnwrap(viewModel.currentNightQuality?.calculatedScore)
+        XCTAssertNotEqual(
+            secondNight,
+            firstScore,
+            "fixture precondition: refreshed conditions must change integer night score"
+        )
+        _ = viewModel.currentObservingQuality
+        XCTAssertEqual(env.assessCallCount, 2)
+        XCTAssertEqual(env.lastNightScore, secondNight)
+    }
+
+    func testObservingQualityCacheFillDoesNotFireObservationChange() async {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let (viewModel, _) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+
+        // Phase 1: first read fills the memoization cache under observation tracking.
+        // Filling `@ObservationIgnored` cache must not schedule an onChange callback.
+        let changeBox = ObservationChangeBox()
+        _ = withObservationTracking {
+            viewModel.currentObservingQuality
+        } onChange: {
+            changeBox.markChanged()
+        }
+        await Self.yieldObservationCallbacks()
+        XCTAssertFalse(
+            changeBox.didChange,
+            "writing the OQ memoization cache must not invalidate Observation clients"
+        )
+        XCTAssertEqual(env.assessCallCount, 1)
+
+        // Phase 2: re-establish tracking (one-shot) and mutate a real observable input.
+        _ = withObservationTracking {
+            viewModel.currentObservingQuality
+        } onChange: {
+            changeBox.markChanged()
+        }
+        viewModel.syncLightPollutionReadinessFromEnvironment()
+        await Self.yieldObservationCallbacks()
+        XCTAssertTrue(
+            changeBox.didChange,
+            "syncLightPollutionReadinessFromEnvironment must still invalidate Observation clients"
+        )
+    }
+
+    func testObservingQualityScoreOnlyHeadlineContract() {
+        let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 18.5)
+        let (viewModel, nightScore) = Self.makeViewModelWithNightQuality(
+            environment: env,
+            latitude: 45.45,
+            longitude: -122.75
+        )
+        let night = try! XCTUnwrap(viewModel.currentNightQuality)
+        let oq = try! XCTUnwrap(viewModel.currentObservingQuality)
+        let headline = try! XCTUnwrap(viewModel.currentObservingQualityHeadline)
+
+        XCTAssertEqual(headline.score, oq.score)
+        XCTAssertEqual(headline.band, ObservingQualityScoreBand.from(score: oq.score))
+        XCTAssertNotEqual(oq.score, nightScore)
+        // Night assessment still owns narrative inputs for the card.
+        XCTAssertFalse(night.summary.isEmpty)
+        XCTAssertEqual(night.calculatedScore, nightScore)
+        // Emoji/summary path remains night-rating based, not OQ band-only.
+        XCTAssertFalse(night.rating.emoji.isEmpty)
+    }
+
     func testHeadlineBandMatchesObservingScoreNotNightScore() {
         let env = ObservingQualityEnvironmentSpy(readiness: .ready, brightness: 17.5)
         let (viewModel, nightScore) = Self.makeViewModelWithNightQuality(
@@ -1535,6 +1809,44 @@ final class DashboardViewModelTests: XCTestCase {
         }
         XCTAssertEqual(headline.score, viewModel.currentObservingQuality?.score)
         XCTAssertTrue(headline.accessibilityLabel.contains("\(headline.score)"))
+    }
+
+    /// Deterministically degrade night-weather inputs so integer night score drops.
+    private static func applyDegradedNightWeather(to viewModel: DashboardViewModel) {
+        let prior = try! XCTUnwrap(viewModel.viewingConditions)
+        let degraded = prior.hourlyForecasts.map { forecast in
+            HourlyForecast(
+                time: forecast.time,
+                cloudCover: 100,
+                humidity: 95,
+                windSpeed: 25,
+                windDirection: forecast.windDirection,
+                temperature: forecast.temperature,
+                dewPoint: forecast.dewPoint,
+                visibility: 1_000,
+                lowCloudCover: 100,
+                midCloudCover: 100,
+                highCloudCover: 100,
+                windSpeed200hPa: 80
+            )
+        }
+        viewModel.viewingConditions = ViewingConditions(
+            fetchedAt: prior.fetchedAt.addingTimeInterval(3600),
+            location: prior.location,
+            hourlyForecasts: degraded,
+            dailySunEvents: prior.dailySunEvents,
+            dailyMoonInfo: prior.dailyMoonInfo,
+            issPasses: prior.issPasses,
+            fogScore: FogScore(score: 90, factors: [.highHumidity]),
+            timeZoneIdentifier: prior.timeZoneIdentifier
+        )
+    }
+
+    /// Allow asynchronous Observation `onChange` delivery on MainActor.
+    private static func yieldObservationCallbacks() async {
+        for _ in 0..<20 {
+            await Task.yield()
+        }
     }
 
     private static func makeViewModelWithNightQuality(
@@ -1627,6 +1939,21 @@ final class DashboardViewModelTests: XCTestCase {
             fogScore: FogScore(score: 0, factors: []),
             timeZoneIdentifier: "America/Los_Angeles"
         )
+    }
+}
+
+/// Thread-safe flag for Observation `onChange` callbacks (may hop off MainActor).
+private final class ObservationChangeBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _didChange = false
+    var didChange: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return _didChange
+    }
+    func markChanged() {
+        lock.lock()
+        _didChange = true
+        lock.unlock()
     }
 }
 
