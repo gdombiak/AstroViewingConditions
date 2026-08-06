@@ -55,9 +55,9 @@ public enum LocationSuitabilityStatus: Sendable, Hashable {
         case .unknown(.notChecked):
             return "Access not verified"
         case .unknown(.geocodingFailed):
-            return "Verification unavailable"
+            return "Land check unavailable"
         case .unknown(.temporarilyUnavailable):
-            return "Verification temporarily unavailable"
+            return "Land check temporarily unavailable"
         }
     }
 }
@@ -168,18 +168,37 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
         }
     }
 
-    public var improvementSummary: String {
-        guard let improvementOverCenter else { return "Current location not scored" }
+    /// Compact on-screen comparison against the selected center location (public `score`).
+    /// Returns `nil` when no center comparison is available (omit from the UI).
+    public func improvementSummary(comparedTo centerName: String) -> String? {
+        guard let improvementOverCenter else { return nil }
 
         switch improvementOverCenter {
-        case ...2:
-            return "Not meaningfully better than your location"
-        case 3...9:
-            return "Small improvement"
-        case 10...19:
-            return "Worth considering"
+        case 0:
+            return "Same as \(centerName)"
+        case 1...:
+            return "+\(improvementOverCenter) vs \(centerName)"
         default:
-            return "Strong improvement"
+            // U+2212 minus sign for a compact, readable negative delta.
+            return "−\(abs(improvementOverCenter)) vs \(centerName)"
+        }
+    }
+
+    /// Full VoiceOver wording for the same public-score comparison.
+    public func improvementAccessibilityDescription(comparedTo centerName: String) -> String? {
+        guard let improvementOverCenter else { return nil }
+
+        switch improvementOverCenter {
+        case 0:
+            return "Same score as \(centerName)"
+        case 1:
+            return "1 point better than \(centerName)"
+        case 2...:
+            return "\(improvementOverCenter) points better than \(centerName)"
+        case -1:
+            return "1 point below \(centerName)"
+        default:
+            return "\(abs(improvementOverCenter)) points below \(centerName)"
         }
     }
 
@@ -187,6 +206,7 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
         suitability.isRecommendable
     }
 
+    /// Derives `improvementOverCenter` from the public ranking/display `score` only.
     public func withImprovement(comparedTo centerScore: Int?) -> LocationScore {
         with(
             suitability: suitability,

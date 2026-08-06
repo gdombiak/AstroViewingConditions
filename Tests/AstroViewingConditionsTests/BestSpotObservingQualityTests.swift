@@ -784,14 +784,17 @@ final class BestSpotObservingQualityTests: XCTestCase {
         let label = BestSpotResultCard.accessibilityLabel(
             locationScore: score,
             rank: 1,
-            scoringMode: .observingQuality
+            scoringMode: .observingQuality,
+            centerLocationName: "Home"
         )
         XCTAssertTrue(label.contains("Observing quality score 86 out of 100"))
         XCTAssertFalse(label.contains("93"), "must not surface nightConditionsScore in OQ mode")
         XCTAssertFalse(label.localizedCaseInsensitiveContains("light pollution unavailable"))
         XCTAssertTrue(label.contains("Rank 1"))
         XCTAssertTrue(label.contains(score.fullLocationString))
-        XCTAssertTrue(label.contains(score.improvementSummary))
+        // publicScore 86 vs center baseline 70 → +16; descriptive a11y form only.
+        XCTAssertTrue(label.contains("16 points better than Home"))
+        XCTAssertFalse(label.contains("+16 vs Home"))
     }
 
     func testResultCardAccessibilityUsesNightScoreAndFlagsLPUnavailableInFallback() {
@@ -799,11 +802,13 @@ final class BestSpotObservingQualityTests: XCTestCase {
         let label = BestSpotResultCard.accessibilityLabel(
             locationScore: score,
             rank: 2,
-            scoringMode: .nightConditionsFallback
+            scoringMode: .nightConditionsFallback,
+            centerLocationName: "Home"
         )
         XCTAssertTrue(label.contains("Night conditions score 72 out of 100; light pollution unavailable"))
         XCTAssertTrue(label.contains("Rank 2"))
         XCTAssertFalse(label.localizedCaseInsensitiveContains("observing quality"))
+        XCTAssertTrue(label.contains("2 points better than Home"))
     }
 
     func testResultCardAccessibilityNeverReadsNightScoreInsteadOfPublicScoreInOQMode() {
@@ -812,11 +817,14 @@ final class BestSpotObservingQualityTests: XCTestCase {
         let label = BestSpotResultCard.accessibilityLabel(
             locationScore: score,
             rank: 3,
-            scoringMode: .observingQuality
+            scoringMode: .observingQuality,
+            centerLocationName: "Portland"
         )
         XCTAssertTrue(label.contains("Observing quality score 80 out of 100"))
         XCTAssertFalse(label.contains("95"))
         XCTAssertFalse(label.contains("score 95"))
+        // Improvement from public score only (80 - 70 = 10).
+        XCTAssertTrue(label.contains("10 points better than Portland"))
     }
 
     // MARK: - Fixtures

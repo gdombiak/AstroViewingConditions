@@ -6,6 +6,8 @@ struct BestSpotResultCard: View {
     let locationScore: LocationScore
     let rank: Int
     let scoringMode: BestSpotScoringMode
+    /// Selected center location name for compact vs-center comparison text.
+    let centerLocationName: String
     let isSelected: Bool
     let onTap: () -> Void
 
@@ -13,12 +15,14 @@ struct BestSpotResultCard: View {
         locationScore: LocationScore,
         rank: Int,
         scoringMode: BestSpotScoringMode = .nightConditionsFallback,
+        centerLocationName: String,
         isSelected: Bool,
         onTap: @escaping () -> Void
     ) {
         self.locationScore = locationScore
         self.rank = rank
         self.scoringMode = scoringMode
+        self.centerLocationName = centerLocationName
         self.isSelected = isSelected
         self.onTap = onTap
     }
@@ -97,7 +101,9 @@ struct BestSpotResultCard: View {
                 }
 
                 HStack(spacing: 8) {
-                    Text(locationScore.improvementSummary)
+                    if let improvement = locationScore.improvementSummary(comparedTo: centerLocationName) {
+                        Text(improvement)
+                    }
                     Spacer()
                     Text(locationScore.moonImpactSummary)
                 }
@@ -123,7 +129,8 @@ struct BestSpotResultCard: View {
             Self.accessibilityLabel(
                 locationScore: locationScore,
                 rank: rank,
-                scoringMode: scoringMode
+                scoringMode: scoringMode,
+                centerLocationName: centerLocationName
             )
         )
     }
@@ -133,7 +140,8 @@ struct BestSpotResultCard: View {
     nonisolated static func accessibilityLabel(
         locationScore: LocationScore,
         rank: Int,
-        scoringMode: BestSpotScoringMode
+        scoringMode: BestSpotScoringMode,
+        centerLocationName: String
     ) -> String {
         let scorePhrase: String
         switch scoringMode {
@@ -142,13 +150,16 @@ struct BestSpotResultCard: View {
         case .nightConditionsFallback:
             scorePhrase = "Night conditions score \(locationScore.score) out of 100; light pollution unavailable"
         }
-        return [
+        var parts = [
             "Rank \(rank)",
             scorePhrase,
             locationScore.fullLocationString,
             locationScore.suitability.label,
-            locationScore.improvementSummary,
-        ].joined(separator: ". ")
+        ]
+        if let improvement = locationScore.improvementAccessibilityDescription(comparedTo: centerLocationName) {
+            parts.append(improvement)
+        }
+        return parts.joined(separator: ". ")
     }
     
     private var rankBadgeColor: Color {
@@ -227,6 +238,7 @@ struct ConditionPill: View {
                 summary: "Crystal clear skies, calm winds"
             ),
             rank: 1,
+            centerLocationName: "Home",
             isSelected: true,
             onTap: {}
         )
@@ -260,6 +272,7 @@ struct ConditionPill: View {
                 summary: "Mostly clear with light winds"
             ),
             rank: 2,
+            centerLocationName: "Home",
             isSelected: false,
             onTap: {}
         )

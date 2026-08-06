@@ -727,7 +727,7 @@ final class BestSpotSearcherTests: XCTestCase {
         ))
 
         XCTAssertEqual(status, .unknown(reason: .geocodingFailed))
-        XCTAssertEqual(status.label, "Verification unavailable")
+        XCTAssertEqual(status.label, "Land check unavailable")
     }
 
     func testRateLimitLikeFailureProducesTemporarilyUnavailableState() async throws {
@@ -742,7 +742,7 @@ final class BestSpotSearcherTests: XCTestCase {
         ))
 
         XCTAssertEqual(status, .unknown(reason: .temporarilyUnavailable))
-        XCTAssertEqual(status.label, "Verification temporarily unavailable")
+        XCTAssertEqual(status.label, "Land check temporarily unavailable")
     }
 
     func testGeocoderThrottleErrorProducesTemporarilyUnavailableState() {

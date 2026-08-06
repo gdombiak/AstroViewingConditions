@@ -246,6 +246,7 @@ struct BestSpotView: View {
                                 locationScore: location,
                                 rank: index + 1,
                                 scoringMode: result.scoringMode,
+                                centerLocationName: result.centerLocation.name,
                                 isSelected: selectedLocation?.id == location.id,
                                 onTap: {
                                     withAnimation {
