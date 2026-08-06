@@ -179,4 +179,137 @@ final class ObservingQualityServiceTests: XCTestCase {
         XCTAssertEqual(fallback.score, 90)
         XCTAssertNil(fallback.lightPollution)
     }
+
+    // MARK: - Modeled-brightness validity hardening
+
+    func testInvalidLatitudeDoesNotCallProvider() {
+        let provider = CallCountingLightPollutionProvider(value: 18.5)
+        let service = ObservingQualityService(lightPollutionProvider: provider)
+        let assessment = service.assess(
+            nightConditionsScore: 90,
+            latitude: 91,
+            longitude: 0
+        )
+        XCTAssertEqual(provider.callCount, 0)
+        XCTAssertEqual(assessment.score, 90)
+        XCTAssertNil(assessment.lightPollution)
+    }
+
+    func testInvalidLongitudeDoesNotCallProvider() {
+        let provider = CallCountingLightPollutionProvider(value: 18.5)
+        let service = ObservingQualityService(lightPollutionProvider: provider)
+        let assessment = service.assess(
+            nightConditionsScore: 88,
+            latitude: 45,
+            longitude: 181
+        )
+        XCTAssertEqual(provider.callCount, 0)
+        XCTAssertEqual(assessment.score, 88)
+        XCTAssertNil(assessment.lightPollution)
+    }
+
+    func testNaNBrightnessPreservesNightScore() {
+        let service = ObservingQualityService(
+            lightPollutionProvider: FixedLightPollutionProvider(value: .nan)
+        )
+        let assessment = service.assess(nightConditionsScore: 77, latitude: 45, longitude: -122)
+        XCTAssertEqual(assessment.score, 77)
+        XCTAssertNil(assessment.lightPollution)
+    }
+
+    func testPositiveInfinityBrightnessPreservesNightScore() {
+        let service = ObservingQualityService(
+            lightPollutionProvider: FixedLightPollutionProvider(value: .infinity)
+        )
+        let assessment = service.assess(nightConditionsScore: 70, latitude: 45, longitude: -122)
+        XCTAssertEqual(assessment.score, 70)
+        XCTAssertNil(assessment.lightPollution)
+    }
+
+    func testNegativeInfinityBrightnessPreservesNightScore() {
+        let service = ObservingQualityService(
+            lightPollutionProvider: FixedLightPollutionProvider(value: -.infinity)
+        )
+        let assessment = service.assess(nightConditionsScore: 70, latitude: 45, longitude: -122)
+        XCTAssertEqual(assessment.score, 70)
+        XCTAssertNil(assessment.lightPollution)
+    }
+
+    func testBrightnessBelowMinimumPreservesNightScore() {
+        let service = ObservingQualityService(
+            lightPollutionProvider: FixedLightPollutionProvider(value: 12.99)
+        )
+        let assessment = service.assess(nightConditionsScore: 85, latitude: 45, longitude: -122)
+        XCTAssertEqual(assessment.score, 85)
+        XCTAssertNil(assessment.lightPollution)
+    }
+
+    func testBrightnessAboveMaximumPreservesNightScore() {
+        let service = ObservingQualityService(
+            lightPollutionProvider: FixedLightPollutionProvider(value: 22.51)
+        )
+        let assessment = service.assess(nightConditionsScore: 85, latitude: 45, longitude: -122)
+        XCTAssertEqual(assessment.score, 85)
+        XCTAssertNil(assessment.lightPollution)
+    }
+
+    func testBrightnessAtMinimumBoundIsValid() {
+        let service = ObservingQualityService(
+            lightPollutionProvider: FixedLightPollutionProvider(value: 13.0)
+        )
+        let assessment = service.assess(nightConditionsScore: 90, latitude: 45, longitude: -122)
+        XCTAssertNotNil(assessment.lightPollution)
+        let expected = ObservingQualityCalculator.assess(
+            nightConditionsScore: 90,
+            modeledZenithSkyBrightness: 13.0
+        )
+        XCTAssertEqual(assessment, expected)
+    }
+
+    func testBrightnessAtMaximumBoundIsValid() {
+        let service = ObservingQualityService(
+            lightPollutionProvider: FixedLightPollutionProvider(value: 22.5)
+        )
+        let assessment = service.assess(nightConditionsScore: 90, latitude: 45, longitude: -122)
+        XCTAssertNotNil(assessment.lightPollution)
+        let expected = ObservingQualityCalculator.assess(
+            nightConditionsScore: 90,
+            modeledZenithSkyBrightness: 22.5
+        )
+        XCTAssertEqual(assessment, expected)
+    }
+
+    func testValidInputMatchesCalculatorExactly() {
+        let service = ObservingQualityService(
+            lightPollutionProvider: FixedLightPollutionProvider(value: 19.5)
+        )
+        let assessment = service.assess(nightConditionsScore: 85, latitude: 45.5, longitude: -122.7)
+        let expected = ObservingQualityCalculator.assess(
+            nightConditionsScore: 85,
+            modeledZenithSkyBrightness: 19.5
+        )
+        XCTAssertEqual(assessment, expected)
+    }
+}
+
+/// Counts provider calls for validity tests.
+private final class CallCountingLightPollutionProvider: LightPollutionProviding, @unchecked Sendable {
+    let value: Double?
+    private let lock = NSLock()
+    private var _callCount = 0
+    var callCount: Int {
+        lock.lock(); defer { lock.unlock() }
+        return _callCount
+    }
+
+    init(value: Double?) {
+        self.value = value
+    }
+
+    func modeledZenithSkyBrightness(latitude: Double, longitude: Double) -> Double? {
+        lock.lock()
+        _callCount += 1
+        lock.unlock()
+        return value
+    }
 }

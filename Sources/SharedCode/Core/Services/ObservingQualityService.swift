@@ -40,11 +40,33 @@ public final class ObservingQualityService: ObservingQualityAssessing, @unchecke
         latitude: Double,
         longitude: Double
     ) -> ObservingQualityAssessment {
+        // Invalid coordinates must not call the provider or invent brightness.
+        guard ModeledZenithBrightnessValidity.isValidGeographicCoordinate(
+            latitude: latitude,
+            longitude: longitude
+        ) else {
+            return ObservingQualityCalculator.assess(
+                nightConditionsScore: nightConditionsScore,
+                modeledZenithSkyBrightness: nil
+            )
+        }
+
         let provider = lightPollutionProviderSnapshot()
-        let brightness = provider?.modeledZenithSkyBrightness(
+        let rawBrightness = provider?.modeledZenithSkyBrightness(
             latitude: latitude,
             longitude: longitude
         )
+
+        // Nil / non-finite / out-of-range brightness → exact night-score fallback
+        // (same contract as sample validity: never treat invalid as pristine zero-penalty).
+        let brightness: Double?
+        if let rawBrightness,
+           ModeledZenithBrightnessValidity.isBrightnessInPlausibleRange(rawBrightness) {
+            brightness = rawBrightness
+        } else {
+            brightness = nil
+        }
+
         return ObservingQualityCalculator.assess(
             nightConditionsScore: nightConditionsScore,
             modeledZenithSkyBrightness: brightness

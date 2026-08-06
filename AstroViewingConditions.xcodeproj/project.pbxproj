@@ -279,6 +279,7 @@
 		C2645099E1BB0892F553EC35 /* WidgetNightSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E58757E8DE5F81CEFB6C56F /* WidgetNightSummary.swift */; };
 		C2A18E8831EC0F25A3E51E52 /* WatchSelectionHandlingActivation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9F03F5A1EC8F62E71D7998 /* WatchSelectionHandlingActivation.swift */; };
 		C2BBF973D188F6B9BD43DC04 /* SharedConditionsRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 112704C8981844DAD7C1AAA6 /* SharedConditionsRepositoryTests.swift */; };
+		C2D4D2900BED156FC28AFD59 /* BestSpotObservingQualityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92226DE8BA3A8071EEDCB453 /* BestSpotObservingQualityTests.swift */; };
 		C3A9ED32ACF9FE1AAB1A416E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0C37D1273CE53088D8939CC0 /* PrivacyInfo.xcprivacy */; };
 		C3D7C5F6D4A9303243025C48 /* WidgetThreeNightOutlookSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55339D46AB9F982651C5AC8B /* WidgetThreeNightOutlookSummary.swift */; };
 		C4B79FCD096EE466472961B0 /* AstroViewingConditionsWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7F661FBADE218FC2C2B3DD3 /* AstroViewingConditionsWatchApp.swift */; };
@@ -626,6 +627,7 @@
 		8E60051D87F4042845731A75 /* HourlyForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HourlyForecastTests.swift; sourceTree = "<group>"; };
 		8EC797DFE7A190F1F40E9E84 /* SeeingCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeeingCalculatorTests.swift; sourceTree = "<group>"; };
 		901DFAC19B414560149B327A /* WatchObservingQualityCanonicalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchObservingQualityCanonicalizer.swift; sourceTree = "<group>"; };
+		92226DE8BA3A8071EEDCB453 /* BestSpotObservingQualityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotObservingQualityTests.swift; sourceTree = "<group>"; };
 		99265B8958B03CCED578B749 /* BestSpotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotView.swift; sourceTree = "<group>"; };
 		9B1DA95CCE7AC3B2926F6F78 /* BestSpotSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSettings.swift; sourceTree = "<group>"; };
 		9BDEE6998588C3B988DD4C4C /* MigrationHelperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationHelperTests.swift; sourceTree = "<group>"; };
@@ -780,6 +782,7 @@
 			children = (
 				F302F40B584E071A2408D6CC /* AstronomyServiceTests.swift */,
 				8CBDCF16F4D14350927A1B9D /* AstroViewingConditionsTests.entitlements */,
+				92226DE8BA3A8071EEDCB453 /* BestSpotObservingQualityTests.swift */,
 				DF1ADDEE10299D675C007C41 /* BestSpotSearcherTests.swift */,
 				70E23D725B4DDE7B7B6C2D0E /* BestSpotSettingsTests.swift */,
 				1B0CBF176099D65A12B9A81A /* BinaryLightPollutionProviderTests.swift */,
@@ -1652,6 +1655,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				939005FFFC1C2ADC4EEB6E11 /* AstronomyServiceTests.swift in Sources */,
+				C2D4D2900BED156FC28AFD59 /* BestSpotObservingQualityTests.swift in Sources */,
 				59EDAA60817AE9AA217A688C /* BestSpotSearcherTests.swift in Sources */,
 				409D3E765C72D7E3C28D6CED /* BestSpotSettingsTests.swift in Sources */,
 				E9F7120C55F495B504B870EA /* BinaryLightPollutionProviderTests.swift in Sources */,

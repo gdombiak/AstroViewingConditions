@@ -262,6 +262,13 @@ private actor LocationSuitabilitySession: LocationSuitabilityProviding {
     }
 }
 
+/// Prepares a **Sendable** observing-quality assessor once per Best Nearby search.
+///
+/// Main app injects a preparer that reuses process-owned LP bootstrap; SharedCode never
+/// loads `Bundle.main` or the atlas binary.
+public typealias BestSpotObservingQualityPreparer =
+    @Sendable () async -> any ObservingQualityAssessing
+
 /// Orchestrates the search for the best nearby area based on viewing conditions.
 public final class BestSpotSearcher: BestSpotSearching {
     public static let maxForecastDays = 16
@@ -275,17 +282,21 @@ public final class BestSpotSearcher: BestSpotSearching {
     private let astronomyService: any AstronomyProviding
     private let suitabilityService: any LocationSuitabilityProviding
     private let fogScoreCalculator: @Sendable (HourlyForecast) -> FogScore
+    /// Optional preparer (once per search). `nil` → night-only assessor (exact prior behavior).
+    private let observingQualityPreparer: BestSpotObservingQualityPreparer?
     
     public init(
         weatherService: any WeatherForecastProviding = WeatherService(),
         astronomyService: any AstronomyProviding = AstronomyService(),
         suitabilityService: any LocationSuitabilityProviding = LocationSuitabilityService(),
-        fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate
+        fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate,
+        observingQualityPreparer: BestSpotObservingQualityPreparer? = nil
     ) {
         self.weatherService = weatherService
         self.astronomyService = astronomyService
         self.suitabilityService = suitabilityService
         self.fogScoreCalculator = fogScoreCalculator
+        self.observingQualityPreparer = observingQualityPreparer
     }
     
 #if os(iOS)
@@ -353,13 +364,17 @@ public final class BestSpotSearcher: BestSpotSearching {
             throw BestSpotSearchError.unsupportedForecastDate(maxDays: Self.maxForecastDays)
         }
         
-        // Fetch weather for all grid points in one API call
+        // Weather fetch and assessor preparation in parallel (atlas is local after bootstrap).
         progressHandler?(0.2)
         let coordinates = gridPoints.map { $0.coordinate }
-        let weatherData = try await weatherService.fetchForecastForMultipleLocations(
+        async let weatherTask = weatherService.fetchForecastForMultipleLocations(
             coordinates: coordinates,
             days: forecastDays
         )
+        async let assessorTask = prepareObservingQualityAssessor()
+        let weatherData = try await weatherTask
+        try Task.checkCancellation()
+        let observingQualityAssessor = await assessorTask
         try Task.checkCancellation()
         
         guard !weatherData.isEmpty else {
@@ -396,8 +411,9 @@ public final class BestSpotSearcher: BestSpotSearching {
         
         progressHandler?(0.5)
         
-        // Score each location
-        var scoredLocations: [LocationScore] = []
+        // Score each location: night quality first, then one canonical OQ assess per candidate.
+        // Retain both until the full set is known so ranking uses one coherent mode.
+        var intermediate: [ScoredLocationDraft] = []
         let totalPoints = gridPoints.count
         let moonCalculationCache = NightQualityAnalyzer.MoonCalculationCache()
         
@@ -405,7 +421,7 @@ public final class BestSpotSearcher: BestSpotSearching {
             try Task.checkCancellation()
             guard let forecasts = weatherData[gridPoint.coordinate] else { continue }
             
-            if let locationScore = scoreLocation(
+            if let draft = scoreLocationDraft(
                 gridPoint: gridPoint,
                 forecasts: forecasts,
                 sunEventsToday: sunEventsToday,
@@ -413,9 +429,10 @@ public final class BestSpotSearcher: BestSpotSearching {
                 moonInfo: moonInfo,
                 date: date,
                 calendar: calendar,
-                moonCalculationCache: moonCalculationCache
+                moonCalculationCache: moonCalculationCache,
+                observingQualityAssessor: observingQualityAssessor
             ) {
-                scoredLocations.append(locationScore)
+                intermediate.append(draft)
             }
             
             // Update progress (50% to 90%)
@@ -423,9 +440,15 @@ public final class BestSpotSearcher: BestSpotSearching {
             progressHandler?(progress)
         }
         
-        guard !scoredLocations.isEmpty else {
+        guard !intermediate.isEmpty else {
             throw BestSpotSearchError.noScorableLocations
         }
+
+        try Task.checkCancellation()
+
+        // Coherent search-wide mode: OQ only when every scorable candidate has valid LP.
+        let scoringMode = Self.resolveScoringMode(for: intermediate)
+        let scoredLocations = intermediate.map { $0.makeLocationScore(scoringMode: scoringMode) }
 
         let centerScore = scoredLocations.first { $0.point.isCenter }?.score
         let rankedWeatherLocations = scoredLocations
@@ -490,12 +513,63 @@ public final class BestSpotSearcher: BestSpotSearching {
             moonInfo: moonInfo,
             searchDate: date,
             searchDuration: searchDuration,
-            suitabilityWarning: suitabilityWarning
+            suitabilityWarning: suitabilityWarning,
+            scoringMode: scoringMode
         )
     }
+
+    private func prepareObservingQualityAssessor() async -> any ObservingQualityAssessing {
+        if let observingQualityPreparer {
+            return await observingQualityPreparer()
+        }
+        // Night-only assessor: every assess has lightPollution == nil → search-wide fallback
+        // to night scores (preserves prior Best Nearby behavior when no preparer is injected).
+        return ObservingQualityService(lightPollutionProvider: nil)
+    }
+
+    /// Intermediate night + OQ pair before search-wide mode is chosen.
+    private struct ScoredLocationDraft: Sendable {
+        let point: GridPoint
+        let nightConditionsScore: Int
+        let observingQuality: ObservingQualityAssessment
+        let nightQuality: NightQualityAssessment
+        let fogScore: FogScore
+        let avgCloudCover: Double
+        let avgWindSpeed: Double
+        let summary: String
+
+        var hasValidLightPollution: Bool {
+            observingQuality.lightPollution != nil
+        }
+
+        func makeLocationScore(scoringMode: BestSpotScoringMode) -> LocationScore {
+            let publicScore: Int
+            switch scoringMode {
+            case .observingQuality:
+                publicScore = observingQuality.score
+            case .nightConditionsFallback:
+                publicScore = nightConditionsScore
+            }
+            return LocationScore(
+                point: point,
+                score: publicScore,
+                nightConditionsScore: nightConditionsScore,
+                nightQuality: nightQuality,
+                fogScore: fogScore,
+                avgCloudCover: avgCloudCover,
+                avgWindSpeed: avgWindSpeed,
+                summary: summary
+            )
+        }
+    }
+
+    private static func resolveScoringMode(for drafts: [ScoredLocationDraft]) -> BestSpotScoringMode {
+        // OQ mode only when every scorable location has valid LP-backed assessment.
+        drafts.allSatisfy(\.hasValidLightPollution) ? .observingQuality : .nightConditionsFallback
+    }
     
-    /// Scores a single location based on viewing conditions
-    private func scoreLocation(
+    /// Scores a single location: night quality + one canonical OQ assess (before mode selection).
+    private func scoreLocationDraft(
         gridPoint: GridPoint,
         forecasts: [HourlyForecast],
         sunEventsToday: SunEvents,
@@ -503,8 +577,9 @@ public final class BestSpotSearcher: BestSpotSearching {
         moonInfo: MoonInfo,
         date: Date,
         calendar: Calendar,
-        moonCalculationCache: NightQualityAnalyzer.MoonCalculationCache
-    ) -> LocationScore? {
+        moonCalculationCache: NightQualityAnalyzer.MoonCalculationCache,
+        observingQualityAssessor: any ObservingQualityAssessing
+    ) -> ScoredLocationDraft? {
         // Calculate night quality using the existing analyzer
         let nightQuality = NightQualityAnalyzer.analyzeNight(
             forecasts: forecasts,
@@ -518,8 +593,15 @@ public final class BestSpotSearcher: BestSpotSearching {
             moonCalculationCache: moonCalculationCache
         )
         
-        // Convert night quality to 0-100 score
-        let score = Self.calculateScore(nightQuality)
+        // Convert night quality to 0-100 score (existing weather/sky formula)
+        let nightConditionsScore = Self.calculateScore(nightQuality)
+
+        // Canonical observing quality (Moon not applied again; service handles invalid LP).
+        let observingQuality = observingQualityAssessor.assess(
+            nightConditionsScore: nightConditionsScore,
+            latitude: gridPoint.coordinate.latitude,
+            longitude: gridPoint.coordinate.longitude
+        )
         
         // Calculate average metrics for the night
         let nightForecasts = NightForecastFilter.filterToNighttime(
@@ -537,12 +619,13 @@ public final class BestSpotSearcher: BestSpotSearching {
         
         let fogScore = averageFogScore(for: nightForecasts)
         
-        // Generate summary
-        let summary = generateSummary(nightQuality: nightQuality, score: score)
+        // Weather summary uses night quality (not LP).
+        let summary = generateSummary(nightQuality: nightQuality, score: nightConditionsScore)
         
-        return LocationScore(
+        return ScoredLocationDraft(
             point: gridPoint,
-            score: score,
+            nightConditionsScore: nightConditionsScore,
+            observingQuality: observingQuality,
             nightQuality: nightQuality,
             fogScore: fogScore,
             avgCloudCover: avgCloudCover,

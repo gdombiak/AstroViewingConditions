@@ -5,8 +5,23 @@ struct BestSpotResultCard: View {
     @Environment(\.appPalette) private var palette
     let locationScore: LocationScore
     let rank: Int
+    let scoringMode: BestSpotScoringMode
     let isSelected: Bool
     let onTap: () -> Void
+
+    init(
+        locationScore: LocationScore,
+        rank: Int,
+        scoringMode: BestSpotScoringMode = .nightConditionsFallback,
+        isSelected: Bool,
+        onTap: @escaping () -> Void
+    ) {
+        self.locationScore = locationScore
+        self.rank = rank
+        self.scoringMode = scoringMode
+        self.isSelected = isSelected
+        self.onTap = onTap
+    }
     
     private var unitConverter: AstroUnitConverter {
         AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
@@ -103,6 +118,37 @@ struct BestSpotResultCard: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            Self.accessibilityLabel(
+                locationScore: locationScore,
+                rank: rank,
+                scoringMode: scoringMode
+            )
+        )
+    }
+
+    /// Deterministic accessibility string for cards (and unit tests).
+    /// Always uses the public ranking/display `score`, never a separate night-only field.
+    nonisolated static func accessibilityLabel(
+        locationScore: LocationScore,
+        rank: Int,
+        scoringMode: BestSpotScoringMode
+    ) -> String {
+        let scorePhrase: String
+        switch scoringMode {
+        case .observingQuality:
+            scorePhrase = "Observing quality score \(locationScore.score) out of 100"
+        case .nightConditionsFallback:
+            scorePhrase = "Night conditions score \(locationScore.score) out of 100; light pollution unavailable"
+        }
+        return [
+            "Rank \(rank)",
+            scorePhrase,
+            locationScore.fullLocationString,
+            locationScore.suitability.label,
+            locationScore.improvementSummary,
+        ].joined(separator: ". ")
     }
     
     private var rankBadgeColor: Color {

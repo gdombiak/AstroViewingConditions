@@ -96,4 +96,24 @@ public final class ObservingQualitySession: ObservingQualityEnvironment {
         service.setLightPollutionProvider(provider)
         lightPollutionReadiness = readiness
     }
+
+    /// Snapshot a **Sendable** assessor for background Best Nearby search.
+    ///
+    /// Call after bootstrap when possible. Uses the process-owned provider snapshot;
+    /// does not load the atlas from SharedCode Best Spot code.
+    public func makeSendableAssessor() -> ObservingQualityService {
+        ObservingQualityService(
+            lightPollutionProvider: service.lightPollutionProviderSnapshot()
+        )
+    }
+
+    /// Ensure bootstrap has completed, then return a Sendable assessor for one search.
+    public func prepareSendableAssessorForSearch(
+        preferredBundles: [Bundle] = [Bundle.main]
+    ) async -> ObservingQualityService {
+        if lightPollutionReadiness == .loading {
+            await bootstrap(preferredBundles: preferredBundles)
+        }
+        return makeSendableAssessor()
+    }
 }

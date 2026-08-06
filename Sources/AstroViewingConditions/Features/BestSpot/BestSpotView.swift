@@ -22,12 +22,22 @@ struct BestSpotView: View {
     let centerLocation: SavedLocation
     let searchDate: Date
     let fogScoreCalculator: @Sendable (HourlyForecast) -> FogScore
+    let observingQualitySession: ObservingQualitySession?
     
-    public init(centerLocation: SavedLocation, searchDate: Date, fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate) {
+    public init(
+        centerLocation: SavedLocation,
+        searchDate: Date,
+        fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate,
+        observingQualitySession: ObservingQualitySession? = nil
+    ) {
         self.centerLocation = centerLocation
         self.searchDate = searchDate
         self.fogScoreCalculator = fogScoreCalculator
-        _viewModel = State(initialValue: BestSpotViewModel(fogScoreCalculator: fogScoreCalculator))
+        self.observingQualitySession = observingQualitySession
+        _viewModel = State(initialValue: BestSpotViewModel(
+            fogScoreCalculator: fogScoreCalculator,
+            observingQualitySession: observingQualitySession
+        ))
         
         let coordinate = CLLocationCoordinate2D(
             latitude: centerLocation.latitude,
@@ -185,12 +195,22 @@ struct BestSpotView: View {
             VStack(spacing: 16) {
                 // Header
                 resultsHeader(result: result)
+
+                if let lightPollutionMessage = result.lightPollutionUnavailableMessage {
+                    Text(lightPollutionMessage)
+                        .font(.caption)
+                        .appSecondaryForeground()
+                        .multilineTextAlignment(.leading)
+                        .padding(.horizontal)
+                        .accessibilityLabel(lightPollutionMessage)
+                }
                 
                 // Map
                 BestSpotMapView(
                     centerLocation: centerLocation,
                     scoredLocations: result.allScoredLocations,
                     topLocations: result.topLocations,
+                    scoringMode: result.scoringMode,
                     selectedLocation: $selectedLocation,
                     position: $mapPosition
                 )
@@ -206,6 +226,7 @@ struct BestSpotView: View {
                         location: selectedLocation,
                         rank: result.rank(of: selectedLocation),
                         centerName: centerLocation.name,
+                        scoringMode: result.scoringMode,
                         openInMaps: {
                             viewModel.openInMaps(location: selectedLocation, centerName: centerLocation.name)
                         }
@@ -224,6 +245,7 @@ struct BestSpotView: View {
                             BestSpotResultCard(
                                 locationScore: location,
                                 rank: index + 1,
+                                scoringMode: result.scoringMode,
                                 isSelected: selectedLocation?.id == location.id,
                                 onTap: {
                                     withAnimation {
@@ -290,10 +312,11 @@ struct BestSpotView: View {
                     .appPrimaryActionStyle()
                 }
 
-                Text("This checks sky and weather conditions only. Verify access, safety, parking, local rules, and horizon obstructions before traveling.")
+                Text(resultsDisclaimer(for: result.scoringMode))
                     .font(.caption)
                     .appSecondaryForeground()
                     .multilineTextAlignment(.leading)
+                    .accessibilityLabel(resultsDisclaimer(for: result.scoringMode))
             }
         }
         .padding()
@@ -338,6 +361,16 @@ struct BestSpotView: View {
     }
     
     // MARK: - Helper Methods
+
+    /// Search-level disclaimer under the header score (not a per-location badge).
+    private func resultsDisclaimer(for scoringMode: BestSpotScoringMode) -> String {
+        switch scoringMode {
+        case .observingQuality:
+            return "Scores reflect observing quality (weather, sky conditions, and light pollution). Verify access, safety, parking, local rules, and horizon obstructions before traveling."
+        case .nightConditionsFallback:
+            return "Scores reflect weather and sky conditions only. Verify access, safety, parking, local rules, and horizon obstructions before traveling."
+        }
+    }
     
     private func updateMapRegion(for location: LocationScore) {
         let coordinate = CLLocationCoordinate2D(
@@ -365,6 +398,7 @@ struct BestSpotMapView: View {
     let scoredLocations: [LocationScore]
     let topLocations: [LocationScore]
     let mode: BestSpotMapMode
+    let scoringMode: BestSpotScoringMode
     @Binding var selectedLocation: LocationScore?
     @Binding var position: MapCameraPosition
 
@@ -373,6 +407,7 @@ struct BestSpotMapView: View {
         scoredLocations: [LocationScore],
         topLocations: [LocationScore],
         mode: BestSpotMapMode = .recommendedOnly,
+        scoringMode: BestSpotScoringMode = .nightConditionsFallback,
         selectedLocation: Binding<LocationScore?>,
         position: Binding<MapCameraPosition>
     ) {
@@ -380,6 +415,7 @@ struct BestSpotMapView: View {
         self.scoredLocations = scoredLocations
         self.topLocations = topLocations
         self.mode = mode
+        self.scoringMode = scoringMode
         _selectedLocation = selectedLocation
         _position = position
     }
@@ -442,7 +478,12 @@ struct BestSpotMapView: View {
         }
 
         let location = item.location
-        return "Weather estimate, score \(location.score). \(location.suitability.label)"
+        switch scoringMode {
+        case .observingQuality:
+            return "Observing quality estimate, score \(location.score). \(location.suitability.label)"
+        case .nightConditionsFallback:
+            return "Weather estimate, score \(location.score). \(location.suitability.label)"
+        }
     }
 
     private var annotationItems: [BestSpotMapAnnotationItem] {
@@ -575,7 +616,22 @@ struct BestSpotSelectedMapLocationView: View {
     let location: LocationScore
     let rank: Int?
     let centerName: String
+    let scoringMode: BestSpotScoringMode
     let openInMaps: () -> Void
+
+    init(
+        location: LocationScore,
+        rank: Int?,
+        centerName: String,
+        scoringMode: BestSpotScoringMode = .nightConditionsFallback,
+        openInMaps: @escaping () -> Void
+    ) {
+        self.location = location
+        self.rank = rank
+        self.centerName = centerName
+        self.scoringMode = scoringMode
+        self.openInMaps = openInMaps
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -615,7 +671,12 @@ struct BestSpotSelectedMapLocationView: View {
             return "Recommended area #\(rank) - \(location.score)/100"
         }
 
-        return "Weather estimate - \(location.score)/100"
+        switch scoringMode {
+        case .observingQuality:
+            return "Observing quality estimate - \(location.score)/100"
+        case .nightConditionsFallback:
+            return "Weather estimate - \(location.score)/100"
+        }
     }
 
     private var detail: String {

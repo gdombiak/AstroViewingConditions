@@ -91,7 +91,8 @@ struct ContentView: View {
             tabContent(.dashboard) {
                 DashboardView(
                     viewModel: dashboardViewModel,
-                    locationSession: dashboardLocationSession
+                    locationSession: dashboardLocationSession,
+                    observingQualitySession: observingQualitySession
                 )
             }
 
