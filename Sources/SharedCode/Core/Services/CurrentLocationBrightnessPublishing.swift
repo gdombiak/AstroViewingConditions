@@ -29,10 +29,10 @@ public final class AppCurrentLocationBrightnessPublisher: CurrentLocationBrightn
     /// (`@testable import SharedCode`) can verify gating without public test-only API.
     init(
         providerLookup: @escaping ProviderLookup = {
-            await LightPollutionProviderBootstrap.shared.currentProvider()
+            LightPollutionProviderBootstrap.shared.currentProvider()
         },
         enqueue: @escaping EnqueueHandler = { publication, provider in
-            await CurrentLocationModeledBrightnessCoordinator.shared.enqueueSynchronize(
+            CurrentLocationModeledBrightnessCoordinator.shared.enqueueSynchronize(
                 publication: publication,
                 provider: provider
             )
