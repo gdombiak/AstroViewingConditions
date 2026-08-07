@@ -1,6 +1,6 @@
 import Foundation
 
-/// Pure scoring prototype: wraps an existing night-conditions score with a light-pollution penalty.
+/// Canonical pure scorer that adjusts an existing night-conditions score for light pollution.
 ///
 /// Formula:
 /// ```
@@ -43,7 +43,8 @@ public enum ObservingQualityCalculator: Sendable {
     /// - Parameters:
     ///   - nightConditionsScore: Existing 0–100 night-conditions score (weather, darkness, Moon).
     ///   - modeledZenithSkyBrightness: Modeled zenith sky brightness in mag/arcsec², or `nil` if unavailable.
-    ///     Non-finite values are treated as unavailable (not as pristine skies).
+    ///     Values outside the supported atlas range, including non-finite values, are treated
+    ///     as unavailable (not as pristine skies).
     public static func assess(
         nightConditionsScore: Int,
         modeledZenithSkyBrightness: Double?
@@ -79,9 +80,12 @@ public enum ObservingQualityCalculator: Sendable {
     // MARK: - Internal helpers (visible to tests via @testable import SharedCode)
 
     /// Base light-pollution penalty for a modeled zenith sky brightness (mag/arcsec²).
-    /// Returns `nil` for non-finite input so invalid values cannot be treated as pristine (0 penalty).
+    /// Returns `nil` outside the supported atlas range so invalid values cannot be
+    /// endpoint-clamped and mistaken for valid polluted or pristine skies.
     static func baseLightPollutionPenalty(modeledZenithSkyBrightness: Double) -> Double? {
-        guard modeledZenithSkyBrightness.isFinite else {
+        guard ModeledZenithBrightnessValidity.isBrightnessInPlausibleRange(
+            modeledZenithSkyBrightness
+        ) else {
             return nil
         }
         return piecewiseLinear(

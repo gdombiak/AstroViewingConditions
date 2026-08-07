@@ -1,9 +1,9 @@
 # Light Pollution Global Binary Format v1
 
-**Artifact name:** `light_pollution_global_v1.bin`  
-**Endianness:** little-endian  
-**Magic:** ASCII `LPATLAS1` (8 bytes)  
-**Version:** `1` (u16)
+- **Artifact name:** `light_pollution_global_v1.bin`
+- **Endianness:** little-endian
+- **Magic:** ASCII `LPATLAS1` (8 bytes)
+- **Version:** `1` (u16)
 
 Production configuration encoded by the generator:
 
@@ -119,11 +119,11 @@ Mask packing matches NumPy `np.packbits` on a row-major boolean array.
 
 ## Lookup algorithm
 
-1. Reject non-finite lat/lon → unavailable.  
-2. Normalize longitude to `[-180, 180)`.  
-3. Map to `col,row`; if outside `[0,width)×[0,height)` → unavailable.  
-4. Load root blob for `(root_i, root_j)`.  
-5. Walk DFS tree with local coordinates, descending into the correct child or reading a leaf.  
+1. Reject non-finite lat/lon → unavailable.
+2. Normalize longitude to `[-180, 180)`.
+3. Map to `col,row`; if outside `[0,width)×[0,height)` → unavailable.
+4. Load root blob for `(root_i, root_j)`.
+5. Walk DFS tree with local coordinates, descending into the correct child or reading a leaf.
 6. For leaf: if local cell is masked/NoData → unavailable; else return dequantized mag/arcsec².
 
 ## Validation rules
@@ -165,10 +165,15 @@ v1 parsers **must** walk every root blob’s DFS tree at initialization and requ
 - coarse `factor ≥ 1` (factor `0` is forbidden);
 - mask payload length = `ceil(h×w/8)` bytes;
 - coarse grid payload length = `ceil(h/factor)×ceil(w/factor)` bytes;
+- value-bearing payloads for `constant`, `constant_mask`, `coarse`, and `coarse_mask`
+  use only quantization codes `0…254`; code `255` is reserved and invalid as a
+  constant or coarse value. Geographic NoData uses the existing NoData node and mask
+  mechanisms, not a `255` leaf value. Encountering `255` in one of these payloads
+  causes initialization to fail;
 - children have four DFS subtrees for positive-size quadrants;
 - **exact blob consumption** (no trailing garbage, no shortfall).
 
-Malformed header/index/node structure fails **initialization**.  
+Malformed header/index/node structure fails **initialization**.
 Legitimate geographic NoData / out-of-coverage remains a lookup-time `nil` / `None` result and must never be confused with corruption.
 
 ## Versioning
@@ -185,12 +190,12 @@ The production iOS app bundles a single copy of this artifact:
 - Dashboard headline score uses `ObservingQualityService` + `ObservingQualityCalculator`
 - On load failure or out-of-coverage lookup: preserve night-conditions score; `lightPollution` is nil (never pristine)
 
-Expected identity: **10,328,230** bytes, SHA-256  
-`b9c60e83d866f28e781dcc89a4ad302597012cdb9df6c94743efdd44be86dce4`.
+Expected identity: **10,328,230** bytes, SHA-256 `b9c60e83d866f28e781dcc89a4ad302597012cdb9df6c94743efdd44be86dce4`.
 
 ## Licensing note
 
-Atlas values originate from David Lorenz’s Light Pollution Atlas  
-(https://djlorenz.github.io/astronomy/lp/). Permission to use the work and TIFF files was obtained directly. This binary is a derived offline packaging; redistribution remains subject to the applicable permission for the release. This harness/format does not itself grant third-party redistribution rights.
+Atlas values originate from David Lorenz’s Light Pollution Atlas (https://djlorenz.github.io/astronomy/lp/).
+
+Permission to use the work and TIFF files was obtained directly. This binary is a derived offline packaging; redistribution remains subject to the applicable permission for the release. This harness/format does not itself grant third-party redistribution rights.
 
 In-app credit: Settings → Data Sources → Light Pollution Atlas.

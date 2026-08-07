@@ -7,7 +7,7 @@ import Foundation
 /// (full DFS walk) so truncated/malformed node payloads fail **at init**, not as silent NoData.
 ///
 /// Lookup is O(depth) within one root blob and does not materialize a full global raster.
-/// Not yet wired into observing-quality scoring or any UI surface.
+/// Loaded by the main app and sampled through the shared observing-quality pipeline.
 ///
 /// Corruption vs NoData:
 /// - Malformed header/index/node structure → `init` throws.
@@ -319,9 +319,9 @@ public final class BinaryLightPollutionProvider: LightPollutionProviding, @unche
             case tagDefaultMask:
                 try skipBytes(maskLen(h: h, w: w))
             case tagConstant:
-                _ = try readU8()
+                guard try readU8() <= maxValidQuantCode else { throw Error.invalidNode }
             case tagConstantMask:
-                _ = try readU8()
+                guard try readU8() <= maxValidQuantCode else { throw Error.invalidNode }
                 try skipBytes(maskLen(h: h, w: w))
             case tagCoarse, tagCoarseMask:
                 let factor = Int(try readU16())
@@ -329,7 +329,9 @@ public final class BinaryLightPollutionProvider: LightPollutionProviding, @unche
                 let (gh, gw) = coarseShape(h: h, w: w, factor: factor)
                 let n = gh * gw
                 guard n > 0, n <= blob.count else { throw Error.invalidNode }
-                try skipBytes(n)
+                for _ in 0..<n {
+                    guard try readU8() <= maxValidQuantCode else { throw Error.invalidNode }
+                }
                 if tag == tagCoarseMask {
                     try skipBytes(maskLen(h: h, w: w))
                 }

@@ -33,7 +33,7 @@ public struct ObservingQualityAssessment: Sendable, Equatable {
     public let score: Int
     /// Existing night-conditions score used as the base (also clamped to 0…100 for calculation).
     public let nightConditionsScore: Int
-    /// Present when finite modeled zenith sky brightness was supplied; `nil` if unavailable.
+    /// Present when supported modeled zenith sky brightness was supplied; `nil` if unavailable.
     public let lightPollution: LightPollutionAssessment?
 
     public init(
@@ -46,7 +46,7 @@ public struct ObservingQualityAssessment: Sendable, Equatable {
         self.lightPollution = lightPollution
     }
 
-    /// True when modeled zenith brightness was missing or non-finite (treated as unavailable).
+    /// True when modeled zenith brightness was missing or outside the supported atlas range.
     public var lightPollutionDataUnavailable: Bool {
         lightPollution == nil
     }

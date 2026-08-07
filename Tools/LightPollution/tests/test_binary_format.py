@@ -272,6 +272,18 @@ def test_reject_truncated_constant_payload():
         validate_tree_structure(bytes([TAG_CONSTANT]), ROOT_CELLS, ROOT_CELLS)
 
 
+def test_reject_reserved_constant_quantization_code():
+    with pytest.raises(ValueError, match="quantization code"):
+        validate_tree_structure(bytes([TAG_CONSTANT, 255]), ROOT_CELLS, ROOT_CELLS)
+
+
+def test_reject_reserved_coarse_quantization_code():
+    # factor 255 produces a 4x4 grid for a 768-cell root.
+    blob = bytes([TAG_COARSE, 255, 0] + [0] * 15 + [255])
+    with pytest.raises(ValueError, match="quantization code"):
+        validate_tree_structure(blob, ROOT_CELLS, ROOT_CELLS)
+
+
 def test_reject_truncated_mask_payload():
     # default_mask requires ceil(768*768/8) bytes after tag
     with pytest.raises(ValueError):

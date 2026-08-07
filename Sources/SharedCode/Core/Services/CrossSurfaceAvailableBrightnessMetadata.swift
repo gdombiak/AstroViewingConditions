@@ -2,8 +2,8 @@ import Foundation
 
 /// Structural checks for encoded "available" brightness metadata (decode-time only).
 ///
-/// Does not re-run full Phase 1 sample/request association for arbitrary request coords;
-/// validates fields required for a trustworthy available payload.
+/// Validates fields required for a trustworthy available payload. Widget summaries also
+/// enforce lookup-coordinate association with the summary location.
 enum CrossSurfaceAvailableBrightnessMetadata: Sendable {
     /// Returns true when available-state metadata is complete and structurally consistent.
     static func isStructurallyValid(
@@ -13,6 +13,8 @@ enum CrossSurfaceAvailableBrightnessMetadata: Sendable {
         lookupLongitude: Double?,
         brightnessSavedLocationID: UUID?,
         summarySavedLocationID: UUID?,
+        summaryLatitude: Double? = nil,
+        summaryLongitude: Double? = nil,
         enforceSummaryAssociation: Bool
     ) -> Bool {
         guard let brightness,
@@ -31,6 +33,15 @@ enum CrossSurfaceAvailableBrightnessMetadata: Sendable {
             return false
         }
         if enforceSummaryAssociation {
+            guard let summaryLatitude, let summaryLongitude,
+                  ModeledZenithBrightnessValidity.coordinatesMatch(
+                    sampleLatitude: lat,
+                    sampleLongitude: lon,
+                    requestLatitude: summaryLatitude,
+                    requestLongitude: summaryLongitude
+                  ) else {
+                return false
+            }
             // Saved summary requires matching brightness ID; coordinate-only summary requires nil.
             switch (summarySavedLocationID, brightnessSavedLocationID) {
             case let (summaryID?, brightnessID?):

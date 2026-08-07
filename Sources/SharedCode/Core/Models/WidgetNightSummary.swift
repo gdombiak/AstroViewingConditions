@@ -244,6 +244,8 @@ public struct WidgetNightSummary: Codable, Sendable, Hashable {
                 lookupLongitude: lon,
                 brightnessSavedLocationID: savedID,
                 summarySavedLocationID: savedLocationID,
+                summaryLatitude: latitude,
+                summaryLongitude: longitude,
                 enforceSummaryAssociation: true
             )
             if !structurallyValid {
@@ -266,8 +268,11 @@ public struct WidgetNightSummary: Codable, Sendable, Hashable {
             brightnessLookupLatitude = lat
             brightnessLookupLongitude = lon
             brightnessSavedLocationID = savedID
-            // Trust OQ only when structural metadata is valid.
-            let oq = decodedOQ ?? recoveredNight
+            // Recompute with the canonical calculator rather than trusting a transported score.
+            let oq = ObservingQualityCalculator.assess(
+                nightConditionsScore: recoveredNight,
+                modeledZenithSkyBrightness: brightness
+            ).score
             observingQualityScore = oq
             score = oq
             // Headline verdict must match OQ category when enhancement is available.

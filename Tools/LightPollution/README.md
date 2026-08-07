@@ -1,8 +1,8 @@
 # Light Pollution Atlas Validation Harness
 
-Mac-only offline tooling to measure compact representations of **David Lorenz’s 2025 global zenith-sky-brightness atlas** for a future light-pollution-aware feature in Astro Viewing Conditions.
+Mac-only offline tooling used to generate and validate the app's compact representation of **David Lorenz’s 2025 global zenith-sky-brightness atlas**.
 
-**Scope:** Fidelity validation is **Oregon-focused** (reconstruction, metrics, named points, viewer). The harness also runs **worldwide streaming censuses** and can generate a **production LPATLAS1 binary** for offline app lookup. Wiring the binary into observing-quality scoring / UI is a separate product step.
+**Scope:** Fidelity validation is **Oregon-focused** (reconstruction, metrics, named points, viewer). The harness also runs **worldwide streaming censuses** and generates the **production LPATLAS1 binary** used for offline app lookup. Runtime wiring is documented in the cross-surface architecture section below.
 
 For the completed experiment’s headline results and recommendation, see [VALIDATION_RESULTS.md](VALIDATION_RESULTS.md). That document also defines the **[atlas update procedure](VALIDATION_RESULTS.md#updating-to-a-new-atlas-release)** (incumbent 2025 configuration, revalidation steps, and review triggers). Detailed generated reports live under ignored `output/`.
 
@@ -14,7 +14,7 @@ Source values are **modeled zenith sky brightness** in **magnitudes per square a
 
 Atlas by [David Lorenz](https://djlorenz.github.io/astronomy/lp/) — product used here: **zenith_brightness_v22_2025** (2025 global zenith-brightness GeoTIFF). **Explicit permission to use the work and TIFF files was obtained directly from the author.** This harness and any derived offline binary do **not** themselves grant third-party redistribution rights.
 
-**In-app attribution (when the atlas is productized):** surface David Lorenz / Light Pollution Atlas credit in About or data-source UI, linking to https://djlorenz.github.io/astronomy/lp/.
+**In-app attribution:** Astro Viewing Conditions credits David Lorenz / Light Pollution Atlas in Settings and links to https://djlorenz.github.io/astronomy/lp/.
 
 ## Prerequisites
 
@@ -192,11 +192,11 @@ Format specification: [BINARY_FORMAT.md](BINARY_FORMAT.md).
 
 ### Cross-surface scoring architecture
 
-See [CROSS_SURFACE_ARCHITECTURE.md](CROSS_SURFACE_ARCHITECTURE.md): hybrid model (main app local LPATLAS1; widgets/watch planned via shared calculator + brightness/score payloads, not necessarily embedding the 10 MiB artifact). Composition root owns bootstrap—not feature views.
+See [CROSS_SURFACE_ARCHITECTURE.md](CROSS_SURFACE_ARCHITECTURE.md): hybrid model (main app local LPATLAS1; widgets/watch consume companion state and transferred payloads without embedding the 10 MiB artifact). Composition root owns bootstrap—not feature views.
 
 **Phase 1 foundation (SharedCode):** `LightPollutionDatasetIdentity`, `ModeledZenithBrightnessSample`, `ModeledZenithBrightnessValidity` (shared 1000 m haversine + dataset checks), `ModeledZenithBrightnessResolver`.
 
-**Phase 2 (SharedCode):** durable saved-location companion metadata in App Group `savedLocationModeledBrightness.json`; sole-writer `SavedLocationModeledBrightnessCoordinator`; read-only `SavedLocationModeledBrightnessReading`. Not iCloud; no widget score changes yet.
+**Phase 2 (SharedCode):** durable saved-location companion metadata in App Group `savedLocationModeledBrightness.json`; sole-writer `SavedLocationModeledBrightnessCoordinator`; read-only `SavedLocationModeledBrightnessReading`. Not iCloud; consumed by the later widget/watch phases below.
 
 **Phase 3 (SharedCode):** Current Location companion `currentLocationModeledBrightness.json`; sole-writer `CurrentLocationModeledBrightnessCoordinator`; injected `CurrentLocationBrightnessPublishing` from GPS resolve; read-only `CurrentLocationModeledBrightnessReading`.
 
@@ -231,8 +231,8 @@ Deterministic multi-city fidelity study (source TIFF vs LPATLAS1; does **not** r
   --output output/urban_validation
 ```
 
-Region boxes and sampling: `config/urban_validation_regions.json`.  
-Generated reports (gitignored): `output/urban_validation/`.
+- Region boxes and sampling: `config/urban_validation_regions.json`.
+- Generated reports (gitignored): `output/urban_validation/`.
 
 ### Cross-language fixture
 
@@ -305,19 +305,19 @@ Static HTML/JS; no permanent backend. Offline raster comparison works without ex
 
 ## Adding regions later
 
-1. Add `config/regions/<id>.json` with lon/lat bounds  
-2. Add `config/points/<id>_points.json` if desired  
+1. Add `config/regions/<id>.json` with lon/lat bounds
+2. Add `config/points/<id>_points.json` if desired
 3. Extend crop/pipeline similarly (crop → candidates; hierarchical still uses full roots intersecting the window)
 
 ## Layout
 
-- `light_pollution/` — Python package  
-- `config/` — regions, points, bands, quantization, hierarchical  
-- `tests/` — unit tests (synthetic)  
-- `viewer/` — browser UI  
-- `cache/`, `output/` — ignored generated data  
-- `AGENTS.md` — durable agent rules  
-- `VALIDATION_RESULTS.md` — committed experiment summary  
+- `light_pollution/` — Python package
+- `config/` — regions, points, bands, quantization, hierarchical
+- `tests/` — unit tests (synthetic)
+- `viewer/` — browser UI
+- `cache/`, `output/` — ignored generated data
+- `AGENTS.md` — durable agent rules
+- `VALIDATION_RESULTS.md` — committed experiment summary
 
 ## Updating to a new atlas release
 

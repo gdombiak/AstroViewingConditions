@@ -72,6 +72,23 @@ final class ObservingQualityCalculatorTests: XCTestCase {
         }
     }
 
+    func testOutOfSupportedRangeBrightnessPreservesNightConditionsExactly() {
+        for brightness in [12.999, 22.501] {
+            XCTAssertNil(
+                ObservingQualityCalculator.baseLightPollutionPenalty(
+                    modeledZenithSkyBrightness: brightness
+                )
+            )
+            let result = ObservingQualityCalculator.assess(
+                nightConditionsScore: 90,
+                modeledZenithSkyBrightness: brightness
+            )
+            XCTAssertEqual(result.score, 90)
+            XCTAssertEqual(result.nightConditionsScore, 90)
+            XCTAssertNil(result.lightPollution)
+        }
+    }
+
     func testUsabilityWeightAnchorsAndExamples() {
         let cases: [(Int, Double)] = [
             (30, 0.0),

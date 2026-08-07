@@ -624,6 +624,21 @@ final class CrossSurfaceAvailableMetadataHardeningTests: XCTestCase {
         XCTAssertEqual(decoded.score, decoded.nightConditionsScore)
     }
 
+    func testMismatchedLookupCoordinatesDowngrade() throws {
+        var dict = try JSONSerialization.jsonObject(
+            with: try availableJSON(summarySavedID: UUID())
+        ) as! [String: Any]
+        dict["brightnessLookupLatitude"] = 46.45
+        dict["brightnessAvailability"] = "available"
+        let decoded = try JSONDecoder().decode(
+            WidgetNightSummary.self,
+            from: try JSONSerialization.data(withJSONObject: dict)
+        )
+        XCTAssertEqual(decoded.brightnessAvailability, .unavailable)
+        XCTAssertEqual(decoded.observingQualityScore, decoded.nightConditionsScore)
+        XCTAssertEqual(decoded.score, decoded.nightConditionsScore)
+    }
+
     func testValidAvailableRoundTripKeepsOQ() throws {
         let id = UUID()
         let data = try availableJSON(
@@ -635,8 +650,9 @@ final class CrossSurfaceAvailableMetadataHardeningTests: XCTestCase {
         let decoded = try JSONDecoder().decode(WidgetNightSummary.self, from: data)
         XCTAssertEqual(decoded.brightnessAvailability, .available)
         XCTAssertEqual(decoded.nightConditionsScore, 80)
-        XCTAssertEqual(decoded.observingQualityScore, 72)
-        XCTAssertEqual(decoded.score, 72)
+        // Encoded score is deliberately non-canonical; decoding recomputes 80 - 7 = 73.
+        XCTAssertEqual(decoded.observingQualityScore, 73)
+        XCTAssertEqual(decoded.score, 73)
     }
 
     func testSnapshotOutOfRangeBrightnessDowngrades() throws {

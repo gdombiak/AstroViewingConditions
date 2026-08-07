@@ -2,7 +2,7 @@
 
 Concise committed record of the completed offline packaging experiment. Detailed generated tables, rasters, and JSON remain under ignored `output/` (e.g. `output/oregon/`, `output/world_*_census.json`).
 
-This is a recommendation for the **next packaging / decoder experiment**, not a committed in-app storage format.
+This records the validation that selected the committed LPATLAS1 v1 in-app storage format.
 
 ## Source
 
@@ -51,7 +51,7 @@ Uniform global bytes use `uniform_global_size_exact` (source dimensions × reduc
 
 Fixed-tile adaptive can satisfy a configured max-AE budget via **native** tile fallback. Worldwide packaging size must come from `world-adaptive-census` (order of magnitude **~87–138 MiB** in the exact worldwide census for UInt8 budgets of interest), **not** from Oregon-scaled preliminary MiB figures that can appear as hundreds of MiB in Oregon-only tables.
 
-## Current recommendation (next packaging experiment)
+## Selected production configuration
 
 **UInt8 · error-only policy · 0.10 mag subdivision budget · 0.025° finest cap**
 
@@ -109,7 +109,7 @@ Out-of-coverage latitudes return unavailable (`nil`); open ocean is typically mo
 
 Single-coordinate app use is effectively instantaneous.
 
-**Permission:** David Lorenz granted explicit permission to use his work and TIFF files. In-app credit should appear in About/data-sources when productized.
+**Permission:** David Lorenz granted explicit permission to use his work and TIFF files. In-app credit appears in Settings → Data Sources → Light Pollution Atlas.
 
 ## Dense urban validation (LPATLAS1 v1, unchanged artifact)
 
@@ -149,11 +149,11 @@ Errors concentrate on **high/extreme local gradients** (3×3 source range), not 
 - Substantially **lower max absolute error** than uniform 0.05°/0.1° on the Oregon full-root metrics (~0.52 vs ~1.1 / ~1.4)
 - **Product-aware** hierarchical variants were larger without a material max-error or violating-cell advantage over error-only counterparts
 
-### Not yet
+### Productization status
 
-- Not a locked production storage format
-- Not wired into the iOS app
-- Decoder / Swift packaging remains a follow-on experiment
+- LPATLAS1 v1 is the committed production storage format for the 2025 atlas.
+- The Swift decoder and app-only resource packaging are implemented.
+- Widgets, watch, complications, and SharedCode do not embed the atlas.
 
 ## Where to dig deeper
 
@@ -182,7 +182,7 @@ When a newer Lorenz (or successor) zenith-brightness GeoTIFF is published, treat
 
 Uniform baselines (0.025° / 0.05° / 0.1° UInt8) and the hierarchical shortlist above remain the comparison anchors unless a full matrix reevaluation is triggered.
 
-### Per-release procedure
+### Per-release validation procedure
 
 For **each** newly released atlas file:
 
@@ -192,6 +192,59 @@ For **each** newly released atlas file:
 4. **Re-run Oregon full-root fidelity** for that hierarchical configuration (and the uniform UInt8 baselines as needed): named-point checks, viewer comparisons, top-error inspection, and the **exact worldwide hierarchical census** (`world-hierarchical-census`). Prefer the same commands and Python invocation as in [README.md](README.md).
 5. **Compare** new Oregon metrics and census global MiB against the 2025 incumbent numbers in this document (and any prior release notes).
 6. **Reopen the full candidate matrix** (other budgets, caps, product-aware policy, uniform alternatives, fixed-tile adaptive, etc.) **only when** source characteristics materially change, measured quality regresses, package size materially grows, or product requirements change—see triggers below.
+
+### Adoption and iOS release procedure
+
+After the validation above is accepted and permission to bundle that specific atlas release is confirmed:
+
+1. **Generate the release candidate and manifest** with the selected configuration using the
+   `generate-global` command in [README.md](README.md#generate). Do **not** pass
+   `--skip-sha256` for a release candidate: the manifest must contain the source TIFF SHA-256
+   as well as the always-generated artifact byte count and SHA-256. Preserve the manifest and
+   validation results as release evidence even though `output/` is gitignored.
+2. **Validate the generated artifact before copying it into the app:** run `artifact-info`, the
+   named `lookup` checks, Python tests, Oregon/full-root validation, worldwide census, and dense
+   urban validation as applicable. Confirm the manifest identity independently with
+   `wc -c` and `shasum -a 256`; reconcile any difference before adoption.
+3. **Replace the committed app resource** at
+   `Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin`.
+   A content-only atlas refresh that still uses LPATLAS1 v1 keeps the existing resource name and
+   format version. An incompatible binary-layout change requires an explicit format/version,
+   parser, filename, project, and compatibility review rather than silent replacement.
+4. **Update every production identity and invalidation point:**
+   - set `BundledLightPollutionResource.expectedByteCount` and `expectedSHA256` to the new
+     artifact identity;
+   - increment `LightPollutionDatasetIdentity.current.datasetRevision` for every adopted atlas
+     content change so saved-location, Current Location, widget, and watch companion state is
+     invalidated; change `formatVersion` only for an incompatible LPATLAS layout change;
+   - update `BundledLightPollutionResourceTests`, dataset-identity expectations, committed
+     size/SHA-256 documentation, production metrics, and Home/Stub Stewart or other known lookup
+     expectations whose modeled values changed;
+   - re-check Settings → Data Sources → Light Pollution Atlas and update attribution only when
+     the new release's actual credit or permission terms require it. Preserve the permission and
+     redistribution caveats; do not infer new rights from an earlier release.
+5. **Regenerate and audit the Xcode project** from `project.yml`. Replacing the same file under
+   the existing main-app-only resource folder should require no membership expansion. Generate
+   twice to confirm stability, inspect the project diff, and verify the atlas has exactly one
+   main iOS resources-phase membership and none in widget, watch, watch-widget/complication, or
+   SharedCode resources.
+6. **Run release-candidate validation:** Python tooling tests; binary-provider and bundled-resource
+   tests with checksum verification; modeled-brightness validity/store/coordinator tests; widget
+   and watch compatibility/fallback tests; the full iOS unit suite; clean build-for-testing; iOS,
+   watchOS, widget, and watch-widget/complication builds; warning inspection; `git diff --check`;
+   and a final review of tracked/untracked generation outputs. Tests must prove the newly bundled
+   Home/Stub Stewart values (or deliberately updated replacement fixtures), not merely non-`nil`
+   lookup results.
+7. **Verify the Release archive, not only the source tree:** create the archive with the normal
+   release configuration/signing workflow, then confirm the archived atlas is byte-for-byte
+   identical to the committed resource and matches the new byte count/SHA-256. It must occur
+   exactly once at the main app bundle root and zero times under iOS widget plug-ins, the embedded
+   watch app, watch-widget/complication plug-ins, and embedded SharedCode frameworks.
+8. **Perform final app/surface smoke checks:** main-app provider readiness, known-location OQ,
+   corrupt/missing/out-of-coverage exact Night Conditions fallback, refreshed derived state after
+   the dataset-revision bump, widget/watch fallback and recovery, and visible Settings credit.
+   Record the accepted source identity, artifact identity, validation metrics, archive membership,
+   and release result in this document or the release-validation record before shipping.
 
 ### Default reevaluation triggers
 

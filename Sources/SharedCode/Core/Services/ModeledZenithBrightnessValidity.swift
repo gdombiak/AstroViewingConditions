@@ -27,7 +27,7 @@ public enum ModeledZenithBrightnessValidity: Sendable {
     public static let maximumPlausibleBrightness: Double = 22.5
 
     /// Maximum amount a sample's `sampledAt` may lie in the future relative to `now`
-    /// when `maxAge` is supplied (clock skew allowance).
+    /// for any validity check (clock skew allowance).
     public static let maxSampledAtClockSkewSeconds: TimeInterval = 1
 
     // MARK: - Geographic coordinates
@@ -143,10 +143,10 @@ public enum ModeledZenithBrightnessValidity: Sendable {
     /// and re-sampled when a provider is available.
     ///
     /// ### `maxAge` contract
-    /// - `nil`: age is not checked.
+    /// - `nil`: maximum age is not checked; future clock skew is still checked.
     /// - non-`nil`: must be **finite and ≥ 0**; otherwise the sample is invalid.
-    /// - When age is checked, `sampledAt` may be at most
-    ///   `maxSampledAtClockSkewSeconds` (1 s) ahead of `now` (clock skew).
+    /// - `sampledAt` may be at most `maxSampledAtClockSkewSeconds` (1 s) ahead of
+    ///   `now`, whether or not a maximum age is supplied.
     /// - A sample older than `maxAge` relative to `now` is invalid.
     /// - A sample with `sampledAt` more than 1 s in the future is invalid.
     public static func isValid(
@@ -211,11 +211,11 @@ public enum ModeledZenithBrightnessValidity: Sendable {
         maxAge: TimeInterval?,
         now: Date = Date()
     ) -> Bool {
-        guard let maxAge else { return true }
-        guard maxAge.isFinite, maxAge >= 0 else { return false }
         guard sampledAt <= now.addingTimeInterval(maxSampledAtClockSkewSeconds) else {
             return false
         }
+        guard let maxAge else { return true }
+        guard maxAge.isFinite, maxAge >= 0 else { return false }
         return now.timeIntervalSince(sampledAt) <= maxAge
     }
 }

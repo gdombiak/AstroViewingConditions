@@ -353,6 +353,32 @@ final class BinaryLightPollutionProviderTests: XCTestCase {
         }
     }
 
+    func testRejectsReservedConstantQuantizationCode() throws {
+        let bytes = try fixtureMutating {
+            let off = Int(readU64($0, 128))
+            writeU32(&$0, 136, 2)
+            $0[off] = 3 // TAG_CONSTANT
+            $0[off + 1] = 255 // reserved NoData code; invalid as a value
+        }
+        XCTAssertThrowsError(try BinaryLightPollutionProvider(data: bytes)) { err in
+            XCTAssertEqual(err as? BinaryLightPollutionProvider.Error, .invalidNode)
+        }
+    }
+
+    func testRejectsReservedCoarseQuantizationCode() throws {
+        let bytes = try fixtureMutating {
+            let off = Int(readU64($0, 128))
+            writeU32(&$0, 136, 4)
+            $0[off] = 5 // TAG_COARSE
+            $0[off + 1] = 0 // factor = 768, yielding one coarse cell for 768x768
+            $0[off + 2] = 3
+            $0[off + 3] = 255 // reserved NoData code; invalid as a value
+        }
+        XCTAssertThrowsError(try BinaryLightPollutionProvider(data: bytes)) { err in
+            XCTAssertEqual(err as? BinaryLightPollutionProvider.Error, .invalidNode)
+        }
+    }
+
     func testRejectsTruncatedMaskPayload() throws {
         let bytes = try fixtureMutating {
             let off = Int(readU64($0, 128))

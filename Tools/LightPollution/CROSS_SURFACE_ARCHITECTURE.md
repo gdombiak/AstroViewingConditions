@@ -1,7 +1,6 @@
 # Observing quality — cross-surface architecture
 
-**Status:** Design for consistent public scoring after LPATLAS1 packaging.  
-**Dashboard is the only UI surface adjusted in the current phase.**
+**Status:** Implemented feature-branch design for consistent public scoring after LPATLAS1 packaging.
 
 ## Final intended steady-state invariant
 
@@ -41,12 +40,12 @@ Later rollout **must** define freshness/staleness indicators or retention rules 
 |---------|----------------------|--------------|
 | Main iOS dashboard | LPATLAS1 bundled; process composition root bootstraps provider | **Observing quality** (or pending until ready; then OQ or exact night fallback) |
 | Best Targets (in-app) | Unchanged | Still driven by **night-conditions** context |
-| Best Nearby | Unchanged | Night-conditions based ranking |
+| Best Nearby | One prepared OQ assessor; whole-search coherent mode | **Observing quality** when every candidate has valid brightness; otherwise exact night for all candidates |
 | iOS widgets | Phase 4A on feature branch | **Observing quality** when Phase 2/3 companions valid; else exact night |
-| Watch dashboard / complications | Phase 4B on feature branch (**saved locations only**) | Phone transports optional OQ block; watch **recomputes** via `CrossSurfaceObservingQualityResolver`; else exact night |
-| Watch Current Location | Night-only until Phase 4C | Exact night (no Phase 3 brightness transport in 4B) |
+| Watch dashboard / complications | Phases 4B/4C on feature branch | Phone transports optional OQ block; watch validates and **recomputes** canonically; else exact night |
+| Watch Current Location | Correlated Phase 4C request/response | **Observing quality** when the request context and brightness are valid; otherwise exact night |
 
-**Same-input/same-score across all public surfaces is the final goal.** Phase 4B is implemented on the feature branch, not marked shipped/released.
+**Same-input/same-score across all public surfaces is the implemented feature-branch invariant.** The branch is not marked shipped/released.
 
 ---
 
@@ -87,24 +86,24 @@ A `LightPollutionProviderBootstrap` instance in the phone app does **not** serve
 - **Pending (`.loading`):** `NightQualityCardHeadlinePending` — do not flash night-only score as final OQ.
 - **Unavailable:** exact night-score fallback, `lightPollution == nil`.
 
-### iOS widgets (deferred activation)
+### iOS widgets (implemented)
 
 Widgets already:
 
-1. Read location from App Group  
-2. Optionally use cached `WidgetNightSummary` (finalized score snapshot)  
-3. Else fetch conditions via `SharedConditionsRepository` and rebuild summary  
+1. Read location from App Group
+2. Optionally use cached `WidgetNightSummary` (finalized score snapshot)
+3. Else fetch conditions via `SharedConditionsRepository` and rebuild summary
 
-**Steady-state path:**
+**Implemented path:**
 
 - Phone produces widget snapshots with **observing-quality public score** (and ideally `modeledZenithSkyBrightness`) via the shared calculator.
 - Widget displays that finalized score when the snapshot is fresh for the selected location/night.
 - **Exceptional path:** stale/missing snapshot or rebuild without brightness → night-score-only **until** the phone refreshes; surface must treat this as degraded/stale, not as “equal to dashboard forever.”
 - **Alternative** if snapshot freshness is inadequate: bundle LPATLAS1 in the widget and run local `ObservingQualityService` (~10 MiB).
 
-### Watch app (deferred activation)
+### Watch app (implemented)
 
-**Steady-state path:**
+**Implemented path:**
 
 - Phone includes modeled zenith brightness or completed assessment in existing WC/App Group payloads.
 - Watch applies `ObservingQualityCalculator` in SharedCode with its night score + synchronized brightness (or displays phone-finalized score).
@@ -116,10 +115,12 @@ Widgets already:
 - Timeline entries should store the **final public observing-quality score** from the shared path.
 - Refresh must not re-derive with a different brightness epoch than the companion surface for that night.
 
-### Best Nearby (deferred activation)
+### Best Nearby (implemented)
 
 - Process-local provider (app), initialized once — never per candidate.
 - Per candidate: brightness lookup + shared assessor → same public score definition as dashboard.
+- The search uses OQ only when every scorable candidate has valid brightness; otherwise all
+  ranking, display, category, and comparison values use Night Conditions.
 
 ---
 
@@ -139,7 +140,7 @@ Widgets already:
 | `ObservingQualityCalculator` | Pure score |
 | `ObservingQualityAssessment` | Result DTO |
 | `UnavailableObservingQualityEnvironment` | Safe default (no permanent pending) |
-| Future payloads | `modeledZenithSkyBrightness` and/or finalized OQ score |
+| Widget/watch payloads | Versioned brightness metadata plus Night Conditions and OQ scores |
 
 ### Phase 1 foundation (shipped types only)
 
@@ -199,11 +200,11 @@ Byte count / SHA-256 remain packaging + integration-test diagnostics only.
 
 ---
 
-## Explicitly not in this phase
+## Explicitly not in this feature
 
-- Changing widget/watch/complication/Best Nearby/Best Targets **visible** scores  
-- Bundling the artifact into widget/watch  
-- App Group / WC brightness schema migration  
+- Changing Best Targets recommendation scores based on light pollution or equipment
+- Bundling the artifact into widget/watch
+- Redesigning Best Nearby suitability or reverse geocoding
 
 ---
 

@@ -272,10 +272,12 @@ def validate_tree_structure(blob: bytes, root_h: int, root_w: int) -> None:
             cur.read(_mask_len(h, w))
             return
         if tag == TAG_CONSTANT:
-            cur.u8()
+            if cur.u8() > PROD_U8.max_code:
+                raise ValueError("invalid quantization code")
             return
         if tag == TAG_CONSTANT_MASK:
-            cur.u8()
+            if cur.u8() > PROD_U8.max_code:
+                raise ValueError("invalid quantization code")
             cur.read(_mask_len(h, w))
             return
         if tag in (TAG_COARSE, TAG_COARSE_MASK):
@@ -283,7 +285,9 @@ def validate_tree_structure(blob: bytes, root_h: int, root_w: int) -> None:
             if factor < 1:
                 raise ValueError("coarse factor must be >= 1")
             gh, gw = _coarse_shape(h, w, factor)
-            cur.read(gh * gw)
+            codes = cur.read(gh * gw)
+            if any(code > PROD_U8.max_code for code in codes):
+                raise ValueError("invalid quantization code")
             if tag == TAG_COARSE_MASK:
                 cur.read(_mask_len(h, w))
             return

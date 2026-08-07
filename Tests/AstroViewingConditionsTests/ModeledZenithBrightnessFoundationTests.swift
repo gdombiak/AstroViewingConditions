@@ -477,6 +477,24 @@ final class ModeledZenithBrightnessFoundationTests: XCTestCase {
         )
     }
 
+    func testFutureSampledAtBeyondClockSkewIsInvalidWithoutMaxAge() {
+        let now = Date(timeIntervalSince1970: 2_000_000_000)
+        XCTAssertFalse(
+            ModeledZenithBrightnessValidity.isSampleAgeValid(
+                sampledAt: now.addingTimeInterval(1.001),
+                maxAge: nil,
+                now: now
+            )
+        )
+        XCTAssertTrue(
+            ModeledZenithBrightnessValidity.isSampleAgeValid(
+                sampledAt: now.addingTimeInterval(1.0),
+                maxAge: nil,
+                now: now
+            )
+        )
+    }
+
     func testNegativeMaxAgeIsInvalid() {
         let now = Date(timeIntervalSince1970: 2_000_000_000)
         let sample = baseSample(sampledAt: now)
