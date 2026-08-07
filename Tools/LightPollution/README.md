@@ -170,12 +170,11 @@ Format specification: [BINARY_FORMAT.md](BINARY_FORMAT.md).
   --source ~/Downloads/zenith_brightness_v22_2025.tiff \
   --output output/artifacts/light_pollution_global_v1.bin \
   --report output/artifacts/light_pollution_global_v1.manifest.json \
-  --workers 8 \
-  --skip-sha256
+  --workers 8
 ```
 
 - Writes the binary **atomically** (temp file then replace).
-- Manifest records source metadata, algorithm, quant range, root stats, size, and attribution.
+- Manifest records source metadata and SHA-256, algorithm, quant range, root stats, artifact size/SHA-256, and attribution. `--skip-sha256` is acceptable only for disposable development runs, never for a release candidate.
 - Does **not** load the entire Float32 raster at once (windowed roots).
 - Generated path is **gitignored** (`output/artifacts/`). Decide deliberately before committing a binary.
 
@@ -194,17 +193,17 @@ Format specification: [BINARY_FORMAT.md](BINARY_FORMAT.md).
 
 See [CROSS_SURFACE_ARCHITECTURE.md](CROSS_SURFACE_ARCHITECTURE.md): hybrid model (main app local LPATLAS1; widgets/watch consume companion state and transferred payloads without embedding the 10 MiB artifact). Composition root owns bootstrap—not feature views.
 
-**Phase 1 foundation (SharedCode):** `LightPollutionDatasetIdentity`, `ModeledZenithBrightnessSample`, `ModeledZenithBrightnessValidity` (shared 1000 m haversine + dataset checks), `ModeledZenithBrightnessResolver`.
+**Shared identity and validity:** `LightPollutionDatasetIdentity`, `ModeledZenithBrightnessSample`, `ModeledZenithBrightnessValidity` (shared 1000 m haversine + dataset checks), and `ModeledZenithBrightnessResolver`.
 
-**Phase 2 (SharedCode):** durable saved-location companion metadata in App Group `savedLocationModeledBrightness.json`; sole-writer `SavedLocationModeledBrightnessCoordinator`; read-only `SavedLocationModeledBrightnessReading`. Not iCloud; consumed by the later widget/watch phases below.
+**Saved locations:** durable companion metadata in App Group `savedLocationModeledBrightness.json`; sole-writer `SavedLocationModeledBrightnessCoordinator`; read-only `SavedLocationModeledBrightnessReading`. Brightness is derived state, not a `SavedLocation` or iCloud field.
 
-**Phase 3 (SharedCode):** Current Location companion `currentLocationModeledBrightness.json`; sole-writer `CurrentLocationModeledBrightnessCoordinator`; injected `CurrentLocationBrightnessPublishing` from GPS resolve; read-only `CurrentLocationModeledBrightnessReading`.
+**Current Location:** separate companion `currentLocationModeledBrightness.json`; sole-writer `CurrentLocationModeledBrightnessCoordinator`; injected `CurrentLocationBrightnessPublishing` after an explicitly selected Current Location resolves; read-only `CurrentLocationModeledBrightnessReading`.
 
-**Phase 4A (SharedCode + iOS widgets, on feature branch):** `CrossSurfaceObservingQualityResolver` + enriched `WidgetNightSummary` dual scores for Night Conditions and Three-Night Outlook.
+**iOS widgets:** `CrossSurfaceObservingQualityResolver` plus enriched `WidgetNightSummary`/Three-Night Outlook state uses validated saved- or Current Location companion brightness. Invalid or unavailable state preserves the exact Night Conditions score. Widgets do not load the atlas.
 
-**Phase 4B (SharedCode + watch, on feature branch — not shipped):** saved-location watch OQ transport, watch canonical recompute, staged pair persistence, claim-at-ingress + commit-boundary ordering, generation-aware MainActor publication.
+**Watch saved locations:** versioned OQ transport, watch canonical recompute, staged pair persistence, claim-at-ingress plus commit-boundary ordering, and generation-aware MainActor publication. The watch never trusts a transported OQ score and does not contain the atlas.
 
-**Phase 4C (SharedCode + watch, on feature branch — not shipped):** watch Current Location OQ using **watch-supplied coordinates**. Watch sends `WatchCurrentLocationRequestContext` with `requestConditions`; phone returns conditions + optional correlated OQ payload v2 using the existing phone LPATLAS1 bootstrap (no second load, no atlas on watch). Watch validates request UUID + coordinate identity and recomputes OQ; failures → exact night. Local watch weather fallback remains night-only. Unsolicited CL pushes are not OQ-enriched.
+**Watch Current Location:** OQ uses **watch-supplied coordinates**. Watch sends `WatchCurrentLocationRequestContext` with `requestConditions`; phone returns conditions plus an optional correlated OQ payload v2 using the existing phone LPATLAS1 bootstrap (no second load, no atlas on watch). Watch validates request UUID and coordinate identity and recomputes OQ; failures preserve the exact Night Conditions score. Local watch weather fallback remains night-only. Unsolicited Current Location pushes are not OQ-enriched.
 
 ### Production app packaging
 
@@ -218,7 +217,7 @@ The validated production artifact is **copied into the iOS app target** (not gen
 | SHA-256 | `b9c60e83d866f28e781dcc89a4ad302597012cdb9df6c94743efdd44be86dce4` |
 | Targets | Main iOS app only (not widget/watch in this phase) |
 
-Regenerate tooling output with `generate-global`, verify size/SHA-256, then replace the Resources copy and update `BundledLightPollutionResource` constants if needed. Runtime falls back to the night-conditions score when the resource is missing or fails validation.
+Regenerate tooling output with `generate-global`, verify size/SHA-256, then replace the Resources copy and update `BundledLightPollutionResource` constants if needed. Runtime falls back to the exact Night Conditions score when the resource is missing or fails validation.
 
 ### Dense urban validation
 
@@ -245,7 +244,7 @@ Named geographic validation points (no embedded results): `config/points/global_
 
 ### Swift runtime
 
-`BinaryLightPollutionProvider` in SharedCode implements `LightPollutionProviding` and reads LPATLAS1 without TIFF/GDAL. It is **not** wired into `NightQualityAnalyzer` / observing score yet.
+`BinaryLightPollutionProvider` in SharedCode implements `LightPollutionProviding` and reads LPATLAS1 without TIFF/GDAL. The main-app composition root loads it once and supplies `ObservingQualityService`. Light pollution intentionally remains outside `NightQualityAnalyzer`; widgets and watch consume validated companion/transferred state instead of loading the binary.
 
 ## Hierarchical budget semantics
 
@@ -325,4 +324,4 @@ When a new zenith-brightness GeoTIFF is released, revalidate against the **2025 
 
 ## Non-goals
 
-No production Swift changes, no app bundling, no scoring UI, no server, no historical atlas years, no Bortle labeling, no final app storage format lock-in from this harness alone.
+No server, no historical atlas years, no Bortle labeling, no atlas copies in widget/watch/SharedCode targets, no direct persistence of modeled brightness in `SavedLocation` or iCloud, and no light-pollution- or equipment-aware Best Targets scoring in the current implementation.

@@ -132,14 +132,14 @@ Errors concentrate on **high/extreme local gradients** (3×3 source range), not 
 
 **Recommendation from this study:** keep the current LPATLAS1 artifact for packaging; urban fidelity is weaker than the global random sample but product score impact remains small.
 
-### Production packaging (iOS dashboard)
+### Production packaging (main iOS app)
 
 | Item | Value |
 |------|--------|
 | Bundled path | `Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin` |
 | Target | Main iOS app only (not widget/watch) |
 | Bytes / SHA-256 | 10,328,230 / `b9c60e83…dce4` |
-| Runtime | `LightPollutionProviderBootstrap` (async once) → `ObservingQualityService` → dashboard headline |
+| Runtime | `LightPollutionProviderBootstrap` (async once) → `ObservingQualityService` for app scoring and companion-state publication |
 | Fallback | Missing/failed/out-of-coverage → exact `nightConditionsScore`; no pristine default |
 
 ### Rationale
@@ -154,6 +154,7 @@ Errors concentrate on **high/extreme local gradients** (3×3 source range), not 
 - LPATLAS1 v1 is the committed production storage format for the 2025 atlas.
 - The Swift decoder and app-only resource packaging are implemented.
 - Widgets, watch, complications, and SharedCode do not embed the atlas.
+- Dashboard, Best Nearby, widgets, watch, and complications use the shared Observing Quality definition when valid brightness is available and preserve the exact Night Conditions score otherwise. Best Targets scoring remains separate and is not light-pollution-aware.
 
 ## Where to dig deeper
 
@@ -223,8 +224,9 @@ After the validation above is accepted and permission to bundle that specific at
    - re-check Settings → Data Sources → Light Pollution Atlas and update attribution only when
      the new release's actual credit or permission terms require it. Preserve the permission and
      redistribution caveats; do not infer new rights from an earlier release.
-5. **Regenerate and audit the Xcode project** from `project.yml`. Replacing the same file under
-   the existing main-app-only resource folder should require no membership expansion. Generate
+5. **Regenerate and audit the Xcode project** from the repository root with
+   `xcodegen generate --spec project.yml`. Replacing the same file under the existing
+   main-app-only resource folder should require no membership expansion. Run the command
    twice to confirm stability, inspect the project diff, and verify the atlas has exactly one
    main iOS resources-phase membership and none in widget, watch, watch-widget/complication, or
    SharedCode resources.

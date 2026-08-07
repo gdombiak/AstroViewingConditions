@@ -8,8 +8,10 @@ Durable constraints for work under `Tools/LightPollution/`.
 - Average magnitude values directly in the **preferred** aggregation path (linear-brightness average is required).
 - Call atlas values or product test bands "Bortle classes."
 - Modify production Swift code or app resources unless explicitly requested.
-- Wire `BinaryLightPollutionProvider` into NightQualityAnalyzer, Best Nearby, UI, widgets, or watch unless that integration is the explicit task.
-- Commit multi-megabyte generated production binaries without an explicit packaging decision.
+- Fold light pollution into `NightQualityAnalyzer`, or reuse the environmental Observing Quality penalty as Best Targets scoring. Target-specific Best Targets light-pollution integration may change only when explicitly in scope.
+- Re-implement Observing Quality penalty anchors or fallback behavior outside `ObservingQualityCalculator`.
+- Regenerate or replace the committed production binary merely because tooling was run. Atlas adoption requires the release procedure in `VALIDATION_RESULTS.md` and explicit permission review for that source release.
+- Add the production atlas to widgets, watch, watch-widget/complications, or SharedCode. It is a main-iOS-app-only resource.
 - Load the complete global raster into memory.
 - Write multiple full-world reconstructed candidate rasters during validation.
 - Claim that a hierarchical candidate **meets** its configured max-error budget when any finest-cap leaf or valid-cell violations remain.
@@ -23,6 +25,8 @@ Durable constraints for work under `Tools/LightPollution/`.
 - Prefer windowed/streaming I/O and reuse cached Oregon intermediates.
 - Prefer **census-derived** global sizes over Oregon-scaled estimates when the applicable census JSON exists (`world-adaptive-census`, `world-hierarchical-census`).
 - Report hierarchical **violating-leaf %** and **violating-valid-cell %** separately from mean error metrics.
+- Keep the committed artifact identity, runtime constants, dataset revision, validation record, XcodeGen membership, archive inspection, and attribution aligned when an atlas release is deliberately adopted.
+- Use `VALIDATION_RESULTS.md#updating-to-a-new-atlas-release` as the canonical adoption/release procedure; link to it rather than duplicating partial checklists.
 
 ## Adaptive variants (do not conflate)
 

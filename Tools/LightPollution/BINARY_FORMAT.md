@@ -188,7 +188,7 @@ The production iOS app bundles a single copy of this artifact:
 - Path: `Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin`
 - Loaded once per process via `LightPollutionProviderBootstrap` / `BundledLightPollutionResource`
 - Dashboard headline score uses `ObservingQualityService` + `ObservingQualityCalculator`
-- On load failure or out-of-coverage lookup: preserve night-conditions score; `lightPollution` is nil (never pristine)
+- On load failure or out-of-coverage lookup: preserve the exact Night Conditions score; `lightPollution` is nil (never pristine)
 
 Expected identity: **10,328,230** bytes, SHA-256 `b9c60e83d866f28e781dcc89a4ad302597012cdb9df6c94743efdd44be86dce4`.
 

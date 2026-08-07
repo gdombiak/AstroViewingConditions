@@ -14,16 +14,16 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 
 - **Real-time Weather Data**: Cloud cover including mid/high layers, humidity, wind including upper-atmosphere wind for observing estimates, temperature, visibility, and hourly forecasts
 - **Astronomical Information**: Sun and moon rise/set times, astronomical night timing, and moon phase
-- **Night Quality Analysis**: Clear, scan-friendly assessment of transparency, seeing, cloud cover, moonlight, fog, wind, and observing quality
-- **Best Targets**: Ranked recommendations for the Moon, visible planets, double stars, star clusters, nebulae, and galaxies based on the selected location and night, target altitude, darkness (or a useful Venus twilight window), weather, moonlight, and observing difficulty
+- **Night Conditions and Observing Quality**: Clear, scan-friendly Night Conditions from transparency, seeing, cloud cover, moonlight, fog, wind, and nighttime windows, plus environmental Observing Quality adjusted by offline modeled light pollution when valid atlas data is available
+- **Best Targets**: Ranked recommendations for the Moon, visible planets, double stars, star clusters, nebulae, and galaxies based on the selected location and night, target altitude, darkness (or a useful Venus twilight window), weather, moonlight, and observing difficulty. Its Target score remains separate from environmental Observing Quality and equipment suitability
 - **Equipment Personalization**: Save binoculars, visual telescopes, and Smart / EAA telescopes, then select the equipment available for a session and see Excellent, Good, Challenging, or Poor target-fit guidance without changing conditions scores
-- **Best Nearby Area**: Weather-scores nearby grid points, checks candidate suitability before recommending destinations, and shows a clean ranked map of the best nearby observing areas
+- **Best Nearby Area**: Ranks nearby grid points by Observing Quality when every candidate has valid modeled brightness, otherwise falls back coherently to Night Conditions for the whole search; it also checks candidate suitability and shows a clean ranked map
 - **Practical Observing Guidance**: See each target's best observing window, compass direction, altitude, suitability score, curated finding tips, equipment guidance, and observing notes
 - **Observing Difficulty**: Easy, Standard, and Challenge labels help set expectations; Challenge targets may require darker skies, more aperture, or careful observing techniques
 - **Offline Target Images**: Reference images with source and license credits are bundled for many targets and require no network connection
 - **ISS Pass Predictions**: With an optional N2YO API key, see rise and set times, peak time and elevation, compass directions, and passes already in progress
 - **Fog Score**: Calculated from humidity, temperature, dew point, visibility, and low cloud cover
-- **Location Management**: Use current location, save and rename observing locations, arrange them in your preferred order, search by city, enter coordinates, or pick from a map
+- **Location Management**: Use current location, save and rename observing locations, arrange them in your preferred order, search by city, enter coordinates, or pick from a map; saved locations show modeled light-pollution category and zenith sky brightness when available
 - **Unit Preferences**: Toggle between Metric and Imperial units
 - **Field Mode**: Persistent dim-red iOS appearance for telescope use, available from Settings and the Dashboard; widgets and watchOS retain their normal presentation
 - **Dynamic Type**: Layouts adapt at larger standard iOS text sizes, including the largest standard Text Size setting
@@ -37,8 +37,11 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Open-Meteo API**: Weather forecasts and geocoding (free, no API key required)
 - **SunCalc Swift Package**: Astronomical calculations (sun/moon positions and phases)
 - **N2YO API**: Optional ISS pass predictions (free API key required)
+- **David Lorenz Light Pollution Atlas**: Offline modeled zenith sky brightness from the 2025 `zenith_brightness_v22_2025` product; see [Light Pollution tooling and attribution](Tools/LightPollution/README.md)
 
 Best Targets uses a curated local target catalog and verified local image assets with source and license metadata. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled-image attribution.
+
+Modeled light-pollution values are not Bortle classes. The LPATLAS1 binary is bundled only in the main iOS app; widgets and Apple Watch surfaces consume validated shared or transferred state and fall back safely to Night Conditions.
 
 Best Nearby Area uses weather forecasts plus Apple reverse geocoding to exclude known water, unsuitable, and unchecked candidates. Candidates whose suitability cannot be conclusively verified may still be recommended with a clear warning, so observers must confirm access and conditions before traveling. It does not validate roads, parking, land ownership, legal access, personal safety, or local horizon obstructions.
 
@@ -110,6 +113,7 @@ Contributions are welcome. Please feel free to submit a Pull Request.
 - Weather data provided by [Open-Meteo](https://open-meteo.com/)
 - Astronomical calculations powered by [SunCalc](https://github.com/nikolajjensen/SunCalc)
 - Optional ISS pass data from [N2YO](https://www.n2yo.com/)
+- Modeled zenith sky brightness from [David Lorenz’s Light Pollution Atlas](https://djlorenz.github.io/astronomy/lp/), used with direct permission; redistribution remains subject to the permission applicable to the atlas release
 
 ## Support
 
