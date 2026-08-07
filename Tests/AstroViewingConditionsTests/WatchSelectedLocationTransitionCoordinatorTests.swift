@@ -48,6 +48,24 @@ private final class ClaimCounter: @unchecked Sendable {
     }
 }
 
+/// Thread-safe collector for concurrent `applyRemote` results (no captured `var` array).
+private final class TransitionRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [WatchSelectedLocationTransition] = []
+
+    func append(_ transition: WatchSelectedLocationTransition) {
+        lock.lock()
+        storage.append(transition)
+        lock.unlock()
+    }
+
+    func snapshot() -> [WatchSelectedLocationTransition] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+}
+
 // MARK: - Core transition coordinator tests
 
 final class WatchSelectedLocationTransitionCoordinatorTests: XCTestCase {
@@ -300,8 +318,7 @@ final class WatchSelectedLocationTransitionCoordinatorTests: XCTestCase {
         let coord = WatchSelectedLocationTransitionCoordinator(seed: a)
         let claims = ClaimCounter()
         let group = DispatchGroup()
-        var transitions: [WatchSelectedLocationTransition] = []
-        let lock = NSLock()
+        let recorder = TransitionRecorder()
 
         for i in 0..<10 {
             group.enter()
@@ -312,16 +329,16 @@ final class WatchSelectedLocationTransitionCoordinatorTests: XCTestCase {
                     lat: 40 + Double(i),
                     lon: -70 - Double(i)
                 )
-                let t = coord.applyRemote(loc, claimRefresh: {claims.claim() }, submit: { _ in })
-                lock.lock()
-                transitions.append(t)
-                lock.unlock()
+                let t = coord.applyRemote(loc, claimRefresh: { claims.claim() }, submit: { _ in })
+                recorder.append(t)
                 group.leave()
             }
         }
         XCTAssertEqual(group.wait(timeout: .now() + 5), .success)
         // All 10 material from A (or sequential material).
+        let transitions = recorder.snapshot()
         XCTAssertEqual(claims.count, 10)
+        XCTAssertEqual(transitions.count, 10)
         XCTAssertEqual(Set(transitions.map(\.order)).count, 10, "orders must be unique")
     }
 }

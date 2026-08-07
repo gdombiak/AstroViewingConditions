@@ -165,11 +165,7 @@ final class CrossSurfaceObservingQualityResolverTests: XCTestCase {
 
 final class CrossSurfaceObservingQualitySnapshotDecodingTests: XCTestCase {
     func testLegacyScoreOnly() throws {
-        let json = """
-        {"payloadVersion":0,"score":77}
-        """.data(using: .utf8)!
-        // Minimal - may need more if decode requires assessedAt
-        // Use full night-only path via snapshot nightOnly encode
+        // Round-trip night-only encode/decode (legacy score-only JSON is not the production path).
         let snap = CrossSurfaceObservingQualitySnapshot.nightOnly(nightConditionsScore: 77)
         let data = try JSONEncoder().encode(snap)
         let decoded = try JSONDecoder().decode(CrossSurfaceObservingQualitySnapshot.self, from: data)
@@ -179,14 +175,7 @@ final class CrossSurfaceObservingQualitySnapshotDecodingTests: XCTestCase {
     }
 
     func testUnknownAvailabilityBecomesUnavailable() throws {
-        let json: [String: Any] = [
-            "payloadVersion": 1,
-            "nightConditionsScore": 70,
-            "observingQualityScore": 65,
-            "brightnessAvailability": "experimental_future",
-            "assessedAt": Date().timeIntervalSinceReferenceDate
-        ]
-        // Use encoder from a known good then mutate — simpler: nightOnly decode after custom
+        // Encode a known-good night-only snapshot, then inject an unknown availability raw value.
         var snap = CrossSurfaceObservingQualitySnapshot.nightOnly(nightConditionsScore: 70)
         snap.payloadVersion = 1
         var dict = try JSONSerialization.jsonObject(with: JSONEncoder().encode(snap)) as! [String: Any]
@@ -199,7 +188,7 @@ final class CrossSurfaceObservingQualitySnapshotDecodingTests: XCTestCase {
     }
 
     func testFutureVersionFallsBackToNight() throws {
-        var snap = CrossSurfaceObservingQualitySnapshot(
+        let snap = CrossSurfaceObservingQualitySnapshot(
             payloadVersion: 99,
             nightConditionsScore: 81,
             observingQualityScore: 50,
@@ -342,7 +331,7 @@ final class CrossSurfaceHeadlinePresentationTests: XCTestCase {
     }
 
     func testWidgetSummaryFutureVersionForcesScoreAndVerdictToNight() throws {
-        var dict: [String: Any] = [
+        let dict: [String: Any] = [
             "generatedAt": Date().timeIntervalSinceReferenceDate,
             "locationName": "Home",
             "latitude": 45.0,
@@ -521,7 +510,7 @@ final class CrossSurfaceAvailableMetadataHardeningTests: XCTestCase {
         oq: Int = 50,
         night: Int = 80
     ) throws -> Data {
-        var summary = WidgetNightSummary(
+        let summary = WidgetNightSummary(
             generatedAt: Date(timeIntervalSince1970: 1_700_000_000),
             locationName: "X",
             latitude: lat,
@@ -651,7 +640,7 @@ final class CrossSurfaceAvailableMetadataHardeningTests: XCTestCase {
     }
 
     func testSnapshotOutOfRangeBrightnessDowngrades() throws {
-        var snap = CrossSurfaceObservingQualitySnapshot(
+        let snap = CrossSurfaceObservingQualitySnapshot(
             payloadVersion: 1,
             nightConditionsScore: 80,
             observingQualityScore: 50,

@@ -335,7 +335,7 @@ final class BinaryLightPollutionProviderTests: XCTestCase {
             let off = Int(readU64($0, 128))
             let len = Int(readU32($0, 136))
             // TAG_COARSE=5, factor u16 LE = 0, then would need grid — length short → invalidNode
-            var payload = Data([5, 0, 0])
+            let payload = Data([5, 0, 0])
             // Keep same length by padding if needed, or shrink length to 3
             writeU32(&$0, 136, 3)
             for i in 0..<3 {
