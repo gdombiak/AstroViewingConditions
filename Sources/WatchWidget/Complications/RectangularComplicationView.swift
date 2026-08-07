@@ -4,10 +4,16 @@ import SharedCode
 struct RectangularComplicationView: View {
     var assessment: NightQualityAssessment
     var headlineScore: Int
+    var scorePresentationMode: WatchHeadlineScorePresentationMode
 
-    init(assessment: NightQualityAssessment, headlineScore: Int? = nil) {
+    init(
+        assessment: NightQualityAssessment,
+        headlineScore: Int? = nil,
+        scorePresentationMode: WatchHeadlineScorePresentationMode = .nightConditionsFallback
+    ) {
         self.assessment = assessment
         self.headlineScore = headlineScore ?? assessment.calculatedScore
+        self.scorePresentationMode = scorePresentationMode
     }
 
     var body: some View {
@@ -37,6 +43,9 @@ struct RectangularComplicationView: View {
                     .lineLimit(2)
             }
         }
+        // Visible layout unchanged; accessibility distinguishes OQ vs weather-only fallback.
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(scorePresentationMode.accessibilityLabel(score: headlineScore))
         .containerBackground(.clear, for: .widget)
     }
 }

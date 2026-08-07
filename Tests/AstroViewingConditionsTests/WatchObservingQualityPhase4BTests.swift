@@ -948,6 +948,7 @@ final class WatchObservingQualityHeadlineAndFingerprintTests: XCTestCase {
         XCTAssertEqual(headline.observingQualityScore, nightScore)
         XCTAssertEqual(headline.nightConditionsScore, nightScore)
         XCTAssertEqual(headline.brightnessAvailability, .unavailable)
+        XCTAssertEqual(headline.scorePresentationMode, .nightConditionsFallback)
         XCTAssertEqual(headline.verdict, CrossSurfaceHeadlineScorePresentation.verdict(for: nightScore))
         XCTAssertEqual(
             CrossSurfaceHeadlineScorePresentation.emoji(for: headline.observingQualityScore),
@@ -956,6 +957,194 @@ final class WatchObservingQualityHeadlineAndFingerprintTests: XCTestCase {
         XCTAssertEqual(
             ObservingQualityScoreBand.from(score: headline.observingQualityScore),
             ObservingQualityScoreBand.from(score: nightScore)
+        )
+    }
+
+    // MARK: - Phase 7 presentation mode (OQ vs weather-only fallback)
+
+    func testAcceptedLPBackedAssessmentIsObservingQualityPresentation() {
+        let loc = CrossSurfaceLocationContext(
+            source: .saved, latitude: 45.45, longitude: -122.75, savedLocationID: UUID()
+        )
+        let headline = WatchObservingQualityHeadline(
+            nightConditionsScore: 93,
+            observingQualityScore: 86,
+            brightnessAvailability: .available,
+            location: loc,
+            dataset: .current
+        )
+        XCTAssertEqual(headline.scorePresentationMode, .observingQuality)
+        XCTAssertNil(headline.scorePresentationMode.visibleFallbackHint)
+        XCTAssertEqual(
+            headline.scorePresentationMode.accessibilityLabel(score: headline.observingQualityScore),
+            "Observing quality score 86 out of 100"
+        )
+    }
+
+    func testMissingBrightnessProducesFallbackPresentation() {
+        let loc = CrossSurfaceLocationContext(
+            source: .saved, latitude: 45.45, longitude: -122.75, savedLocationID: UUID()
+        )
+        let headline = WatchObservingQualityHeadline.nightOnly(nightScore: 77, location: loc)
+        XCTAssertEqual(headline.brightnessAvailability, .unavailable)
+        XCTAssertEqual(headline.scorePresentationMode, .nightConditionsFallback)
+        XCTAssertEqual(headline.observingQualityScore, 77)
+        XCTAssertEqual(headline.nightConditionsScore, 77)
+        XCTAssertEqual(headline.scorePresentationMode.visibleFallbackHint, "Weather-only score")
+        XCTAssertEqual(
+            headline.scorePresentationMode.accessibilityLabel(score: 77),
+            "Night conditions score 77 out of 100. Light pollution unavailable"
+        )
+    }
+
+    func testInvalidBrightnessAvailabilityMapsToFallbackPresentation() {
+        // Unknown future raw values decode as unavailable → fallback presentation.
+        let availability = BrightnessAvailability(rawValueOrUnknown: "future_unknown_state")
+        XCTAssertEqual(availability, .unavailable)
+        XCTAssertEqual(
+            WatchHeadlineScorePresentationMode.from(brightnessAvailability: availability),
+            .nightConditionsFallback
+        )
+    }
+
+    func testValidOQEqualToNightScoreRemainsObservingQualityMode() {
+        // Zero LP penalty can yield OQ == night; that must not be treated as fallback.
+        let loc = CrossSurfaceLocationContext(
+            source: .saved, latitude: 45.7, longitude: -123.2, savedLocationID: UUID()
+        )
+        let night = 90
+        let oq = 90
+        let headline = WatchObservingQualityHeadline(
+            nightConditionsScore: night,
+            observingQualityScore: oq,
+            brightnessAvailability: .available,
+            location: loc,
+            dataset: .current
+        )
+        XCTAssertEqual(headline.observingQualityScore, headline.nightConditionsScore)
+        XCTAssertEqual(headline.scorePresentationMode, .observingQuality)
+        XCTAssertNil(headline.scorePresentationMode.visibleFallbackHint)
+        XCTAssertTrue(
+            headline.scorePresentationMode.accessibilityLabel(score: oq)
+                .hasPrefix("Observing quality score")
+        )
+        XCTAssertFalse(
+            headline.scorePresentationMode.accessibilityLabel(score: oq)
+                .localizedCaseInsensitiveContains("light pollution unavailable")
+        )
+    }
+
+    func testFallbackAccessibilityUsesDisplayedNightScoreNotUnacceptedOQ() {
+        // Displayed number is the night score; accessibility must not claim OQ.
+        let night = 72
+        let mode = WatchHeadlineScorePresentationMode.nightConditionsFallback
+        XCTAssertEqual(
+            mode.accessibilityLabel(score: night),
+            "Night conditions score 72 out of 100. Light pollution unavailable"
+        )
+        XCTAssertFalse(mode.accessibilityLabel(score: night).localizedCaseInsensitiveContains("observing quality"))
+    }
+
+    func testNormalAccessibilityDoesNotIncludeFallbackCopy() {
+        let mode = WatchHeadlineScorePresentationMode.observingQuality
+        let label = mode.accessibilityLabel(score: 65)
+        XCTAssertEqual(label, "Observing quality score 65 out of 100")
+        XCTAssertNil(mode.visibleFallbackHint)
+        XCTAssertFalse(label.localizedCaseInsensitiveContains("weather-only"))
+        XCTAssertFalse(label.localizedCaseInsensitiveContains("light pollution"))
+    }
+
+    func testPresentationModeFromBrightnessDoesNotInferFromScoreEquality() {
+        // Same numeric scores, different availability → different modes.
+        XCTAssertEqual(
+            WatchHeadlineScorePresentationMode.from(brightnessAvailability: .available),
+            .observingQuality
+        )
+        XCTAssertEqual(
+            WatchHeadlineScorePresentationMode.from(brightnessAvailability: .unavailable),
+            .nightConditionsFallback
+        )
+    }
+
+    func testBrightnessAvailabilityChangeAltersDisplayFingerprint() {
+        let id = UUID()
+        let loc = CrossSurfaceLocationContext(
+            source: .saved, latitude: 45.45, longitude: -122.75, savedLocationID: id
+        )
+        let oq = WatchObservingQualityHeadline(
+            nightConditionsScore: 80,
+            observingQualityScore: 80,
+            brightnessAvailability: .available,
+            location: loc,
+            dataset: .current
+        )
+        let fallback = WatchObservingQualityHeadline(
+            nightConditionsScore: 80,
+            observingQualityScore: 80,
+            brightnessAvailability: .unavailable,
+            location: loc,
+            dataset: nil
+        )
+        // Scores equal but presentation mode differs — fingerprint must change for complication reload.
+        XCTAssertEqual(oq.observingQualityScore, fallback.observingQualityScore)
+        XCTAssertNotEqual(oq.scorePresentationMode, fallback.scorePresentationMode)
+        XCTAssertNotEqual(oq.fingerprint, fallback.fingerprint)
+        XCTAssertEqual(oq.fingerprint.brightnessAvailability, .available)
+        XCTAssertEqual(fallback.fingerprint.brightnessAvailability, .unavailable)
+    }
+
+    // MARK: - Dashboard accessibility (score mode + verdict)
+
+    func testDashboardAccessibilityNormalIncludesOQTerminologyAndVerdict() {
+        let label = WatchDashboardScoreAccessibility.label(
+            score: 72,
+            presentationMode: .observingQuality,
+            verdict: "Good"
+        )
+        XCTAssertEqual(label, "Observing quality score 72 out of 100. Good")
+        XCTAssertTrue(label.contains("Observing quality score 72 out of 100"))
+        XCTAssertTrue(label.hasSuffix("Good"))
+        XCTAssertFalse(label.localizedCaseInsensitiveContains("light pollution"))
+        XCTAssertFalse(label.localizedCaseInsensitiveContains("weather-only"))
+    }
+
+    func testDashboardAccessibilityFallbackIncludesNightTerminologyLPUnavailableAndVerdict() {
+        let label = WatchDashboardScoreAccessibility.label(
+            score: 72,
+            presentationMode: .nightConditionsFallback,
+            verdict: "Good"
+        )
+        XCTAssertEqual(
+            label,
+            "Night conditions score 72 out of 100. Light pollution unavailable. Good"
+        )
+        XCTAssertTrue(label.contains("Night conditions score 72 out of 100"))
+        XCTAssertTrue(label.contains("Light pollution unavailable"))
+        XCTAssertTrue(label.hasSuffix("Good"))
+        // Visible "Weather-only score" is not part of VoiceOver; LP unavailable appears once.
+        XCTAssertFalse(label.localizedCaseInsensitiveContains("weather-only"))
+        XCTAssertEqual(
+            label.components(separatedBy: "Light pollution unavailable").count - 1,
+            1,
+            "fallback wording must not duplicate LP unavailable"
+        )
+    }
+
+    func testComplicationModeAccessibilityDoesNotRequireVerdict() {
+        // Shared mode API stays short for complications (no verdict parameter).
+        XCTAssertEqual(
+            WatchHeadlineScorePresentationMode.observingQuality.accessibilityLabel(score: 86),
+            "Observing quality score 86 out of 100"
+        )
+        XCTAssertEqual(
+            WatchHeadlineScorePresentationMode.nightConditionsFallback.accessibilityLabel(score: 72),
+            "Night conditions score 72 out of 100. Light pollution unavailable"
+        )
+        // Dashboard helper appends verdict; complication path does not use it.
+        XCTAssertFalse(
+            WatchHeadlineScorePresentationMode.observingQuality
+                .accessibilityLabel(score: 86)
+                .contains("Good")
         )
     }
 
@@ -3038,7 +3227,7 @@ final class WatchConditionsCachePublicationBoundaryTests: XCTestCase {
         let liveToken = coordinator.claimLiveUpdate()
         XCTAssertEqual(liveToken.sequence, 1)
 
-        await gate.releasePublication()
+        gate.releasePublication()
         let cacheResult = await cacheTask.value
         if case .discardedStale = cacheResult { /* ok */ } else {
             XCTFail("expected discardedStale, got \(String(describing: cacheResult))")
@@ -3156,7 +3345,7 @@ final class WatchConditionsCachePublicationBoundaryTests: XCTestCase {
         let tokenB = await coordinator.beginDeferredApplication()
         XCTAssertGreaterThan(tokenB.deferredSequence, tokenA.deferredSequence)
 
-        await gate.releasePublication()
+        gate.releasePublication()
         let resultA = await cacheTask.value
         if case .discardedStale = resultA { /* ok */ } else {
             XCTFail("older deferred discarded, got \(String(describing: resultA))")
@@ -3226,7 +3415,7 @@ final class WatchConditionsCachePublicationBoundaryTests: XCTestCase {
         let newerLive = coordinator.claimLiveUpdate()
         XCTAssertGreaterThan(newerLive.sequence, cacheToken.liveGeneration)
 
-        await gate.releasePublication()
+        gate.releasePublication()
         let cacheResult = await cacheTask.value
         if case .discardedStale = cacheResult { /* ok */ } else {
             XCTFail("stale cache must not publish")

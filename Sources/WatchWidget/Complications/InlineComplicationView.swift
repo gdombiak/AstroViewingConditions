@@ -4,10 +4,16 @@ import SharedCode
 struct InlineComplicationView: View {
     var assessment: NightQualityAssessment
     var headlineScore: Int
+    var scorePresentationMode: WatchHeadlineScorePresentationMode
 
-    init(assessment: NightQualityAssessment, headlineScore: Int? = nil) {
+    init(
+        assessment: NightQualityAssessment,
+        headlineScore: Int? = nil,
+        scorePresentationMode: WatchHeadlineScorePresentationMode = .nightConditionsFallback
+    ) {
         self.assessment = assessment
         self.headlineScore = headlineScore ?? assessment.calculatedScore
+        self.scorePresentationMode = scorePresentationMode
     }
 
     var body: some View {
@@ -17,6 +23,7 @@ struct InlineComplicationView: View {
         }
         .font(.caption)
         .foregroundStyle(assessment.scoreColor(for: headlineScore))
+        .accessibilityLabel(scorePresentationMode.accessibilityLabel(score: headlineScore))
         .containerBackground(.clear, for: .widget)
     }
 

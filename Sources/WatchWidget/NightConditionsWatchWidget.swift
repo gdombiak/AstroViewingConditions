@@ -11,11 +11,19 @@ struct NightConditionsEntry: TimelineEntry, Sendable {
     let assessment: NightQualityAssessment
     /// Overall headline (OQ when Phase 4B saved-location enhancement is associated).
     let headlineScore: Int
+    /// Whether the headline is LP-backed OQ or night-only fallback (for accessibility).
+    let scorePresentationMode: WatchHeadlineScorePresentationMode
 
-    init(date: Date, assessment: NightQualityAssessment, headlineScore: Int? = nil) {
+    init(
+        date: Date,
+        assessment: NightQualityAssessment,
+        headlineScore: Int? = nil,
+        scorePresentationMode: WatchHeadlineScorePresentationMode = .nightConditionsFallback
+    ) {
         self.date = date
         self.assessment = assessment
         self.headlineScore = headlineScore ?? assessment.calculatedScore
+        self.scorePresentationMode = scorePresentationMode
     }
 
     static var placeholder: NightConditionsEntry {
@@ -36,7 +44,12 @@ struct NightConditionsEntry: TimelineEntry, Sendable {
             firstHalfScore: nil,
             secondHalfScore: nil
         )
-        return NightConditionsEntry(date: Date(), assessment: assessment, headlineScore: assessment.calculatedScore)
+        return NightConditionsEntry(
+            date: Date(),
+            assessment: assessment,
+            headlineScore: assessment.calculatedScore,
+            scorePresentationMode: .nightConditionsFallback
+        )
     }
 }
 
@@ -149,20 +162,25 @@ struct WatchProvider: TimelineProvider {
             calendar: calendar
         )
 
-        let headlineScore = await Self.resolveHeadlineScore(
+        let resolved = await Self.resolveHeadline(
             conditions: conditions,
             nightScore: assessment.calculatedScore
         )
-        return NightConditionsEntry(date: Date(), assessment: assessment, headlineScore: headlineScore)
+        return NightConditionsEntry(
+            date: Date(),
+            assessment: assessment,
+            headlineScore: resolved.score,
+            scorePresentationMode: resolved.presentationMode
+        )
     }
 
     /// Loads recomputed watch OQ when associated with these conditions (saved location only).
-    private static func resolveHeadlineScore(
+    private static func resolveHeadline(
         conditions: ViewingConditions,
         nightScore: Int
-    ) async -> Int {
+    ) async -> (score: Int, presentationMode: WatchHeadlineScorePresentationMode) {
         guard let document = await AppGroupStorage.loadWatchObservingQualityAsync() else {
-            return nightScore
+            return (nightScore, .nightConditionsFallback)
         }
         let selected = AppGroupStorage.loadSelectedLocationForWidget()
         guard WatchObservingQualityCanonicalizer.isAssociated(
@@ -170,12 +188,18 @@ struct WatchProvider: TimelineProvider {
             conditions: conditions,
             selectedLocation: selected
         ) else {
-            return nightScore
+            return (nightScore, .nightConditionsFallback)
         }
-        guard document.snapshot.brightnessAvailability == .available else {
-            return nightScore
+        // Canonical brightness availability — not score equality.
+        let mode = WatchHeadlineScorePresentationMode.from(
+            brightnessAvailability: document.snapshot.brightnessAvailability
+        )
+        switch mode {
+        case .observingQuality:
+            return (document.snapshot.observingQualityScore, .observingQuality)
+        case .nightConditionsFallback:
+            return (nightScore, .nightConditionsFallback)
         }
-        return document.snapshot.observingQualityScore
     }
 }
 
@@ -195,30 +219,35 @@ struct WatchWidgetEntryView: View {
         case .accessoryCircular:
             CircularComplicationView(
                 assessment: entry.assessment,
-                headlineScore: entry.headlineScore
+                headlineScore: entry.headlineScore,
+                scorePresentationMode: entry.scorePresentationMode
             )
             .containerBackground(.clear, for: .widget)
         case .accessoryRectangular:
             RectangularComplicationView(
                 assessment: entry.assessment,
-                headlineScore: entry.headlineScore
+                headlineScore: entry.headlineScore,
+                scorePresentationMode: entry.scorePresentationMode
             )
             .containerBackground(.clear, for: .widget)
         case .accessoryInline:
             InlineComplicationView(
                 assessment: entry.assessment,
-                headlineScore: entry.headlineScore
+                headlineScore: entry.headlineScore,
+                scorePresentationMode: entry.scorePresentationMode
             )
             .containerBackground(.clear, for: .widget)
          case .accessoryCorner:
              CornerComplicationView(
                 assessment: entry.assessment,
-                headlineScore: entry.headlineScore
+                headlineScore: entry.headlineScore,
+                scorePresentationMode: entry.scorePresentationMode
              )
         default:
             CircularComplicationView(
                 assessment: entry.assessment,
-                headlineScore: entry.headlineScore
+                headlineScore: entry.headlineScore,
+                scorePresentationMode: entry.scorePresentationMode
             )
             .containerBackground(.clear, for: .widget)
         }

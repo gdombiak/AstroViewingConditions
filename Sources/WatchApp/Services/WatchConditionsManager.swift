@@ -61,6 +61,17 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         return nightQuality?.calculatedScore ?? 0
     }
 
+    /// Whether the displayed headline is LP-backed OQ or night-only fallback.
+    ///
+    /// Uses canonical `brightnessAvailability` when a headline exists; when no OQ
+    /// headline is published, the dashboard is showing the night score only.
+    var headlineScorePresentationMode: WatchHeadlineScorePresentationMode {
+        if let observingQualityHeadline {
+            return observingQualityHeadline.scorePresentationMode
+        }
+        return .nightConditionsFallback
+    }
+
     var headlineVerdict: String {
         if let observingQualityHeadline {
             return observingQualityHeadline.verdict

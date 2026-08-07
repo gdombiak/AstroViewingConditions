@@ -4,10 +4,16 @@ import SharedCode
 struct CircularComplicationView: View {
     var assessment: NightQualityAssessment
     var headlineScore: Int
+    var scorePresentationMode: WatchHeadlineScorePresentationMode
 
-    init(assessment: NightQualityAssessment, headlineScore: Int? = nil) {
+    init(
+        assessment: NightQualityAssessment,
+        headlineScore: Int? = nil,
+        scorePresentationMode: WatchHeadlineScorePresentationMode = .nightConditionsFallback
+    ) {
         self.assessment = assessment
         self.headlineScore = headlineScore ?? assessment.calculatedScore
+        self.scorePresentationMode = scorePresentationMode
     }
 
     var body: some View {
@@ -23,6 +29,7 @@ struct CircularComplicationView: View {
         }
         .gaugeStyle(.accessoryCircular)
         .tint(assessment.scoreColor(for: headlineScore))
+        .accessibilityLabel(scorePresentationMode.accessibilityLabel(score: headlineScore))
         .containerBackground(.clear, for: .widget)
     }
 }

@@ -8,12 +8,15 @@ struct WatchNightQualityCard: View {
     var headlineVerdict: String
     /// Category emoji from the same score band as `headlineScore` (not night `assessment.rating`).
     var headlineEmoji: String
+    /// Canonical OQ vs night-only fallback (from brightness availability, not score equality).
+    var scorePresentationMode: WatchHeadlineScorePresentationMode
 
     init(
         assessment: NightQualityAssessment,
         headlineScore: Int? = nil,
         headlineVerdict: String? = nil,
-        headlineEmoji: String? = nil
+        headlineEmoji: String? = nil,
+        scorePresentationMode: WatchHeadlineScorePresentationMode = .nightConditionsFallback
     ) {
         self.assessment = assessment
         let score = headlineScore ?? assessment.calculatedScore
@@ -22,6 +25,7 @@ struct WatchNightQualityCard: View {
             ?? CrossSurfaceHeadlineScorePresentation.verdict(for: score)
         self.headlineEmoji = headlineEmoji
             ?? CrossSurfaceHeadlineScorePresentation.emoji(for: score)
+        self.scorePresentationMode = scorePresentationMode
     }
 
     var body: some View {
@@ -35,8 +39,20 @@ struct WatchNightQualityCard: View {
                     .fontWeight(.bold)
                     .foregroundStyle(scoreColor)
                     .accessibilityLabel(
-                        "Observing quality score \(headlineScore) out of 100, \(headlineVerdict)"
+                        WatchDashboardScoreAccessibility.label(
+                            score: headlineScore,
+                            presentationMode: scorePresentationMode,
+                            verdict: headlineVerdict
+                        )
                     )
+            }
+
+            if let fallbackHint = scorePresentationMode.visibleFallbackHint {
+                Text(fallbackHint)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    // Visible only; VoiceOver uses dashboardAccessibilityLabel (includes LP unavailable once).
+                    .accessibilityHidden(true)
             }
 
             Text(assessment.summary)

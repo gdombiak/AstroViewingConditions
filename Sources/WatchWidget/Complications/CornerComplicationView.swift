@@ -4,10 +4,16 @@ import SharedCode
 struct CornerComplicationView: View {
     var assessment: NightQualityAssessment
     var headlineScore: Int
+    var scorePresentationMode: WatchHeadlineScorePresentationMode
 
-    init(assessment: NightQualityAssessment, headlineScore: Int? = nil) {
+    init(
+        assessment: NightQualityAssessment,
+        headlineScore: Int? = nil,
+        scorePresentationMode: WatchHeadlineScorePresentationMode = .nightConditionsFallback
+    ) {
         self.assessment = assessment
         self.headlineScore = headlineScore ?? assessment.calculatedScore
+        self.scorePresentationMode = scorePresentationMode
     }
     
     private var score: CGFloat { CGFloat(headlineScore) }
@@ -23,6 +29,7 @@ struct CornerComplicationView: View {
             .monospacedDigit()
             .foregroundColor(scoreColor)
             .minimumScaleFactor(0.8)
+            .accessibilityLabel(scorePresentationMode.accessibilityLabel(score: headlineScore))
             .widgetLabel {
                 ProgressView(value: progress)
                     .tint(scoreColor)

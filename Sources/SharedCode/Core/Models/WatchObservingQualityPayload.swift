@@ -142,6 +142,62 @@ public struct ObservingQualityDisplayFingerprint: Codable, Sendable, Hashable, E
     }
 }
 
+/// Whether the watch headline number is LP-backed OQ or night-conditions-only fallback.
+///
+/// Derived from canonical `BrightnessAvailability` — never from score equality
+/// (valid OQ can equal the night score when the LP penalty rounds to zero).
+public enum WatchHeadlineScorePresentationMode: String, Sendable, Equatable, Hashable {
+    /// Canonical LP-backed observing quality was accepted.
+    case observingQuality
+    /// Exact night-conditions score only; light pollution was unavailable or invalid.
+    case nightConditionsFallback
+
+    public static func from(brightnessAvailability: BrightnessAvailability) -> Self {
+        switch brightnessAvailability {
+        case .available:
+            return .observingQuality
+        case .unavailable:
+            return .nightConditionsFallback
+        }
+    }
+
+    /// Subtle dashboard caption; `nil` in normal OQ mode (no extra chrome).
+    public var visibleFallbackHint: String? {
+        switch self {
+        case .observingQuality:
+            return nil
+        case .nightConditionsFallback:
+            return "Weather-only score"
+        }
+    }
+
+    /// Deterministic VoiceOver wording for the displayed headline number.
+    /// Suitable for complications (no category verdict).
+    public func accessibilityLabel(score: Int) -> String {
+        let clamped = min(100, max(0, score))
+        switch self {
+        case .observingQuality:
+            return "Observing quality score \(clamped) out of 100"
+        case .nightConditionsFallback:
+            return "Night conditions score \(clamped) out of 100. Light pollution unavailable"
+        }
+    }
+}
+
+/// Dashboard VoiceOver composition: mode-specific score wording + category verdict.
+///
+/// Kept separate from `WatchHeadlineScorePresentationMode.accessibilityLabel` so complications
+/// stay short (no verdict) while the watch dashboard preserves verdict context.
+public enum WatchDashboardScoreAccessibility: Sendable {
+    public static func label(
+        score: Int,
+        presentationMode: WatchHeadlineScorePresentationMode,
+        verdict: String
+    ) -> String {
+        "\(presentationMode.accessibilityLabel(score: score)). \(verdict)"
+    }
+}
+
 /// Resolved headline for watch dashboard / complications.
 public struct WatchObservingQualityHeadline: Sendable, Equatable {
     public var nightConditionsScore: Int
@@ -149,6 +205,11 @@ public struct WatchObservingQualityHeadline: Sendable, Equatable {
     public var brightnessAvailability: BrightnessAvailability
     public var verdict: String
     public var fingerprint: ObservingQualityDisplayFingerprint
+
+    /// Presentation mode from canonical brightness availability (not score comparison).
+    public var scorePresentationMode: WatchHeadlineScorePresentationMode {
+        .from(brightnessAvailability: brightnessAvailability)
+    }
 
     public init(
         nightConditionsScore: Int,

@@ -64,7 +64,8 @@ struct WatchDashboardView: View {
                             assessment: assessment,
                             headlineScore: conditionsManager.headlineScore,
                             headlineVerdict: conditionsManager.headlineVerdict,
-                            headlineEmoji: conditionsManager.headlineEmoji
+                            headlineEmoji: conditionsManager.headlineEmoji,
+                            scorePresentationMode: conditionsManager.headlineScorePresentationMode
                         )
                     }
 
