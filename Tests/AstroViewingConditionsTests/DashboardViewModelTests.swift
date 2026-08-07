@@ -733,6 +733,28 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertFalse(sections.flatMap(\.recommendations).contains { $0.score < 45 })
     }
 
+    func testBestTargetsRankingAndCategoriesUnchangedByScoreTerminology() {
+        // Phase 8 is presentation-only: scores and band grouping must remain as-is.
+        let recommendations = [91, 80, 70, 50].enumerated().map { index, score in
+            Self.makeRecommendation(id: "t-\(index)", name: "T\(index)", score: score)
+        }
+        let presentation = BestTargetsListPresentation(recommendations: recommendations)
+        XCTAssertEqual(presentation.dashboardRecommendations.map(\.score), [91, 80, 70, 50])
+        let sections = presentation.sections(for: .all)
+        XCTAssertEqual(sections.map(\.band), [.excellent, .good, .fair])
+        XCTAssertEqual(
+            sections.flatMap(\.recommendations).map(\.score),
+            [91, 80, 70, 50]
+        )
+        for recommendation in recommendations {
+            XCTAssertEqual(
+                TargetScorePresentation.accessibilityLabel(score: recommendation.score),
+                "Target score \(recommendation.score) out of 100"
+            )
+        }
+        XCTAssertEqual(TargetScorePresentation.conciseLabel, "Target score")
+    }
+
     func testEquipmentSuitabilityRowSummaryUsesLevelAndEquipmentName() {
         XCTAssertEqual(
             TargetRecommendationRow.equipmentSuitabilitySummary(
