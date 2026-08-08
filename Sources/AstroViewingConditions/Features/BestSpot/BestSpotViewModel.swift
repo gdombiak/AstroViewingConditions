@@ -27,8 +27,25 @@ public class BestSpotViewModel {
         BestSpotSettings.gridSpacing
     }
     
-    public convenience init(fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate) {
-        self.init(searcher: BestSpotSearcher(fogScoreCalculator: fogScoreCalculator))
+    public convenience init(
+        fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate,
+        observingQualitySession: ObservingQualitySession? = nil
+    ) {
+        let preparer: BestSpotObservingQualityPreparer?
+        if let session = observingQualitySession {
+            preparer = {
+                // Reuse process-owned bootstrap; snapshot Sendable assessor for background scoring.
+                await session.prepareSendableAssessorForSearch(preferredBundles: [Bundle.main])
+            }
+        } else {
+            preparer = nil
+        }
+        self.init(
+            searcher: BestSpotSearcher(
+                fogScoreCalculator: fogScoreCalculator,
+                observingQualityPreparer: preparer
+            )
+        )
     }
 
     public init(searcher: any BestSpotSearching) {

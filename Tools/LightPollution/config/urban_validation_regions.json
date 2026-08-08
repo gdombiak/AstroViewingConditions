@@ -1,0 +1,313 @@
+{
+  "description": "Deterministic dense urban validation regions for LPATLAS1 vs David Lorenz 2025 zenith-brightness atlas. Bounding boxes emphasize city centers, suburban rings, and urban gradients.",
+  "seed": 70,
+  "sampling": {
+    "method": "source_aligned_regular_grid",
+    "notes": "Cell centers at native 1/120°; subsample_step is in native cells. Target ≥2000 points per large metro when box size permits."
+  },
+  "default_subsample_step_cells": 1,
+  "regions": [
+    {
+      "id": "portland",
+      "name": "Portland, OR",
+      "continent": "north_america",
+      "west": -123.05,
+      "east": -122.40,
+      "south": 45.35,
+      "north": 45.70,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "seattle",
+      "name": "Seattle, WA",
+      "continent": "north_america",
+      "west": -122.55,
+      "east": -122.10,
+      "south": 47.40,
+      "north": 47.75,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "sf_bay",
+      "name": "San Francisco Bay Area",
+      "continent": "north_america",
+      "west": -122.60,
+      "east": -121.95,
+      "south": 37.35,
+      "north": 37.95,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "los_angeles",
+      "name": "Los Angeles, CA",
+      "continent": "north_america",
+      "west": -118.55,
+      "east": -117.85,
+      "south": 33.75,
+      "north": 34.30,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "new_york",
+      "name": "New York City, NY",
+      "continent": "north_america",
+      "west": -74.20,
+      "east": -73.70,
+      "south": 40.55,
+      "north": 40.95,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "chicago",
+      "name": "Chicago, IL",
+      "continent": "north_america",
+      "west": -87.95,
+      "east": -87.45,
+      "south": 41.70,
+      "north": 42.10,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "dallas_fw",
+      "name": "Dallas–Fort Worth, TX",
+      "continent": "north_america",
+      "west": -97.20,
+      "east": -96.60,
+      "south": 32.60,
+      "north": 33.05,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "miami",
+      "name": "Miami, FL",
+      "continent": "north_america",
+      "west": -80.45,
+      "east": -80.05,
+      "south": 25.65,
+      "north": 26.00,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "phoenix",
+      "name": "Phoenix, AZ",
+      "continent": "north_america",
+      "west": -112.30,
+      "east": -111.80,
+      "south": 33.30,
+      "north": 33.70,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "mexico_city",
+      "name": "Mexico City",
+      "continent": "north_america",
+      "west": -99.30,
+      "east": -98.90,
+      "south": 19.25,
+      "north": 19.60,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "sao_paulo",
+      "name": "São Paulo",
+      "continent": "south_america",
+      "west": -46.85,
+      "east": -46.40,
+      "south": -23.75,
+      "north": -23.40,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "buenos_aires",
+      "name": "Buenos Aires",
+      "continent": "south_america",
+      "west": -58.65,
+      "east": -58.25,
+      "south": -34.75,
+      "north": -34.45,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "london",
+      "name": "London",
+      "continent": "europe",
+      "west": -0.40,
+      "east": 0.15,
+      "south": 51.35,
+      "north": 51.65,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "paris",
+      "name": "Paris",
+      "continent": "europe",
+      "west": 2.15,
+      "east": 2.55,
+      "south": 48.75,
+      "north": 49.00,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "madrid",
+      "name": "Madrid",
+      "continent": "europe",
+      "west": -3.85,
+      "east": -3.50,
+      "south": 40.30,
+      "north": 40.55,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "rome",
+      "name": "Rome",
+      "continent": "europe",
+      "west": 12.35,
+      "east": 12.65,
+      "south": 41.80,
+      "north": 42.00,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "cairo",
+      "name": "Cairo",
+      "continent": "africa",
+      "west": 31.10,
+      "east": 31.50,
+      "south": 29.95,
+      "north": 30.20,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "johannesburg",
+      "name": "Johannesburg",
+      "continent": "africa",
+      "west": 27.90,
+      "east": 28.25,
+      "south": -26.30,
+      "north": -26.05,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "tokyo",
+      "name": "Tokyo",
+      "continent": "asia",
+      "west": 139.50,
+      "east": 139.95,
+      "south": 35.50,
+      "north": 35.85,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "seoul",
+      "name": "Seoul",
+      "continent": "asia",
+      "west": 126.80,
+      "east": 127.20,
+      "south": 37.40,
+      "north": 37.70,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "beijing",
+      "name": "Beijing",
+      "continent": "asia",
+      "west": 116.20,
+      "east": 116.60,
+      "south": 39.80,
+      "north": 40.10,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "shanghai",
+      "name": "Shanghai",
+      "continent": "asia",
+      "west": 121.30,
+      "east": 121.70,
+      "south": 31.10,
+      "north": 31.40,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "delhi",
+      "name": "Delhi",
+      "continent": "asia",
+      "west": 77.00,
+      "east": 77.40,
+      "south": 28.45,
+      "north": 28.80,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "mumbai",
+      "name": "Mumbai",
+      "continent": "asia",
+      "west": 72.75,
+      "east": 73.05,
+      "south": 18.90,
+      "north": 19.20,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "singapore",
+      "name": "Singapore",
+      "continent": "asia",
+      "west": 103.70,
+      "east": 104.00,
+      "south": 1.20,
+      "north": 1.45,
+      "subsample_step_cells": 1
+    },
+    {
+      "id": "sydney",
+      "name": "Sydney",
+      "continent": "oceania",
+      "west": 150.95,
+      "east": 151.35,
+      "south": -34.00,
+      "north": -33.70,
+      "subsample_step_cells": 1
+    }
+  ],
+  "brightness_bands": [
+    {"id": "lt_17", "label": "< 17.0", "lo": null, "hi": 17.0},
+    {"id": "17_18", "label": "17.0 – <18.0", "lo": 17.0, "hi": 18.0},
+    {"id": "18_19", "label": "18.0 – <19.0", "lo": 18.0, "hi": 19.0},
+    {"id": "19_20", "label": "19.0 – <20.0", "lo": 19.0, "hi": 20.0},
+    {"id": "ge_20", "label": "≥ 20.0", "lo": 20.0, "hi": null}
+  ],
+  "gradient_bands": [
+    {"id": "low", "label": "low (3×3 range < 0.05 mag)", "lo": 0.0, "hi": 0.05},
+    {"id": "moderate", "label": "moderate (0.05 – <0.15 mag)", "lo": 0.05, "hi": 0.15},
+    {"id": "high", "label": "high (0.15 – <0.35 mag)", "lo": 0.15, "hi": 0.35},
+    {"id": "extreme", "label": "extreme (≥ 0.35 mag)", "lo": 0.35, "hi": null}
+  ],
+  "scoring": {
+    "base_penalty_anchors": [
+      [17.5, 8.0],
+      [18.5, 7.0],
+      [19.5, 5.0],
+      [20.5, 3.0],
+      [21.3, 1.0],
+      [21.75, 0.0]
+    ],
+    "usability_weight_anchors": [
+      [35, 0.0],
+      [45, 0.25],
+      [65, 0.75],
+      [80, 1.0]
+    ],
+    "night_condition_scores": [50, 65, 75, 85, 93]
+  },
+  "pairing": {
+    "max_pair_distance_deg": 0.05,
+    "max_pairs_per_region": 500,
+    "brightness_delta_bins": [
+      {"id": "lt_0_05", "lo": 0.0, "hi": 0.05},
+      {"id": "0_05_0_10", "lo": 0.05, "hi": 0.10},
+      {"id": "0_10_0_25", "lo": 0.10, "hi": 0.25},
+      {"id": "gt_0_25", "lo": 0.25, "hi": null}
+    ],
+    "night_deltas": [0, 1, 2, -1, -2]
+  },
+  "worst_n": 50
+}

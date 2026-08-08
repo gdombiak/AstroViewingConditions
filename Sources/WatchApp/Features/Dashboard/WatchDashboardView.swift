@@ -60,7 +60,13 @@ struct WatchDashboardView: View {
                     }
 
                     if let assessment = conditionsManager.nightQuality {
-                        WatchNightQualityCard(assessment: assessment)
+                        WatchNightQualityCard(
+                            assessment: assessment,
+                            headlineScore: conditionsManager.headlineScore,
+                            headlineVerdict: conditionsManager.headlineVerdict,
+                            headlineEmoji: conditionsManager.headlineEmoji,
+                            scorePresentationMode: conditionsManager.headlineScorePresentationMode
+                        )
                     }
 
                     if let currentHourForecast {
@@ -112,22 +118,20 @@ struct WatchDashboardView: View {
     }
     
     private func handleSelection(_ option: LocationOption) {
+        // Selection mutates + claims live invalidation + starts replacement refresh
+        // inside WatchLocationManager / WatchConditionsManager. Do not gate on isLoading.
         switch option {
         case .current:
             locationManager.selectCurrentLocation()
         case .saved(let location):
             locationManager.select(location)
         }
-
-        Task {
-            await refreshConditions()
-        }
     }
 
     @MainActor
     private func refreshConditions() async {
-        guard !conditionsManager.isLoading else { return }
-
+        // Always allow refresh — conditions manager uses generation-aware tokens so
+        // a replacement may start while a prior refresh is still in flight.
         await conditionsManager.refresh()
     }
 

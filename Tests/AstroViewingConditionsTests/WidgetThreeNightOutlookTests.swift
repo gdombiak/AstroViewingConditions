@@ -106,7 +106,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
             conditions: conditions,
             existingSummary: nil,
             referenceDate: referenceDate,
-            timeZone: timeZone
+            timeZone: timeZone,
+            locationContext: nil
         )
         guard case let .publish(summary) = decision else {
             return XCTFail("Expected the current payload builder to publish")
@@ -130,7 +131,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         )
         let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
             conditions: conditions, existingSummary: nil,
-            referenceDate: referenceDate, timeZone: timeZone
+            referenceDate: referenceDate, timeZone: timeZone,
+            locationContext: nil
         )
         guard case let .publish(summary) = decision else {
             return XCTFail("Expected a published outlook")
@@ -149,7 +151,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         )
         let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
             conditions: conditions, existingSummary: nil,
-            referenceDate: referenceDate, timeZone: timeZone
+            referenceDate: referenceDate, timeZone: timeZone,
+            locationContext: nil
         )
         guard case let .publish(summary) = decision else {
             return XCTFail("Expected a published outlook")
@@ -168,7 +171,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         )
         let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
             conditions: conditions, existingSummary: nil,
-            referenceDate: referenceDate, timeZone: timeZone
+            referenceDate: referenceDate, timeZone: timeZone,
+            locationContext: nil
         )
         guard case let .publish(summary) = decision,
               let third = summary.nights.last else {
@@ -195,7 +199,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
             ),
             existingSummary: nil,
             referenceDate: referenceDate,
-            timeZone: timeZone
+            timeZone: timeZone,
+            locationContext: nil
         )
         guard case let .publish(summary) = decision,
               let third = summary.nights.last else {
@@ -1022,7 +1027,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         let savedLocationID = UUID()
         let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
             conditions: makeConditions(referenceDate: referenceDate, locationID: savedLocationID),
-            existingSummary: nil, referenceDate: referenceDate, timeZone: timeZone
+            existingSummary: nil, referenceDate: referenceDate, timeZone: timeZone,
+            locationContext: nil
         )
         guard case let .publish(summary) = decision else {
             return XCTFail("Expected a published outlook")
@@ -1036,7 +1042,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         let referenceDate = date(day: 26, hour: 1)
         let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
             conditions: makeConditions(referenceDate: referenceDate, dataStartDay: 25),
-            existingSummary: nil, referenceDate: referenceDate, timeZone: timeZone
+            existingSummary: nil, referenceDate: referenceDate, timeZone: timeZone,
+            locationContext: nil
         )
         guard case let .publish(summary) = decision else {
             return XCTFail("Expected the reconstructable active night")
@@ -1048,7 +1055,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
         let referenceDate = date(day: 26, hour: 4).addingTimeInterval(1)
         let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
             conditions: makeConditions(referenceDate: referenceDate, dataStartDay: 26),
-            existingSummary: nil, referenceDate: referenceDate, timeZone: timeZone
+            existingSummary: nil, referenceDate: referenceDate, timeZone: timeZone,
+            locationContext: nil
         )
         guard case let .publish(summary) = decision else {
             return XCTFail("Expected the upcoming evening")
@@ -1122,7 +1130,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
             conditions: makeConditions(
                 referenceDate: referenceDate, dailyCount: 2
             ),
-            existingSummary: nil, referenceDate: referenceDate, timeZone: timeZone
+            existingSummary: nil, referenceDate: referenceDate, timeZone: timeZone,
+            locationContext: nil
         )
         guard case .unavailable = decision else {
             return XCTFail("Expected unavailable for a partial three-night forecast")
@@ -1674,7 +1683,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
     ) {
         let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
             conditions: conditions, existingSummary: existing,
-            referenceDate: referenceDate, timeZone: timeZone
+            referenceDate: referenceDate, timeZone: timeZone,
+            locationContext: nil
         )
         guard case .preserveExisting = decision else {
             return XCTFail("Expected preserveExisting", file: file, line: line)
@@ -1690,7 +1700,8 @@ final class WidgetThreeNightOutlookTests: XCTestCase {
     ) {
         let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
             conditions: conditions, existingSummary: existing,
-            referenceDate: referenceDate, timeZone: timeZone
+            referenceDate: referenceDate, timeZone: timeZone,
+            locationContext: nil
         )
         guard case .unavailable = decision else {
             return XCTFail("Expected unavailable", file: file, line: line)

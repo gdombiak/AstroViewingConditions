@@ -157,7 +157,7 @@ struct TargetRecommendationRow: View {
                 .appTertiaryForeground()
         }
         .fixedSize(horizontal: true, vertical: false)
-        .accessibilityLabel("Score \(recommendation.score) out of 100")
+        .accessibilityLabel(TargetScorePresentation.accessibilityLabel(score: recommendation.score))
     }
 
     private var compactListHeader: some View {

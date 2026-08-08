@@ -257,10 +257,30 @@ final class BestSpotSearcherTests: XCTestCase {
         humidity: Int = 40,
         windSpeed: Double = 4
     ) -> [HourlyForecast] {
-        let start = Calendar(identifier: .gregorian).startOfDay(for: date)
-        return [20, 21, 22, 23].map { hour in
+        // Preserved evening-only window used by existing Best Spot fixtures.
+        nightForecasts(
+            for: date,
+            calendar: Calendar(identifier: .gregorian),
+            hourOffsets: [20, 21, 22, 23],
+            cloudCover: cloudCover,
+            humidity: humidity,
+            windSpeed: windSpeed
+        )
+    }
+
+    /// Night-hour forecasts anchored to an explicit calendar (fixed zone for deterministic fixtures).
+    private static func nightForecasts(
+        for date: Date,
+        calendar: Calendar,
+        hourOffsets: [Int] = [20, 21, 22, 23, 24, 25, 26, 27, 28],
+        cloudCover: Int,
+        humidity: Int = 40,
+        windSpeed: Double = 4
+    ) -> [HourlyForecast] {
+        let start = calendar.startOfDay(for: date)
+        return hourOffsets.map { hourOffset in
             HourlyForecast(
-                time: start.addingTimeInterval(Double(hour) * 3600),
+                time: start.addingTimeInterval(Double(hourOffset) * 3600),
                 cloudCover: cloudCover,
                 humidity: humidity,
                 windSpeed: windSpeed,
@@ -727,7 +747,7 @@ final class BestSpotSearcherTests: XCTestCase {
         ))
 
         XCTAssertEqual(status, .unknown(reason: .geocodingFailed))
-        XCTAssertEqual(status.label, "Verification unavailable")
+        XCTAssertEqual(status.label, "Land check unavailable")
     }
 
     func testRateLimitLikeFailureProducesTemporarilyUnavailableState() async throws {
@@ -742,7 +762,7 @@ final class BestSpotSearcherTests: XCTestCase {
         ))
 
         XCTAssertEqual(status, .unknown(reason: .temporarilyUnavailable))
-        XCTAssertEqual(status.label, "Verification temporarily unavailable")
+        XCTAssertEqual(status.label, "Land check temporarily unavailable")
     }
 
     func testGeocoderThrottleErrorProducesTemporarilyUnavailableState() {
@@ -1090,23 +1110,75 @@ final class BestSpotSearcherTests: XCTestCase {
     }
 
     func testEqualScoreOrderingUsesDeterministicTieBreakers() async throws {
-        let date = currentSearchDate()
-        let searcher = searcher(weather: MockWeatherProvider { coordinate in
-            let cloudCover = coordinate.latitude < 40.7128 ? 1 : 4
-            return Self.nightForecasts(for: date, cloudCover: cloudCover)
-        })
+        // Fully environment-independent fixture: fixed Gregorian calendar, fixed zone, fixed noon.
+        // America/New_York matches createSavedLocation() (NYC) so night filtering aligns with the
+        // location calendar used by BestSpotSearcher. Mid-June avoids DST transitions.
+        let timeZone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let searchDate = try XCTUnwrap(calendar.date(from: DateComponents(
+            calendar: calendar,
+            timeZone: timeZone,
+            year: 2026,
+            month: 6,
+            day: 15,
+            hour: 12,
+            minute: 0,
+            second: 0
+        )))
+
+        // Identical weather for every coordinate so public scores and weather metrics match.
+        // Ordering then falls through to distance / coordinate deterministic breakers.
+        // Forecasts cover evening through pre-dawn on the fixed local night (mock sunset 18:00 / sunrise 06:00).
+        let forecasts = Self.nightForecasts(
+            for: searchDate,
+            calendar: calendar,
+            cloudCover: 5,
+            humidity: 40,
+            windSpeed: 4
+        )
+        let searcher = searcher(weather: MockWeatherProvider { _ in forecasts })
 
         let result = try await searcher.findBestSpots(
             around: CachedLocation(from: createSavedLocation()),
             radiusMiles: 10,
             spacingMiles: 10,
-            for: date,
+            for: searchDate,
             topN: 5
         )
 
+        XCTAssertGreaterThanOrEqual(result.topLocations.count, 2)
+
         let scores = result.topLocations.map(\.score)
-        XCTAssertEqual(Set(scores).count, 1)
-        XCTAssertLessThanOrEqual(result.topLocations[0].avgCloudCover, result.topLocations[1].avgCloudCover)
+        XCTAssertEqual(
+            Set(scores).count,
+            1,
+            "fixture must keep public scores equal so ordering exercises post-score tie-breakers; scores=\(scores)"
+        )
+
+        // Earlier ranking fields that must also be equal for the intended path.
+        let clouds = result.topLocations.map(\.avgCloudCover)
+        let fogs = result.topLocations.map(\.fogScore.score)
+        let winds = result.topLocations.map(\.avgWindSpeed)
+        XCTAssertEqual(Set(clouds).count, 1, "avgCloudCover must match when weather is identical")
+        XCTAssertEqual(Set(fogs).count, 1, "fog must match when weather is identical")
+        XCTAssertEqual(Set(winds).count, 1, "wind must match when weather is identical")
+        let suitabilityRanks = result.topLocations.map(\.suitability.verificationRank)
+        XCTAssertEqual(Set(suitabilityRanks).count, 1, "suitability rank must match")
+
+        // Exact deterministic order via isHigherRanked (distance → lat → lon after equal score/weather).
+        let ordered = result.topLocations
+        for index in 0..<(ordered.count - 1) {
+            XCTAssertTrue(
+                BestSpotSearcher.isHigherRanked(ordered[index], than: ordered[index + 1]),
+                "published order must match isHigherRanked at index \(index)"
+            )
+            // With equal weather, nearer candidates sort first.
+            XCTAssertLessThanOrEqual(
+                ordered[index].point.distanceMiles,
+                ordered[index + 1].point.distanceMiles
+            )
+        }
     }
 
     @MainActor

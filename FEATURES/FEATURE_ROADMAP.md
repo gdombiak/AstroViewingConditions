@@ -10,7 +10,7 @@ The strategic path for the next product work is:
 
 1. Make scores, difficulty, and personalized guidance easier to understand.
 2. Make recommendations location-realistic with simple horizon constraints.
-3. Evaluate offline modeled sky darkness without adding a required backend.
+3. Make Best Targets location-aware of the already-modeled sky darkness while keeping target scoring distinct from environmental Observing Quality.
 4. Turn trustworthy recommendations into an actionable observing plan.
 
 ## Current Product
@@ -19,10 +19,11 @@ The strategic path for the next product work is:
 
 - [x] Three-day hourly weather forecast from Open-Meteo
 - [x] Night-quality assessment using cloud cover, transparency, seeing, moonlight, fog risk, wind, and nighttime windows
+- [x] Environmental **Observing Quality** that adjusts Night Conditions with offline modeled light pollution, preserves the exact Night Conditions score when brightness is unavailable, and does not apply Moon effects twice
 - [x] Seeing from hourly temperature stability and 200 hPa wind, plus transparency from cloud layers and visibility
 - [x] Sunset, sunrise, astronomical darkness, moonrise/moonset, lunar phase, and illumination
 - [x] Today, Tomorrow, and Day After anchored to the selected location's local date
-- [x] Best observing spot search with ranked nearby recommendations, suitability checks, and a clean recommended-only default map
+- [x] Best observing spot search with coherent Observing Quality ranking when all candidates have valid modeled brightness, whole-search Night Conditions fallback otherwise, suitability checks, and a clean recommended-only default map
 - [x] Shared condition fetching and local-midnight cache expiration across the app and companion surfaces
 - [x] Timeouts and useful fallback behavior for weather, geocoding, location, time-zone, and ISS requests
 
@@ -41,6 +42,8 @@ The strategic path for the next product work is:
 - [x] Moon recommendations suppressed when the Moon remains below the horizon during the useful observing window
 
 The catalog is intentionally curated rather than a complete Messier/NGC database. Recommendations should remain understandable and field-useful as it grows.
+
+The numeric **Target score** remains separate from environmental Observing Quality and from equipment suitability. Best Targets terminology now makes that separation explicit, but target scoring and ranking are not yet light-pollution-aware or equipment-aware.
 
 ### Equipment Personalization
 
@@ -61,6 +64,7 @@ Equipment suitability is deliberately separate from the intrinsic Easy, Standard
 - [x] Rename saved locations
 - [x] Drag to arrange saved locations
 - [x] Preserve location order in the dashboard picker and Apple Watch sync
+- [x] Display modeled light-pollution category and zenith sky brightness for saved locations without adding derived brightness to the saved-location or iCloud schema
 
 ### ISS
 
@@ -77,6 +81,7 @@ Equipment suitability is deliberately separate from the intrinsic Easy, Standard
 - [x] Apple Watch dashboard and location selector
 - [x] Inline, circular, corner, and rectangular watchOS complications
 - [x] Selected location, saved locations, unit preferences, and cached-condition exchange between iPhone and Apple Watch
+- [x] Observing Quality on conditions widgets, the Apple Watch dashboard, and score-bearing complications using validated companion/transferred brightness with exact Night Conditions fallback
 
 ### Presentation and Accessibility
 
@@ -150,11 +155,11 @@ As a small polish item, make the distinction among the numeric target suitabilit
 
 ## Later Product Backlog
 
-### Offline Sky Darkness / Light Pollution
+### Light-Pollution-Aware Best Targets
 
-Use the permitted 2024 Light Pollution Atlas to add location-specific modeled artificial sky brightness with target-specific impact, rather than changing the weather score. Prefer preprocessing the source GeoTIFF into a compact bundled lookup asset so the feature remains offline and requires no backend.
+The offline David Lorenz 2025 atlas and environmental Observing Quality are implemented. Future Best Targets work may use modeled zenith sky brightness as target-specific context, but must keep the numeric Target score distinct from environmental Observing Quality and equipment suitability. The current target scoring and ranking are not light-pollution-aware.
 
-Preserve the atlas's artificial-sky-brightness semantics and do not present modeled values as direct Bortle classifications. Begin with a bounded feasibility spike covering bundled file size, resolution, interpolation, attribution, redistribution language, update strategy, and scoring calibration before committing to product scope.
+Preserve the atlas's modeled zenith-sky-brightness semantics and do not present values as direct Bortle classifications. Follow the canonical atlas update, permission, packaging, and validation procedure in `Tools/LightPollution/VALIDATION_RESULTS.md` rather than reopening the completed feasibility experiment.
 
 ### Imaging Windows
 
@@ -198,7 +203,7 @@ These remain valuable but are lower priority than the next-release foundation ab
 
 - [ ] Carefully expand the curated deep-sky catalog while retaining verified metadata and imagery rights
 - [ ] Add constellation and star-hopping context where it materially helps observers
-- [ ] Extend target context with modeled light pollution only after the offline feasibility spike confirms practical packaging, attribution, and calibration
+- [ ] Extend Best Targets with modeled light-pollution context using the validated offline atlas, without conflating Target score and environmental Observing Quality
 - [ ] Shareable observing plan or conditions summary
 
 ## Reliability, Validation, and Release Polish

@@ -7,7 +7,7 @@
 ## 1. Project Overview
 
 ### Goal
-Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nighttime viewing conditions, choose worthwhile targets, and plan stargazing sessions. The app combines weather, astronomical information, night-quality analysis, target recommendations, ISS pass predictions, widgets, and Apple Watch glanceable views.
+Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nighttime viewing conditions, account for modeled sky brightness, choose worthwhile targets, and plan stargazing sessions. The app combines weather, astronomical information, Night Conditions, environmental Observing Quality, target recommendations, ISS pass predictions, widgets, and Apple Watch glanceable views.
 
 ### Target Users
 - Amateur astronomers
@@ -34,12 +34,17 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
 ### Implemented
 - **Weather Data**: Low/mid/high cloud information, humidity, surface wind, 200 hPa wind used by seeing estimation, temperature, visibility, dew point, and hourly forecasts via Open-Meteo
 - **Astronomical Data**: Sun/moon rise-set times, astronomical night timing, and moon phase via SunCalc
-- **Night Quality Analysis**: Observing assessment based on transparency, seeing, cloud cover, moonlight, fog, wind, and nighttime windows
+- **Night Conditions**: Environmental baseline based on transparency, seeing, cloud cover, moonlight, fog, wind, and nighttime windows
   - `SeeingCalculator` uses temperature stability and 200 hPa wind; `TransparencyCalculator` uses weighted low/mid/high clouds and visibility.
   - Missing new inputs fall back safely to the previous scoring behavior.
   - Summary generation remains centralized in SharedCode for iPhone, widgets, and Watch.
-- **Best Nearby Area**: Ranked nearby observing-area recommendations based on sampled weather forecasts and candidate suitability checks
-  - Weather-scores the full generated grid and preserves `allScoredLocations` for diagnostics and future weather-field views
+- **Environmental Observing Quality**: The existing Night Conditions score adjusted by offline modeled zenith sky brightness
+  - The canonical formula is `round(nightConditionsScore - baseLightPollutionPenalty(brightness) * usabilityWeight(nightConditionsScore))`, clamped to 0...100.
+  - Missing, invalid, mismatched, or out-of-coverage light-pollution data preserves the Night Conditions score exactly. Moon effects are not applied a second time.
+  - This environmental score is separate from Best Targets' numeric Target score and from equipment suitability.
+- **Best Nearby Area**: Ranked nearby observing-area recommendations based on sampled forecasts, modeled light pollution, and candidate suitability checks
+  - Scores the full generated grid and preserves `allScoredLocations` for diagnostics and future weather-field views.
+  - One assessor is prepared per search. The result uses Observing Quality only when every scorable candidate has valid brightness; otherwise ranking, display, category, and comparisons all use Night Conditions.
   - Excludes known water/unsuitable and unchecked candidates. Candidates whose suitability cannot be conclusively verified may be recommended with clear verification warnings; observers must confirm access before traveling.
   - The default map renders only the ranked recommended areas so map pins match the Top Areas list
   - Suitability verification expands through ranked candidate bands but caps checks at 40, below the observed iOS/CoreLocation reverse-geocoding throttling threshold
@@ -50,29 +55,31 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
   - Full target details provide curated finding tips, equipment guidance, observing notes, and difficulty guidance for every named deep-sky catalog target
   - Users can save binoculars, visual telescopes, and Smart / EAA telescopes, choose session-available equipment, and filter by explainable equipment suitability without changing conditions scores or ranking
   - Curated target images are bundled locally with attribution and license metadata
+  - The UI labels the numeric recommendation as **Target score**. Its scoring and ranking are not yet light-pollution-aware or equipment-aware; both remain future work separate from environmental Observing Quality.
 - **ISS Pass Predictions**: Visible ISS passes via N2YO with rise/set range, peak time and elevation, compass path, active-pass handling, and service error messages when a user-provided API key is configured
 - **Fog Score**: Risk calculated from humidity, temperature-dew point difference, visibility, and low cloud cover
 - **Location Management**:
-  - Auto-detect current location
+  - Resolve current location only when Current Location is selected
   - Save favorite observing locations
   - Rename and reorder saved locations
   - Search by city name
   - Manual coordinate entry
   - Map-based location picker
+  - Display modeled light-pollution category and brightness in mag/arcsec² for saved locations without requesting Core Location
 - **Unit Preferences**: Toggle between Metric and Imperial
 - **Field Mode**: Persistent, iOS-only dim red appearance with controls in Settings and the Dashboard toolbar. Light, Dark, and Field Mode share the same persistent native `TabView`; Field Mode changes the semantic palette and UIKit appearance configuration without replacing root views, preserving the selected tab and mounted screen instances.
 - **Dynamic Type**: Larger standard text sizes reorganize dashboard and navigation layouts through the largest standard iOS Text Size setting. This release does not claim complete validation of every Accessibility Text Size layout.
 - **3-Day Forecast**: Today, tomorrow, and day after
 - **Location-Local Dates**: Forecast tabs and displayed times follow the selected observing site's time zone
 - **iOS Widgets**: Home screen widgets backed by shared cached conditions and selected location data
-  - **Night Conditions** supports small and medium families. Its medium presentation is headed **Tonight at a Glance** and shows the night score, verdict, early/late trend, best window or limiting state, and space-dependent condition factors.
+  - **Night Conditions** supports small and medium families. Its medium presentation is headed **Tonight at a Glance** and shows an Observing Quality headline when valid companion brightness is available, exact Night Conditions fallback otherwise, verdict, early/late Night Conditions trend, best window or limiting state, and space-dependent condition factors.
   - **Tonight’s Targets** supports the medium family and presents up to three ranked targets with their score, best time, and space-dependent category and position (compass direction and altitude in degrees).
-  - **Three-Night Outlook** supports the medium family and compares Tonight, Tomorrow, and Day After by score, verdict, and best window or status, marking the highest available score as Best.
+  - **Three-Night Outlook** supports the medium family and compares Tonight, Tomorrow, and Day After by Observing Quality when valid companion brightness is available, exact Night Conditions fallback otherwise, verdict, and best window or status, marking the highest available score as Best.
   - All three use the selected location and its local time zone, consume app-resolved cached summaries, and re-evaluate their timelines hourly. Conditions data older than one hour is stale; target and outlook summaries older than three hours are stale. The widgets surface no-location, missing, mismatched, stale, and unavailable states rather than fetching their own data. They show no Metric/Imperial-dependent values: cloud values are percentages and target altitude is rounded degrees. No widget-specific URL or interactive control is declared.
   - They use the normal system appearance, including while the iOS app is in Field Mode. Widgets reduce optional detail to fit larger text; this describes adaptive layout behavior, not complete accessibility-size validation.
-- **watchOS App**: Apple Watch dashboard with location selection, night quality, current conditions, and astronomical night details
-- **watchOS Complications**: Inline, circular, corner, and rectangular complication views
-- **iPhone/Watch Sync**: Saved locations, selected location, unit preferences, and cached conditions are exchanged through WatchConnectivity
+- **watchOS App**: Apple Watch dashboard with location selection, Observing Quality for validated saved- or Current Location payloads, exact Night Conditions fallback, current conditions, and astronomical night details
+- **watchOS Complications**: Inline, circular, corner, and rectangular complication views using the same resolved public score as the watch dashboard
+- **iPhone/Watch Sync**: Saved locations, selected location, unit preferences, cached conditions, and versioned observing-quality metadata are exchanged through WatchConnectivity. The watch validates associations and canonically recomputes Observing Quality rather than trusting transported scores.
 
 ### Data Sources
 1. **Open-Meteo API** (https://open-meteo.com/)
@@ -95,6 +102,12 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
    - Local position and visibility calculations; no target API required at runtime
    - Bundled reference images work offline and retain source/license attribution
 
+5. **David Lorenz Light Pollution Atlas** (https://djlorenz.github.io/astronomy/lp/)
+   - 2025 global zenith-brightness product `zenith_brightness_v22_2025`
+   - Preprocessed into the LPATLAS1 v1 offline binary for the main iOS app only
+   - Values are modeled zenith sky brightness in mag/arcsec², not Bortle classes
+   - Used with direct permission; redistribution remains subject to the permission applicable to the atlas release
+
 ---
 
 ## 3. Architecture Design
@@ -103,6 +116,7 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
 - **No Custom Backend**: Data comes from public APIs, local calculations, and platform storage/sync services
 - **Fresh Forecasts First**: Weather data is fetched on demand and treated as time-sensitive
 - **Shared Snapshot Data**: Cached conditions and selected location snapshots are shared with widgets and Apple Watch so glanceable surfaces can render without launching the iOS app
+- **Derived Brightness State**: Modeled brightness lives in versioned App Group companion documents and watch payloads, not in `SavedLocation` or its iCloud schema
 - **Feature-Based Organization**: UI is grouped by product surface and feature
 - **Shared Core Module**: Cross-platform models, services, and utilities live in `SharedCode`
 - **iOS Appearance Isolation**: Field Mode persistence and semantic visual tokens live in the iOS app target. Light, Dark, and Field Mode use the same persistent native `TabView`; only Field Mode forces a dark scheme and supplies dim-red semantic colors through UIKit appearance configuration without replacing root views. Reusable title, primary-action, card, list, map, and control modifiers cover system boundaries that do not inherit ordinary foreground styles. This keeps the selected tab and mounted screen instances stable, preserving Dashboard state, selected forecast day, loaded conditions, and scroll position when Field Mode changes. Maps use MapKit's supported flat, muted standard style and dark color scheme, but Apple Maps labels, attribution, and other map-renderer details remain system controlled. Widgets, watchOS, model data, caches, and connectivity payloads remain unchanged.
@@ -121,7 +135,7 @@ AstroViewingConditions/
 │   │   │   ├── Locations/                      # Saved/search/map/manual locations
 │   │   │   ├── BestSpot/                       # Best observing spot workflow
 │   │   │   └── Settings/                       # App preferences
-│   │   ├── Resources/                          # iOS app assets
+│   │   ├── Resources/                          # iOS app assets, including the app-only LPATLAS1 binary
 │   │   └── Services/
 │   │       └── WatchConnectivityService.swift  # iPhone-side watch sync
 │   │
@@ -155,7 +169,7 @@ Defined in `project.yml`:
 ### Data Models and Storage
 
 #### Persistent User Data
-`SavedLocation` and `EquipmentItem` are the core user-owned SwiftData models. The app also keeps selected-location and unit preference snapshots for app extensions and watch sync. Equipment inventory remains local to the iOS app; session equipment selection is deliberately non-persistent.
+`SavedLocation` and `EquipmentItem` are the core user-owned SwiftData models. The app also keeps selected-location and unit preference snapshots for app extensions and watch sync. Equipment inventory remains local to the iOS app; session equipment selection is deliberately non-persistent. Modeled light-pollution brightness is derived state and is deliberately absent from `SavedLocation` and the saved-location iCloud schema.
 
 ```swift
 @Model
@@ -172,7 +186,7 @@ class SavedLocation {
 ```
 
 #### Shared Snapshot Data
-`ViewingConditions`, cached locations, selected location, and unit preferences are encoded for app group storage, iCloud key-value storage, widget timelines, and WatchConnectivity messages.
+`ViewingConditions`, cached locations, selected location, and unit preferences are encoded for app group storage, iCloud key-value storage, widget timelines, and WatchConnectivity messages. Saved-location and Current Location modeled-brightness companion documents are stored separately in the App Group and are not mirrored through iCloud.
 
 Important services:
 - `CacheService`: Stores the latest encoded conditions snapshot
@@ -192,6 +206,10 @@ Important services:
 - `NightQualityAnalyzer`: Combines observing factors into hourly and nightly assessments
 - `SeeingCalculator`: Produces the optional temperature-stability and 200 hPa wind penalty
 - `TransparencyCalculator`: Produces the optional cloud-layer and visibility penalty
+- `BinaryLightPollutionProvider` and `LightPollutionProviderBootstrap`: Validate and load LPATLAS1 once in the main iOS app process
+- `ObservingQualityCalculator` and `ObservingQualityService`: Apply the one canonical environmental score and exact Night Conditions fallback
+- `SavedLocationModeledBrightnessCoordinator` and `CurrentLocationModeledBrightnessCoordinator`: Sole writers for distinct derived companion state, with dataset/coordinate validation and stale-publication protection
+- `CrossSurfaceObservingQualityResolver`: Validates companion samples and recomputes the public score for widgets and watch canonicalization
 
 ---
 
@@ -222,8 +240,9 @@ Important services:
 - `BestSpotResult` keeps both `topLocations` and `allScoredLocations`; default UI uses `topLocations` for recommendation pins and keeps the full scored field available for diagnostics or a future heatmap/weather-field mode.
 - `LocationScore.canOpenInMaps` gates destination actions. Known water/unsuitable and unchecked points are not presented as map destinations; recommendations with inconclusive verification are clearly labeled so observers can verify access.
 - Candidate suitability checks expand through ranked weather candidates until enough recommendations are found, the ranked list is exhausted, or `BestSpotSearcher.maxSuitabilityCandidateChecks` is reached. The current cap is 40 checks, chosen to stay below the observed iOS/CoreLocation reverse-geocoding throttling threshold and keep all-water/coastal searches responsive.
+- One Observing Quality assessor is prepared for the search. Every scorable candidate retains both its Night Conditions score and OQ assessment until the search selects one coherent mode: all OQ when every candidate has valid brightness, otherwise all Night Conditions.
 - If no recommendable candidates are found before the cap, the search reports `noRecommendableLocations`. If some are found but fewer than requested, the available recommendations are returned.
-- The feature does not validate roads, parking, ownership, legal access, personal safety, elevation advantage, light pollution, or local horizon obstructions.
+- The feature does not validate roads, parking, ownership, legal access, personal safety, elevation advantage, local light sources, or horizon obstructions. Atlas-backed light pollution is modeled regional sky brightness, not an on-site safety or access check.
 
 ### Why AGPL-3.0 License?
 - Requires covered modifications distributed to others to remain under the AGPL with corresponding source available
@@ -314,6 +333,17 @@ Important services:
 - [x] Moonlight-aware and poor-weather-aware ranking
 - [x] Interpolated visibility-window boundaries and corrected planetary epoch calculations
 - [x] Target image viewer with source and license attribution
+
+### Light Pollution and Environmental Observing Quality - Complete
+
+- [x] LPATLAS1 v1 production binary generated from David Lorenz's 2025 `zenith_brightness_v22_2025` atlas and bundled only in the main iOS app
+- [x] Canonical Observing Quality formula and exact Night Conditions fallback
+- [x] Dashboard, Best Nearby, Home Screen conditions/outlook widgets, Apple Watch dashboard, and score-bearing complications
+- [x] Separate saved-location and Current Location derived companion state with dataset, identity, coordinate, and compatibility validation
+- [x] Saved-location modeled light-pollution presentation with category, mag/arcsec² value, explanatory footer, and adaptive Dynamic Type layout
+- [x] Python generation, format validation, regional/global fidelity analysis, and release/adoption procedure under `Tools/LightPollution`
+
+Best Targets only received terminology/presentation clarification. Its Target score and ranking remain separate from environmental Observing Quality and are not yet light-pollution-aware or equipment-aware.
 
 ---
 
@@ -448,6 +478,11 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 - `Sources/SharedCode/Core/Services/LocationStorageService.swift` - Shared selected/saved location snapshots
 - `Sources/SharedCode/Core/Services/TargetRecommendationService.swift` - Deep-sky ranking and visibility windows
 - `Sources/SharedCode/Core/Services/BestSpotSearcher.swift` - Nearby-area weather scoring, reverse-geocoded suitability checks, suitability expansion, and recommendation selection
+- `Sources/SharedCode/Core/Utilities/ObservingQualityCalculator.swift` - Canonical Night Conditions plus modeled-light-pollution score
+- `Sources/SharedCode/Core/Services/LightPollutionProviderBootstrap.swift` - Main-app LPATLAS1 process bootstrap
+- `Sources/SharedCode/Core/Services/SavedLocationModeledBrightnessCoordinator.swift` - Saved-location derived companion-state writer
+- `Sources/SharedCode/Core/Services/CurrentLocationModeledBrightnessCoordinator.swift` - Current Location derived companion-state writer
+- `Sources/SharedCode/Core/Services/WatchObservingQualityCanonicalizer.swift` - Watch payload validation and canonical recomputation
 - `Sources/Widgets/NightConditionsWidget.swift` - Adaptive Tonight at a Glance Home Screen widget
 - `Sources/Widgets/TonightTargetsWidget.swift` - Tonight’s Targets Home Screen widget
 - `Sources/Widgets/ThreeNightOutlookWidget.swift` - Three-Night Outlook Home Screen widget
@@ -455,13 +490,15 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 - `Sources/SharedCode/Core/Services/PlanetRecommendationService.swift` - Local planet position and recommendation logic
 - `Sources/SharedCode/Core/Services/DeepSkyCatalogService.swift` - Curated target catalog
 - `Sources/SharedCode/Core/Models/SavedLocation.swift` - Saved location model
+- `Tools/LightPollution/VALIDATION_RESULTS.md` - Canonical atlas validation record and future release-adoption procedure
+- `Tools/LightPollution/CROSS_SURFACE_ARCHITECTURE.md` - Current Observing Quality transport, persistence, and fallback architecture
 - `project.yml` - Target and scheme definitions
 
 ---
 
 ## 9. Project Status
 
-**Current Status**: Core observing planner, target recommendations, widgets, and watchOS support complete.
+**Current Status**: Core observing planner, environmental Observing Quality, target recommendations, widgets, and watchOS support complete on the current feature branch.
 
 Implemented:
 - Real-time weather data
@@ -469,17 +506,18 @@ Implemented:
 - ISS pass predictions
 - Night quality analysis
 - Seeing & Transparency
-- Best Nearby Area with checked ranked recommendations and a recommended-only default map
-- Best Targets with scores, observing windows, curated target guidance, equipment-fit filtering, and offline reference images
+- Offline modeled light pollution from the app-only LPATLAS1 v1 artifact
+- Best Nearby Area with coherent Observing Quality ranking or whole-search Night Conditions fallback, checked recommendations, and a recommended-only default map
+- Best Targets with clearly labeled Target scores, observing windows, curated target guidance, equipment-fit filtering, and offline reference images; scoring remains separate from environmental Observing Quality and equipment suitability
 - Persistent My Equipment inventory for binoculars, visual telescopes, and Smart / EAA telescopes
 - Detailed ISS pass paths and error states
 - Renameable and reorderable saved locations
+- Saved-location modeled light-pollution category and mag/arcsec² display, backed by derived companion state rather than the saved-location schema
 - Unit preferences
 - Persistent iOS-only Field Mode with a semantic dim-red palette, reusable field surfaces and controls, and a stable native tab-bar layout across appearance modes
-- iOS Home Screen widgets: adaptive Tonight at a Glance, medium Tonight’s Targets, and medium Three-Night Outlook
-- watchOS app
-- watchOS complications
-- Shared storage and iPhone/watch sync
+- iOS Home Screen widgets: adaptive Tonight at a Glance, medium Tonight’s Targets, and medium Three-Night Outlook; conditions and outlook scores use validated OQ companion state with exact Night Conditions fallback
+- watchOS app and complications with validated saved-/Current Location OQ transport, canonical recomputation, persistence, and safe fallback
+- Shared storage and iPhone/watch sync, including separate derived brightness metadata
 - Core unit test coverage
 
 **Next Milestone**: Simple horizon constraints per saved location. See [FEATURES/FEATURE_ROADMAP.md](FEATURES/FEATURE_ROADMAP.md) for the full sequence.
@@ -496,5 +534,5 @@ This is an open-source project. Contributions welcome.
 
 ---
 
-*Last Updated: July 25, 2026*
-*Document Version: 1.8*
+*Last Updated: August 6, 2026*
+*Document Version: 1.9*

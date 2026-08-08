@@ -106,11 +106,13 @@ enum ThreeNightOutlookEntryResolver {
         }
         do {
             let conditions = try await normalConditions()
+            let locationContext = CrossSurfaceLocationContext.make(from: location)
             let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
                 conditions: conditions,
                 existingSummary: cachedSummary,
                 referenceDate: referenceDate,
-                timeZone: conditions.timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
+                timeZone: conditions.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)),
+                locationContext: locationContext
             )
             let validationDate = validationDate()
             return await entry(
@@ -126,11 +128,13 @@ enum ThreeNightOutlookEntryResolver {
             let fetchFailureCategory = sanitizedErrorCategory(error)
             if let retained = await retainedConditions(),
                conditionsLocationMatches(retained, cachedLocation: cachedLocation) {
+                let locationContext = CrossSurfaceLocationContext.make(from: location)
                 let decision = ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
                     conditions: retained,
                     existingSummary: cachedSummary,
                     referenceDate: referenceDate,
-                    timeZone: retained.timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
+                    timeZone: retained.timeZoneIdentifier.flatMap(TimeZone.init(identifier:)),
+                    locationContext: locationContext
                 )
                 let validationDate = validationDate()
                 if case let .publish(summary) = decision, summary.isDataBearing {

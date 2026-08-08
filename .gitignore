@@ -60,3 +60,25 @@ playground.xcworkspace
 
 # Kilo
 .kilo/
+
+# Light-pollution validation harness (Tools/LightPollution)
+Tools/LightPollution/cache/
+Tools/LightPollution/output/
+Tools/LightPollution/.venv/
+Tools/LightPollution/**/__pycache__/
+Tools/LightPollution/**/*.pyc
+Tools/LightPollution/**/.pytest_cache/
+Tools/LightPollution/**/*.tiff
+Tools/LightPollution/**/*.tif
+Tools/LightPollution/**/*.npy
+Tools/LightPollution/**/*.npz
+Tools/LightPollution/**/*.f32
+
+# Light-pollution generated binaries and local fixtures (large)
+Tools/LightPollution/output/artifacts/
+Tools/LightPollution/**/*.bin
+# Tiny checked-in LPATLAS1 fixtures for cross-language tests
+!Tools/LightPollution/fixtures/
+!Tools/LightPollution/fixtures/**
+Tools/LightPollution/**/hierarchical_census_checkpoint/
+Tools/LightPollution/**/hierarchical_bench_ckpt/

@@ -23,6 +23,8 @@ public struct DashboardView: View {
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
     @Query(sort: \EquipmentItem.name) private var equipmentItems: [EquipmentItem]
     private let viewModel: DashboardViewModel
+    /// Process-owned OQ session for Best Nearby assessor preparation (optional in previews).
+    private let observingQualitySession: ObservingQualitySession?
     @State private var locationLoader: DashboardLocationLoader
     @State private var showingLocationPicker = false
     @State private var showingBestSpotSearch = false
@@ -36,13 +38,17 @@ public struct DashboardView: View {
     private let locationSession: DashboardLocationSession
     
     init(
+        // Default uses UnavailableObservingQualityEnvironment (not a loading session).
+        // Production ContentView injects a process-owned ObservingQualitySession.
         viewModel: DashboardViewModel = DashboardViewModel(
             apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
         ),
-        locationSession: DashboardLocationSession = DashboardLocationSession()
+        locationSession: DashboardLocationSession = DashboardLocationSession(),
+        observingQualitySession: ObservingQualitySession? = nil
     ) {
         self.viewModel = viewModel
         self.locationSession = locationSession
+        self.observingQualitySession = observingQualitySession
         _locationLoader = State(initialValue: DashboardLocationLoader(
             persistedSelection: LocationStorageService.shared.loadSelectedLocation(),
             provider: LocationManager(),
@@ -183,7 +189,8 @@ public struct DashboardView: View {
                     BestSpotView(
                         centerLocation: location,
                         searchDate: searchDate,
-                        fogScoreCalculator: FogCalculator.calculate
+                        fogScoreCalculator: FogCalculator.calculate,
+                        observingQualitySession: observingQualitySession
                     )
                 }
             }
@@ -205,6 +212,7 @@ public struct DashboardView: View {
             hasRestoredSelectedDay = true
             viewModel.updateAPIKey(n2yoApiKey)
             locationLoader.restoreSelection(using: savedLocations.map(CachedLocation.init))
+            // Observing-quality / LPATLAS1 bootstrap is owned by ContentView composition root.
             await resolveCurrentLocationIfNeeded()
             await loadActiveLocationConditionsIfNeeded()
         }
@@ -292,9 +300,16 @@ public struct DashboardView: View {
                 daySelector
                     .id(DashboardSection.top)
 
-                if let nightQuality = viewModel.currentNightQuality {
+                if viewModel.isObservingQualityHeadlinePending {
+                    // Night conditions ready but LPATLAS1 not resolved — avoid flashing
+                    // night-only score as if it were finalized observing quality.
+                    NightQualityCardHeadlinePending()
+                        .id(DashboardSection.nightQuality)
+                } else if let nightQuality = viewModel.currentNightQuality,
+                          let headline = viewModel.currentObservingQualityHeadline {
                     NightQualityCard(
-                        assessment: nightQuality
+                        assessment: nightQuality,
+                        headline: headline
                     )
                     .id(DashboardSection.nightQuality)
                 }

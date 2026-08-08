@@ -102,6 +102,18 @@ public struct SettingsView: View {
                             .font(.footnote)
                             .appSecondaryForeground()
                     }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label("Light Pollution Atlas", systemImage: "moon.haze")
+                            .font(.subheadline)
+                        Text(
+                            "Modeled zenith sky brightness from David Lorenz’s Light Pollution Atlas "
+                                + "(reduced LPATLAS1 packaging). Used with permission for offline lookup. "
+                                + "https://djlorenz.github.io/astronomy/lp/"
+                        )
+                        .font(.footnote)
+                        .appSecondaryForeground()
+                    }
                 }
                 .appListRowSurface()
                 

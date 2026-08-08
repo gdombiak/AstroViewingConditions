@@ -14,6 +14,39 @@ final class TargetScoreColorProviderTests: XCTestCase {
         XCTAssertEqual(TargetScoreColorProvider.category(for: 35), .poor)
     }
 
+    // MARK: - Target score terminology (Issue #70 Phase 8)
+
+    func testTargetScoreAccessibilityUsesTargetScoreTerminology() {
+        let label = TargetScorePresentation.accessibilityLabel(score: 91)
+        XCTAssertEqual(label, "Target score 91 out of 100")
+        XCTAssertTrue(label.hasPrefix("Target score"))
+        XCTAssertFalse(label.localizedCaseInsensitiveContains("observing quality"))
+        XCTAssertFalse(label.localizedCaseInsensitiveContains("night conditions"))
+        XCTAssertFalse(label.localizedCaseInsensitiveContains("visibility percentage"))
+        XCTAssertFalse(label.localizedCaseInsensitiveContains("probability"))
+    }
+
+    func testTargetScoreAccessibilityDoesNotDuplicateUnlabeledScoreWording() {
+        let label = TargetScorePresentation.accessibilityLabel(score: 72)
+        // Single labeled form only — not "Score 72" plus a separate "Target score 72".
+        XCTAssertEqual(label.components(separatedBy: "72").count - 1, 1)
+        XCTAssertFalse(label.hasPrefix("Score "))
+    }
+
+    func testTargetDetailsConciseLabelIsTargetScore() {
+        XCTAssertEqual(TargetScorePresentation.conciseLabel, "Target score")
+        // Dynamic Type: short label should not need truncation at large sizes.
+        XCTAssertLessThanOrEqual(TargetScorePresentation.conciseLabel.count, 20)
+    }
+
+    func testTargetScoreAccessibilityMatchesRepresentativeFixturesWithoutChangingScore() {
+        for score in [45, 64, 79, 80, 91, 100] {
+            let label = TargetScorePresentation.accessibilityLabel(score: score)
+            XCTAssertEqual(label, "Target score \(score) out of 100")
+            XCTAssertTrue(label.contains("\(score)"))
+        }
+    }
+
     func testSharedScoreCategoriesAndDashboardBandsAgreeAtEveryBoundary() {
         let cases: [(score: Int, category: TargetScoreCategory, band: BestTargetsScoreBand?)] = [
             (39, .poor, nil), (40, .poor, nil), (44, .poor, nil),

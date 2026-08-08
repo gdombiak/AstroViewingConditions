@@ -16,8 +16,16 @@ public struct LocationsView: View {
     @State private var showingRenamePrompt = false
     @State private var selectedLocation: SavedLocation?
     @State private var showingLocationMap = false
+    @State private var lightPollutionModel = SavedLocationLightPollutionModel()
     
     public init() {}
+
+    /// Identity fingerprint for saved locations that affect brightness (id + coordinates).
+    private var lightPollutionRefreshToken: String {
+        orderedLocations
+            .map { "\($0.id.uuidString):\($0.latitude):\($0.longitude)" }
+            .joined(separator: "|")
+    }
     
     public var body: some View {
         NavigationStack {
@@ -35,7 +43,10 @@ public struct LocationsView: View {
                         }
                     } else {
                         ForEach(orderedLocations) { location in
-                            LocationRow(location: location)
+                            LocationRow(
+                                location: location,
+                                lightPollution: lightPollutionModel.state(for: location)
+                            )
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     selectedLocation = location
@@ -60,6 +71,14 @@ public struct LocationsView: View {
                         }
                         .onMove(perform: moveLocations)
                     }
+                } footer: {
+                    if !orderedLocations.isEmpty {
+                        Text(LightPollutionDisplayPresentation.listFooterExplanation)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 4)
+                    }
                 }
                 .appListRowSurface()
             }
@@ -67,6 +86,9 @@ public struct LocationsView: View {
             .appNavigationTitle("Locations")
             .task {
                 persistCurrentOrderIfNeeded()
+            }
+            .task(id: lightPollutionRefreshToken) {
+                await lightPollutionModel.refresh(locations: orderedLocations)
             }
             .toolbar {
                 if !orderedLocations.isEmpty {
@@ -314,17 +336,29 @@ private struct FieldRenameLocationDialog: View {
 
 struct LocationRow: View {
     let location: SavedLocation
+    var lightPollution: LightPollutionRowDisplayState = .unresolved
     
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(location.name)
                     .font(.headline)
-                
-                Text(CoordinateFormatters.format(location.coordinate))
-                    .font(.footnote)
-                    .appSecondaryForeground()
-                
+
+                LocationMetricLabelValueRow(
+                    label: LightPollutionDisplayPresentation.coordinatesLabel,
+                    value: CoordinateFormatters.format(location.coordinate),
+                    // Coordinate text already carries meaning; avoid "Coordinates, …" twice.
+                    accessibilityLabel: CoordinateFormatters.format(location.coordinate)
+                )
+
+                if lightPollution.showsRow {
+                    LocationMetricLabelValueRow(
+                        label: LightPollutionDisplayPresentation.metricLabel,
+                        value: lightPollutionValueText,
+                        accessibilityLabel: lightPollutionAccessibilityLabel
+                    )
+                }
+
                 if let elevation = location.elevation {
                     Text("Elevation: \(Int(elevation))m")
                         .font(.caption)
@@ -332,14 +366,72 @@ struct LocationRow: View {
                 }
             }
             
-            Spacer()
+            Spacer(minLength: 8)
             
             if location.isFavorite {
+                // Restore default VoiceOver favorite cue (pre–Phase 9 semantics).
                 Image(systemName: "star.fill")
                     .foregroundStyle(.yellow)
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private var lightPollutionValueText: String {
+        switch lightPollution {
+        case .unresolved:
+            return ""
+        case .available(let presentation):
+            return presentation.displayValue
+        case .unavailable:
+            return LightPollutionDisplayPresentation.unavailableValueText
+        }
+    }
+
+    private var lightPollutionAccessibilityLabel: String {
+        switch lightPollution {
+        case .unresolved:
+            return ""
+        case .available(let presentation):
+            return presentation.accessibilityLabel
+        case .unavailable:
+            return LightPollutionDisplayPresentation.unavailableAccessibilityLabel
+        }
+    }
+}
+
+/// Compact secondary label + primary value; stacks at large Dynamic Type.
+private struct LocationMetricLabelValueRow: View {
+    let label: String
+    let value: String
+    let accessibilityLabel: String
+
+    var body: some View {
+        let labelView = Text(label)
+            .font(.footnote)
+            .appSecondaryForeground()
+        let valueView = Text(value)
+            .font(.footnote)
+            .foregroundStyle(.primary)
+            .multilineTextAlignment(.trailing)
+
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                labelView
+                Spacer(minLength: 8)
+                valueView
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                labelView
+                Text(value)
+                    .font(.footnote)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
     }
 }
 

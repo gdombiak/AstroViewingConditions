@@ -34,6 +34,42 @@ struct TargetDetailView: View {
         return fitLevel != .poor
     }
 
+    private var identityLeadingColumn: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(content.name)
+                .font(.title2.bold())
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                Text(content.displayType)
+                    .foregroundStyle(.secondary)
+                TargetIntentBadge(intent: recommendation.target.observingIntent)
+            }
+        }
+    }
+
+    /// Trailing score block: secondary label above star + prominent N / 100.
+    private var identityScoreBlock: some View {
+        VStack(alignment: .trailing, spacing: 2) {
+            Text(TargetScorePresentation.conciseLabel)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.trailing)
+            HStack(spacing: 4) {
+                Image(systemName: "star.fill")
+                    .font(.body)
+                    .foregroundStyle(TargetScoreColorProvider.color(for: content.score, palette: palette))
+                    .accessibilityHidden(true)
+                Text("\(content.score) / 100")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(TargetScoreColorProvider.color(for: content.score, palette: palette))
+                    .monospacedDigit()
+            }
+        }
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(TargetScorePresentation.accessibilityLabel(score: content.score))
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -54,21 +90,29 @@ struct TargetDetailView: View {
                 }
 
                 Section {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(content.name).font(.title2.bold())
-                        HStack(spacing: 8) {
-                            Text(content.displayType).foregroundStyle(.secondary)
-                            TargetIntentBadge(intent: recommendation.target.observingIntent)
+                    VStack(alignment: .leading, spacing: 8) {
+                        // Name/type leading; target score trailing — uses card width at normal sizes.
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .top, spacing: 12) {
+                                identityLeadingColumn
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .layoutPriority(1)
+                                identityScoreBlock
+                            }
+                            // Large Dynamic Type: stack rather than truncate.
+                            VStack(alignment: .leading, spacing: 8) {
+                                identityLeadingColumn
+                                identityScoreBlock
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
                         }
+
                         if let guidance = TargetIntentPresentation.detailGuidance(for: recommendation.target.observingIntent) {
                             Text(guidance)
                                 .font(.footnote)
                                 .foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
-                        Label("\(content.score) / 100", systemImage: "star.fill")
-                            .foregroundStyle(TargetScoreColorProvider.color(for: content.score, palette: palette))
-                            .accessibilityLabel("Score \(content.score) out of 100")
                     }
                     .padding(.vertical, 4)
                 }

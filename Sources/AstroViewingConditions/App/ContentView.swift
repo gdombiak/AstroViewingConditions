@@ -28,12 +28,62 @@ struct ContentView: View {
     @Environment(\.appPalette) private var palette
     @SceneStorage("selectedAppTab") private var selectedTab: AppTab = .dashboard
     @State private var dashboardLocationSession = DashboardLocationSession()
-    @State private var dashboardViewModel = DashboardViewModel(
-        apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
-    )
+    /// Process composition: owns LPATLAS1 readiness for this app process (not a feature view).
+    @State private var observingQualitySession: ObservingQualitySession
+    @State private var dashboardViewModel: DashboardViewModel
+    @State private var didStartObservingQualityBootstrap = false
+
+    init() {
+        let session = ObservingQualitySession()
+        _observingQualitySession = State(initialValue: session)
+        _dashboardViewModel = State(
+            initialValue: DashboardViewModel(
+                apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? "",
+                observingQualityEnvironment: session
+            )
+        )
+    }
     
     var body: some View {
         sharedRoot
+            .task {
+                // Composition-root bootstrap: parallel to user navigation; not owned by DashboardView.
+                guard !didStartObservingQualityBootstrap else { return }
+                didStartObservingQualityBootstrap = true
+                await observingQualitySession.bootstrap(preferredBundles: [Bundle.main])
+                dashboardViewModel.syncLightPollutionReadinessFromEnvironment()
+
+                // Phase 2: backfill durable saved-location modeled-brightness metadata.
+                // Stamp revision before awaiting provider so a concurrent CRUD publication
+                // (higher revision) is never overwritten by this backfill.
+                // Provider already loaded by bootstrap — do not start another atlas load.
+                let cached = LocationStorageService.shared.getSavedLocations(context: modelContext)
+                let anchors = cached.compactMap(SavedLocationBrightnessAnchor.init(cachedLocation:))
+                let publication = SavedLocationBrightnessPublication.makeAuthoritative(
+                    locations: anchors
+                )
+                let provider = await LightPollutionProviderBootstrap.shared.currentProvider()
+                await SavedLocationModeledBrightnessCoordinator.shared.synchronize(
+                    publication: publication,
+                    provider: provider
+                )
+
+                // Phase 3: backfill Current Location brightness when a resolved
+                // (non-placeholder) coordinate is already known. Same app-boundary
+                // gates as AppCurrentLocationBrightnessPublisher (not Phase 1 changes).
+                if let current = dashboardLocationSession.currentLocation {
+                    AppCurrentLocationBrightnessPublisher.shared.publishResolvedCurrentLocation(
+                        latitude: current.latitude,
+                        longitude: current.longitude
+                    )
+                } else if let selected = LocationStorageService.shared.loadSelectedLocation(),
+                          selected.source == .currentGPS {
+                    AppCurrentLocationBrightnessPublisher.shared.publishResolvedCurrentLocation(
+                        latitude: selected.latitude,
+                        longitude: selected.longitude
+                    )
+                }
+            }
     }
 
     private var sharedRoot: some View {
@@ -41,7 +91,8 @@ struct ContentView: View {
             tabContent(.dashboard) {
                 DashboardView(
                     viewModel: dashboardViewModel,
-                    locationSession: dashboardLocationSession
+                    locationSession: dashboardLocationSession,
+                    observingQualitySession: observingQualitySession
                 )
             }
 

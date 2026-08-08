@@ -15,6 +15,7 @@ public struct WidgetThreeNightOutlookNight: Identifiable, Codable, Sendable, Has
     public let id: String
     public let displayLabel: String
     public let observingDate: Date
+    /// Public headline score (= observingQualityScore when set).
     public let score: Int?
     public let verdict: String
     public let scoreTone: WidgetTargetScoreTone?
@@ -24,6 +25,9 @@ public struct WidgetThreeNightOutlookNight: Identifiable, Codable, Sendable, Has
     public let statusText: String
     public let status: WidgetThreeNightOutlookNightStatus
     public let isBestNight: Bool
+    /// Phase 4A dual scores (nil when night unavailable).
+    public let nightConditionsScore: Int?
+    public let observingQualityScore: Int?
 
     public init(
         id: String,
@@ -37,7 +41,9 @@ public struct WidgetThreeNightOutlookNight: Identifiable, Codable, Sendable, Has
         bestWindow: NightQualityAssessment.TimeWindow?,
         statusText: String,
         status: WidgetThreeNightOutlookNightStatus,
-        isBestNight: Bool
+        isBestNight: Bool,
+        nightConditionsScore: Int? = nil,
+        observingQualityScore: Int? = nil
     ) {
         self.id = id
         self.displayLabel = displayLabel
@@ -51,6 +57,52 @@ public struct WidgetThreeNightOutlookNight: Identifiable, Codable, Sendable, Has
         self.statusText = statusText
         self.status = status
         self.isBestNight = isBestNight
+        self.nightConditionsScore = nightConditionsScore ?? score
+        self.observingQualityScore = observingQualityScore ?? score
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, displayLabel, observingDate, score, verdict, scoreTone
+        case astronomicalNightStart, astronomicalNightEnd, bestWindow
+        case statusText, status, isBestNight
+        case nightConditionsScore, observingQualityScore
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        displayLabel = try c.decode(String.self, forKey: .displayLabel)
+        observingDate = try c.decode(Date.self, forKey: .observingDate)
+        let legacyScore = try c.decodeIfPresent(Int.self, forKey: .score)
+        score = legacyScore
+        verdict = try c.decode(String.self, forKey: .verdict)
+        scoreTone = try c.decodeIfPresent(WidgetTargetScoreTone.self, forKey: .scoreTone)
+        astronomicalNightStart = try c.decodeIfPresent(Date.self, forKey: .astronomicalNightStart)
+        astronomicalNightEnd = try c.decodeIfPresent(Date.self, forKey: .astronomicalNightEnd)
+        bestWindow = try c.decodeIfPresent(NightQualityAssessment.TimeWindow.self, forKey: .bestWindow)
+        statusText = try c.decode(String.self, forKey: .statusText)
+        status = try c.decode(WidgetThreeNightOutlookNightStatus.self, forKey: .status)
+        isBestNight = try c.decode(Bool.self, forKey: .isBestNight)
+        nightConditionsScore = try c.decodeIfPresent(Int.self, forKey: .nightConditionsScore) ?? legacyScore
+        observingQualityScore = try c.decodeIfPresent(Int.self, forKey: .observingQualityScore) ?? legacyScore
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(displayLabel, forKey: .displayLabel)
+        try c.encode(observingDate, forKey: .observingDate)
+        try c.encodeIfPresent(observingQualityScore ?? score, forKey: .score)
+        try c.encode(verdict, forKey: .verdict)
+        try c.encodeIfPresent(scoreTone, forKey: .scoreTone)
+        try c.encodeIfPresent(astronomicalNightStart, forKey: .astronomicalNightStart)
+        try c.encodeIfPresent(astronomicalNightEnd, forKey: .astronomicalNightEnd)
+        try c.encodeIfPresent(bestWindow, forKey: .bestWindow)
+        try c.encode(statusText, forKey: .statusText)
+        try c.encode(status, forKey: .status)
+        try c.encode(isBestNight, forKey: .isBestNight)
+        try c.encodeIfPresent(nightConditionsScore, forKey: .nightConditionsScore)
+        try c.encodeIfPresent(observingQualityScore, forKey: .observingQualityScore)
     }
 }
 

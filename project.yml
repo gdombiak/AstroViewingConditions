@@ -44,6 +44,8 @@ targets:
       - Sources/App
     resources:
       - Sources/AstroViewingConditions/Resources/Assets.xcassets
+      - path: Sources/AstroViewingConditions/Resources/LightPollution
+        type: folder
       - Sources/App/PrivacyInfo.xcprivacy
     settings:
       base:

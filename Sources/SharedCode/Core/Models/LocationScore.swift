@@ -55,9 +55,9 @@ public enum LocationSuitabilityStatus: Sendable, Hashable {
         case .unknown(.notChecked):
             return "Access not verified"
         case .unknown(.geocodingFailed):
-            return "Verification unavailable"
+            return "Land check unavailable"
         case .unknown(.temporarilyUnavailable):
-            return "Verification temporarily unavailable"
+            return "Land check temporarily unavailable"
         }
     }
 }
@@ -79,11 +79,32 @@ public enum LocationScoreCategory: Sendable {
     }
 }
 
+/// Scoring mode for one Best Nearby search result set (never mixed within a search).
+public enum BestSpotScoringMode: Sendable, Equatable {
+    /// Every scorable location had a valid light-pollution assessment; `LocationScore.score` is OQ.
+    case observingQuality
+    /// At least one location lacked valid LP; every `LocationScore.score` is night-conditions only.
+    case nightConditionsFallback
+
+    /// Search-level copy when LP was unavailable for ranking.
+    public var lightPollutionUnavailableMessage: String? {
+        switch self {
+        case .observingQuality:
+            return nil
+        case .nightConditionsFallback:
+            return "Light pollution data was unavailable for this search. Results are ranked by weather and sky conditions only."
+        }
+    }
+}
+
 /// Represents a scored location for viewing conditions
 public struct LocationScore: Sendable, Identifiable, Hashable {
     public let id: UUID
     public let point: GridPoint
+    /// Public ranking/display score (OQ in normal mode, night conditions in search-wide fallback).
     public let score: Int
+    /// Exact night-conditions score for this location (always stored for fallback / tests).
+    public let nightConditionsScore: Int
     public let nightQuality: NightQualityAssessment
     public let fogScore: FogScore
     public let avgCloudCover: Double
@@ -96,6 +117,7 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
         id: UUID = UUID(),
         point: GridPoint,
         score: Int,
+        nightConditionsScore: Int? = nil,
         nightQuality: NightQualityAssessment,
         fogScore: FogScore,
         avgCloudCover: Double,
@@ -107,6 +129,8 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
         self.id = id
         self.point = point
         self.score = score
+        // Compatibility: when omitted, treat public score as the night score (legacy night-only path).
+        self.nightConditionsScore = nightConditionsScore ?? score
         self.nightQuality = nightQuality
         self.fogScore = fogScore
         self.avgCloudCover = avgCloudCover
@@ -144,18 +168,37 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
         }
     }
 
-    public var improvementSummary: String {
-        guard let improvementOverCenter else { return "Current location not scored" }
+    /// Compact on-screen comparison against the selected center location (public `score`).
+    /// Returns `nil` when no center comparison is available (omit from the UI).
+    public func improvementSummary(comparedTo centerName: String) -> String? {
+        guard let improvementOverCenter else { return nil }
 
         switch improvementOverCenter {
-        case ...2:
-            return "Not meaningfully better than your location"
-        case 3...9:
-            return "Small improvement"
-        case 10...19:
-            return "Worth considering"
+        case 0:
+            return "Same as \(centerName)"
+        case 1...:
+            return "+\(improvementOverCenter) vs \(centerName)"
         default:
-            return "Strong improvement"
+            // U+2212 minus sign for a compact, readable negative delta.
+            return "−\(abs(improvementOverCenter)) vs \(centerName)"
+        }
+    }
+
+    /// Full VoiceOver wording for the same public-score comparison.
+    public func improvementAccessibilityDescription(comparedTo centerName: String) -> String? {
+        guard let improvementOverCenter else { return nil }
+
+        switch improvementOverCenter {
+        case 0:
+            return "Same score as \(centerName)"
+        case 1:
+            return "1 point better than \(centerName)"
+        case 2...:
+            return "\(improvementOverCenter) points better than \(centerName)"
+        case -1:
+            return "1 point below \(centerName)"
+        default:
+            return "\(abs(improvementOverCenter)) points below \(centerName)"
         }
     }
 
@@ -163,6 +206,7 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
         suitability.isRecommendable
     }
 
+    /// Derives `improvementOverCenter` from the public ranking/display `score` only.
     public func withImprovement(comparedTo centerScore: Int?) -> LocationScore {
         with(
             suitability: suitability,
@@ -178,6 +222,7 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
             id: id,
             point: point,
             score: score,
+            nightConditionsScore: nightConditionsScore,
             nightQuality: nightQuality,
             fogScore: fogScore,
             avgCloudCover: avgCloudCover,
@@ -218,6 +263,8 @@ public struct BestSpotResult: Sendable {
     public let searchDate: Date
     public let searchDuration: TimeInterval
     public let suitabilityWarning: String?
+    /// Coherent scoring mode for this entire search (never mixed OQ/night ranks).
+    public let scoringMode: BestSpotScoringMode
     
     public var bestSpot: LocationScore? {
         topLocations.first
@@ -229,6 +276,11 @@ public struct BestSpotResult: Sendable {
 
     public var scoredLocations: [LocationScore] {
         topLocations
+    }
+
+    /// Search-level LP unavailable warning (nil in observing-quality mode).
+    public var lightPollutionUnavailableMessage: String? {
+        scoringMode.lightPollutionUnavailableMessage
     }
 
     public func rank(of location: LocationScore) -> Int? {
@@ -244,7 +296,8 @@ public struct BestSpotResult: Sendable {
         moonInfo: MoonInfo,
         searchDate: Date,
         searchDuration: TimeInterval,
-        suitabilityWarning: String? = nil
+        suitabilityWarning: String? = nil,
+        scoringMode: BestSpotScoringMode = .nightConditionsFallback
     ) {
         self.centerLocation = centerLocation
         self.searchRadiusMiles = searchRadiusMiles
@@ -255,6 +308,7 @@ public struct BestSpotResult: Sendable {
         self.searchDate = searchDate
         self.searchDuration = searchDuration
         self.suitabilityWarning = suitabilityWarning
+        self.scoringMode = scoringMode
     }
 
     public init(
@@ -265,7 +319,8 @@ public struct BestSpotResult: Sendable {
         moonInfo: MoonInfo,
         searchDate: Date,
         searchDuration: TimeInterval,
-        suitabilityWarning: String? = nil
+        suitabilityWarning: String? = nil,
+        scoringMode: BestSpotScoringMode = .nightConditionsFallback
     ) {
         self.init(
             centerLocation: centerLocation,
@@ -276,7 +331,8 @@ public struct BestSpotResult: Sendable {
             moonInfo: moonInfo,
             searchDate: searchDate,
             searchDuration: searchDuration,
-            suitabilityWarning: suitabilityWarning
+            suitabilityWarning: suitabilityWarning,
+            scoringMode: scoringMode
         )
     }
 }

@@ -14,9 +14,13 @@ In Locations you can:
 
 The saved order is used by the dashboard location picker and is shared with a paired Apple Watch.
 
+Saved-location rows also show a modeled light-pollution category and zenith sky brightness in mag/arcsec² when available. Higher values mean darker modeled skies. These atlas estimates are not Bortle classes and can differ from local lights, obstructions, smoke, or recent development. Opening the Locations screen resolves saved-site estimates from their stored coordinates; it does not request Current Location.
+
 ## Read the Conditions
 
-The night-quality assessment combines cloud cover, moonlight, fog risk, wind, and the useful nighttime period. Check the hourly forecast as well as the overall score: a mediocre night can still contain a short clear window.
+**Night Conditions** combines cloud cover, transparency, seeing, moonlight, fog risk, wind, and the useful nighttime period. **Observing Quality** starts with that score and accounts for modeled light pollution. If valid modeled brightness is unavailable, the displayed score falls back exactly to Night Conditions. Moon effects are already part of Night Conditions and are not applied again.
+
+Check the hourly forecast as well as the overall score: a mediocre night can still contain a short clear window.
 
 The Sun & Moon card shows sunset, sunrise, astronomical darkness, moonrise or moonset, the named lunar phase, and the Moon's illuminated percentage. Bright moonlight can reduce contrast in nebulae and galaxies even when the weather is clear.
 
@@ -28,7 +32,7 @@ Best Targets ranks objects for the selected site and night. Depending on what is
 
 Each recommendation includes:
 
-- A score out of 100. This is a relative planning score for that object under the predicted conditions—not a guarantee that it will be visible.
+- A **Target score** out of 100. This is a relative planning score for that object under the predicted conditions—not a guarantee that it will be visible. It is separate from environmental Observing Quality and equipment suitability; current target scoring does not use the light-pollution atlas or equipment fit.
 - A best observing window, shown in the selected location's local time.
 - A compass direction and approximate maximum altitude. An altitude of 0° is the horizon and 90° is directly overhead.
 - A short explanation of important factors such as darkness, altitude, clouds, haze, or bright moonlight.
@@ -57,15 +61,21 @@ New equipment starts as a **Visual Telescope** with **mm** selected for aperture
 
 When sky conditions are poor, the app may still show targets for planning. Treat these as the best available choices, not a prediction of a successful observation.
 
+## Find a Better Nearby Area
+
+Best Nearby compares nearby forecast grid points. When modeled brightness is valid for every scorable candidate, ranking, displayed score, category, and comparisons all use Observing Quality. If any candidate lacks valid brightness, the entire result set uses Night Conditions instead; the app never mixes the two score modes in one search. Suitability checks cannot verify roads, parking, ownership, legal access, safety, or local horizon obstructions, so confirm a destination before traveling.
+
 ## Use Home Screen Widgets
 
 Widgets use the location selected in Astro Viewing Conditions and the app's cached forecast data. Dates and times use that location's time zone. Refresh the app after changing locations or when a widget asks for an update; the widgets re-evaluate their timelines about hourly and show a clear unavailable message when no selected location, matching forecast, or fresh cached data is available. They retain the normal system appearance when the app uses Field Mode.
 
-- **Night Conditions** is the adaptive small and medium widget; its medium layout is headed **Tonight at a Glance**. It shows the night score and verdict, early-to-late trend, best observing window or a no-night/limiting message, and—when space permits—clouds, seeing, and transparency.
+- **Night Conditions** is the adaptive small and medium widget; its medium layout is headed **Tonight at a Glance**. Its headline uses Observing Quality when validated companion brightness is available and otherwise falls back exactly to Night Conditions. It also shows the verdict, early-to-late Night Conditions trend, best observing window or a no-night/limiting message, and—when space permits—clouds, seeing, and transparency.
 - **Tonight’s Targets** is a medium widget. It shows up to three recommended targets, with score, best time, and, where space permits, category plus compass direction and altitude in degrees. A night with no recommendations says so.
-- **Three-Night Outlook** is a medium widget for Tonight, Tomorrow, and Day After. It compares each night's score, verdict, and best window or status, and marks the highest available score as **Best**.
+- **Three-Night Outlook** is a medium widget for Tonight, Tomorrow, and Day After. It compares each night's Observing Quality when validated brightness is available, otherwise its exact Night Conditions score, plus verdict and best window or status; it marks the highest available score as **Best**.
 
 The widgets are informational. Tapping one opens Astro Conditions, but it does not navigate to a specific screen or provide controls directly in the widget.
+
+The Apple Watch dashboard and score-bearing complications follow the same Observing Quality rule for saved locations and explicitly requested Current Location updates. The atlas itself is not installed on the watch; invalid, missing, mismatched, or incompatible transferred data falls back exactly to Night Conditions.
 
 ## Follow an ISS Pass
 

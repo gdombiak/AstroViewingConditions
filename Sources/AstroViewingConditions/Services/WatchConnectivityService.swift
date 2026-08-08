@@ -103,7 +103,17 @@ public class WatchConnectivityService: NSObject, ObservableObject {
     
     public func sendConditionsToWatch(_ conditions: ViewingConditions) {
         guard let data = try? JSONEncoder().encode(conditions) else { return }
-        sendViaApplicationContext(type: "conditions", payload: ["conditions": data])
+        var payload: [String: Any] = ["conditions": data]
+        // Phase 4B: optional saved-location OQ block (old watch ignores unknown keys).
+        if let selected = LocationStorageService.shared.loadSelectedLocation(),
+           let oq = WatchObservingQualityPayloadBuilder.makeSavedLocationPayload(
+            conditions: conditions,
+            selectedLocation: selected
+           ),
+           let oqData = try? JSONEncoder().encode(oq) {
+            payload["observingQuality"] = oqData
+        }
+        sendViaApplicationContext(type: "conditions", payload: payload)
     }
     
     public func sendSelectedLocationToWatch(_ location: SelectedLocation) {
@@ -198,7 +208,7 @@ extension WatchConnectivityService: WCSessionDelegate {
             case "requestLocations":
                 handleRequestLocations(replyHandler: replyHandler)
             case "requestConditions":
-                handleRequestConditions(replyHandler: replyHandler)
+                handleRequestConditions(message, replyHandler: replyHandler)
             case "selectedLocationFromWatch":
                 if let data = message["selectedLocation"] as? Data,
                    let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) {
@@ -238,22 +248,38 @@ extension WatchConnectivityService: WCSessionDelegate {
         replyHandler?(reply)
     }
     
-    nonisolated private func handleRequestConditions(replyHandler: (([String: Any]) -> Void)?) {
+    nonisolated private func handleRequestConditions(
+        _ message: [String: Any],
+        replyHandler: (([String: Any]) -> Void)?
+    ) {
         print("WatchConnectivityService: Handling request for conditions")
         
         guard let replyHandler else { return }
         let replyHandlerBox = WatchReplyHandler(replyHandler)
+
+        // Optional Phase 4C Current Location request context (additive; old phones ignore).
+        // Presence of the key means CL intent — never fall through to saved-location OQ
+        // when the key is present but decode/validation fails.
+        let clRequestIntent = Self.parseCurrentLocationRequestIntent(from: message)
         
         Task {
             var reply: [String: Any] = ["status": "ok"]
 
-            if let conditions = await conditionsForWatchRequest() {
+            if let conditions = await conditionsForWatchRequest(clRequestIntent: clRequestIntent) {
                 let watchConditions = conditions.limitedToTonightCache()
                 if let data = try? JSONEncoder().encode(watchConditions) {
                     reply["conditions"] = data
                 } else {
                     replyHandlerBox.reply(["status": "error", "message": "Failed to encode conditions"])
                     return
+                }
+
+                if let oq = await observingQualityPayload(
+                    for: watchConditions,
+                    clRequestIntent: clRequestIntent
+                ),
+                   let oqData = try? JSONEncoder().encode(oq) {
+                    reply["observingQuality"] = oqData
                 }
             } else {
                 replyHandlerBox.reply(["status": "error", "message": "No cached conditions"])
@@ -269,15 +295,103 @@ extension WatchConnectivityService: WCSessionDelegate {
         }
     }
 
+    /// How the watch framed this conditions request for OQ purposes.
+    private enum CurrentLocationRequestIntent: Sendable {
+        /// No `currentLocationRequest` key — saved-location / legacy path.
+        case absent
+        /// Key present and structurally valid.
+        case valid(WatchCurrentLocationRequestContext)
+        /// Key present but missing/malformed/invalid — never use saved OQ.
+        case invalid
+    }
+
+    nonisolated private static func parseCurrentLocationRequestIntent(
+        from message: [String: Any]
+    ) -> CurrentLocationRequestIntent {
+        guard message.keys.contains("currentLocationRequest") else {
+            return .absent
+        }
+        guard let data = message["currentLocationRequest"] as? Data,
+              let decoded = try? JSONDecoder().decode(
+                WatchCurrentLocationRequestContext.self,
+                from: data
+              ),
+              decoded.isStructurallyValid
+        else {
+            return .invalid
+        }
+        return .valid(decoded)
+    }
+
     @MainActor
-    private func conditionsForWatchRequest() async -> ViewingConditions? {
-        let location = await watchRequestLocation()
+    private func conditionsForWatchRequest(
+        clRequestIntent: CurrentLocationRequestIntent
+    ) async -> ViewingConditions? {
+        let location: CachedLocation?
+        switch clRequestIntent {
+        case let .valid(request):
+            // Watch-supplied coordinates are authoritative for Phase 4C.
+            location = request.asCachedLocation
+        case .invalid:
+            // Malformed CL context: do not fall back to phone-selected location.
+            location = nil
+        case .absent:
+            location = await watchRequestLocation()
+        }
         return await WatchConditionsRequestAcquirer(
             conditionsRepository: conditionsRepository
         ).conditions(
             for: location,
             apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? "",
             referenceDate: Date()
+        )
+    }
+
+    /// Builds saved-location (4B) or correlated Current Location (4C) OQ when possible.
+    @MainActor
+    private func observingQualityPayload(
+        for conditions: ViewingConditions,
+        clRequestIntent: CurrentLocationRequestIntent
+    ) async -> WatchObservingQualityPayload? {
+        switch clRequestIntent {
+        case let .valid(request):
+            // Phase 4C: sample at watch-requested coordinates using process bootstrap only.
+            let sample = await currentLocationBrightnessSample(
+                latitude: request.latitude,
+                longitude: request.longitude
+            )
+            return WatchObservingQualityPayloadBuilder.makeCurrentLocationPayload(
+                conditions: conditions,
+                request: request,
+                sample: sample
+            )
+        case .invalid:
+            // Explicit CL attempt that failed validation — do not attach saved-location OQ.
+            return nil
+        case .absent:
+            // Phase 4B: saved-location App Group companion path.
+            let selectedLoc = LocationStorageService.shared.loadSelectedLocation()
+            guard let selectedLoc else { return nil }
+            return WatchObservingQualityPayloadBuilder.makeSavedLocationPayload(
+                conditions: conditions,
+                selectedLocation: selectedLoc
+            )
+        }
+    }
+
+    /// Non-blocking provider reuse — does not start a second atlas load.
+    @MainActor
+    private func currentLocationBrightnessSample(
+        latitude: Double,
+        longitude: Double
+    ) async -> ModeledZenithBrightnessSample? {
+        let provider = await LightPollutionProviderBootstrap.shared.currentProvider()
+        guard let provider else { return nil }
+        return ModeledZenithBrightnessResolver.sample(
+            from: provider,
+            latitude: latitude,
+            longitude: longitude,
+            savedLocationID: nil
         )
     }
 

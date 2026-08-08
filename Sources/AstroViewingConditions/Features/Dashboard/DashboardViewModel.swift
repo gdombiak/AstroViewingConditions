@@ -170,6 +170,7 @@ final class DashboardLocationLoader {
     private let saveSelection: (SelectedLocation) -> Void
     private let hadPersistedSelection: Bool
     private let locationSession: DashboardLocationSession
+    private let brightnessPublisher: any CurrentLocationBrightnessPublishing
     private var selectionGeneration = 0
     private var internallyResolvedSelection: SelectedLocation?
 
@@ -177,7 +178,8 @@ final class DashboardLocationLoader {
         persistedSelection: SelectedLocation?,
         provider: any DashboardCurrentLocationProviding,
         saveSelection: @escaping (SelectedLocation) -> Void,
-        locationSession: DashboardLocationSession = DashboardLocationSession()
+        locationSession: DashboardLocationSession = DashboardLocationSession(),
+        brightnessPublisher: any CurrentLocationBrightnessPublishing = AppCurrentLocationBrightnessPublisher.shared
     ) {
         let selection = persistedSelection ?? Self.currentLocationSelection
         self.selectedLocation = selection
@@ -185,6 +187,7 @@ final class DashboardLocationLoader {
         self.saveSelection = saveSelection
         self.hadPersistedSelection = persistedSelection != nil
         self.locationSession = locationSession
+        self.brightnessPublisher = brightnessPublisher
     }
 
     func restoreSelection(using savedLocations: [CachedLocation]) {
@@ -251,6 +254,12 @@ final class DashboardLocationLoader {
             selectedLocation = selection
             internallyResolvedSelection = selection
             saveSelection(selection)
+            // Injected publisher: stamps revision + enqueues CL brightness sync.
+            // Not hard-wired to bootstrap/coordinator; tests inject no-op/recording.
+            brightnessPublisher.publishResolvedCurrentLocation(
+                latitude: resolved.latitude,
+                longitude: resolved.longitude
+            )
             return .resolvedSelectionUpdated
         } catch {
             guard requestGeneration == selectionGeneration,
@@ -351,6 +360,32 @@ public class DashboardViewModel {
         }
     }
 
+    /// Identity of a dashboard observing-quality assessment.
+    ///
+    /// Exact coordinate bit patterns + night score + readiness + environment revision.
+    /// Not score-only: two sites with the same night score can differ in OQ.
+    private struct ObservingQualityCacheKey: Equatable {
+        let nightConditionsScore: Int
+        let latitudeBits: UInt64
+        let longitudeBits: UInt64
+        let readiness: LightPollutionReadiness
+        let environmentRevision: UInt
+
+        init(
+            nightConditionsScore: Int,
+            latitude: Double,
+            longitude: Double,
+            readiness: LightPollutionReadiness,
+            environmentRevision: UInt
+        ) {
+            self.nightConditionsScore = nightConditionsScore
+            self.latitudeBits = latitude.bitPattern
+            self.longitudeBits = longitude.bitPattern
+            self.readiness = readiness
+            self.environmentRevision = environmentRevision
+        }
+    }
+
     private final class ConditionsLoadOperation {
         var task: Task<Void, Never>!
     }
@@ -358,6 +393,7 @@ public class DashboardViewModel {
     // Services
     private let conditionsRepository: SharedConditionsRepository
     private let targetRecommendationService: any TargetRecommendationProviding
+    private let observingQualityEnvironment: any ObservingQualityEnvironment
     private let now: @Sendable () -> Date
     
     // State
@@ -366,6 +402,20 @@ public class DashboardViewModel {
     public var error: (any Error)?
     public private(set) var issError: ISSError?
     public var selectedDay: DaySelection = .today
+    /// Mirror of process light-pollution readiness (set by composition root, not views).
+    public private(set) var lightPollutionReadiness: LightPollutionReadiness = .loading
+    /// Bumped when readiness/provider changes so @Observable clients refresh.
+    private var observingQualityRevision: UInt = 0
+
+    /// Single-entry in-memory cache for dashboard observing-quality assessments.
+    /// Prevents repeated atlas `assess` calls during SwiftUI body re-evaluation.
+    /// Not persisted; never shared across processes.
+    ///
+    /// `@ObservationIgnored`: filling this memoization entry must not invalidate observing
+    /// clients (SwiftUI body) — only real inputs (`viewingConditions`, readiness, revision, day)
+    /// should trigger reevaluation.
+    @ObservationIgnored
+    private var observingQualityCache: (key: ObservingQualityCacheKey, assessment: ObservingQualityAssessment)?
     
     private var apiKey: String
     public private(set) var locationTimeZone: TimeZone?
@@ -520,36 +570,6 @@ public class DashboardViewModel {
         }
         return nil
     }
-    
-    public var currentNightQuality: NightQualityAssessment? {
-        guard let conditions = viewingConditions,
-              let sunEventsToday = currentSunEvents,
-              let moonInfo = currentMoonInfo else {
-            return nil
-        }
-        
-        let calendar = locationCalendar
-        let tomorrowIndex = conditionsDayIndex + 1
-        let sunEventsTomorrow = tomorrowIndex >= 0 && tomorrowIndex < conditions.dailySunEvents.count
-            ? conditions.dailySunEvents[tomorrowIndex]
-            : nil
-        guard let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: now())) else {
-            return nil
-        }
-        
-        let nightForecasts = nightTimeForecasts
-        
-        return NightQualityAnalyzer.analyzeNight(
-            forecasts: nightForecasts,
-            sunEventsToday: sunEventsToday,
-            sunEventsTomorrow: sunEventsTomorrow,
-            moonInfo: moonInfo,
-            latitude: conditions.location.latitude,
-            longitude: conditions.location.longitude,
-            for: targetDate,
-            calendar: calendar
-        )
-    }
 
     var currentBestTargetsPresentation: BestTargetsListPresentation {
         guard let conditions = viewingConditions,
@@ -599,13 +619,110 @@ public class DashboardViewModel {
         conditionsProvider: ConditionsProvider = ConditionsProvider(),
         conditionsRepository: SharedConditionsRepository? = nil,
         targetRecommendationService: any TargetRecommendationProviding = DefaultTargetRecommendationService(),
+        observingQualityEnvironment: (any ObservingQualityEnvironment)? = nil,
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.apiKey = apiKey
         self.conditionsRepository = conditionsRepository
             ?? SharedConditionsRepository(provider: conditionsProvider, now: now)
         self.targetRecommendationService = targetRecommendationService
+        // Safe default: exact night-score fallback. Never an unbootstrapped `.loading` session.
+        // ContentView injects the process-owned ObservingQualitySession that it bootstraps.
+        let environment = observingQualityEnvironment ?? UnavailableObservingQualityEnvironment.shared
+        self.observingQualityEnvironment = environment
+        self.lightPollutionReadiness = environment.lightPollutionReadiness
         self.now = now
+    }
+
+    /// Called by the process composition root after light-pollution bootstrap completes
+    /// (or when test installs a provider). Feature views must not call LPATLAS1 loaders.
+    public func syncLightPollutionReadinessFromEnvironment() {
+        lightPollutionReadiness = observingQualityEnvironment.lightPollutionReadiness
+        observingQualityRevision &+= 1
+    }
+
+    /// Night-conditions assessment (weather/Moon/darkness details). Unchanged by light pollution.
+    public var currentNightQuality: NightQualityAssessment? {
+        guard let conditions = viewingConditions,
+              let sunEventsToday = currentSunEvents,
+              let moonInfo = currentMoonInfo else {
+            return nil
+        }
+
+        let calendar = locationCalendar
+        let tomorrowIndex = conditionsDayIndex + 1
+        let sunEventsTomorrow = tomorrowIndex >= 0 && tomorrowIndex < conditions.dailySunEvents.count
+            ? conditions.dailySunEvents[tomorrowIndex]
+            : nil
+        guard let targetDate = calendar.date(byAdding: .day, value: selectedDay.rawValue, to: calendar.startOfDay(for: now())) else {
+            return nil
+        }
+
+        let nightForecasts = nightTimeForecasts
+
+        return NightQualityAnalyzer.analyzeNight(
+            forecasts: nightForecasts,
+            sunEventsToday: sunEventsToday,
+            sunEventsTomorrow: sunEventsTomorrow,
+            moonInfo: moonInfo,
+            latitude: conditions.location.latitude,
+            longitude: conditions.location.longitude,
+            for: targetDate,
+            calendar: calendar
+        )
+    }
+
+    /// True when night conditions exist but the headline must wait for LP readiness.
+    /// Avoids flashing night-only score as if it were finalized observing quality.
+    public var isObservingQualityHeadlinePending: Bool {
+        _ = observingQualityRevision
+        return currentNightQuality != nil && lightPollutionReadiness == .loading
+    }
+
+    /// Observing quality for the dashboard headline once light-pollution readiness is resolved.
+    ///
+    /// - Returns `nil` while `lightPollutionReadiness == .loading` (do not show interim score).
+    /// - When `.ready` or `.unavailable`, always returns an assessment if night quality exists
+    ///   (unavailable → exact night-conditions score, `lightPollution == nil`).
+    /// - Uses a single-entry in-memory cache keyed by night score, exact coordinates,
+    ///   readiness, and environment revision so SwiftUI re-renders do not re-hit the atlas.
+    public var currentObservingQuality: ObservingQualityAssessment? {
+        _ = observingQualityRevision
+        guard lightPollutionReadiness != .loading else {
+            // Never cache interim/loading as a finalized result.
+            return nil
+        }
+        guard let nightQuality = currentNightQuality,
+              let conditions = viewingConditions else {
+            return nil
+        }
+
+        let latitude = conditions.location.latitude
+        let longitude = conditions.location.longitude
+        let key = ObservingQualityCacheKey(
+            nightConditionsScore: nightQuality.calculatedScore,
+            latitude: latitude,
+            longitude: longitude,
+            readiness: lightPollutionReadiness,
+            environmentRevision: observingQualityRevision
+        )
+        if let cached = observingQualityCache, cached.key == key {
+            return cached.assessment
+        }
+
+        let assessment = observingQualityEnvironment.assess(
+            nightConditionsScore: nightQuality.calculatedScore,
+            latitude: latitude,
+            longitude: longitude
+        )
+        observingQualityCache = (key, assessment)
+        return assessment
+    }
+
+    /// Headline presentation derived only from observing-quality score (not night rating bands).
+    public var currentObservingQualityHeadline: ObservingQualityHeadlinePresentation? {
+        guard let assessment = currentObservingQuality else { return nil }
+        return ObservingQualityHeadlinePresentation(assessment: assessment)
     }
 
     private static func logUITargetRecommendations(
@@ -711,22 +828,62 @@ public class DashboardViewModel {
     private func publishCompanionConditions() async {
         guard let conditions = viewingConditions else { return }
         let companionConditions = conditions.limitedToTonightCache()
-        if let widgetSummary = WidgetNightSummary.make(from: companionConditions) {
+        // Authoritative selection only — never infer source from conditions.location / CachedLocation.id.
+        let locationContext = Self.authoritativeLocationContext(
+            selected: LocationStorageService.shared.loadSelectedLocation(),
+            conditionsLocation: companionConditions.location
+        )
+        let widgetSummary: WidgetNightSummary?
+        if let locationContext {
+            widgetSummary = WidgetNightSummaryPublisher.makeEnriched(
+                from: companionConditions,
+                location: locationContext
+            )
+        } else {
+            widgetSummary = WidgetNightSummaryPublisher.makeNightOnlyV1(from: companionConditions)
+        }
+        if let widgetSummary {
             await AppGroupStorage.saveWidgetNightSummaryAsync(widgetSummary)
         }
         await publishTonightTargets(from: conditions)
-        await publishThreeNightOutlook(from: conditions)
+        await publishThreeNightOutlook(from: conditions, locationContext: locationContext)
         WatchConnectivityService.shared.sendConditionsToWatch(companionConditions)
         
         WidgetReloadService.shared.scheduleReload()
     }
 
-    private func publishThreeNightOutlook(from conditions: ViewingConditions) async {
+    /// Builds OQ context only when selection is authoritative and matches conditions location.
+    private static func authoritativeLocationContext(
+        selected: SelectedLocation?,
+        conditionsLocation: CachedLocation
+    ) -> CrossSurfaceLocationContext? {
+        guard let selected,
+              let context = CrossSurfaceLocationContext.make(from: selected) else {
+            return nil
+        }
+        // Require same effective site as published conditions (ID when saved; else tight coord match).
+        let matches = WidgetLocationIdentity.matches(
+            summarySavedLocationID: conditionsLocation.id,
+            selectedSavedLocationID: selected.source == .saved ? selected.id : nil,
+            summaryLatitude: conditionsLocation.latitude,
+            summaryLongitude: conditionsLocation.longitude,
+            selectedLatitude: selected.latitude,
+            selectedLongitude: selected.longitude
+        )
+        guard matches else { return nil }
+        return context
+    }
+
+    private func publishThreeNightOutlook(
+        from conditions: ViewingConditions,
+        locationContext: CrossSurfaceLocationContext?
+    ) async {
         let referenceDate = now()
         let existing = await AppGroupStorage.loadWidgetThreeNightOutlookSummaryAsync()
         switch ThreeNightOutlookWidgetPayloadBuilder.publicationDecision(
             conditions: conditions, existingSummary: existing,
-            referenceDate: referenceDate, timeZone: displayTimeZone
+            referenceDate: referenceDate, timeZone: displayTimeZone,
+            locationContext: locationContext
         ) {
         case let .publish(summary):
             if ThreeNightOutlookPersistencePolicy.shouldSave(
@@ -890,8 +1047,12 @@ public class DashboardViewModel {
 
         if let conditions = viewingConditions,
            conditionsMatch(conditions, location: location) {
+            let locationContext = Self.authoritativeLocationContext(
+                selected: LocationStorageService.shared.loadSelectedLocation(),
+                conditionsLocation: conditions.location
+            )
             await publishTonightTargets(from: conditions)
-            await publishThreeNightOutlook(from: conditions)
+            await publishThreeNightOutlook(from: conditions, locationContext: locationContext)
         } else {
             await publishUnavailableTonightTargets(for: location)
             await publishUnavailableThreeNightOutlook(for: location)

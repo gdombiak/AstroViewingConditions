@@ -1,0 +1,16 @@
+[project]
+name = "light-pollution-harness"
+version = "0.1.0"
+description = "Oregon validation harness for David Lorenz 2025 zenith sky brightness atlas"
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.setuptools.packages.find]
+include = ["light_pollution*"]

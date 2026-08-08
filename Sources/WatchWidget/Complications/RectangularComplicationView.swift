@@ -3,6 +3,18 @@ import SharedCode
 
 struct RectangularComplicationView: View {
     var assessment: NightQualityAssessment
+    var headlineScore: Int
+    var scorePresentationMode: WatchHeadlineScorePresentationMode
+
+    init(
+        assessment: NightQualityAssessment,
+        headlineScore: Int? = nil,
+        scorePresentationMode: WatchHeadlineScorePresentationMode = .nightConditionsFallback
+    ) {
+        self.assessment = assessment
+        self.headlineScore = headlineScore ?? assessment.calculatedScore
+        self.scorePresentationMode = scorePresentationMode
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -10,9 +22,9 @@ struct RectangularComplicationView: View {
                 Label("Night Conditions", systemImage: "sparkles")
                     .font(.system(size: 12, weight: .medium))
                 Spacer()
-                Text("\(assessment.calculatedScore)")
+                Text("\(headlineScore)")
                     .font(.system(size: 19, weight: .bold, design: .rounded))
-                    .foregroundStyle(assessment.scoreColor(for: assessment.calculatedScore))
+                    .foregroundStyle(assessment.scoreColor(for: headlineScore))
                 Text("/100")
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
@@ -31,6 +43,9 @@ struct RectangularComplicationView: View {
                     .lineLimit(2)
             }
         }
+        // Visible layout unchanged; accessibility distinguishes OQ vs weather-only fallback.
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(scorePresentationMode.accessibilityLabel(score: headlineScore))
         .containerBackground(.clear, for: .widget)
     }
 }

@@ -3,16 +3,56 @@ import SharedCode
 
 struct WatchNightQualityCard: View {
     let assessment: NightQualityAssessment
+    /// Overall headline score (OQ when Phase 4B enhancement is valid).
+    var headlineScore: Int
+    var headlineVerdict: String
+    /// Category emoji from the same score band as `headlineScore` (not night `assessment.rating`).
+    var headlineEmoji: String
+    /// Canonical OQ vs night-only fallback (from brightness availability, not score equality).
+    var scorePresentationMode: WatchHeadlineScorePresentationMode
+
+    init(
+        assessment: NightQualityAssessment,
+        headlineScore: Int? = nil,
+        headlineVerdict: String? = nil,
+        headlineEmoji: String? = nil,
+        scorePresentationMode: WatchHeadlineScorePresentationMode = .nightConditionsFallback
+    ) {
+        self.assessment = assessment
+        let score = headlineScore ?? assessment.calculatedScore
+        self.headlineScore = score
+        self.headlineVerdict = headlineVerdict
+            ?? CrossSurfaceHeadlineScorePresentation.verdict(for: score)
+        self.headlineEmoji = headlineEmoji
+            ?? CrossSurfaceHeadlineScorePresentation.emoji(for: score)
+        self.scorePresentationMode = scorePresentationMode
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(assessment.rating.emoji)
+                Text(headlineEmoji)
                     .font(.title2)
-                Text("\(assessment.calculatedScore)/100")
+                    .accessibilityHidden(true)
+                Text("\(headlineScore)/100")
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundStyle(scoreColor)
+                    .accessibilityLabel(
+                        WatchDashboardScoreAccessibility.label(
+                            score: headlineScore,
+                            presentationMode: scorePresentationMode,
+                            verdict: headlineVerdict
+                        )
+                    )
+            }
+
+            if let fallbackHint = scorePresentationMode.visibleFallbackHint {
+                Text(fallbackHint)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    // Visible only; VoiceOver uses dashboardAccessibilityLabel (includes LP unavailable once).
+                    .accessibilityHidden(true)
             }
 
             Text(assessment.summary)
@@ -49,7 +89,8 @@ struct WatchNightQualityCard: View {
     }
 
     private var scoreColor: Color {
-        assessment.scoreColor
+        // Same 0…100 bands as ObservingQualityScoreBand / Night Conditions widgets.
+        assessment.scoreColor(for: headlineScore)
     }
 }
 

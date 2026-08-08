@@ -17,3 +17,14 @@ enum TargetScoreColorProvider {
         }
     }
 }
+
+/// User-facing terminology for Best Targets recommendation scores (not environmental OQ).
+enum TargetScorePresentation {
+    /// Concise label for Target Details and accessibility.
+    static let conciseLabel = "Target score"
+
+    /// Deterministic VoiceOver wording for a target recommendation score.
+    static func accessibilityLabel(score: Int) -> String {
+        "\(conciseLabel) \(score) out of 100"
+    }
+}

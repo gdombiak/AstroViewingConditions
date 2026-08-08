@@ -1,0 +1,14 @@
+{
+  "description": "Public representative regression points for Oregon validation. Edit freely; do not store private user coordinates.",
+  "points": [
+    {"id": "portland_downtown", "name": "Downtown Portland", "lon": -122.6765, "lat": 45.5231},
+    {"id": "beaverton", "name": "Beaverton", "lon": -122.8037, "lat": 45.4871},
+    {"id": "urban_rural_west", "name": "Urban-to-rural edge west of Portland", "lon": -123.05, "lat": 45.52},
+    {"id": "mount_hood", "name": "Mount Hood", "lon": -121.695, "lat": 45.3736},
+    {"id": "bend", "name": "Bend", "lon": -121.3153, "lat": 44.0582},
+    {"id": "eugene", "name": "Eugene", "lon": -123.0868, "lat": 44.0521},
+    {"id": "medford", "name": "Medford", "lon": -122.8756, "lat": 42.3265},
+    {"id": "oregon_coast", "name": "Oregon Coast (Newport area)", "lon": -124.0531, "lat": 44.6368},
+    {"id": "se_dark", "name": "Southeastern Oregon dark skies", "lon": -118.60, "lat": 42.55}
+  ]
+}

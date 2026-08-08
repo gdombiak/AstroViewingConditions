@@ -86,6 +86,163 @@ final class LocationScoreTests: XCTestCase {
         XCTAssertEqual(unchecked.suitability.label, "Weather-only estimate. Access not checked.")
     }
 
+    // MARK: - Suitability verification labels
+
+    func testGeocodingFailedLabelClarifiesLandAreaVerification() {
+        XCTAssertEqual(
+            LocationSuitabilityStatus.unknown(reason: .geocodingFailed).label,
+            "Land check unavailable"
+        )
+    }
+
+    func testTemporarilyUnavailableLabelClarifiesLandAreaVerification() {
+        XCTAssertEqual(
+            LocationSuitabilityStatus.unknown(reason: .temporarilyUnavailable).label,
+            "Land check temporarily unavailable"
+        )
+    }
+
+    // MARK: - Improvement comparison copy
+
+    private func locationWithImprovement(_ delta: Int?, publicScore: Int = 80, nightScore: Int = 90) -> LocationScore {
+        LocationScore(
+            point: createGridPoint(distance: 5, bearing: 90),
+            score: publicScore,
+            nightConditionsScore: nightScore,
+            nightQuality: createNightQuality(),
+            fogScore: createFogScore(score: 10),
+            avgCloudCover: 10,
+            avgWindSpeed: 5,
+            suitability: .suitable,
+            improvementOverCenter: delta,
+            summary: "Mostly clear"
+        )
+    }
+
+    func testImprovementVisiblePositiveSingular() {
+        let score = locationWithImprovement(1)
+        XCTAssertEqual(score.improvementSummary(comparedTo: "Home"), "+1 vs Home")
+    }
+
+    func testImprovementVisiblePositivePlural() {
+        let score = locationWithImprovement(4)
+        XCTAssertEqual(score.improvementSummary(comparedTo: "Home"), "+4 vs Home")
+    }
+
+    func testImprovementVisibleZero() {
+        let score = locationWithImprovement(0)
+        XCTAssertEqual(score.improvementSummary(comparedTo: "Home"), "Same as Home")
+    }
+
+    func testImprovementVisibleNegativeUsesMinusSignAndCenterName() {
+        let score = locationWithImprovement(-2)
+        XCTAssertEqual(score.improvementSummary(comparedTo: "Home"), "−2 vs Home")
+        XCTAssertTrue(score.improvementSummary(comparedTo: "Home")?.contains("−") == true)
+    }
+
+    func testImprovementVisibleUsesActualCenterName() {
+        let score = locationWithImprovement(3)
+        XCTAssertEqual(score.improvementSummary(comparedTo: "Stub Stewart"), "+3 vs Stub Stewart")
+        XCTAssertEqual(score.improvementSummary(comparedTo: "Portland"), "+3 vs Portland")
+    }
+
+    func testImprovementVisibleNilWhenNoCenterComparison() {
+        let score = locationWithImprovement(nil)
+        XCTAssertNil(score.improvementSummary(comparedTo: "Home"))
+    }
+
+    func testImprovementAccessibilityPositiveSingular() {
+        let score = locationWithImprovement(1)
+        XCTAssertEqual(
+            score.improvementAccessibilityDescription(comparedTo: "Home"),
+            "1 point better than Home"
+        )
+    }
+
+    func testImprovementAccessibilityPositivePlural() {
+        let score = locationWithImprovement(4)
+        XCTAssertEqual(
+            score.improvementAccessibilityDescription(comparedTo: "Home"),
+            "4 points better than Home"
+        )
+    }
+
+    func testImprovementAccessibilityZero() {
+        let score = locationWithImprovement(0)
+        XCTAssertEqual(
+            score.improvementAccessibilityDescription(comparedTo: "Home"),
+            "Same score as Home"
+        )
+    }
+
+    func testImprovementAccessibilityNegative() {
+        let score = locationWithImprovement(-2)
+        XCTAssertEqual(
+            score.improvementAccessibilityDescription(comparedTo: "Home"),
+            "2 points below Home"
+        )
+        let singular = locationWithImprovement(-1)
+        XCTAssertEqual(
+            singular.improvementAccessibilityDescription(comparedTo: "Home"),
+            "1 point below Home"
+        )
+    }
+
+    func testImprovementAccessibilityUsesActualCenterName() {
+        let score = locationWithImprovement(5)
+        XCTAssertEqual(
+            score.improvementAccessibilityDescription(comparedTo: "Stub Stewart"),
+            "5 points better than Stub Stewart"
+        )
+    }
+
+    func testWithImprovementUsesPublicScoreNotNightScore() {
+        // Public OQ score 80 vs center 70 → +10; night score 95 must not be used.
+        let base = locationWithImprovement(nil, publicScore: 80, nightScore: 95)
+        let updated = base.withImprovement(comparedTo: 70)
+        XCTAssertEqual(updated.improvementOverCenter, 10)
+        XCTAssertEqual(updated.score, 80)
+        XCTAssertEqual(updated.nightConditionsScore, 95)
+        XCTAssertEqual(updated.improvementSummary(comparedTo: "Home"), "+10 vs Home")
+        XCTAssertEqual(
+            updated.improvementAccessibilityDescription(comparedTo: "Home"),
+            "10 points better than Home"
+        )
+        XCTAssertFalse(updated.improvementSummary(comparedTo: "Home")?.contains("95") == true)
+    }
+
+    func testOldQualitativeImprovementPhrasesAreGone() {
+        for delta in [-5, 0, 1, 4, 12, 25] {
+            let score = locationWithImprovement(delta)
+            let visible = score.improvementSummary(comparedTo: "Home") ?? ""
+            let a11y = score.improvementAccessibilityDescription(comparedTo: "Home") ?? ""
+            for phrase in [
+                "Small improvement",
+                "Worth considering",
+                "Strong improvement",
+                "Not meaningfully better than your location",
+                "Current location not scored",
+            ] {
+                XCTAssertFalse(visible.contains(phrase), "visible still has '\(phrase)' for delta \(delta)")
+                XCTAssertFalse(a11y.contains(phrase), "a11y still has '\(phrase)' for delta \(delta)")
+            }
+        }
+    }
+
+    func testResultCardAccessibilityIncludesDescriptiveImprovementNotCompactForm() {
+        let score = locationWithImprovement(4, publicScore: 84, nightScore: 90)
+        let label = BestSpotResultCard.accessibilityLabel(
+            locationScore: score,
+            rank: 1,
+            scoringMode: .observingQuality,
+            centerLocationName: "Home"
+        )
+        XCTAssertTrue(label.contains("4 points better than Home"))
+        XCTAssertFalse(label.contains("+4 vs Home"), "VoiceOver must not duplicate compact form")
+        XCTAssertTrue(label.contains("Observing quality score 84 out of 100"))
+        XCTAssertFalse(label.contains("90"), "must not surface nightConditionsScore in OQ mode")
+    }
+
     func testDefaultBestSpotMapAnnotationsUseTopLocationsOnly() {
         let first = LocationScore(
             point: createGridPoint(distance: 4, bearing: 90),

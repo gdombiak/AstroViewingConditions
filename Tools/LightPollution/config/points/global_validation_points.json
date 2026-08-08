@@ -1,0 +1,90 @@
+{
+  "description": "Deterministic named points for LPATLAS1 production validation (source TIFF vs artifact). Values are not embedded so results stay reproducible from the source.",
+  "source_atlas": "zenith_brightness_v22_2025.tiff",
+  "points": [
+    {
+      "id": "home",
+      "latitude": 45.45,
+      "longitude": -122.75,
+      "notes": "Reference home site; source ≈ 18.5896816253662 mag/arcsec²"
+    },
+    {
+      "id": "stub_stewart",
+      "latitude": 45.736,
+      "longitude": -123.192,
+      "notes": "Stub Stewart State Park; source ≈ 21.3461055755615 mag/arcsec²"
+    },
+    {
+      "id": "downtown_portland",
+      "latitude": 45.515,
+      "longitude": -122.678,
+      "notes": "Representative bright urban"
+    },
+    {
+      "id": "nyc",
+      "latitude": 40.7128,
+      "longitude": -74.006,
+      "notes": "Representative bright urban"
+    },
+    {
+      "id": "dark_oregon_coast_range",
+      "latitude": 45.3,
+      "longitude": -123.6,
+      "notes": "Representative darker regional site"
+    },
+    {
+      "id": "chile_atacama",
+      "latitude": -24.5,
+      "longitude": -70.4,
+      "notes": "Southern dark-sky band"
+    },
+    {
+      "id": "namibia",
+      "latitude": -23.0,
+      "longitude": 15.0,
+      "notes": "Southern dark-sky band"
+    },
+    {
+      "id": "date_line_west",
+      "latitude": 0.0,
+      "longitude": 179.9,
+      "notes": "Near +180 date line"
+    },
+    {
+      "id": "date_line_east",
+      "latitude": 0.0,
+      "longitude": -179.9,
+      "notes": "Near -180 date line"
+    },
+    {
+      "id": "north_limit",
+      "latitude": 74.99,
+      "longitude": -122.0,
+      "notes": "Near northern source latitude limit"
+    },
+    {
+      "id": "south_limit",
+      "latitude": -64.99,
+      "longitude": 0.0,
+      "notes": "Near southern source latitude limit (~75 - 16801/120)"
+    },
+    {
+      "id": "ocean_pacific",
+      "latitude": 0.0,
+      "longitude": -150.0,
+      "notes": "Open ocean; atlas often models near-pristine rather than NoData"
+    },
+    {
+      "id": "out_of_lat_north",
+      "latitude": 80.0,
+      "longitude": 0.0,
+      "notes": "Outside source coverage → unavailable"
+    },
+    {
+      "id": "out_of_lat_south",
+      "latitude": -70.0,
+      "longitude": 0.0,
+      "notes": "Outside source coverage → unavailable"
+    }
+  ]
+}
