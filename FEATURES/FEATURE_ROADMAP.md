@@ -10,8 +10,7 @@ The strategic path for the next product work is:
 
 1. Make scores, difficulty, and personalized guidance easier to understand.
 2. Make recommendations location-realistic with simple horizon constraints.
-3. Make Best Targets location-aware of the already-modeled sky darkness while keeping target scoring distinct from environmental Observing Quality.
-4. Turn trustworthy recommendations into an actionable observing plan.
+3. Turn trustworthy recommendations into an actionable observing plan.
 
 ## Current Product
 
@@ -43,7 +42,7 @@ The strategic path for the next product work is:
 
 The catalog is intentionally curated rather than a complete Messier/NGC database. Recommendations should remain understandable and field-useful as it grows.
 
-The numeric **Target score** remains separate from environmental Observing Quality and from equipment suitability. Best Targets terminology now makes that separation explicit, but target scoring and ranking are not yet light-pollution-aware or equipment-aware.
+The numeric **Target score** intentionally remains separate from environmental Observing Quality and equipment suitability. Equipment personalization affects suitability guidance and filtering, not Target score or ranking. Target-specific or equipment-aware light-pollution scoring is intentionally out of current product scope; reconsider it only if user feedback demonstrates a recommendation problem and a reliable catalog-wide approach can be developed.
 
 ### Equipment Personalization
 
@@ -114,7 +113,7 @@ Made Best Targets more useful for the equipment an observer has available:
 
 ## Next Feature Release
 
-The recommended next major Best Targets feature is simple horizon constraints per saved location. Equipment-aware matching and filtering are already implemented; equipment should not alter numeric scoring or ordering unless field validation demonstrates a clear user benefit.
+The recommended next major Best Targets feature is simple horizon constraints per saved location. Equipment-aware matching and filtering are already implemented; equipment does not alter numeric scoring or ordering.
 
 ### Simple Horizon Constraints
 
@@ -153,13 +152,13 @@ The recommended next major Best Targets feature is simple horizon constraints pe
 
 As a small polish item, make the distinction among the numeric target suitability score, intrinsic Easy / Standard / Challenge intent, and equipment fit discoverable inside the app.
 
-## Later Product Backlog
+## Light-Pollution Product Boundary
 
-### Light-Pollution-Aware Best Targets
-
-The offline David Lorenz 2025 atlas and environmental Observing Quality are implemented. Future Best Targets work may use modeled zenith sky brightness as target-specific context, but must keep the numeric Target score distinct from environmental Observing Quality and equipment suitability. The current target scoring and ranking are not light-pollution-aware.
+The offline David Lorenz 2025 atlas and environmental Observing Quality are implemented; this is the completed light-pollution feature. Target score intentionally does not use the light-pollution atlas and remains separate from environmental Observing Quality and equipment suitability. Target-specific or equipment-aware light-pollution scoring is intentionally out of scope because selectively modeled adjustments would make catalog scores less consistently comparable. Reconsider it only if user feedback demonstrates a real recommendation problem and a reliable catalog-wide approach can be developed.
 
 Preserve the atlas's modeled zenith-sky-brightness semantics and do not present values as direct Bortle classifications. Follow the canonical atlas update, permission, packaging, and validation procedure in `Tools/LightPollution/VALIDATION_RESULTS.md` rather than reopening the completed feasibility experiment.
+
+## Later Product Backlog
 
 ### Imaging Windows
 
@@ -203,7 +202,6 @@ These remain valuable but are lower priority than the next-release foundation ab
 
 - [ ] Carefully expand the curated deep-sky catalog while retaining verified metadata and imagery rights
 - [ ] Add constellation and star-hopping context where it materially helps observers
-- [ ] Extend Best Targets with modeled light-pollution context using the validated offline atlas, without conflating Target score and environmental Observing Quality
 - [ ] Shareable observing plan or conditions summary
 
 ## Reliability, Validation, and Release Polish

@@ -8,7 +8,7 @@ Durable constraints for work under `Tools/LightPollution/`.
 - Average magnitude values directly in the **preferred** aggregation path (linear-brightness average is required).
 - Call atlas values or product test bands "Bortle classes."
 - Modify production Swift code or app resources unless explicitly requested.
-- Fold light pollution into `NightQualityAnalyzer`, or reuse the environmental Observing Quality penalty as Best Targets scoring. Target-specific Best Targets light-pollution integration may change only when explicitly in scope.
+- Fold light pollution into `NightQualityAnalyzer`, or reuse the environmental Observing Quality penalty as Best Targets scoring. Target-specific Best Targets light-pollution scoring is intentionally out of current product scope; reconsider it only when the product decision is explicitly reopened based on demonstrated user need and a reliable catalog-wide approach.
 - Re-implement Observing Quality penalty anchors or fallback behavior outside `ObservingQualityCalculator`.
 - Regenerate or replace the committed production binary merely because tooling was run. Atlas adoption requires the release procedure in `VALIDATION_RESULTS.md` and explicit permission review for that source release.
 - Add the production atlas to widgets, watch, watch-widget/complications, or SharedCode. It is a main-iOS-app-only resource.

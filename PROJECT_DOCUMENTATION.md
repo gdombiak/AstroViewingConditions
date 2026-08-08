@@ -55,7 +55,7 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
   - Full target details provide curated finding tips, equipment guidance, observing notes, and difficulty guidance for every named deep-sky catalog target
   - Users can save binoculars, visual telescopes, and Smart / EAA telescopes, choose session-available equipment, and filter by explainable equipment suitability without changing conditions scores or ranking
   - Curated target images are bundled locally with attribution and license metadata
-  - The UI labels the numeric recommendation as **Target score**. Its scoring and ranking are not yet light-pollution-aware or equipment-aware; both remain future work separate from environmental Observing Quality.
+  - The UI labels the numeric recommendation as **Target score**, which intentionally remains separate from environmental Observing Quality. Equipment personalization affects suitability guidance and filtering, not Target score or ranking. Target-specific light-pollution adjustments are deliberately out of scope: some target families require equipment, observer, or observing-intent assumptions, so partial coverage would make apparently comparable scores use different underlying information. Reconsider this only if user feedback identifies a real recommendation problem and a reliable catalog-wide approach can be developed.
 - **ISS Pass Predictions**: Visible ISS passes via N2YO with rise/set range, peak time and elevation, compass path, active-pass handling, and service error messages when a user-provided API key is configured
 - **Fog Score**: Risk calculated from humidity, temperature-dew point difference, visibility, and low cloud cover
 - **Location Management**:
@@ -343,7 +343,7 @@ Important services:
 - [x] Saved-location modeled light-pollution presentation with category, mag/arcsec² value, explanatory footer, and adaptive Dynamic Type layout
 - [x] Python generation, format validation, regional/global fidelity analysis, and release/adoption procedure under `Tools/LightPollution`
 
-Best Targets only received terminology/presentation clarification. Its Target score and ranking remain separate from environmental Observing Quality and are not yet light-pollution-aware or equipment-aware.
+Best Targets only received terminology/presentation clarification. Its Target score intentionally remains separate from environmental Observing Quality; equipment affects suitability guidance and filtering rather than Target score or ranking. Target-specific light-pollution scoring is intentionally out of current product scope.
 
 ---
 
@@ -508,7 +508,7 @@ Implemented:
 - Seeing & Transparency
 - Offline modeled light pollution from the app-only LPATLAS1 v1 artifact
 - Best Nearby Area with coherent Observing Quality ranking or whole-search Night Conditions fallback, checked recommendations, and a recommended-only default map
-- Best Targets with clearly labeled Target scores, observing windows, curated target guidance, equipment-fit filtering, and offline reference images; scoring remains separate from environmental Observing Quality and equipment suitability
+- Best Targets with clearly labeled Target scores, observing windows, curated target guidance, equipment-fit filtering, and offline reference images; Target score intentionally does not use the light-pollution atlas and remains separate from environmental Observing Quality and equipment suitability
 - Persistent My Equipment inventory for binoculars, visual telescopes, and Smart / EAA telescopes
 - Detailed ISS pass paths and error states
 - Renameable and reorderable saved locations

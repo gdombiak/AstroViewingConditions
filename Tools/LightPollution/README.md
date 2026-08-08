@@ -324,4 +324,4 @@ When a new zenith-brightness GeoTIFF is released, revalidate against the **2025 
 
 ## Non-goals
 
-No server, no historical atlas years, no Bortle labeling, no atlas copies in widget/watch/SharedCode targets, no direct persistence of modeled brightness in `SavedLocation` or iCloud, and no light-pollution- or equipment-aware Best Targets scoring in the current implementation.
+No server, no historical atlas years, no Bortle labeling, no atlas copies in widget/watch/SharedCode targets, no direct persistence of modeled brightness in `SavedLocation` or iCloud, and no target-specific or equipment-aware light-pollution scoring in Best Targets. That scoring is intentionally out of current product scope and may be reconsidered only if demonstrated user need supports a reliable catalog-wide approach.

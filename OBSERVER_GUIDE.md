@@ -32,7 +32,7 @@ Best Targets ranks objects for the selected site and night. Depending on what is
 
 Each recommendation includes:
 
-- A **Target score** out of 100. This is a relative planning score for that object under the predicted conditions—not a guarantee that it will be visible. It is separate from environmental Observing Quality and equipment suitability; current target scoring does not use the light-pollution atlas or equipment fit.
+- A **Target score** out of 100. This is a relative planning score for that object under the predicted conditions—not a guarantee that it will be visible. It is separate from environmental Observing Quality and equipment suitability; Target score intentionally does not use the light-pollution atlas or equipment fit.
 - A best observing window, shown in the selected location's local time.
 - A compass direction and approximate maximum altitude. An altitude of 0° is the horizon and 90° is directly overhead.
 - A short explanation of important factors such as darkness, altitude, clouds, haze, or bright moonlight.

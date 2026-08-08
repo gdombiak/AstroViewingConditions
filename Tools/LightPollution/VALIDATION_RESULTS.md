@@ -154,7 +154,7 @@ Errors concentrate on **high/extreme local gradients** (3×3 source range), not 
 - LPATLAS1 v1 is the committed production storage format for the 2025 atlas.
 - The Swift decoder and app-only resource packaging are implemented.
 - Widgets, watch, complications, and SharedCode do not embed the atlas.
-- Dashboard, Best Nearby, widgets, watch, and complications use the shared Observing Quality definition when valid brightness is available and preserve the exact Night Conditions score otherwise. Best Targets scoring remains separate and is not light-pollution-aware.
+- Dashboard, Best Nearby, widgets, watch, and complications use the shared Observing Quality definition when valid brightness is available and preserve the exact Night Conditions score otherwise. Best Targets Target score intentionally does not use the light-pollution atlas; this is a product-scope boundary, not pending work.
 
 ## Where to dig deeper
 
