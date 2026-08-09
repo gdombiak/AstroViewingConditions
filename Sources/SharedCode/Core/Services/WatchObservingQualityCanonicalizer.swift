@@ -271,18 +271,29 @@ public enum WatchObservingQualityCanonicalizer: Sendable {
     /// Raw persisted scores are diagnostic only — the same trust model as live transport.
     /// Request UUID is **not** required. Malformed/tampered available documents fall back
     /// to exact night score (never “enhanced” with untrusted fields).
+    ///
+    /// - Parameter nightConditionsScore: When non-`nil`, association and recompute use this
+    ///   Night Conditions score (e.g. from ``ActiveObservingNightResolver``). When `nil`,
+    ///   falls back to ``NightQualityAnalyzer/analyzeConditions`` (calendar dayOffset 0).
+    ///   Callers that already resolved Tonight must pass the active-night score so
+    ///   association survives local midnight inside the same astronomical night.
     public static func resolvePersisted(
         document: WatchObservingQualityDocument?,
         conditions: ViewingConditions,
-        selectedLocation: SelectedLocation?
+        selectedLocation: SelectedLocation?,
+        nightConditionsScore: Int? = nil
     ) -> Outcome {
-        guard let nightAssessment = NightQualityAnalyzer.analyzeConditions(conditions) else {
+        let nightScore: Int
+        if let nightConditionsScore {
+            nightScore = nightConditionsScore
+        } else if let nightAssessment = NightQualityAnalyzer.analyzeConditions(conditions) {
+            nightScore = nightAssessment.calculatedScore
+        } else {
             return .nightOnly(
                 nightScore: 0,
                 location: selectedLocation.flatMap(CrossSurfaceLocationContext.make(from:))
             )
         }
-        let nightScore = nightAssessment.calculatedScore
         let fallbackLocation = selectedLocation.flatMap(CrossSurfaceLocationContext.make(from:))
             ?? document?.location
 
@@ -316,15 +327,19 @@ public enum WatchObservingQualityCanonicalizer: Sendable {
     }
 
     /// True when durable restore would enhance (after full canonical recompute agreement).
+    ///
+    /// - Parameter nightConditionsScore: Optional active-night score; see ``resolvePersisted``.
     public static func isAssociated(
         document: WatchObservingQualityDocument,
         conditions: ViewingConditions,
-        selectedLocation: SelectedLocation?
+        selectedLocation: SelectedLocation?,
+        nightConditionsScore: Int? = nil
     ) -> Bool {
         if case .enhanced = resolvePersisted(
             document: document,
             conditions: conditions,
-            selectedLocation: selectedLocation
+            selectedLocation: selectedLocation,
+            nightConditionsScore: nightConditionsScore
         ) {
             return true
         }

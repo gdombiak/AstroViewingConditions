@@ -432,9 +432,12 @@ public actor WatchConditionsAcceptedUpdateCoordinator: WatchLiveIngressClaiming 
             // Sync test hook only — must not claim, await, or re-enter lock.
             gate.onCachePublicationEntered()
 
-            if lastDisplayFingerprint == nil {
-                lastDisplayFingerprint = candidateState.displayFingerprint
-            }
+            // Always track the published display fingerprint (not only first seed).
+            // Cache apply never reloads complications; if UI falls back to night-only
+            // (e.g. unpaired companion cache) while lastDisplayFingerprint still holds
+            // a prior OQ value, a later live restore of that OQ fingerprint would skip
+            // reload and leave the complication stuck on the night-only score.
+            lastDisplayFingerprint = candidateState.displayFingerprint
             appliedState = candidateState
             published = candidateState
         }

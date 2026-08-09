@@ -3,7 +3,8 @@ import XCTest
 
 // MARK: - Fixtures
 
-private enum Phase4BFixtures {
+/// Shared fixtures for watch OQ / companion complication tests (test module only).
+enum Phase4BFixtures {
     static let latitude = 45.45
     static let longitude = -122.75
     static let timeZoneID = "America/Los_Angeles"
@@ -1925,6 +1926,72 @@ final class WatchConditionsDeferredCacheApplyTests: XCTestCase {
         XCTAssertFalse(state.didReloadComplications)
         XCTAssertEqual(reloader.count, 0)
         XCTAssertEqual(store.persistCount, 0)
+    }
+
+    /// Regression: unpaired/stale companion cache can demote OQ → night-only without a reload.
+    /// Cache apply must update `lastDisplayFingerprint` so a later live restore of the prior
+    /// OQ fingerprint reloads complications (otherwise they stay on the night-only score).
+    func testCacheFallbackThenLiveRestoreReloadsComplications() async {
+        let store = InMemoryWatchConditionsStore()
+        let reloader = RecordingReloadReporter()
+        let coordinator = WatchConditionsAcceptedUpdateCoordinator(
+            store: store,
+            reloader: reloader,
+            gate: ImmediateWatchConditionsUpdateGate()
+        )
+        let id = UUID()
+        let conditions = Phase4BFixtures.analyzableConditions(locationID: id, cloudCover: 10)
+        let selected = Phase4BFixtures.selectedSaved(id: id)
+        let payload = Phase4BFixtures.validPayload(id: id, conditions: conditions)
+
+        // 1) Live OQ enhancement — complications reload once.
+        let liveToken1 = await coordinator.beginLiveUpdate()
+        let live1 = await coordinator.accept(
+            conditions: conditions,
+            transported: payload,
+            selectedLocation: selected,
+            locationTimeZone: nil,
+            reloadComplications: true,
+            token: liveToken1
+        )
+        guard case let .applied(oqState) = live1 else { return XCTFail("live OQ must apply") }
+        XCTAssertEqual(oqState.observingQualityHeadline?.scorePresentationMode, .observingQuality)
+        XCTAssertEqual(reloader.count, 1)
+
+        // 2) Cache applies night-only (missing OQ document) — no reload, but fingerprint must move.
+        let cacheToken = await coordinator.beginDeferredApplication()
+        let cacheResult = await coordinator.applyCached(
+            conditions: conditions,
+            selectedLocation: selected,
+            persistedDocument: nil,
+            locationTimeZone: nil,
+            token: cacheToken
+        )
+        guard case let .applied(nightState) = cacheResult else { return XCTFail("cache night-only") }
+        XCTAssertEqual(
+            nightState.observingQualityHeadline?.scorePresentationMode,
+            .nightConditionsFallback
+        )
+        XCTAssertNotEqual(nightState.displayFingerprint, oqState.displayFingerprint)
+        XCTAssertEqual(reloader.count, 1, "cache apply must not reload")
+        let midFingerprint = await coordinator.currentFingerprint
+        XCTAssertEqual(midFingerprint, nightState.displayFingerprint)
+
+        // 3) Live restore of the same OQ pair must reload (fingerprint left night-only).
+        let liveToken2 = await coordinator.beginLiveUpdate()
+        let live2 = await coordinator.accept(
+            conditions: conditions,
+            transported: payload,
+            selectedLocation: selected,
+            locationTimeZone: nil,
+            reloadComplications: true,
+            token: liveToken2
+        )
+        guard case let .applied(restored) = live2 else { return XCTFail("live restore must apply") }
+        XCTAssertEqual(restored.observingQualityHeadline?.scorePresentationMode, .observingQuality)
+        XCTAssertEqual(restored.displayFingerprint, oqState.displayFingerprint)
+        XCTAssertTrue(restored.didReloadComplications)
+        XCTAssertEqual(reloader.count, 2, "restore after night-only cache must reload complications")
     }
 
     func testLiveUpdateInvalidatesOutstandingCacheToken() async {

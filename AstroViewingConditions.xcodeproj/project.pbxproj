@@ -53,6 +53,7 @@
 		1B1F6F42446EDB6AA6CFE981 /* ViewingConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E5D52C842A86937C4A75C /* ViewingConditions.swift */; };
 		1B3DCE14618ED103715F3060 /* ThreeNightOutlookWidgetPayloadBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64DA0E8491618A25A7692648 /* ThreeNightOutlookWidgetPayloadBuilder.swift */; };
 		1CD906D682144A82DD47BEE1 /* AstroViewingConditionsWatchWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3BB3EAD2955ED1BBF9CAA1AB /* AstroViewingConditionsWatchWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		1D12B520A6BBF82E9B7EF1AF /* WatchComplicationCompanion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B48E4AA68159B7CE32E4BC5 /* WatchComplicationCompanion.swift */; };
 		1D56BD24D55A797368E0FD20 /* TargetDetailContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2706687C4FE4794FD14587EB /* TargetDetailContent.swift */; };
 		1DD61581F608D45996278961 /* LocationTimeZoneResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFC83B480A25464D37367FCE /* LocationTimeZoneResolver.swift */; };
 		1E395FF62C3DE86E862F90A5 /* ObservingQualityAssessment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BB62770D2E64F81AC2416F /* ObservingQualityAssessment.swift */; };
@@ -86,6 +87,7 @@
 		3058F5E397EE24947A792910 /* NightConditionsWidgetSmallEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC32FC6F5F3B891865BE3D35 /* NightConditionsWidgetSmallEntryView.swift */; };
 		30BE2C52DF90E7EE61729347 /* NetworkErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33A932544EBED47D8B540A33 /* NetworkErrorTests.swift */; };
 		30C8CC1D8A9F9F1328568774 /* ThreeNightOutlookEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0729B2964BD20EC560068DC1 /* ThreeNightOutlookEntry.swift */; };
+		31449032E767A74A46B328CA /* WatchComplicationCompanionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D74E45AB86D776B9F7D222A /* WatchComplicationCompanionTests.swift */; };
 		33287FC009F3EB39E49AD521 /* ActiveObservingNightResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83CFB3AB1B12E95FF2A23784 /* ActiveObservingNightResolver.swift */; };
 		33B6044EB6984BEB204486FF /* WidgetTonightPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E9363CB0A23E9F0B32F9063 /* WidgetTonightPresentation.swift */; };
 		3551F4113525B86B60F08C29 /* CrossSurfaceObservingQualityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57A476EA7DE6879D3A42DFDC /* CrossSurfaceObservingQualityResolver.swift */; };
@@ -93,6 +95,7 @@
 		3665418894F879DA41B9B2C8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CD148A5A482057F88BE13AF7 /* Assets.xcassets */; };
 		366CD4DDBE3B4DDC4576BE53 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF6C1E348C4C442BF451190 /* ContentView.swift */; };
 		366F16A2F4974711D8F04C6A /* NightConditionsEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30BE687AF9CFA3D567761843 /* NightConditionsEntry.swift */; };
+		374B2FD32B9B6F5D8D022430 /* WatchComplicationCompanion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B48E4AA68159B7CE32E4BC5 /* WatchComplicationCompanion.swift */; };
 		3759BE9A7F328E34AB78AA2B /* LocationScore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14AC762D96061EE240E1DE99 /* LocationScore.swift */; };
 		3857B6CC43DAD3B01F26BE30 /* WidgetNightSummaryPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 730DD3985DD7ED0570A51E24 /* WidgetNightSummaryPublisher.swift */; };
 		39FA41A81C51EA97FFFFFBEF /* GeographicGridGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6043EA39CFFA0CA706355DD1 /* GeographicGridGeneratorTests.swift */; };
@@ -533,6 +536,7 @@
 		2706687C4FE4794FD14587EB /* TargetDetailContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetDetailContent.swift; sourceTree = "<group>"; };
 		2B872AA385AC9045A589D491 /* NightConditionsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightConditionsWidget.swift; sourceTree = "<group>"; };
 		2BB0C9023956EB1EEB30929C /* CrossSurfaceObservingQualitySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossSurfaceObservingQualitySnapshot.swift; sourceTree = "<group>"; };
+		2D74E45AB86D776B9F7D222A /* WatchComplicationCompanionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchComplicationCompanionTests.swift; sourceTree = "<group>"; };
 		2DFC6BBF7215761A8CC10CAC /* CurrentLocationBrightnessPublication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrentLocationBrightnessPublication.swift; sourceTree = "<group>"; };
 		2E157C75A873C7D62A822DC6 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		2FE1F7DFCC39B592DD6B1415 /* SavedLocationModeledBrightnessCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocationModeledBrightnessCoordinator.swift; sourceTree = "<group>"; };
@@ -625,6 +629,7 @@
 		83CFB3AB1B12E95FF2A23784 /* ActiveObservingNightResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveObservingNightResolver.swift; sourceTree = "<group>"; };
 		879F03F8C617DFEC39D869FB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		8878FC7F8403C2E2E29594DC /* TonightTargetsTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonightTargetsTimelineProvider.swift; sourceTree = "<group>"; };
+		8B48E4AA68159B7CE32E4BC5 /* WatchComplicationCompanion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchComplicationCompanion.swift; sourceTree = "<group>"; };
 		8C21B41BA95FB99FC86A9DFE /* WatchObservingQualityPhase4CTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchObservingQualityPhase4CTests.swift; sourceTree = "<group>"; };
 		8C9F03F5A1EC8F62E71D7998 /* WatchSelectionHandlingActivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSelectionHandlingActivation.swift; sourceTree = "<group>"; };
 		8CAE569F41E2C76EEE25FA0E /* Equipment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Equipment.swift; sourceTree = "<group>"; };
@@ -831,6 +836,7 @@
 				269DD9EB4CD4DD0420F3AD15 /* TransparencyCalculatorTests.swift */,
 				F31C5B412CF6A4B7681A599A /* UnitSystemTests.swift */,
 				E1B9C8B5B17ED18A6A87CE28 /* ViewingConditionsModelTests.swift */,
+				2D74E45AB86D776B9F7D222A /* WatchComplicationCompanionTests.swift */,
 				ABFA1FED547FF6305521AE08 /* WatchConditionsLocationChangeInvalidationTests.swift */,
 				002AD24D2BD4D70700CB6376 /* WatchConditionsRefreshUIAtomicityTests.swift */,
 				0113C75232E81B1B4F21982C /* WatchConditionsRequestAcquirerTests.swift */,
@@ -896,6 +902,7 @@
 				34BC40E377B65A4E8069B44D /* SavedLocationModeledBrightnessDocument.swift */,
 				DB656310560DB266848F6AF6 /* TargetEquipmentRequirements.swift */,
 				F41E5D52C842A86937C4A75C /* ViewingConditions.swift */,
+				8B48E4AA68159B7CE32E4BC5 /* WatchComplicationCompanion.swift */,
 				AF338E0F86EA909A511E9AD4 /* WatchCurrentLocationRequestContext.swift */,
 				EA1317E566804F6BDAF3AD8D /* WatchObservingQualityPayload.swift */,
 				7E58757E8DE5F81CEFB6C56F /* WidgetNightSummary.swift */,
@@ -1634,6 +1641,7 @@
 				F53970B4CD1F5E5308BD7B40 /* TransparencyCalculator.swift in Sources */,
 				AF2DC462B6EB100967784DB5 /* UnitConverter.swift in Sources */,
 				0BF64CBDDE0AC959E53641A2 /* ViewingConditions.swift in Sources */,
+				374B2FD32B9B6F5D8D022430 /* WatchComplicationCompanion.swift in Sources */,
 				0F4A70190C408375D77F331A /* WatchConditionsAcceptedUpdateCoordinator.swift in Sources */,
 				9B6D23CF9EB4B4C24920CF70 /* WatchConditionsLiveEventIngress.swift in Sources */,
 				0A57DF0421D1C29A87B11130 /* WatchConditionsObservablePublisher.swift in Sources */,
@@ -1713,6 +1721,7 @@
 				CC289A614CAB8D3CA6DE1DC7 /* TransparencyCalculatorTests.swift in Sources */,
 				8B12FC77F9600735071D909D /* UnitSystemTests.swift in Sources */,
 				87DA88BB93B0934648A061AF /* ViewingConditionsModelTests.swift in Sources */,
+				31449032E767A74A46B328CA /* WatchComplicationCompanionTests.swift in Sources */,
 				D23CF5150688EB9EF25B5403 /* WatchConditionsLocationChangeInvalidationTests.swift in Sources */,
 				92C96141CBAED0F9BA00DF8A /* WatchConditionsRefreshUIAtomicityTests.swift in Sources */,
 				3D4BF4F971DADA8AF435D3FC /* WatchConditionsRequestAcquirerTests.swift in Sources */,
@@ -1841,6 +1850,7 @@
 				D0698CFEF4B82F84C0952351 /* TransparencyCalculator.swift in Sources */,
 				CD14E13AA38BBDBEBA4D83F8 /* UnitConverter.swift in Sources */,
 				1B1F6F42446EDB6AA6CFE981 /* ViewingConditions.swift in Sources */,
+				1D12B520A6BBF82E9B7EF1AF /* WatchComplicationCompanion.swift in Sources */,
 				4C66202A2302FCC29FCC6A45 /* WatchConditionsAcceptedUpdateCoordinator.swift in Sources */,
 				EF7D10BFFE171D56BFDB5F1B /* WatchConditionsLiveEventIngress.swift in Sources */,
 				5BC81BC7FBD302E26756BC33 /* WatchConditionsObservablePublisher.swift in Sources */,
