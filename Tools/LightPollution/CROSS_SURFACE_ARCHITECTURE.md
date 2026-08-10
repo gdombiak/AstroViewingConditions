@@ -104,13 +104,23 @@ Widgets already:
 
 - Phone includes modeled zenith brightness plus the completed assessment in existing WatchConnectivity payloads.
 - Watch validates version, identity, coordinates, dataset, brightness, and transported-score agreement, then recomputes via `ObservingQualityCalculator`; the transported score is never display authority.
+- After a successful enhanced accept from the phone, Watch **upserts** the underlying `ModeledZenithBrightnessSample` into a durable App Group store (`watchModeledBrightness.json`), **independent** of `watchObservingQuality.json`.
+- Watch **does not** bundle LPATLAS1.
 
-**Exceptional path:** disconnected or missing brightness → exact Night Conditions fallback with clear staleness semantics—not permanent dual scoring.
+**Local weather fallback (Connectivity failure):**
+
+- Saved location: weather uses **saved pin coordinates** (never Watch GPS).
+- Current Location: weather uses Watch GPS; cached brightness is reused only when lookup coords remain within shared ~1000 m validity.
+- If a **product-valid** cached sample exists (saved ID / coords + `LightPollutionDatasetIdentity.current`), Watch combines **fresh local night conditions** + **cached brightness** via `CrossSurfaceObservingQualityResolver` and persists a new conditions+OQ pair.
+- If brightness is missing, mismatched, or **dataset-stale** (`datasetID` / `datasetRevision` / `formatVersion` incompatible) → exact Night Conditions only (no invent/clamp). Night-only does **not** clear the independent brightness cache.
+- Dataset identity is authoritative invalidation for LP samples (no arbitrary time TTL for saved pins).
 
 ### Watch complications
 
-- Timeline entries store the **final public Observing Quality score** from the shared path.
-- Refresh must not re-derive with a different brightness epoch than the companion surface for that night.
+- **Read-only companions** of the Watch app App Group conditions+OQ pair.
+- No independent weather fetch, no unpaired conditions write, no GPS/selection mutation.
+- Timeline entries store the **final public Observing Quality score** from that pair (ActiveObservingNight + associated OQ).
+- Missing/stale companion state → explicit unavailable (`--`), never synthetic gallery placeholder.
 
 ### Best Nearby (implemented)
 
@@ -138,6 +148,7 @@ Widgets already:
 | `ObservingQualityAssessment` | Result DTO |
 | `UnavailableObservingQualityEnvironment` | Safe default (no permanent pending) |
 | Widget/watch payloads | Versioned brightness metadata plus Night Conditions and OQ scores |
+| `WatchModeledBrightnessCache` | Watch durable sample store (saved ID + optional CL); read enforces dataset/location validity |
 
 ### Dataset identity and validity
 

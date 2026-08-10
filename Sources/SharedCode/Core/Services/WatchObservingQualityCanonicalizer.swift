@@ -17,15 +17,20 @@ public enum WatchObservingQualityCanonicalizer: Sendable {
         conditions: ViewingConditions,
         transported: WatchObservingQualityPayload?,
         selectedLocation: SelectedLocation?,
-        expectedCurrentLocationRequest: WatchCurrentLocationRequestContext? = nil
+        expectedCurrentLocationRequest: WatchCurrentLocationRequestContext? = nil,
+        nightConditionsScore: Int? = nil
     ) -> Outcome {
-        guard let nightAssessment = NightQualityAnalyzer.analyzeConditions(conditions) else {
+        let nightScore: Int
+        if let nightConditionsScore {
+            nightScore = nightConditionsScore
+        } else if let nightAssessment = NightQualityAnalyzer.analyzeConditions(conditions) {
+            nightScore = nightAssessment.calculatedScore
+        } else {
             return .nightOnly(
                 nightScore: 0,
                 location: selectedLocation.flatMap(CrossSurfaceLocationContext.make(from:))
             )
         }
-        let nightScore = nightAssessment.calculatedScore
         let fallbackLocation = selectedLocation.flatMap(CrossSurfaceLocationContext.make(from:))
             ?? transported?.location
             ?? expectedCurrentLocationRequest?.asLocationContext
@@ -59,6 +64,92 @@ public enum WatchObservingQualityCanonicalizer: Sendable {
                 fallbackLocation: fallbackLocation
             )
         }
+    }
+
+    /// Resolve OQ from a durable watch-cached brightness sample (local weather fallback).
+    ///
+    /// Does not accept phone transport or invent brightness. Uses the same
+    /// ``CrossSurfaceObservingQualityResolver`` / calculator path as enhanced transport.
+    ///
+    /// - Parameter nightConditionsScore: When non-`nil`, use this night score (e.g. active
+    ///   observing night). When `nil`, ``NightQualityAnalyzer/analyzeConditions`` (dayOffset 0).
+    public static func resolveFromCachedBrightness(
+        conditions: ViewingConditions,
+        selectedLocation: SelectedLocation?,
+        sample: ModeledZenithBrightnessSample,
+        nightConditionsScore: Int? = nil
+    ) -> Outcome {
+        let nightScore: Int
+        if let nightConditionsScore {
+            nightScore = nightConditionsScore
+        } else if let nightAssessment = NightQualityAnalyzer.analyzeConditions(conditions) {
+            nightScore = nightAssessment.calculatedScore
+        } else {
+            return .nightOnly(
+                nightScore: 0,
+                location: selectedLocation.flatMap(CrossSurfaceLocationContext.make(from:))
+            )
+        }
+
+        let fallbackLocation = selectedLocation.flatMap(CrossSurfaceLocationContext.make(from:))
+        guard let selectedLocation,
+              let location = CrossSurfaceLocationContext.make(from: selectedLocation) else {
+            return .nightOnly(nightScore: nightScore, location: fallbackLocation)
+        }
+
+        switch location.source {
+        case .saved:
+            guard let id = location.savedLocationID else {
+                return .nightOnly(nightScore: nightScore, location: location)
+            }
+            guard ModeledZenithBrightnessValidity.isValid(
+                sample: sample,
+                forSavedLocationID: id,
+                locationLatitude: location.latitude,
+                locationLongitude: location.longitude,
+                maxAge: nil
+            ) else {
+                return .nightOnly(nightScore: nightScore, location: location)
+            }
+            // Conditions must match the selected saved pin.
+            guard WatchObservingQualitySavedLocationAssociation.matches(
+                context: location,
+                conditionsLocation: conditions.location
+            ) else {
+                return .nightOnly(nightScore: nightScore, location: location)
+            }
+        case .currentGPS:
+            guard sample.savedLocationID == nil else {
+                return .nightOnly(nightScore: nightScore, location: location)
+            }
+            guard ModeledZenithBrightnessValidity.isValid(
+                sample: sample,
+                forRequestAtLatitude: location.latitude,
+                longitude: location.longitude,
+                maxAge: nil
+            ) else {
+                return .nightOnly(nightScore: nightScore, location: location)
+            }
+            guard WatchObservingQualityCurrentLocationAssociation.matches(
+                context: location,
+                conditionsLocation: conditions.location
+            ) else {
+                return .nightOnly(nightScore: nightScore, location: location)
+            }
+        }
+
+        let snapshot = CrossSurfaceObservingQualityResolver.resolve(
+            .init(
+                nightConditionsScore: nightScore,
+                location: location,
+                sample: sample,
+                assessedAt: conditions.fetchedAt
+            )
+        )
+        guard snapshot.brightnessAvailability == .available else {
+            return .nightOnly(nightScore: nightScore, location: location)
+        }
+        return .enhanced(snapshot, location)
     }
 
     // MARK: - Saved (Phase 4B)

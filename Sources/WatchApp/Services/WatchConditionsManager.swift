@@ -40,6 +40,8 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     private let conditionsProvider: ConditionsProvider
     /// Production serialized accept path (resolve → persist pair → state → reload).
     private let updateCoordinator: WatchConditionsAcceptedUpdateCoordinator
+    /// Durable modeled-brightness samples (independent of watchObservingQuality.json).
+    private let brightnessCache: any WatchModeledBrightnessCaching
     /// Claims live sequence at event receipt (before unstructured Tasks).
     private let liveIngress: WatchConditionsLiveEventIngress
     /// Generation-aware MainActor publication of coordinator applied state.
@@ -112,7 +114,8 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         connectivityManager: WatchConnectivityManager = .shared,
         locationManager: WatchLocationManager = .shared,
         conditionsProvider: ConditionsProvider = ConditionsProvider(),
-        updateCoordinator: WatchConditionsAcceptedUpdateCoordinator? = nil
+        updateCoordinator: WatchConditionsAcceptedUpdateCoordinator? = nil,
+        brightnessCache: (any WatchModeledBrightnessCaching)? = nil
     ) {
         self.connectivityManager = connectivityManager
         self.locationManager = locationManager
@@ -122,6 +125,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             reloader: WidgetCenterComplicationReloader()
         )
         self.updateCoordinator = coordinator
+        self.brightnessCache = brightnessCache ?? AppGroupWatchModeledBrightnessCache()
         // nonisolated claim — no actor hop; order = call order at ingress.
         self.liveIngress = WatchConditionsLiveEventIngress(claim: {
             coordinator.claimLiveUpdate()
@@ -274,7 +278,8 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
                 transported: result.transported,
                 selectedLocation: result.selectedLocation,
                 token: result.token,
-                expectedCurrentLocationRequest: result.expectedCurrentLocationRequest
+                expectedCurrentLocationRequest: result.expectedCurrentLocationRequest,
+                localBrightnessSample: result.localBrightnessSample
             )
             await applyTerminalUIIfCurrent(token: context.token, error: nil)
         } catch {
@@ -351,31 +356,65 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
                 throw ConditionsError.fetchFailed("Refresh superseded")
             }
             print("WatchConditionsManager: Watch connectivity failed: \(error.localizedDescription), computing locally")
-            let coordinate: (latitude: Double, longitude: Double)
-            if let currentLocationRequest {
-                coordinate = (currentLocationRequest.latitude, currentLocationRequest.longitude)
-            } else {
-                coordinate = try await locationManager.getCurrentCoordinate()
+            let watchGPS: (latitude: Double, longitude: Double)?
+            if selectedLocation.source == .currentGPS, currentLocationRequest == nil {
+                let gps = try await locationManager.getCurrentCoordinate()
                 guard isTokenCurrent(token) else {
                     throw ConditionsError.fetchFailed("Refresh superseded")
                 }
+                watchGPS = (gps.latitude, gps.longitude)
+            } else {
+                watchGPS = nil
+            }
+            guard let coordinate = WatchLocalWeatherCoordinateSelection.coordinate(
+                selectedLocation: selectedLocation,
+                currentLocationRequest: currentLocationRequest,
+                watchGPS: watchGPS
+            ) else {
+                throw ConditionsError.fetchFailed("No coordinates for local weather")
             }
             let conditions = try await AsyncTimeout.run(seconds: 20, error: ConditionsError.timeout) { [self] in
                 try await computeConditionsLocally(
                     latitude: coordinate.latitude,
                     longitude: coordinate.longitude,
-                    locationName: selectedLocation.name
+                    locationName: selectedLocation.name,
+                    locationID: selectedLocation.source == .saved ? selectedLocation.id : nil
                 )
             }
             guard isTokenCurrent(token) else {
                 throw ConditionsError.fetchFailed("Refresh superseded")
             }
-            // Local compute: no phone OQ / atlas — exact night-only.
+            // Local weather + optional durable brightness cache (no phone atlas).
+            let localSample = brightnessCache.sample(
+                for: selectedLocation,
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude
+            )
+            // Bind selection coords to the weather site so OQ association matches
+            // (Current Location may still hold a 0,0 placeholder until GPS resolves).
+            let selectionForAccept: SelectedLocation
+            if selectedLocation.source == .currentGPS {
+                selectionForAccept = SelectedLocation(
+                    source: .currentGPS,
+                    id: nil,
+                    name: selectedLocation.name,
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude
+                )
+            } else {
+                selectionForAccept = selectedLocation
+            }
             return WatchConditionsFetchResult(
                 conditions: conditions,
                 transported: nil,
-                expectedCurrentLocationRequest: nil,
-                selectedLocation: selectedLocation,
+                localBrightnessSample: localSample,
+                expectedCurrentLocationRequest: selectedLocation.source == .currentGPS
+                    ? (currentLocationRequest ?? WatchCurrentLocationRequestContext(
+                        latitude: coordinate.latitude,
+                        longitude: coordinate.longitude
+                    ))
+                    : nil,
+                selectedLocation: selectionForAccept,
                 token: token
             )
         }
@@ -387,7 +426,8 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         transported: WatchObservingQualityPayload?,
         selectedLocation: SelectedLocation?,
         token: WatchConditionsLiveUpdateToken,
-        expectedCurrentLocationRequest: WatchCurrentLocationRequestContext? = nil
+        expectedCurrentLocationRequest: WatchCurrentLocationRequestContext? = nil,
+        localBrightnessSample: ModeledZenithBrightnessSample? = nil
     ) async {
         // Fast path: already superseded before timezone work.
         guard isTokenCurrent(token) else { return }
@@ -403,7 +443,8 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             locationTimeZone: timeZone,
             reloadComplications: true,
             token: token,
-            expectedCurrentLocationRequest: expectedCurrentLocationRequest
+            expectedCurrentLocationRequest: expectedCurrentLocationRequest,
+            localBrightnessSample: localBrightnessSample
         )
         switch result {
         case .discardedStale:
@@ -412,6 +453,14 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             print("WatchConditionsManager: Failed to persist conditions/OQ pair: \(error)")
             return
         case .applied(let state):
+            // Phone OQ success: upsert underlying modeled brightness into durable cache.
+            // Night-only local fallback never clears this independent store.
+            if let sample = WatchModeledBrightnessPhoneSync.sampleToUpsert(
+                transported: transported,
+                scorePresentationMode: state.observingQualityHeadline?.scorePresentationMode
+            ) {
+                brightnessCache.upsert(sample)
+            }
             await publishIfCurrent(state)
         }
     }
@@ -480,10 +529,12 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     private func computeConditionsLocally(
         latitude: Double,
         longitude: Double,
-        locationName: String
+        locationName: String,
+        locationID: UUID? = nil
     ) async throws -> ViewingConditions {
         try await conditionsProvider.fetchConditions(
             for: CachedLocation(
+                id: locationID,
                 name: locationName,
                 latitude: latitude,
                 longitude: longitude

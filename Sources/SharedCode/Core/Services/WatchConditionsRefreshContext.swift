@@ -21,6 +21,8 @@ public struct WatchConditionsRefreshContext: Sendable, Equatable {
 public struct WatchConditionsFetchResult: Sendable {
     public var conditions: ViewingConditions
     public var transported: WatchObservingQualityPayload?
+    /// Validated watch-cached brightness for local-weather fallback (no phone transport).
+    public var localBrightnessSample: ModeledZenithBrightnessSample?
     public var expectedCurrentLocationRequest: WatchCurrentLocationRequestContext?
     public var selectedLocation: SelectedLocation
     public var token: WatchConditionsLiveUpdateToken
@@ -28,12 +30,14 @@ public struct WatchConditionsFetchResult: Sendable {
     public init(
         conditions: ViewingConditions,
         transported: WatchObservingQualityPayload?,
+        localBrightnessSample: ModeledZenithBrightnessSample? = nil,
         expectedCurrentLocationRequest: WatchCurrentLocationRequestContext?,
         selectedLocation: SelectedLocation,
         token: WatchConditionsLiveUpdateToken
     ) {
         self.conditions = conditions
         self.transported = transported
+        self.localBrightnessSample = localBrightnessSample
         self.expectedCurrentLocationRequest = expectedCurrentLocationRequest
         self.selectedLocation = selectedLocation
         self.token = token

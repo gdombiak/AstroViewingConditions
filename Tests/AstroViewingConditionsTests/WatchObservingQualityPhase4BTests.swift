@@ -1564,7 +1564,7 @@ final class WatchObservingQualityStrictAssociationTests: XCTestCase {
 
 // MARK: - Test doubles
 
-private final class RecordingReloadReporter: WatchComplicationReloadReporting, @unchecked Sendable {
+final class RecordingReloadReporter: WatchComplicationReloadReporting, @unchecked Sendable {
     private let lock = NSLock()
     private var _count = 0
     var count: Int {
@@ -1576,7 +1576,7 @@ private final class RecordingReloadReporter: WatchComplicationReloadReporting, @
     }
 }
 
-private final class InMemoryWatchConditionsStore: WatchConditionsPersisting, @unchecked Sendable {
+final class InMemoryWatchConditionsStore: WatchConditionsPersisting, @unchecked Sendable {
     enum FailureMode: Sendable {
         case none
         case conditionsEncode

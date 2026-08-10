@@ -301,7 +301,9 @@ public actor WatchConditionsAcceptedUpdateCoordinator: WatchLiveIngressClaiming 
         locationTimeZone: TimeZone?,
         reloadComplications: Bool,
         token: WatchConditionsLiveUpdateToken,
-        expectedCurrentLocationRequest: WatchCurrentLocationRequestContext? = nil
+        expectedCurrentLocationRequest: WatchCurrentLocationRequestContext? = nil,
+        localBrightnessSample: ModeledZenithBrightnessSample? = nil,
+        referenceDate: Date = Date()
     ) async -> WatchConditionsAcceptResult {
         // Optional test suspension *before* the commit boundary (not holding the ingress lock).
         await gate.beforePersist()
@@ -311,23 +313,52 @@ public actor WatchConditionsAcceptedUpdateCoordinator: WatchLiveIngressClaiming 
             return .discardedStale
         }
 
-        // Pure validation/recompute (no I/O, no mutation of applied state).
-        let outcome = WatchObservingQualityCanonicalizer.resolve(
+        // Single Tonight authority for night quality, OQ association, and headline.
+        // Matches complications (`ActiveObservingNightResolver`) so local refresh after
+        // midnight does not rebinding OQ to calendar dayOffset 0.
+        let nightQuality = WatchActiveObservingNightScoring.nightQuality(
             conditions: conditions,
-            transported: transported,
-            selectedLocation: selectedLocation,
-            expectedCurrentLocationRequest: expectedCurrentLocationRequest
+            referenceDate: referenceDate,
+            timeZone: locationTimeZone
         )
+        let activeNightScore = nightQuality?.calculatedScore ?? 0
+
+        // Pure validation/recompute (no I/O, no mutation of applied state).
+        // Phone transport wins over local brightness cache when both are present.
+        let outcome: WatchObservingQualityCanonicalizer.Outcome
+        if transported != nil {
+            outcome = WatchObservingQualityCanonicalizer.resolve(
+                conditions: conditions,
+                transported: transported,
+                selectedLocation: selectedLocation,
+                expectedCurrentLocationRequest: expectedCurrentLocationRequest,
+                nightConditionsScore: activeNightScore
+            )
+        } else if let localBrightnessSample {
+            outcome = WatchObservingQualityCanonicalizer.resolveFromCachedBrightness(
+                conditions: conditions,
+                selectedLocation: selectedLocation,
+                sample: localBrightnessSample,
+                nightConditionsScore: activeNightScore
+            )
+        } else {
+            outcome = WatchObservingQualityCanonicalizer.resolve(
+                conditions: conditions,
+                transported: nil,
+                selectedLocation: selectedLocation,
+                expectedCurrentLocationRequest: expectedCurrentLocationRequest,
+                nightConditionsScore: activeNightScore
+            )
+        }
         let document = WatchObservingQualityCanonicalizer.document(
             from: outcome,
             conditions: conditions
         )
-        let nightQuality = NightQualityAnalyzer.analyzeConditions(conditions)
         let headline = Self.makeHeadline(
             outcome: outcome,
             conditions: conditions,
             selectedLocation: selectedLocation,
-            nightScore: nightQuality?.calculatedScore ?? 0
+            nightScore: activeNightScore
         )
 
         // Protected commit: verify current + persist + publish under one sequencer lock.
