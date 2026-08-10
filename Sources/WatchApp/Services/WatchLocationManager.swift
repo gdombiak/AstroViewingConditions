@@ -90,7 +90,12 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
         selectionActivation.currentState == .active
     }
     
-    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveLocations locations: [CachedLocation], selectedLocation: SelectedLocation?) {
+    func connectivityManager(
+        _ manager: WatchConnectivityManager,
+        didReceiveLocations locations: [CachedLocation],
+        selectedLocation: SelectedLocation?,
+        modeledBrightnessSamples: [ModeledZenithBrightnessSample]
+    ) {
         // Strong capture for synchronous prepareSelection + list submit under list lock.
         locationsListCoordinator.acceptConnectivityPush(
             locations: locations,
@@ -101,6 +106,11 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
             submit: { [self] accepted in
                 self.submitLocationsListResult(accepted)
             }
+        )
+        // Companion LP priming — independent of list acceptance success/failure.
+        primeBrightnessCache(
+            samples: modeledBrightnessSamples,
+            locations: locations
         )
     }
     
@@ -130,7 +140,7 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
         await MainActor.run { isLoading = true }
         
         do {
-            let (locations, selected) = try await connectivityManager.requestLocations()
+            let (locations, selected, brightnessSamples) = try await connectivityManager.requestLocations()
             _ = locationsListCoordinator.acceptIfCurrent(
                 epoch: epoch,
                 kind: .success(locations: locations, selected: selected),
@@ -141,6 +151,7 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
                     self.submitLocationsListResult(accepted)
                 }
             )
+            primeBrightnessCache(samples: brightnessSamples, locations: locations)
         } catch {
             print("WatchLocationManager: Watch connectivity failed for locations: \(error.localizedDescription), using cached")
             let cachedLocations = loadStoredLocations()
@@ -190,6 +201,20 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
                     self.isLoading = false
                 }
             }
+        )
+    }
+
+    /// Best-effort companion brightness upsert after a successful locations sync.
+    /// Must not fail or roll back the locations list.
+    private func primeBrightnessCache(
+        samples: [ModeledZenithBrightnessSample],
+        locations: [CachedLocation]
+    ) {
+        guard !samples.isEmpty else { return }
+        WatchLocationsBrightnessPriming.applyToCache(
+            samples: samples,
+            locations: locations,
+            cache: AppGroupWatchModeledBrightnessCache.shared
         )
     }
     

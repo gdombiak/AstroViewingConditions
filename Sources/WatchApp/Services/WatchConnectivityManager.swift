@@ -18,7 +18,12 @@ enum WatchConnectivityError: Error, LocalizedError {
 }
 
 protocol WatchConnectivityManagerDelegate: AnyObject {
-    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveLocations locations: [CachedLocation], selectedLocation: SelectedLocation?)
+    func connectivityManager(
+        _ manager: WatchConnectivityManager,
+        didReceiveLocations locations: [CachedLocation],
+        selectedLocation: SelectedLocation?,
+        modeledBrightnessSamples: [ModeledZenithBrightnessSample]
+    )
     func connectivityManager(
         _ manager: WatchConnectivityManager,
         didReceiveConditions conditions: ViewingConditions,
@@ -41,7 +46,7 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
     static let locationsRequestTimeout: TimeInterval = 10
 
     typealias ConditionsReply = (ViewingConditions, SelectedLocation?, WatchObservingQualityPayload?)
-    typealias LocationsReply = ([CachedLocation], SelectedLocation?)
+    typealias LocationsReply = ([CachedLocation], SelectedLocation?, [ModeledZenithBrightnessSample])
 
     private var delegates: [WeakWatchConnectivityDelegate] = []
 
@@ -93,7 +98,11 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
         delegates.removeAll { $0.value == nil }
     }
     
-    func requestLocations() async throws -> ([CachedLocation], SelectedLocation?) {
+    func requestLocations() async throws -> (
+        [CachedLocation],
+        SelectedLocation?,
+        [ModeledZenithBrightnessSample]
+    ) {
         guard WCSession.default.isReachable else {
             throw WatchConnectivityError.sessionNotReachable
         }
@@ -199,8 +208,13 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
            let decoded = try? JSONDecoder().decode(SelectedLocation.self, from: selectedData) {
             selected = decoded
         }
+
+        let brightnessSamples = WatchLocationsBrightnessPriming.decodeSamples(from: reply)
         
-        _ = locationsLifecycle.complete(id, with: .success((locations, selected)))
+        _ = locationsLifecycle.complete(
+            id,
+            with: .success((locations, selected, brightnessSamples))
+        )
     }
     
     private func handleConditionsReply(_ reply: [String: Any], id: UUID) {
@@ -264,6 +278,8 @@ extension WatchConnectivityManager: WCSessionDelegate {
         let selectedLocationData = incomingData["selectedLocation"] as? Data
         let unitSystemData = incomingData["unitSystem"] as? Data
         let observingQualityData = incomingData["observingQuality"] as? Data
+        // Decode before MainActor hop — dictionary capture is not Sendable-safe.
+        let brightnessSamples = WatchLocationsBrightnessPriming.decodeSamples(from: incomingData)
         
         DispatchQueue.main.async {
             switch type {
@@ -271,7 +287,14 @@ extension WatchConnectivityManager: WCSessionDelegate {
                 if let data = locationsData,
                    let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
                     print("WatchConnectivityManager: Received \(locations.count) locations from \(source)")
-                    self.notifyDelegates { $0.connectivityManager(self, didReceiveLocations: locations, selectedLocation: nil) }
+                    self.notifyDelegates {
+                        $0.connectivityManager(
+                            self,
+                            didReceiveLocations: locations,
+                            selectedLocation: nil,
+                            modeledBrightnessSamples: brightnessSamples
+                        )
+                    }
                 }
                 
             case "conditions":
@@ -298,7 +321,14 @@ extension WatchConnectivityManager: WCSessionDelegate {
                 if let data = locationsData,
                    let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
                     print("WatchConnectivityManager: Received location sync from \(source): \(locations.count) locations")
-                    self.notifyDelegates { $0.connectivityManager(self, didReceiveLocations: locations, selectedLocation: nil) }
+                    self.notifyDelegates {
+                        $0.connectivityManager(
+                            self,
+                            didReceiveLocations: locations,
+                            selectedLocation: nil,
+                            modeledBrightnessSamples: brightnessSamples
+                        )
+                    }
                 }
                 
             case "unitSystem":

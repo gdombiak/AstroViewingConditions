@@ -93,7 +93,14 @@ public class WatchConnectivityService: NSObject, ObservableObject {
     
     public func sendLocationsToWatch(_ locations: [CachedLocation]) {
         guard let data = try? JSONEncoder().encode(locations) else { return }
-        sendViaApplicationContext(type: "savedLocations", payload: ["locations": data])
+        var payload: [String: Any] = ["locations": data]
+        // Additive: prime Watch offline LP cache from iOS durable saved-location samples.
+        if let samplesData = WatchLocationsBrightnessPriming.encodeSamples(
+            WatchLocationsBrightnessPriming.validSamples(for: locations)
+        ) {
+            payload[WatchLocationsBrightnessPriming.replyPayloadKey] = samplesData
+        }
+        sendViaApplicationContext(type: "savedLocations", payload: payload)
     }
     
     public func sendCurrentLocationToWatch(_ location: CachedLocation) {
@@ -244,6 +251,13 @@ extension WatchConnectivityService: WCSessionDelegate {
         }
         if let selectedLoc = selectedLoc, let data = try? JSONEncoder().encode(selectedLoc) {
             reply["selectedLocation"] = data
+        }
+        // Additive: include product-valid iOS saved-location brightness samples so Watch
+        // can offline OQ without selecting each pin on the phone first.
+        if let samplesData = WatchLocationsBrightnessPriming.encodeSamples(
+            WatchLocationsBrightnessPriming.validSamples(for: locations)
+        ) {
+            reply[WatchLocationsBrightnessPriming.replyPayloadKey] = samplesData
         }
         replyHandler?(reply)
     }

@@ -107,6 +107,15 @@ Widgets already:
 - After a successful enhanced accept from the phone, Watch **upserts** the underlying `ModeledZenithBrightnessSample` into a durable App Group store (`watchModeledBrightness.json`), **independent** of `watchObservingQuality.json`.
 - Watch **does not** bundle LPATLAS1.
 
+**Saved-location list sync (brightness priming):**
+
+- `requestLocations` / `sendLocationsToWatch` may include an additive `modeledBrightnessSamples` field (`[ModeledZenithBrightnessSample]`).
+- Phone loads **existing** durable iOS saved-location samples (`SavedLocationModeledBrightnessReading`); does not fetch weather per pin or re-run atlas unless the iOS companion store already has a valid sample.
+- Watch re-validates each sample against the received pins, then upserts into `WatchModeledBrightnessCache`. One bad sample does not reject the list.
+- **Omission does not delete** an existing Watch sample (phone may simply not have a usable sample yet).
+- This primes offline OQ for every pin the phone already knows LP for, without selecting each pin on iPhone first.
+- Current Location samples (`savedLocationID == nil`) are not accepted via this bulk path.
+
 **Local weather fallback (Connectivity failure):**
 
 - Saved location: weather uses **saved pin coordinates** (never Watch GPS).

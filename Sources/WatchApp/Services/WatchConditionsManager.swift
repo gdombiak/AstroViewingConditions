@@ -125,7 +125,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             reloader: WidgetCenterComplicationReloader()
         )
         self.updateCoordinator = coordinator
-        self.brightnessCache = brightnessCache ?? AppGroupWatchModeledBrightnessCache()
+        self.brightnessCache = brightnessCache ?? AppGroupWatchModeledBrightnessCache.shared
         // nonisolated claim — no actor hop; order = call order at ingress.
         self.liveIngress = WatchConditionsLiveEventIngress(claim: {
             coordinator.claimLiveUpdate()
@@ -197,7 +197,12 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         }
     }
     
-    func connectivityManager(_ manager: WatchConnectivityManager, didReceiveLocations locations: [CachedLocation], selectedLocation: SelectedLocation?) {
+    func connectivityManager(
+        _ manager: WatchConnectivityManager,
+        didReceiveLocations locations: [CachedLocation],
+        selectedLocation: SelectedLocation?,
+        modeledBrightnessSamples: [ModeledZenithBrightnessSample]
+    ) {
     }
     
     func connectivityManager(_ manager: WatchConnectivityManager, didReceiveSelectedLocation location: SelectedLocation) {

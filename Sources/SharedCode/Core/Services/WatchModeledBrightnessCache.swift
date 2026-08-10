@@ -57,6 +57,10 @@ extension WatchModeledBrightnessCaching {
 
 /// App Group-backed production cache for watch modeled brightness.
 public final class AppGroupWatchModeledBrightnessCache: WatchModeledBrightnessCaching, @unchecked Sendable {
+    /// Shared production instance so locations-list priming and conditions local-refresh
+    /// see the same in-memory + disk state.
+    public static let shared = AppGroupWatchModeledBrightnessCache()
+
     private let lock = NSLock()
     private var store: WatchModeledBrightnessStore
     private var memory: WatchModeledBrightnessDocument
