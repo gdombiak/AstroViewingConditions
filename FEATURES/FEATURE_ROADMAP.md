@@ -93,7 +93,16 @@ Equipment suitability is deliberately separate from the intrinsic Easy, Standard
 - [x] Observer guide for scores, difficulty labels, observing windows, and ISS paths
 - [x] Persistent dim-red Field Mode for telescope use, available from Settings and the Dashboard while widgets and watchOS retain their normal presentation
 
-## Recent Release: 2.2.0
+## Recent Release: 2.3.0
+
+Made environmental conditions more location-realistic and kept companion displays in sync:
+
+- Added modeled light pollution and the new **Observing Quality** score, which adjusts Night Conditions when valid atlas data is available and otherwise uses Night Conditions unchanged.
+- Updated Best Nearby Area to rank with Observing Quality when the full comparison set has valid brightness, with a coherent Night Conditions fallback for the entire search when it does not.
+- Added modeled light-pollution information to saved locations.
+- Brought validated Observing Quality to the conditions and outlook widgets, Apple Watch dashboard, and score-bearing complications, with freshness, fallback, and synchronization improvements across iPhone, widgets, and Watch.
+
+## Previous Release: 2.2.0
 
 Improved large-text readability and added Home Screen planning views:
 
@@ -102,7 +111,7 @@ Improved large-text readability and added Home Screen planning views:
 - Improved semantic contrast for the direction and altitude shown beside Best Targets observing windows.
 - Refined the **My Equipment** editor with Visual Telescope and millimeter defaults, type-specific examples and aperture guidance, and preserved entered text when the type changes.
 
-## Previous Release: 2.1.0
+## Earlier Release: 2.1.0
 
 Made Best Targets more useful for the equipment an observer has available:
 

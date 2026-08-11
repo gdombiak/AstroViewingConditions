@@ -142,7 +142,7 @@ AstroViewingConditions/
 │   ├── SharedCode/
 │   │   └── Core/
 │   │       ├── Models/                         # Codable/SwiftData-friendly domain models
-│   │       ├── Services/                       # Weather, astronomy, target recommendations, ISS, storage, cache
+│   │       ├── Services/                       # Weather, astronomy, target recommendations, ISS, conditions repository, storage
 │   │       └── Utilities/                      # Formatters, units, fog, night quality, time zones
 │   │
 │   ├── Widgets/                                # iOS WidgetKit extension
@@ -189,7 +189,7 @@ class SavedLocation {
 `ViewingConditions`, cached locations, selected location, and unit preferences are encoded for app group storage, iCloud key-value storage, widget timelines, and WatchConnectivity messages. Saved-location and Current Location modeled-brightness companion documents are stored separately in the App Group and are not mirrored through iCloud.
 
 Important services:
-- `CacheService`: Stores the latest encoded conditions snapshot
+- `SharedConditionsRepository`: Owns the normal conditions cache, provenance validation, freshness decisions, and weather/ISS refresh flow; it persists the shared snapshot through `AppGroupStorage`
 - `AppGroupStorage`: Shares data between the iOS app and extensions
 - `LocationStorageService`: Persists selected/saved location snapshots for widgets and watch sync
 - `iCloudKeyValueStorage`: Supports lightweight cloud-backed preference/location state
@@ -474,7 +474,7 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 - `Sources/WatchApp/Features/Dashboard/WatchDashboardView.swift` - Main watchOS UI
 - `Sources/WatchApp/Services/WatchConnectivityManager.swift` - Watch-side communication
 - `Sources/SharedCode/Core/Services/WeatherService.swift` - Weather API integration
-- `Sources/SharedCode/Core/Services/CacheService.swift` - Shared condition cache
+- `Sources/SharedCode/Core/Services/SharedConditionsRepository.swift` - Shared conditions cache, provenance validation, freshness, and refresh flow
 - `Sources/SharedCode/Core/Services/LocationStorageService.swift` - Shared selected/saved location snapshots
 - `Sources/SharedCode/Core/Services/TargetRecommendationService.swift` - Deep-sky ranking and visibility windows
 - `Sources/SharedCode/Core/Services/BestSpotSearcher.swift` - Nearby-area weather scoring, reverse-geocoded suitability checks, suitability expansion, and recommendation selection
@@ -498,7 +498,7 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 
 ## 9. Project Status
 
-**Current Status**: Core observing planner, environmental Observing Quality, target recommendations, widgets, and watchOS support complete on the current feature branch.
+**Current Status**: Core observing planner, environmental Observing Quality, target recommendations, widgets, and watchOS support are complete for the 2.3.0 release.
 
 Implemented:
 - Real-time weather data
@@ -534,5 +534,5 @@ This is an open-source project. Contributions welcome.
 
 ---
 
-*Last Updated: August 6, 2026*
-*Document Version: 1.9*
+*Last Updated: August 10, 2026*
+*Document Version: 2.0*

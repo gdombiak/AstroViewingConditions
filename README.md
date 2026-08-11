@@ -14,7 +14,7 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 
 - **Real-time Weather Data**: Cloud cover including mid/high layers, humidity, wind including upper-atmosphere wind for observing estimates, temperature, visibility, and hourly forecasts
 - **Astronomical Information**: Sun and moon rise/set times, astronomical night timing, and moon phase
-- **Night Conditions and Observing Quality**: Clear, scan-friendly Night Conditions from transparency, seeing, cloud cover, moonlight, fog, wind, and nighttime windows, plus environmental Observing Quality adjusted by offline modeled light pollution when valid atlas data is available
+- **Night Conditions and Observing Quality**: Night Conditions is the weather and astronomical baseline, using transparency, seeing, cloud cover, moonlight, fog, wind, and nighttime windows. Observing Quality adjusts that score with offline modeled light pollution when valid atlas data is available; otherwise it falls back exactly to Night Conditions without applying moon effects twice
 - **Best Targets**: Ranked recommendations for the Moon, visible planets, double stars, star clusters, nebulae, and galaxies based on the selected location and night, target altitude, darkness (or a useful Venus twilight window), weather, moonlight, and observing difficulty. Its Target score intentionally does not use the light-pollution atlas and remains separate from environmental Observing Quality and equipment suitability
 - **Equipment Personalization**: Save binoculars, visual telescopes, and Smart / EAA telescopes, then select the equipment available for a session and see Excellent, Good, Challenging, or Poor target-fit guidance without changing conditions scores
 - **Best Nearby Area**: Ranks nearby grid points by Observing Quality when every candidate has valid modeled brightness, otherwise falls back coherently to Night Conditions for the whole search; it also checks candidate suitability and shows a clean ranked map
@@ -27,10 +27,10 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Unit Preferences**: Toggle between Metric and Imperial units
 - **Field Mode**: Persistent dim-red iOS appearance for telescope use, available from Settings and the Dashboard; widgets and watchOS retain their normal presentation
 - **Dynamic Type**: Layouts adapt at larger standard iOS text sizes, including the largest standard Text Size setting
-- **iOS Widgets**: Adaptive small and medium **Tonight at a Glance** conditions views, plus medium **Tonight’s Targets** and **Three-Night Outlook** Home Screen widgets backed by shared app data
-- **watchOS App**: Apple Watch dashboard with current conditions, night quality, astronomical timing, and location selection
-- **watchOS Complications**: Inline, circular, corner, and rectangular complication layouts
-- **Cross-Device Sync**: iPhone and Apple Watch exchange selected locations, saved locations, unit preferences, and cached conditions
+- **iOS Widgets**: Adaptive small and medium **Tonight at a Glance** conditions views, plus medium **Tonight’s Targets** and **Three-Night Outlook** Home Screen widgets. Conditions and outlook use validated Observing Quality when available and otherwise fall back exactly to Night Conditions
+- **watchOS App**: Apple Watch dashboard with current conditions, Observing Quality when validated data is available, Night Conditions fallback, astronomical timing, and location selection
+- **watchOS Complications**: Inline, circular, corner, and rectangular complication layouts that use the same validated score as the Watch dashboard
+- **Cross-Device Sync**: iPhone and Apple Watch exchange selected locations, saved locations, unit preferences, cached conditions, and validated observing-quality metadata to keep widgets and Watch displays current
 
 ## Data Sources
 
