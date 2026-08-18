@@ -12,6 +12,7 @@
 		02021BB7A13ACDE5B6DB98C5 /* WatchAstronomicalNightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E52A423875A101AEE2944EE /* WatchAstronomicalNightCard.swift */; };
 		024D08659E17933F1E2C2B50 /* LightPollutionDisplayPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 087302675EC17BD189E8D62C /* LightPollutionDisplayPresentation.swift */; };
 		02591405E181610B93BD423F /* TonightTargetsWidgetPayloadBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = E04BCE32AE054FFBCC38C5F4 /* TonightTargetsWidgetPayloadBuilder.swift */; };
+		0261DBE0F62C521C2EBB43F9 /* WatchBackgroundRefreshSeedState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F170ED02C91A837586C990 /* WatchBackgroundRefreshSeedState.swift */; };
 		02CFA51DD996A62D09FF5188 /* WatchObservingQualityCanonicalizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 901DFAC19B414560149B327A /* WatchObservingQualityCanonicalizer.swift */; };
 		037B4674A4E68CFEC4230B73 /* ThreeNightOutlookPersistencePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B38DE6F3A3448691E01F9871 /* ThreeNightOutlookPersistencePolicy.swift */; };
 		03C85DB587BEACC839C4FE44 /* WeatherServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81B52C3C0FB94395C6A64BAF /* WeatherServiceTests.swift */; };
@@ -48,6 +49,7 @@
 		167508BFF4FE99B817C5C938 /* LocationStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8BED9D25015AEB31A937E84 /* LocationStorageService.swift */; };
 		17266FA86858825588CA64C0 /* BestSpotResultCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B864D70EE1BB6EE975190E49 /* BestSpotResultCard.swift */; };
 		17AA86B323FA86C1DA7E6E11 /* TargetScoreCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D33FDCCE4710B5A415D1AB /* TargetScoreCategory.swift */; };
+		18421AE1B3CE7E40FDF02F1A /* WatchCompanionSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C1A22249FE2D2C0241F1DB /* WatchCompanionSnapshotTests.swift */; };
 		19C0446215BA769B0747FE86 /* WatchObservingQualityPhase4BTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E241A64E8428992E922FBB1 /* WatchObservingQualityPhase4BTests.swift */; };
 		1AFF0706B12FCACB93ADF4D9 /* InlineComplicationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1027BF485935543CE3BE2BCC /* InlineComplicationView.swift */; };
 		1B1F6F42446EDB6AA6CFE981 /* ViewingConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E5D52C842A86937C4A75C /* ViewingConditions.swift */; };
@@ -108,8 +110,10 @@
 		3C75BF837D0C8B5164D21C40 /* WatchSelectedLocationTransitionApplier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491C285D34B2BA18160A24A4 /* WatchSelectedLocationTransitionApplier.swift */; };
 		3D2FE2E5EBA24AFAD43528F0 /* BundledLightPollutionResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F5B209E8762DE5E3E9E08BE /* BundledLightPollutionResource.swift */; };
 		3D4BF4F971DADA8AF435D3FC /* WatchConditionsRequestAcquirerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0113C75232E81B1B4F21982C /* WatchConditionsRequestAcquirerTests.swift */; };
+		3E3120C3EB9A6BDCEEF6C0C0 /* WatchBackgroundRefreshPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697521A391C9A2F0FC1C4734 /* WatchBackgroundRefreshPolicy.swift */; };
 		3EA7E42450EFA33FED63C7F0 /* ISSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 418EB02DCD2775D61BB461FB /* ISSService.swift */; };
 		3FBF85F19C2493E4A847E19F /* WatchSelectionHandlingActivationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DCC453C71D199DE5C2F2D94 /* WatchSelectionHandlingActivationTests.swift */; };
+		3FF01F34F7258754B501ACE8 /* WatchCompanionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAB7C0B88DF3F6FFD1D106A /* WatchCompanionSnapshot.swift */; };
 		403B97365B269F2992BEC41D /* BestSpotSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B1DA95CCE7AC3B2926F6F78 /* BestSpotSettings.swift */; };
 		403E99C54DBB4B9DB1A0F47A /* TonightTargetsEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CCF1F20E23488D05E7364C1 /* TonightTargetsEntry.swift */; };
 		409D3E765C72D7E3C28D6CED /* BestSpotSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70E23D725B4DDE7B7B6C2D0E /* BestSpotSettingsTests.swift */; };
@@ -141,6 +145,7 @@
 		4D5028CB16AD14C052F71297 /* SavedLocationModeledBrightnessStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C922D3543983ED63916AE62 /* SavedLocationModeledBrightnessStore.swift */; };
 		4E9BAF05442E452EE828A41B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B13AC1E745AF0480A32328 /* ContentView.swift */; };
 		51AE20D8B860BBE5E1E6863D /* TargetImageManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C39499FB2B751C4EBFA997F /* TargetImageManifest.swift */; };
+		52661AABDBFD4EB689AF81D4 /* WatchAppRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D5BCD496D3BADE6AC67C023 /* WatchAppRuntime.swift */; };
 		526FCB440CE76A3F992DD28B /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BE20FBA13683FA9BC910AF4 /* AppGroupStorage.swift */; };
 		52787B4FE6ADEAA43761C84E /* LocationSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109A5FAD0DEA939E3DEA7DBB /* LocationSearchView.swift */; };
 		53E1BE0087704D59F4700C60 /* NightQualityAnalysisRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320227149D106038736F521A /* NightQualityAnalysisRules.swift */; };
@@ -179,6 +184,7 @@
 		7306FE0D1C60161F319841A7 /* LocationPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42F3BD799BB3EA6B28525803 /* LocationPickerView.swift */; };
 		745F393A3FCA9650C1F2FC34 /* WatchLocationsListResultCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD75D23CF9BB72EF92D9E7A /* WatchLocationsListResultCoordinator.swift */; };
 		7470BE39A5DB73FA5DDBD61E /* TargetObservingGuideCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59D6C5224211C16AD0DB7E42 /* TargetObservingGuideCatalog.swift */; };
+		7472FE3D407914DB4BD335E2 /* WatchBackgroundRefreshSeedState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F170ED02C91A837586C990 /* WatchBackgroundRefreshSeedState.swift */; };
 		75B3F976957ED7BDF923CB44 /* SharedConditionsRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18AA3FF320404BBF2629D88F /* SharedConditionsRepository.swift */; };
 		7697D06DA67657413C596FAC /* SavedLocationBrightnessAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A105958FFE629A1F46614EEB /* SavedLocationBrightnessAnchor.swift */; };
 		770B62581A70CA86852780FA /* DashboardViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A755C891187E6768F11D9E /* DashboardViewModelTests.swift */; };
@@ -186,6 +192,7 @@
 		782BE329FE4061D2F957A7C6 /* WatchNightQualityCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81725D08FFF40AF5BB964C7F /* WatchNightQualityCard.swift */; };
 		78B40B2056566E072BDC3B66 /* CurrentLocationBrightnessPublishing.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF6DE0868BA6C1EF01EC141E /* CurrentLocationBrightnessPublishing.swift */; };
 		79062FBE45607986301BB065 /* iCloudKeyValueStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFB7767724742E57F6D26F8 /* iCloudKeyValueStorage.swift */; };
+		7983CFFFE263F7D52C9BB0D9 /* WatchCompanionSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAB7C0B88DF3F6FFD1D106A /* WatchCompanionSnapshot.swift */; };
 		7A89A153288A8546467C4A18 /* GeographicGridGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054461D2A435B336317EB4A1 /* GeographicGridGenerator.swift */; };
 		7B95B73CF7D28716C8476015 /* WatchModeledBrightnessDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014B09151B918EFD6AF72B2F /* WatchModeledBrightnessDocument.swift */; };
 		7C1DE2377454C32E0B1F7C1F /* ObservingQualityAssessment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BB62770D2E64F81AC2416F /* ObservingQualityAssessment.swift */; };
@@ -272,12 +279,15 @@
 		B03BEB6C70C1590E1A16C44B /* ThreeNightOutlookPersistencePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B38DE6F3A3448691E01F9871 /* ThreeNightOutlookPersistencePolicy.swift */; };
 		B0B03316406AABCF6DB03537 /* ModeledZenithBrightnessValidity.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFAFA97030B108C3690CF57A /* ModeledZenithBrightnessValidity.swift */; };
 		B1D6071736E2FD6F2459C428 /* TargetAssetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D45032363219CEC7896BF0F6 /* TargetAssetProvider.swift */; };
+		B30033330700911328AC04CC /* WatchBackgroundRefreshScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5F2BD5B57D058A103B653FE /* WatchBackgroundRefreshScheduler.swift */; };
 		B3203CB362540F4ABA60CD7B /* WatchActiveObservingNightScoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D090A2B9FF0C1B9FC9124B /* WatchActiveObservingNightScoring.swift */; };
 		B571244AE8EAF85642F04100 /* AstroViewingConditionsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAE2FB1C99BE13E2DAC757D /* AstroViewingConditionsApp.swift */; };
 		B5CCCB65F7F4733D2DC39FB4 /* WatchLocationsBrightnessPrimingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D489A731CA769C2DE125380A /* WatchLocationsBrightnessPrimingTests.swift */; };
 		B6FA12FB275160DCA8D640B0 /* CrossSurfaceObservingQualityPhase4ATests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA80B59D38724F03C89587A0 /* CrossSurfaceObservingQualityPhase4ATests.swift */; };
 		B72E301DBC70B746208E3737 /* AdaptiveFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC1993647566ECC08937BF07 /* AdaptiveFont.swift */; };
 		B7A2185F9AC582449CAC81A3 /* CurrentLocationBrightnessPublication.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DFC6BBF7215761A8CC10CAC /* CurrentLocationBrightnessPublication.swift */; };
+		B7AC527238FCF69211336E63 /* WatchBackgroundRefreshPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E579ACDDF9CAE46ADD2C368A /* WatchBackgroundRefreshPolicyTests.swift */; };
+		B8A2435437438F5CE4843637 /* WatchBackgroundRefreshPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 697521A391C9A2F0FC1C4734 /* WatchBackgroundRefreshPolicy.swift */; };
 		B8EDE465A8A4073DD286EBF0 /* NightConditionsWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7549069C120C6495548EE838 /* NightConditionsWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B902FBBEF9F2DA960DCC7BB6 /* ModeledZenithBrightnessResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 179FC317F9CEDCDC8295EF5D /* ModeledZenithBrightnessResolver.swift */; };
 		B957A29446D789555BD07EBF /* EquipmentSessionSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1220599C91CEB0A9D2824DFE /* EquipmentSessionSelection.swift */; };
@@ -501,6 +511,7 @@
 		0113C75232E81B1B4F21982C /* WatchConditionsRequestAcquirerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConditionsRequestAcquirerTests.swift; sourceTree = "<group>"; };
 		014B09151B918EFD6AF72B2F /* WatchModeledBrightnessDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchModeledBrightnessDocument.swift; sourceTree = "<group>"; };
 		01CD3B22B3BC4F81F7E9826A /* SavedLocationModeledBrightnessStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocationModeledBrightnessStoreTests.swift; sourceTree = "<group>"; };
+		02F170ED02C91A837586C990 /* WatchBackgroundRefreshSeedState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBackgroundRefreshSeedState.swift; sourceTree = "<group>"; };
 		02FDE2E2D072D76CD1489BD0 /* WatchConditionsRefreshContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConditionsRefreshContext.swift; sourceTree = "<group>"; };
 		039AC9DB7D69E63B38C5AEA2 /* AstroViewingConditions.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AstroViewingConditions.entitlements; sourceTree = "<group>"; };
 		04BB123BA2696982B02132B0 /* TargetScoreColorProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetScoreColorProvider.swift; sourceTree = "<group>"; };
@@ -576,6 +587,7 @@
 		3E9363CB0A23E9F0B32F9063 /* WidgetTonightPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTonightPresentation.swift; sourceTree = "<group>"; };
 		41820E088E86B3313F67074F /* NightConditionsTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightConditionsTimelineProvider.swift; sourceTree = "<group>"; };
 		418EB02DCD2775D61BB461FB /* ISSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ISSService.swift; sourceTree = "<group>"; };
+		42C1A22249FE2D2C0241F1DB /* WatchCompanionSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCompanionSnapshotTests.swift; sourceTree = "<group>"; };
 		42F3BD799BB3EA6B28525803 /* LocationPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationPickerView.swift; sourceTree = "<group>"; };
 		44B13AC1E745AF0480A32328 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		477478FE257387DC6D8F1DA0 /* LocationSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationSelectorView.swift; sourceTree = "<group>"; };
@@ -618,10 +630,12 @@
 		68269A38CA6984DA843607EB /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
 		6960C8FC34F31B3E8891BD3C /* ObservingQualitySession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservingQualitySession.swift; sourceTree = "<group>"; };
 		6965F8DB935707FF74918332 /* ThreeNightOutlookTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeNightOutlookTimelineProvider.swift; sourceTree = "<group>"; };
+		697521A391C9A2F0FC1C4734 /* WatchBackgroundRefreshPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBackgroundRefreshPolicy.swift; sourceTree = "<group>"; };
 		6B045824F30816624B506852 /* WidgetDataAsOfPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetDataAsOfPresentation.swift; sourceTree = "<group>"; };
 		6B64EAAD0DCC0401230AD784 /* CurrentLocationModeledBrightnessCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrentLocationModeledBrightnessCoordinatorTests.swift; sourceTree = "<group>"; };
 		6DA60976B07F06290A162396 /* AstroViewingConditionsWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AstroViewingConditionsWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6E28DF58ADA681CEFE8BFAC6 /* TargetImageManifestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetImageManifestTests.swift; sourceTree = "<group>"; };
+		6FAB7C0B88DF3F6FFD1D106A /* WatchCompanionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCompanionSnapshot.swift; sourceTree = "<group>"; };
 		70E23D725B4DDE7B7B6C2D0E /* BestSpotSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSettingsTests.swift; sourceTree = "<group>"; };
 		730DD3985DD7ED0570A51E24 /* WidgetNightSummaryPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetNightSummaryPublisher.swift; sourceTree = "<group>"; };
 		7549069C120C6495548EE838 /* NightConditionsWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = NightConditionsWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -649,6 +663,7 @@
 		8C9F03F5A1EC8F62E71D7998 /* WatchSelectionHandlingActivation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSelectionHandlingActivation.swift; sourceTree = "<group>"; };
 		8CAE569F41E2C76EEE25FA0E /* Equipment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Equipment.swift; sourceTree = "<group>"; };
 		8CBDCF16F4D14350927A1B9D /* AstroViewingConditionsTests.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AstroViewingConditionsTests.entitlements; sourceTree = "<group>"; };
+		8D5BCD496D3BADE6AC67C023 /* WatchAppRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchAppRuntime.swift; sourceTree = "<group>"; };
 		8E072E4D7883BB484E9A13E4 /* ThreeNightOutlookEntryResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeNightOutlookEntryResolver.swift; sourceTree = "<group>"; };
 		8E60051D87F4042845731A75 /* HourlyForecastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HourlyForecastTests.swift; sourceTree = "<group>"; };
 		8EC797DFE7A190F1F40E9E84 /* SeeingCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeeingCalculatorTests.swift; sourceTree = "<group>"; };
@@ -679,6 +694,7 @@
 		B3707FB5F528861A275D7EBE /* AsyncTimeout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncTimeout.swift; sourceTree = "<group>"; };
 		B38DE6F3A3448691E01F9871 /* ThreeNightOutlookPersistencePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeNightOutlookPersistencePolicy.swift; sourceTree = "<group>"; };
 		B581B80777CE9587A7AFA72D /* CornerComplicationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CornerComplicationView.swift; sourceTree = "<group>"; };
+		B5F2BD5B57D058A103B653FE /* WatchBackgroundRefreshScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBackgroundRefreshScheduler.swift; sourceTree = "<group>"; };
 		B79F92092DD7564966592843 /* WatchLocationsBrightnessPriming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLocationsBrightnessPriming.swift; sourceTree = "<group>"; };
 		B864D70EE1BB6EE975190E49 /* BestSpotResultCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotResultCard.swift; sourceTree = "<group>"; };
 		B8BED9D25015AEB31A937E84 /* LocationStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationStorageService.swift; sourceTree = "<group>"; };
@@ -727,6 +743,7 @@
 		E1B9C8B5B17ED18A6A87CE28 /* ViewingConditionsModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewingConditionsModelTests.swift; sourceTree = "<group>"; };
 		E2381C486761759180B4D090 /* NightQualityCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightQualityCard.swift; sourceTree = "<group>"; };
 		E51D30629F0FAE6A6F9ED28C /* AstroViewingConditionsWatchWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AstroViewingConditionsWatchWidget.entitlements; sourceTree = "<group>"; };
+		E579ACDDF9CAE46ADD2C368A /* WatchBackgroundRefreshPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBackgroundRefreshPolicyTests.swift; sourceTree = "<group>"; };
 		E6A755C891187E6768F11D9E /* DashboardViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModelTests.swift; sourceTree = "<group>"; };
 		E6CF7A2E41DE41511ED6A249 /* CircularComplicationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CircularComplicationView.swift; sourceTree = "<group>"; };
 		E8E444DB10ADB941A4F55A7C /* AstroViewingConditionsWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AstroViewingConditionsWatch.entitlements; sourceTree = "<group>"; };
@@ -855,6 +872,8 @@
 				269DD9EB4CD4DD0420F3AD15 /* TransparencyCalculatorTests.swift */,
 				F31C5B412CF6A4B7681A599A /* UnitSystemTests.swift */,
 				E1B9C8B5B17ED18A6A87CE28 /* ViewingConditionsModelTests.swift */,
+				E579ACDDF9CAE46ADD2C368A /* WatchBackgroundRefreshPolicyTests.swift */,
+				42C1A22249FE2D2C0241F1DB /* WatchCompanionSnapshotTests.swift */,
 				2D74E45AB86D776B9F7D222A /* WatchComplicationCompanionTests.swift */,
 				ABFA1FED547FF6305521AE08 /* WatchConditionsLocationChangeInvalidationTests.swift */,
 				002AD24D2BD4D70700CB6376 /* WatchConditionsRefreshUIAtomicityTests.swift */,
@@ -1119,6 +1138,8 @@
 		B474E2A3D0EF5C915873E80A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				8D5BCD496D3BADE6AC67C023 /* WatchAppRuntime.swift */,
+				B5F2BD5B57D058A103B653FE /* WatchBackgroundRefreshScheduler.swift */,
 				D5EA9807F3282F704002FDE6 /* WatchConditionsManager.swift */,
 				097CB1A1C6A002382B8D37A6 /* WatchConnectivityManager.swift */,
 				A7B0076F8062F05E911D2C19 /* WatchLocationManager.swift */,
@@ -1170,6 +1191,9 @@
 				67444F25F43433D77A66DA37 /* TonightTargetsPersistencePolicy.swift */,
 				E04BCE32AE054FFBCC38C5F4 /* TonightTargetsWidgetPayloadBuilder.swift */,
 				C3D090A2B9FF0C1B9FC9124B /* WatchActiveObservingNightScoring.swift */,
+				697521A391C9A2F0FC1C4734 /* WatchBackgroundRefreshPolicy.swift */,
+				02F170ED02C91A837586C990 /* WatchBackgroundRefreshSeedState.swift */,
+				6FAB7C0B88DF3F6FFD1D106A /* WatchCompanionSnapshot.swift */,
 				5C630E7F75C13297BAE2315E /* WatchConditionsAcceptedUpdateCoordinator.swift */,
 				5944A552C716D0D6316886D0 /* WatchConditionsLiveEventIngress.swift */,
 				779DC95E61AD8C1505B89134 /* WatchConditionsObservablePublisher.swift */,
@@ -1577,7 +1601,9 @@
 				C4B79FCD096EE466472961B0 /* AstroViewingConditionsWatchApp.swift in Sources */,
 				366CD4DDBE3B4DDC4576BE53 /* ContentView.swift in Sources */,
 				29E74B480DEED09856B4CC49 /* LocationSelectorView.swift in Sources */,
+				52661AABDBFD4EB689AF81D4 /* WatchAppRuntime.swift in Sources */,
 				02021BB7A13ACDE5B6DB98C5 /* WatchAstronomicalNightCard.swift in Sources */,
+				B30033330700911328AC04CC /* WatchBackgroundRefreshScheduler.swift in Sources */,
 				84941BDC74A283B31532D0D9 /* WatchConditionsManager.swift in Sources */,
 				3053164C6B0ACEB83760AA99 /* WatchConnectivityManager.swift in Sources */,
 				AB222D5B8A1D68A17FD795F5 /* WatchCurrentConditionsCard.swift in Sources */,
@@ -1668,6 +1694,9 @@
 				AF2DC462B6EB100967784DB5 /* UnitConverter.swift in Sources */,
 				0BF64CBDDE0AC959E53641A2 /* ViewingConditions.swift in Sources */,
 				B3203CB362540F4ABA60CD7B /* WatchActiveObservingNightScoring.swift in Sources */,
+				B8A2435437438F5CE4843637 /* WatchBackgroundRefreshPolicy.swift in Sources */,
+				0261DBE0F62C521C2EBB43F9 /* WatchBackgroundRefreshSeedState.swift in Sources */,
+				7983CFFFE263F7D52C9BB0D9 /* WatchCompanionSnapshot.swift in Sources */,
 				374B2FD32B9B6F5D8D022430 /* WatchComplicationCompanion.swift in Sources */,
 				0F4A70190C408375D77F331A /* WatchConditionsAcceptedUpdateCoordinator.swift in Sources */,
 				9B6D23CF9EB4B4C24920CF70 /* WatchConditionsLiveEventIngress.swift in Sources */,
@@ -1752,6 +1781,8 @@
 				CC289A614CAB8D3CA6DE1DC7 /* TransparencyCalculatorTests.swift in Sources */,
 				8B12FC77F9600735071D909D /* UnitSystemTests.swift in Sources */,
 				87DA88BB93B0934648A061AF /* ViewingConditionsModelTests.swift in Sources */,
+				B7AC527238FCF69211336E63 /* WatchBackgroundRefreshPolicyTests.swift in Sources */,
+				18421AE1B3CE7E40FDF02F1A /* WatchCompanionSnapshotTests.swift in Sources */,
 				31449032E767A74A46B328CA /* WatchComplicationCompanionTests.swift in Sources */,
 				D23CF5150688EB9EF25B5403 /* WatchConditionsLocationChangeInvalidationTests.swift in Sources */,
 				92C96141CBAED0F9BA00DF8A /* WatchConditionsRefreshUIAtomicityTests.swift in Sources */,
@@ -1884,6 +1915,9 @@
 				CD14E13AA38BBDBEBA4D83F8 /* UnitConverter.swift in Sources */,
 				1B1F6F42446EDB6AA6CFE981 /* ViewingConditions.swift in Sources */,
 				99F128258CEEF7486146C927 /* WatchActiveObservingNightScoring.swift in Sources */,
+				3E3120C3EB9A6BDCEEF6C0C0 /* WatchBackgroundRefreshPolicy.swift in Sources */,
+				7472FE3D407914DB4BD335E2 /* WatchBackgroundRefreshSeedState.swift in Sources */,
+				3FF01F34F7258754B501ACE8 /* WatchCompanionSnapshot.swift in Sources */,
 				1D12B520A6BBF82E9B7EF1AF /* WatchComplicationCompanion.swift in Sources */,
 				4C66202A2302FCC29FCC6A45 /* WatchConditionsAcceptedUpdateCoordinator.swift in Sources */,
 				EF7D10BFFE171D56BFDB5F1B /* WatchConditionsLiveEventIngress.swift in Sources */,

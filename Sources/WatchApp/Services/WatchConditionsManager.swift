@@ -142,9 +142,13 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
     }
 
     var shouldRefresh: Bool {
-        guard let conditions else { return true }
-        guard let selectedLocation = locationManager.selectedLocation else { return true }
-        return !Self.isFresh(conditions) || !Self.conditions(conditions, match: selectedLocation)
+        if case .refresh = WatchBackgroundRefreshPolicy.decide(
+            selectedLocation: locationManager.authoritativeSelectedLocation,
+            conditions: conditions
+        ) {
+            return true
+        }
+        return false
     }
 
     private func loadCachedConditions() {
@@ -153,7 +157,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             guard let conditions = await AppGroupStorage.loadWatchNightConditionsAsync() else { return }
             let timeZone = await Self.resolveTimeZone(for: conditions)
             let document = await AppGroupStorage.loadWatchObservingQualityAsync()
-            let selected = await MainActor.run { locationManager.selectedLocation }
+            let selected = await MainActor.run { locationManager.authoritativeSelectedLocation }
             let result = await updateCoordinator.applyCached(
                 conditions: conditions,
                 selectedLocation: selected,
@@ -178,7 +182,7 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
             guard let self else { return }
 
             // Bind to selection at process time (after claim; location mutations claim higher).
-            let selectedLocation = await MainActor.run { self.locationManager.selectedLocation }
+            let selectedLocation = await MainActor.run { self.locationManager.authoritativeSelectedLocation }
             // Production pure acceptance seam (fresh + selection association).
             guard WatchConditionsPushAcceptance.shouldAccept(
                 conditions: conditions,
@@ -213,7 +217,21 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
 
     /// Manual / automatic refresh: claims its own live token and binds current selection.
     func refresh() async {
-        guard let selectedLocation = locationManager.selectedLocation else {
+        await refreshUnscheduled()
+        await WatchBackgroundRefreshScheduler.scheduleNext()
+    }
+
+    /// Dashboard and background entry point: refresh only when policy says the bound
+    /// selected location needs a new coherent conditions/OQ pair.
+    func refreshIfNeeded() async {
+        await refreshIfNeededUnscheduled()
+        await WatchBackgroundRefreshScheduler.scheduleNext()
+    }
+
+    /// Body of ``refresh()`` so the next background opportunity is scheduled after
+    /// every attempt, including the no-location early return.
+    private func refreshUnscheduled() async {
+        guard let selectedLocation = locationManager.authoritativeSelectedLocation else {
             let token = liveIngress.claimRefreshIngress()
             await applyTerminalUIIfCurrent(
                 token: token,
@@ -230,10 +248,37 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
         )
     }
 
+    /// Body of ``refreshIfNeeded()`` so skip and acquire paths both reschedule.
+    private func refreshIfNeededUnscheduled() async {
+        await loadNewerSharedCacheIfAvailable()
+        let selectedLocation = await MainActor.run { locationManager.authoritativeSelectedLocation }
+        let cached: ViewingConditions?
+        if let memory = await MainActor.run(body: { conditions }) {
+            cached = memory
+        } else {
+            cached = await AppGroupStorage.loadWatchNightConditionsAsync()
+        }
+        switch WatchBackgroundRefreshPolicy.decide(
+            selectedLocation: selectedLocation,
+            conditions: cached
+        ) {
+        case .skip:
+            return
+        case let .refresh(location):
+            let token = liveIngress.claimRefreshIngress()
+            await performRefresh(
+                context: WatchConditionsRefreshContext(
+                    token: token,
+                    selectedLocation: location
+                )
+            )
+        }
+    }
+
     func loadNewerSharedCacheIfAvailable() async {
         guard let cached = await AppGroupStorage.loadWatchNightConditionsAsync() else { return }
 
-        let selectedLocation = await MainActor.run { locationManager.selectedLocation }
+        let selectedLocation = await MainActor.run { locationManager.authoritativeSelectedLocation }
         if let selectedLocation,
            !Self.conditions(cached, match: selectedLocation) {
             return
@@ -348,6 +393,13 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
                     throw ConditionsError.fetchFailed("iOS returned conditions for a different location")
                 }
             }
+            guard WatchBackgroundRefreshPolicy.inputsMatchSelectedLocation(
+                selectedLocation: selectedLocation,
+                conditions: conditions,
+                brightnessSample: nil
+            ) else {
+                throw ConditionsError.fetchFailed("iOS returned conditions for a different location")
+            }
             return WatchConditionsFetchResult(
                 conditions: conditions,
                 transported: oq,
@@ -395,6 +447,13 @@ class WatchConditionsManager: ObservableObject, @unchecked Sendable, WatchConnec
                 latitude: coordinate.latitude,
                 longitude: coordinate.longitude
             )
+            guard WatchBackgroundRefreshPolicy.inputsMatchSelectedLocation(
+                selectedLocation: selectedLocation,
+                conditions: conditions,
+                brightnessSample: localSample
+            ) else {
+                throw ConditionsError.fetchFailed("Local refresh inputs did not match selected location")
+            }
             // Bind selection coords to the weather site so OQ association matches
             // (Current Location may still hold a 0,0 placeholder until GPS resolves).
             let selectionForAccept: SelectedLocation

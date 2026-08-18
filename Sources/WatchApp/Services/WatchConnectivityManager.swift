@@ -258,90 +258,84 @@ class WatchConnectivityManager: NSObject, ObservableObject, @unchecked Sendable 
 extension WatchConnectivityManager: WCSessionDelegate {
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         print("WatchConnectivityManager: Activation complete: \(activationState.rawValue)")
+        Task { await processPendingApplicationContext() }
+    }
+
+    /// Apply the latest received application context and return only after
+    /// selection/locations/units (and accepted conditions) have been delivered to
+    /// the existing delegate/transition path.
+    ///
+    /// Background refresh must `await` this before `refreshIfNeeded()` so it cannot
+    /// bind a pre-snapshot selected location.
+    func processPendingApplicationContext() async {
+        guard WCSession.isSupported() else { return }
+        let context = WCSession.default.receivedApplicationContext
+        guard !context.isEmpty else { return }
+        let snapshot = WatchCompanionSnapshotCodec.decodeAny(context)
+        await applyDecodedSnapshot(snapshot, source: "pending app context")
     }
     
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         print("WatchConnectivityManager: Received application context: \(applicationContext)")
-        handleIncomingData(applicationContext, source: "app context")
+        let snapshot = WatchCompanionSnapshotCodec.decodeAny(applicationContext)
+        Task { await self.applyDecodedSnapshot(snapshot, source: "app context") }
     }
     
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         print("WatchConnectivityManager: Received message: \(message)")
-        handleIncomingData(message, source: "message")
+        let snapshot = WatchCompanionSnapshotCodec.decodeAny(message)
+        Task { await self.applyDecodedSnapshot(snapshot, source: "message") }
     }
-    
-    private func handleIncomingData(_ incomingData: [String: Any], source: String) {
-        guard let type = incomingData["type"] as? String else { return }
-        
-        let locationsData = incomingData["locations"] as? Data
-        let conditionsData = incomingData["conditions"] as? Data
-        let selectedLocationData = incomingData["selectedLocation"] as? Data
-        let unitSystemData = incomingData["unitSystem"] as? Data
-        let observingQualityData = incomingData["observingQuality"] as? Data
-        // Decode before MainActor hop — dictionary capture is not Sendable-safe.
-        let brightnessSamples = WatchLocationsBrightnessPriming.decodeSamples(from: incomingData)
-        
-        DispatchQueue.main.async {
-            switch type {
-            case "savedLocations":
-                if let data = locationsData,
-                   let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
-                    print("WatchConnectivityManager: Received \(locations.count) locations from \(source)")
-                    self.notifyDelegates {
-                        $0.connectivityManager(
-                            self,
-                            didReceiveLocations: locations,
-                            selectedLocation: nil,
-                            modeledBrightnessSamples: brightnessSamples
-                        )
-                    }
-                }
-                
-            case "conditions":
-                if let data = conditionsData,
-                   let conditions = try? JSONDecoder().decode(ViewingConditions.self, from: data) {
-                    print("WatchConnectivityManager: Received conditions from \(source)")
-                    let oq: WatchObservingQualityPayload?
-                    if let oqData = observingQualityData {
-                        oq = try? JSONDecoder().decode(WatchObservingQualityPayload.self, from: oqData)
-                    } else {
-                        oq = nil
-                    }
-                    self.notifyDelegates {
-                        $0.connectivityManager(self, didReceiveConditions: conditions, observingQuality: oq)
-                    }
-                }
-                
-            case "locationSync", "selectedLocation":
-                if let data = selectedLocationData,
-                   let location = try? JSONDecoder().decode(SelectedLocation.self, from: data) {
-                    print("WatchConnectivityManager: Received selected location from \(source): \(location.name)")
-                    self.notifyDelegates { $0.connectivityManager(self, didReceiveSelectedLocation: location) }
-                }
-                if let data = locationsData,
-                   let locations = try? JSONDecoder().decode([CachedLocation].self, from: data) {
-                    print("WatchConnectivityManager: Received location sync from \(source): \(locations.count) locations")
-                    self.notifyDelegates {
-                        $0.connectivityManager(
-                            self,
-                            didReceiveLocations: locations,
-                            selectedLocation: nil,
-                            modeledBrightnessSamples: brightnessSamples
-                        )
-                    }
-                }
-                
-            case "unitSystem":
-                if let data = unitSystemData,
-                   let unitSystem = try? JSONDecoder().decode(String.self, from: data) {
-                    print("WatchConnectivityManager: Received unit system: \(unitSystem)")
-                    if let system = UnitSystem(rawValue: unitSystem) {
-                        self.notifyDelegates { $0.connectivityManager(self, didReceiveUnitSystem: system) }
-                    }
-                }
-                
-            default:
-                print("WatchConnectivityManager: Unknown \(source) type: \(type)")
+
+    private func applyDecodedSnapshot(_ snapshot: WatchCompanionSnapshot?, source: String) async {
+        guard let snapshot else {
+            print("WatchConnectivityManager: Unknown \(source) companion payload")
+            return
+        }
+        await MainActor.run {
+            // Legacy `"conditions"` contexts often omit selectedLocation. Associate
+            // them with the existing Watch selection authority — same as the old
+            // receiver's `shouldAccept` against `authoritativeSelectedLocation`.
+            // Snapshot-provided selection still wins inside consumeThenBind.
+            _ = WatchCompanionPendingContext.consumeThenBind(
+                snapshot: snapshot,
+                currentSelectedLocation: WatchLocationManager.shared.authoritativeSelectedLocation
+            ) { plan in
+                self.applyPlan(plan, source: source)
+            }
+        }
+    }
+
+    /// Existing delegate/transition infrastructure — called only from
+    /// ``WatchCompanionPendingContext/consumeThenBind`` after planning.
+    private func applyPlan(_ plan: WatchCompanionSnapshotApplyPlan, source: String) {
+        print("WatchConnectivityManager: Applying companion snapshot from \(source)")
+        if let locations = plan.locations {
+            notifyDelegates {
+                $0.connectivityManager(
+                    self,
+                    didReceiveLocations: locations,
+                    selectedLocation: plan.selectedLocation,
+                    modeledBrightnessSamples: plan.modeledBrightnessSamples
+                )
+            }
+        }
+
+        if let location = plan.selectedLocation {
+            notifyDelegates { $0.connectivityManager(self, didReceiveSelectedLocation: location) }
+        }
+
+        if let unitSystem = plan.unitSystem {
+            notifyDelegates { $0.connectivityManager(self, didReceiveUnitSystem: unitSystem) }
+        }
+
+        if let conditions = plan.conditions {
+            notifyDelegates {
+                $0.connectivityManager(
+                    self,
+                    didReceiveConditions: conditions,
+                    observingQuality: plan.observingQuality
+                )
             }
         }
     }

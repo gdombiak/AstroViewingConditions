@@ -81,6 +81,8 @@ public class WatchConnectivityService: NSObject, ObservableObject {
     
     private var session: WCSession?
     private let conditionsRepository = SharedConditionsRepository()
+    /// Last-known companion pieces so each `updateApplicationContext` is a complete snapshot.
+    private var snapshotAccumulator = WatchCompanionSnapshotAccumulator()
     
     private override init() {
         super.init()
@@ -89,62 +91,102 @@ public class WatchConnectivityService: NSObject, ObservableObject {
             session?.delegate = self
             session?.activate()
         }
+        seedSnapshotAccumulator()
+    }
+
+    private func seedSnapshotAccumulator() {
+        let selected = LocationStorageService.shared.loadSelectedLocation()
+        let locations = LocationStorageService.shared.loadSavedLocations()
+        let unitSystem = UnitSystemStorage.loadSelectedUnitSystem()
+        let samples = WatchLocationsBrightnessPriming.validSamples(for: locations)
+        let sessionSnapshot = session.flatMap {
+            WatchCompanionSnapshotCodec.decodeAny($0.applicationContext)
+        }
+        let restored = WatchCompanionSnapshotReseed.restoredConditions(
+            selectedLocation: selected,
+            sessionSnapshot: sessionSnapshot,
+            repositoryConditions: AppGroupStorage.loadConditions(),
+            rebuildObservingQuality: { conditions, selectedLocation in
+                WatchObservingQualityPayloadBuilder.makeSavedLocationPayload(
+                    conditions: conditions,
+                    selectedLocation: selectedLocation
+                )
+            }
+        )
+        snapshotAccumulator = WatchCompanionSnapshotAccumulator(
+            selectedLocation: selected,
+            locations: locations,
+            conditions: restored?.conditions,
+            observingQuality: restored?.observingQuality,
+            unitSystem: unitSystem,
+            modeledBrightnessSamples: samples
+        )
     }
     
     public func sendLocationsToWatch(_ locations: [CachedLocation]) {
-        guard let data = try? JSONEncoder().encode(locations) else { return }
-        var payload: [String: Any] = ["locations": data]
-        // Additive: prime Watch offline LP cache from iOS durable saved-location samples.
-        if let samplesData = WatchLocationsBrightnessPriming.encodeSamples(
-            WatchLocationsBrightnessPriming.validSamples(for: locations)
-        ) {
-            payload[WatchLocationsBrightnessPriming.replyPayloadKey] = samplesData
+        let samples = WatchLocationsBrightnessPriming.validSamples(for: locations)
+        snapshotAccumulator.setLocations(locations, brightnessSamples: samples)
+        if snapshotAccumulator.selectedLocation == nil {
+            snapshotAccumulator.selectedLocation = LocationStorageService.shared.loadSelectedLocation()
         }
-        sendViaApplicationContext(type: "savedLocations", payload: payload)
+        publishCompanionSnapshot()
     }
     
     public func sendCurrentLocationToWatch(_ location: CachedLocation) {
-        guard let data = try? JSONEncoder().encode(location) else { return }
-        sendViaApplicationContext(type: "currentLocation", payload: ["location": data])
+        // Republish the complete snapshot. A current-location pin must not replace
+        // conditions with a type-specific application-context write.
+        if snapshotAccumulator.selectedLocation == nil {
+            snapshotAccumulator.selectedLocation = LocationStorageService.shared.loadSelectedLocation()
+        }
+        if snapshotAccumulator.locations == nil {
+            snapshotAccumulator.locations = [location]
+        }
+        publishCompanionSnapshot()
     }
     
     public func sendConditionsToWatch(_ conditions: ViewingConditions) {
-        guard let data = try? JSONEncoder().encode(conditions) else { return }
-        var payload: [String: Any] = ["conditions": data]
-        // Phase 4B: optional saved-location OQ block (old watch ignores unknown keys).
-        if let selected = LocationStorageService.shared.loadSelectedLocation(),
-           let oq = WatchObservingQualityPayloadBuilder.makeSavedLocationPayload(
-            conditions: conditions,
-            selectedLocation: selected
-           ),
-           let oqData = try? JSONEncoder().encode(oq) {
-            payload["observingQuality"] = oqData
+        let selected = LocationStorageService.shared.loadSelectedLocation()
+        if let selected {
+            snapshotAccumulator.setSelectedLocation(selected)
         }
-        sendViaApplicationContext(type: "conditions", payload: payload)
+        let oq: WatchObservingQualityPayload?
+        if let selected {
+            oq = WatchObservingQualityPayloadBuilder.makeSavedLocationPayload(
+                conditions: conditions,
+                selectedLocation: selected
+            )
+        } else {
+            oq = nil
+        }
+        snapshotAccumulator.setConditions(conditions, observingQuality: oq)
+        publishCompanionSnapshot()
     }
     
     public func sendSelectedLocationToWatch(_ location: SelectedLocation) {
-        guard let data = try? JSONEncoder().encode(location) else { return }
-        sendViaApplicationContext(type: "selectedLocation", payload: ["selectedLocation": data])
+        snapshotAccumulator.setSelectedLocation(location)
+        publishCompanionSnapshot()
     }
     
     public func sendUnitSystemToWatch(_ system: UnitSystem) {
-        guard let data = try? JSONEncoder().encode(system.rawValue) else { return }
-        sendViaApplicationContext(type: "unitSystem", payload: ["unitSystem": data])
+        snapshotAccumulator.setUnitSystem(system)
+        publishCompanionSnapshot()
+    }
+
+    private func publishCompanionSnapshot() {
+        let snapshot = snapshotAccumulator.snapshot()
+        guard let payload = WatchCompanionSnapshotCodec.encode(snapshot) else { return }
+        sendViaApplicationContext(payload)
     }
     
-    private func sendViaApplicationContext(type: String, payload: [String: Any]) {
+    private func sendViaApplicationContext(_ payload: [String: Any]) {
         guard let session = session else { return }
-        
-        var message = payload
-        message["type"] = type
-        
+
         do {
-            try session.updateApplicationContext(message)
-            print("WatchConnectivityService: Updated applicationContext with \(type)")
+            try session.updateApplicationContext(payload)
+            print("WatchConnectivityService: Updated applicationContext with companion snapshot")
         } catch {
             print("WatchConnectivityService: Failed to update applicationContext: \(error)")
-            sendMessage(type: type, payload: message)
+            sendMessage(type: WatchCompanionSnapshotCodec.messageType, payload: payload)
         }
     }
     

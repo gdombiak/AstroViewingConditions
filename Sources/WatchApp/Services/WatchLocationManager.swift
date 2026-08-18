@@ -346,9 +346,20 @@ class WatchLocationManager: ObservableObject, @unchecked Sendable, WatchConnecti
         )
     }
     
+    /// Selection bound for refresh / background work.
+    ///
+    /// Prefers transition authority (synchronous, seeded at init) over `@Published`
+    /// `selectedLocation`, which is published asynchronously and can still be nil
+    /// when a background task starts.
+    var authoritativeSelectedLocation: SelectedLocation? {
+        transitionCoordinator.currentAuthoritative
+            ?? selectedLocation
+            ?? AppGroupStorage.loadSelectedLocation()
+    }
+
     /// Prefer transition authority for coordinate identity (may lead `@Published` briefly).
     var activeCoordinate: Coordinate? {
-        guard let selected = transitionCoordinator.currentAuthoritative ?? selectedLocation else {
+        guard let selected = authoritativeSelectedLocation else {
             return nil
         }
         if selected.source == .currentGPS {

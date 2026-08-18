@@ -138,13 +138,9 @@ struct WatchDashboardView: View {
     @MainActor
     private func refreshConditionsIfNeeded() async {
         guard !isAutomaticRefreshInFlight else { return }
-        await conditionsManager.loadNewerSharedCacheIfAvailable()
-        guard conditionsManager.shouldRefresh else { return }
-
         isAutomaticRefreshInFlight = true
         defer { isAutomaticRefreshInFlight = false }
-
-        await refreshConditions()
+        await conditionsManager.refreshIfNeeded()
     }
 
     private var refreshErrorMessage: String? {
