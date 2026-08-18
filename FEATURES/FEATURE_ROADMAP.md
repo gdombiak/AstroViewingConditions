@@ -12,6 +12,8 @@ The strategic path for the next product work is:
 2. Make recommendations location-realistic with simple horizon constraints.
 3. Turn trustworthy recommendations into an actionable observing plan.
 
+Additional product principles, known gaps, and unscheduled explorations are collected in [Further Ideas to Consider](#further-ideas-to-consider). They do not change the next-feature priority above.
+
 ## Current Product
 
 ### Conditions and Night Planning
@@ -239,6 +241,99 @@ These remain valuable but are lower priority than the next-release foundation ab
 - Exportable observing history
 
 These require data-source, privacy, maintenance, and user-value evaluation before implementation.
+
+## Further Ideas to Consider
+
+This section records durable direction, known product problems, and unscheduled explorations. It is not a release plan and does not change the next-feature priority: **Simple Horizon Constraints** remains the next engineering foundation. Promote an exploration only when its user value, data/privacy story, and explainability are clear.
+
+### Product Direction / Principles
+
+Astro Conditions is a field decision helper, not a planetarium or a deep numerical weather workbench. It helps amateur observers answer:
+
+1. How good will the sky be?
+2. When is the useful window?
+3. What is worth looking at from *this* place, on *this* night, with *this* gear?
+
+It serves backyard and multi-site observers, smart / EAA users, and new observers who need realistic expectations. Astrophotography is an adjacent use case; Imaging Windows should remain a focused view built on the same conditions data, not a separate app mode.
+
+Preserve these qualities as the product grows:
+
+- **Separated, explainable truths.** Night Conditions, Observing Quality, Target score, and equipment fit answer different questions and must not become one opaque score. Keep Moon treatment non-duplicative, modeled brightness scientifically honest, and the exact Night Conditions fallback when brightness is unavailable.
+- **Local-first field guidance.** Avoid an unnecessary custom backend; retain useful offline behavior, transparent data sources, and honest stale-data states. Widgets are primarily planning surfaces, while Watch and Field Mode are primarily current, in-the-field surfaces.
+- **Curated expectations.** Keep a small, useful catalog with finding guidance, equipment fit, credited imagery, and realistic visual expectations—not the appearance of long-exposure astrophotography. Do not pursue catalog completeness for its own sake.
+- **Decision over display.** Best Nearby, saved sites, equipment, target timing, and future horizon constraints should help an observer decide whether to go out, where to go, and how to use the session—not merely show more maps or numbers.
+- **Explainable recommendations.** Recommendations and any future mixed judgment should show their inputs. Do not replace accountable guidance with an unexplainable chat layer, custom weather model, or social/live-site-report dependency.
+
+### Known Product Gaps
+
+- **Smoke / haze / dirty-air correctness.** A clear-cloud forecast must not conceal materially poor observing conditions from smoke, haze, or dirty air. Night Conditions needs a conservative transparency-integrity input and fallback semantics when a source is unavailable; missing data is not pristine air.
+- **Longer planning horizon.** Three detailed hourly days are useful for execution, but observers also need a thin seven-day view to choose which upcoming night is worth planning around and why.
+- **Southern catalog coverage.** The curated catalog needs southern showpieces under the same standard for rights, finding guidance, equipment fit, and realistic appearance—not an uncurated expansion.
+- **No direct “is it worth the drive?” comparison.** Existing sites and Best Nearby do not yet compare home, saved site, and nearby option by observing improvement, travel effort, and target suitability.
+- **A gap between Target score and a possible personal judgment.** Target score should stay pure. If feedback shows a need, a separate, explainable site + gear + target judgment may help without changing Target score semantics.
+
+### Exploratory Ideas
+
+These are unscheduled directions. Several deepen the established backlog rather than define competing feature specifications.
+
+#### Session Timeline / Tonight's Plan
+
+Deepen [Tonight's Plan](#tonights-plan) into a time-ordered observing sequence using target windows, Moon timing, hourly conditions, equipment fit, and eventually horizon constraints: what to observe now, what to wait for, and when to stop. A session-length preference can keep the result practical. Simple Horizon Constraints makes this plan location-realistic; it remains the foundation before this exploration.
+
+#### “Is it worth the drive?” comparison
+
+Compare home, a saved site, and Best Nearby with deltas—not another map: Observing Quality change, travel effort, available session time, and targets whose suitability changes with site and gear. The result should answer whether the improvement justifies the trip. Horizon constraints can later make the comparison more realistic.
+
+#### Seven days for decisions, three days for detail
+
+Add a thin week-ahead decision outlook that identifies promising and poor nights and explains the drivers (for example Moon, clouds, or both), while retaining detailed hourly dashboards only for the current three-day window. This deepens the existing outlook surfaces rather than creating seven full dashboards.
+
+#### Smoke / haze transparency input
+
+Treat smoke, haze, and dirty air as a Night Conditions correctness improvement, using an appropriate public PM2.5, aerosol, or smoke source if it can be evaluated and maintained honestly. Surface “clear of clouds but dirty” conditions alongside current transparency inputs, use conservative behavior when the source is missing, and do not imply research-grade seeing precision.
+
+#### Expected appearance
+
+Deepen Target Details with equipment-aware descriptions or simple schematics of what success looks like: for example, whether a feature is visible, stars resolve, or a nebula remains faint. Keep an explicit distinction between visual observing and long-exposure astrophotography. This supports realistic expectations for new observers without changing the curated-catalog standard.
+
+#### Intent-specific quality verdicts
+
+Validate whether observers benefit from intent-specific guidance built on the same inputs: visual deep sky, planets / Moon / doubles, EAA / smart scope, and later the existing [Imaging Windows](#imaging-windows) direction. A night can differ across those uses, but multiple new headline verdicts should be adopted only if the value outweighs UI complexity; they do not replace the existing distinct scores.
+
+#### Separate target / site / equipment judgment
+
+If usage or feedback shows that Target score alone leaves an important decision unanswered, consider an explainable mixed judgment with terminology less probabilistic than “odds.” It could show why a target is challenging at a particular site with particular gear and Moon conditions. It must remain separate from the pure Target score, avoid claims of calibrated probability, and preserve its factors for inspection.
+
+#### Smart / EAA and equipment × weather guidance
+
+Explore practical advice for a chosen instrument—such as framing, Moon tolerance, wind, dew, fog, or seeing—without becoming hardware-control software or implying precise performance prediction. An EAA-oriented queue would deepen Best Targets; practical gear advice should remain advisory and should not add equipment fields unless real use demonstrates a need.
+
+#### Goal-first, seasonal, and personal planning
+
+Explore a goal-first inversion of the UI (goal to next useful window), a site- and goal-aware seasonal “next excellent night,” and on-device calibration from lightweight observation feedback. These deepen [Observation Log and Catalog Progress](#observation-log-and-catalog-progress), [Celestial Events](#celestial-events), and [Meteor Shower Calendar](#meteor-shower-calendar), rather than duplicating them. Long-term goals such as showing Saturn “this month” require planning semantics beyond the forecast horizon. Sparse feedback must not be used to infer specific environmental causes or alter global Target score semantics; keep any personalization local-first and exportable.
+
+#### Southern showpieces and field guidance
+
+Deepen [Expanded Target Planning](#expanded-target-planning) with a carefully selected southern set (for example Omega Centauri, 47 Tucanae, Carina/Crux showpieces, and the Magellanic Clouds), subject to the existing catalog-quality bar. A simple session sky strip or compass-oriented guidance can deepen [Pointing Helper](#pointing-helper) without becoming a full atlas or relying on unreliable AR.
+
+#### Watch and field-use follow-ups
+
+Keep Watch focused on present context: observing-window status, current target direction, time remaining, and simple go / wait / pack-up guidance. Treat complication refinement, haptics, Live Activity, Dynamic Island, and fuller session orchestration as separate possible follow-ups with different scope and value; none is automatically bundled with the others.
+
+### Suggested Exploratory Consideration Order
+
+Not a committed release sequence. After Simple Horizon Constraints, evaluate these product problems in roughly this order:
+
+1. **Smoke / haze transparency input** — correct a trust-breaking Night Conditions gap.
+2. **Session Timeline / Tonight's Plan** — turn trustworthy recommendations into a usable, time-ordered session.
+3. **“Is it worth the drive?” comparison** — make site choice comparative, practical, and target-aware.
+4. **Seven-day decision outlook** — support planning without expanding every day into hourly detail.
+5. **Expected appearance** — strengthen realistic, equipment-aware expectation-setting.
+6. **Intent-specific quality** — validate the need and UI cost of intent-specific verdicts.
+7. **Separate target / site / equipment judgment** — only if use or feedback establishes the need.
+8. **Remaining explorations** — southern catalog growth, smart / EAA guidance, goal-first and seasonal planning, personalization, pointing guidance, and Watch follow-ups.
+
+Simple Horizon Constraints remains the next engineering foundation because it improves later target timing, Session Timeline, worth-the-drive comparisons, and pointing guidance. The product value is the resulting field decision, not the octant editor itself.
 
 ## Explicit Non-Goals for Now
 
