@@ -95,7 +95,15 @@ Equipment suitability is deliberately separate from the intrinsic Easy, Standard
 - [x] Observer guide for scores, difficulty labels, observing windows, and ISS paths
 - [x] Persistent dim-red Field Mode for telescope use, available from Settings and the Dashboard while widgets and watchOS retain their normal presentation
 
-## Recent Release: 2.3.0
+## Recent Release: 2.3.1
+
+Improved Apple Watch complication reliability:
+
+- Restored long-term complication freshness with best-effort Watch background refresh scheduling, iPhone refresh requests, and direct Watch acquisition fallback.
+- Made WatchConnectivity updates complete, versioned companion snapshots so replaceable application-context writes cannot discard pending conditions data.
+- Preserved selected-location ordering and coherent conditions / Observing Quality persistence across background launches, legacy payloads, and iOS process restarts.
+
+## Previous Release: 2.3.0
 
 Made environmental conditions more location-realistic and kept companion displays in sync:
 
@@ -104,7 +112,7 @@ Made environmental conditions more location-realistic and kept companion display
 - Added modeled light-pollution information to saved locations.
 - Brought validated Observing Quality to the conditions and outlook widgets, Apple Watch dashboard, and score-bearing complications, with freshness, fallback, and synchronization improvements across iPhone, widgets, and Watch.
 
-## Previous Release: 2.2.0
+## Earlier Release: 2.2.0
 
 Improved large-text readability and added Home Screen planning views:
 

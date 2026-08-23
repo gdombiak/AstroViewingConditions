@@ -498,7 +498,7 @@ If `project.yml` changes, regenerate the Xcode project with XcodeGen before comm
 
 ## 9. Project Status
 
-**Current Status**: Core observing planner, environmental Observing Quality, target recommendations, widgets, and watchOS support are complete for the 2.3.0 release.
+**Current Status**: Core observing planner, environmental Observing Quality, target recommendations, widgets, and watchOS support are complete for the 2.3.1 release, including the Watch complication background-refresh reliability fix from issue #72.
 
 Implemented:
 - Real-time weather data
@@ -534,5 +534,5 @@ This is an open-source project. Contributions welcome.
 
 ---
 
-*Last Updated: August 10, 2026*
-*Document Version: 2.0*
+*Last Updated: August 23, 2026*
+*Document Version: 2.1*
