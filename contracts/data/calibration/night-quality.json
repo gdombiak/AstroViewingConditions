@@ -1,0 +1,72 @@
+{
+  "rating_thresholds": {
+    "excellent_max": 0.3,
+    "good_max": 0.7,
+    "fair_max": 1.0
+  },
+  "cloud_floor": {
+    "cloud_cover_min": 80,
+    "fair_max": 1.0
+  },
+  "trend": {
+    "min_hours": 4,
+    "diff_threshold": 0.3
+  },
+  "cloud_cover_score_table": [
+    { "max": 5, "score": 0.0 },
+    { "max": 20, "score": 0.5 },
+    { "max": 40, "score": 1.0 },
+    { "max": 60, "score": 1.5 },
+    { "max": 100, "score": 2.0 }
+  ],
+  "moon_illumination_buckets": [
+    { "max": 10, "score": 0.0 },
+    { "max": 25, "score": 0.5 },
+    { "max": 50, "score": 1.0 },
+    { "max": null, "score": 2.0 }
+  ],
+  "wind_penalty_table": [
+    { "max": 3, "score": 0.0 },
+    { "max": 6, "score": 0.5 },
+    { "max": 10, "score": 1.0 },
+    { "max": null, "score": 2.0 }
+  ],
+  "fog_penalty_divisor": 50.0,
+  "weight_regimes": {
+    "transparency_and_seeing": {
+      "transparency": 0.40,
+      "seeing": 0.20,
+      "fog": 0.15,
+      "moon": 0.15,
+      "wind": 0.10
+    },
+    "transparency_only": {
+      "transparency": 0.50,
+      "fog": 0.20,
+      "moon": 0.20,
+      "wind": 0.10
+    },
+    "seeing_only": {
+      "cloud": 0.40,
+      "seeing": 0.20,
+      "fog": 0.15,
+      "moon": 0.15,
+      "wind": 0.10
+    },
+    "neither": {
+      "cloud": 0.55,
+      "fog": 0.20,
+      "moon": 0.15,
+      "wind": 0.10
+    }
+  },
+  "public_score": {
+    "excellent_base": 90,
+    "good_base": 70,
+    "fair_base": 45,
+    "poor_base": 20,
+    "adjustment_scale": 10,
+    "score_min": 0,
+    "score_max": 100
+  }
+}

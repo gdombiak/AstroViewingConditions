@@ -1628,9 +1628,10 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 ### Phase 1 — Expand contract for remaining 1.0 scoring
 
 - **Commit intent:** `Add night-conditions, fog/seeing/transparency procedures and calibration data`
-- **Files:** remaining `contracts/procedures/*` (scoring only); four night-weight vectors, cloud floor, `calculateScore` map; catalog JSON; LP identity; `json-profile.md` (slim rules). Night-conditions goldens in the procedure. Still no decode-procedure restatement.
+- **Files:** remaining `contracts/procedures/*` (scoring only); four night-weight vectors, cloud floor, `calculateScore` map; catalog JSON; LP identity; `json-profile.md` (slim rules); **numeric** `contracts/data/calibration/target-scoring.json` only (no 1.1 procedure, capability, or fixtures). Night-conditions goldens in the procedure. Still no decode-procedure restatement.
 - **Depends on:** Gate F pass
-- **Notes:** iOS still uses Swift literals.
+- **Notes:** iOS still uses Swift literals. Contract expansion stays `ENGINE_VERSION` `0.1.0`; fixture ranges remain `>=0.1.0 <2.0.0`. `1.0.0` is still Phase 12. Comprehensive Swift-vs-canonical-calibration binding is Phase 4, when production Swift starts loading `contracts/data`.
+
 
 ### Phase 2 — Split Foundation types in place
 
@@ -1716,7 +1717,7 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 ### Phase 15 — targets.recommend + equipment.match 1.1
 
 - **Depends on:** Phase 12
-- **Notes:** Equality omits `explanation`. No live alt/az.
+- **Notes:** Equality omits `explanation`. No live alt/az. Numeric calibration is already parked in `contracts/data/calibration/target-scoring.json` from Phase 1; this phase owns the procedure, fixtures, and ports.
 
 ### Phase 16 — Live astronomy 1.1 with tolerances
 

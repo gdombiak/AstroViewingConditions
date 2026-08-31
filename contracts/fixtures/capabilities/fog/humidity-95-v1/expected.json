@@ -1,0 +1,10 @@
+{
+  "capability": "fog.score",
+  "ok": true,
+  "result": {
+    "score": 30,
+    "factors": [
+      "high_humidity"
+    ]
+  }
+}

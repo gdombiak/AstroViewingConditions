@@ -1,0 +1,7 @@
+capability: seeing.penalty
+engine_semver: ">=0.1.0 <2.0.0"
+equality: seeing_penalty
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/fog-seeing-transparency.md#seeingpenalty
+notes: ΔT=1 → 0.

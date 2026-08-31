@@ -1,0 +1,9 @@
+{
+  "capability": "night_conditions.score",
+  "injected": {
+    "rating": "fair",
+    "hourly_scores": [
+      1.0
+    ]
+  }
+}

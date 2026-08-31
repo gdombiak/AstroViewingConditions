@@ -1,0 +1,7 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: engine_error
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: Included hour 00:00Z has no moon_series row → validation.

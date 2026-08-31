@@ -1,0 +1,10 @@
+{
+  "capability": "fog.score",
+  "ok": true,
+  "result": {
+    "score": 15,
+    "factors": [
+      "low_wind"
+    ]
+  }
+}

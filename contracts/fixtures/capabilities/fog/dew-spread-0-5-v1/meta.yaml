@@ -1,0 +1,7 @@
+capability: fog.score
+engine_semver: ">=0.1.0 <2.0.0"
+equality: fog_score
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/fog-seeing-transparency.md#fogscore
+notes: Spread 0.5C → Int(1.5/2*30)=22.

@@ -1,0 +1,20 @@
+{
+  "capability": "night_conditions.analyze",
+  "ok": true,
+  "result": {
+    "rating": "poor",
+    "details": {
+      "cloud_cover_score": 0,
+      "fog_score_avg": 0,
+      "moon_illumination_avg": 0,
+      "wind_speed_avg": 0
+    },
+    "hourly_ratings": [],
+    "night_start": "2026-03-01T20:00:00Z",
+    "night_end": "2026-03-02T05:00:00Z",
+    "trend": "stable",
+    "first_half_score": null,
+    "second_half_score": null,
+    "public_score": 20
+  }
+}

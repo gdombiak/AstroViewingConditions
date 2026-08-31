@@ -1,0 +1,7 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: Four clear hours, moon down, wind 3.0. Hour 1 neither/seeing omitted; hours 2-4 seeing 0. public_score 100.

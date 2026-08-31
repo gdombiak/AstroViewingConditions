@@ -1,0 +1,58 @@
+{
+  "comment": "Parked 1.1 product numbers from DefaultTargetRecommendationScorer and DefaultTargetCatalogProvider.moonInterferenceSensitivity. Not a capability. Procedure, fixtures, and ports are Phase 15.",
+  "score": {
+    "min": 0,
+    "max": 100,
+    "round": "half_away_from_zero"
+  },
+  "altitude": {
+    "reference_degrees": 80,
+    "missing_max_altitude": 0,
+    "weight": 30
+  },
+  "darkness": {
+    "deep_sky_and_meteor_shower": { "base": 0, "overlap_weight": 35 },
+    "satellite": { "base": 12, "overlap_weight": 8 },
+    "moon_and_planet": { "base": 18, "overlap_weight": 10 }
+  },
+  "weather": {
+    "weight": 35,
+    "hourly_rating_seconds": 3600,
+    "overlap_score_divisor": 2,
+    "cloud_cover_percent_divisor": 100
+  },
+  "difficulty_weight": 8,
+  "moon": {
+    "zero_when_altitude_at_or_below_degrees": 0,
+    "altitude_reference_degrees": 90,
+    "interference": {
+      "base": 0.5,
+      "altitude_weight": 0.5
+    },
+    "ceilings": {
+      "galaxy": 55,
+      "diffuse_nebula": 55,
+      "globular_cluster": 28,
+      "open_cluster": 28,
+      "double_star": 5,
+      "planetary_nebula": 22,
+      "meteor_shower": 28,
+      "planet": 6,
+      "satellite": 4,
+      "moon": 0,
+      "unknown_deep_sky_object_type": 28
+    },
+    "deep_sky_interference_sensitivity": {
+      "default": 1,
+      "missing_target_value_uses_default": true,
+      "planetary_nebula_by_surface_brightness": {
+        "high_surface_brightness_max": 10,
+        "high_surface_brightness_sensitivity": 0.65,
+        "low_surface_brightness_min": 13,
+        "low_surface_brightness_sensitivity": 1.2,
+        "mid_sensitivity": 1
+      },
+      "non_planetary_nebula": 1
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "capability": "fog.score",
+  "injected": {
+    "humidity": 80,
+    "temperature": 15.0,
+    "visibility": 10000,
+    "wind_speed": 5.0
+  }
+}

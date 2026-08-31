@@ -1,0 +1,7 @@
+{
+  "capability": "seeing.penalty",
+  "ok": true,
+  "result": {
+    "penalty": 2.0
+  }
+}

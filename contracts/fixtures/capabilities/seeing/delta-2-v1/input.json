@@ -1,0 +1,8 @@
+{
+  "capability": "seeing.penalty",
+  "injected": {
+    "current_temperature": 12,
+    "previous_temperature": 10,
+    "wind_speed_200hpa": null
+  }
+}

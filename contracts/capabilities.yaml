@@ -1,9 +1,18 @@
 # Astro Engine capability catalog.
-# F1 freeze: observing_quality.assess only. Do not add night conditions,
-# decode, catalog, or grid here until those phases.
+# Current contract release 0.1.0 (pre-1.0). Phase 12 promotes ENGINE_VERSION
+# to 1.0.0 when both evals are green for the 1.0 allow-list.
 #
-# engine_semver here is the current contract release (matches ENGINE_VERSION).
-# Capability `since` is introduction, not "only valid at this exact version".
+# `since` is the contract release in which this specification was introduced,
+# not "already implemented on every host".
+# `hosts` is the target host/parity requirement for that freeze, not a
+# statement that every listed host already implements the capability in the
+# current branch. The pre-1.0 catalog may accumulate specs before CLI/Python
+# catch up. CLI allow-list and host coverage grow in later phases (F2 CLI
+# still allow-lists observing_quality.assess only).
+#
+# Decode, grid, and live astronomy are later phases. Catalog JSON, LP
+# identity, and parked 1.1 target-scoring numbers live under contracts/data
+# and are not capabilities yet.
 
 engine_semver: "0.1.0"
 
@@ -16,3 +25,41 @@ capabilities:
       Adjust a night-conditions integer score for modeled zenith sky
       brightness. Invalid or missing brightness falls back to the night
       score exactly; there is no second Moon term.
+
+  - id: night_conditions.analyze
+    hosts: [ios, cli]
+    equality: night_conditions
+    since: "0.1.0"
+    requires_injected: [night_window, moon_series, clock, time_zone]
+    summary: >
+      Score an astronomical night from injected hourly forecasts, moon
+      samples, and a night window. Does not call SunCalc or NightForecastFilter.
+
+  - id: night_conditions.score
+    hosts: [ios, cli]
+    equality: night_conditions_score
+    since: "0.1.0"
+    summary: >
+      Map a night rating plus hourly 0–2 scores to the public 0–100 integer.
+
+  - id: fog.score
+    hosts: [ios, cli]
+    equality: fog_score
+    since: "0.1.0"
+    summary: Integer fog risk 0–100 and factor id set from one hourly forecast.
+
+  - id: seeing.penalty
+    hosts: [ios, cli]
+    equality: seeing_penalty
+    since: "0.1.0"
+    summary: >
+      Optional 0–2 seeing penalty from temperature change and/or 200 hPa wind.
+      Null when both components are missing.
+
+  - id: transparency.penalty
+    hosts: [ios, cli]
+    equality: transparency_penalty
+    since: "0.1.0"
+    summary: >
+      0–2 transparency penalty from total/layered cloud and optional visibility.
+      Never null; missing layers fall back to total cloud.

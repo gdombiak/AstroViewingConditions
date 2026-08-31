@@ -1,0 +1,10 @@
+{
+  "capability": "fog.score",
+  "ok": true,
+  "result": {
+    "score": 10,
+    "factors": [
+      "low_visibility"
+    ]
+  }
+}

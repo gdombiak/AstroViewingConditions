@@ -1,0 +1,7 @@
+capability: night_conditions.score
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions_score
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/calculate-score.md
+notes: Fair + avg 1.0 → 45.

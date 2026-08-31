@@ -1,0 +1,7 @@
+{
+  "capability": "transparency.penalty",
+  "injected": {
+    "total_cloud_cover": 0,
+    "visibility_meters": 1000
+  }
+}

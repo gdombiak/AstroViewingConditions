@@ -33,3 +33,56 @@ policies:
       light_pollution.modeled_zenith_sky_brightness: exact
       light_pollution.base_penalty: abs_1e12
       light_pollution.applied_penalty: abs_1e12
+
+  night_conditions:
+    description: Injected-window night analysis DTO
+    fields:
+      rating: exact
+      night_start: exact
+      night_end: exact
+      trend: exact
+      first_half_score: null_or_abs_1e9
+      second_half_score: null_or_abs_1e9
+      details.cloud_cover_score: abs_1e9
+      details.fog_score_avg: abs_1e9
+      details.moon_illumination_avg: exact
+      details.wind_speed_avg: abs_1e9
+      details.seeing_score_avg: optional_abs_1e9
+      details.transparency_score_avg: optional_abs_1e9
+      hourly_ratings[].time: exact
+      hourly_ratings[].score: abs_1e9
+      hourly_ratings[].cloud_cover: exact
+      hourly_ratings[].fog_score: exact
+      hourly_ratings[].moon_illumination: exact
+      hourly_ratings[].moon_altitude: abs_1e9
+      hourly_ratings[].wind_speed: abs_1e9
+      hourly_ratings[].seeing_score: optional_abs_1e9
+      hourly_ratings[].transparency_score: optional_abs_1e9
+      public_score: exact
+
+  night_conditions_score:
+    description: Public 0–100 integer from rating plus hourly scores
+    fields:
+      score: exact
+
+  fog_score:
+    description: Integer fog score and ordered factor ids
+    fields:
+      score: exact
+      factors: exact
+
+  seeing_penalty:
+    description: Optional discrete 0–2 seeing penalty
+    fields:
+      penalty: null_or_abs_1e12
+
+  transparency_penalty:
+    description: Discrete/combined 0–2 transparency penalty
+    fields:
+      penalty: abs_1e12
+
+  engine_error:
+    description: Validation/engine failure envelope (no result)
+    fields:
+      code: exact
+      message: exact

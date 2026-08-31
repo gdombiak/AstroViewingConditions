@@ -1,0 +1,27 @@
+{
+  "penalty_min": 0.0,
+  "penalty_max": 2.0,
+  "layer_weights": {
+    "low": 0.50,
+    "mid": 0.30,
+    "high": 0.20
+  },
+  "combine_weights": {
+    "cloud": 0.75,
+    "visibility": 0.25
+  },
+  "cloud_cover": [
+    { "max": 10, "score": 0.0 },
+    { "max": 30, "score": 0.5 },
+    { "max": 60, "score": 1.0 },
+    { "max": 80, "score": 1.5 },
+    { "max": null, "score": 2.0 }
+  ],
+  "visibility_meters": [
+    { "min": 20000, "score": 0.0 },
+    { "min": 10000, "score": 0.5 },
+    { "min": 5000, "score": 1.0 },
+    { "min": 2000, "score": 1.5 },
+    { "min": null, "score": 2.0 }
+  ]
+}

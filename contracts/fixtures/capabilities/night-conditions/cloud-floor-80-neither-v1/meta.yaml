@@ -1,0 +1,7 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: Single hour cloud 80, neither regime: weighted 1.1, hourly and nightly floor. public 19.

@@ -1,0 +1,11 @@
+{
+  "dataset_id": "lpatlas1",
+  "dataset_revision": 1,
+  "format_version": 1,
+  "plausible_brightness": {
+    "min": 13.0,
+    "max": 22.5,
+    "unit": "mag/arcsec2"
+  },
+  "max_coordinate_distance_meters": 1000
+}

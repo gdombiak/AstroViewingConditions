@@ -1,0 +1,7 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: Hours 3-4 overcast seeing-only floor 1.0; second-first=1.0 → degrading; avg 0.5 good; public 75.

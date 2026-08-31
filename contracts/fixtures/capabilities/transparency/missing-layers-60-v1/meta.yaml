@@ -1,0 +1,7 @@
+capability: transparency.penalty
+engine_semver: ">=0.1.0 <2.0.0"
+equality: transparency_penalty
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/fog-seeing-transparency.md#transparencypenalty
+notes: Missing a layer; total 60 → cloud table 1.0.

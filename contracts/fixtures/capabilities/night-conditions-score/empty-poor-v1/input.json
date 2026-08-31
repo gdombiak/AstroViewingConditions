@@ -1,0 +1,7 @@
+{
+  "capability": "night_conditions.score",
+  "injected": {
+    "rating": "poor",
+    "hourly_scores": []
+  }
+}

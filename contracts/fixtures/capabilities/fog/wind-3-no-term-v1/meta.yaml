@@ -1,0 +1,7 @@
+capability: fog.score
+engine_semver: ">=0.1.0 <2.0.0"
+equality: fog_score
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/fog-seeing-transparency.md#fogscore
+notes: Wind 3.0 is not < 3, fog wind term skipped.
