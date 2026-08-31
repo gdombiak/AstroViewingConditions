@@ -1623,6 +1623,8 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 - **Fail:** stop. Do not extract SharedCode. Abandon or freeze the branch. `main` stays the iOS app.
 - **Pass:** continue Phase 1+ on the **same** branch. Record skill shape in this document if it differed.
 
+**Result (2026-08-31): PASS.** Operational notes: `docs/design/f4-grok-bot-feasibility.md`. Skill shape is raw `observing_quality.assess` via local CLI `/workspace/bin/astro-engine`; `site_quality` was not required. Grok Bot skills are an account-wide library, not per-Bot private. Phase 1 was not started in the F4 experiment.
+
 ### Phase 1 — Expand contract for remaining 1.0 scoring
 
 - **Commit intent:** `Add night-conditions, fog/seeing/transparency procedures and calibration data`
