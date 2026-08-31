@@ -642,7 +642,7 @@ contracts/fixtures/capabilities/observing-quality/home-backyard-v1/
 
 ```yaml
 capability: observing_quality.assess
-engine_semver: ">=0.1.0 <1.0.0"
+engine_semver: ">=0.1.0 <2.0.0"
 equality: observing_quality
 hosts: [swift, python]
 origin: manual
@@ -662,12 +662,11 @@ notes: "Home sample from ObservingQualityCalculatorTests; expected computed from
 }
 ```
 
-`expected.json` (canonical DTO; brightness between anchors 18.5→7.0 and 19.5→5.0). Until Phase 12 declares `1.0.0`, envelopes report `engine_semver` `0.1.0`:
+`expected.json` is the domain result. Runtime envelopes still report `engine_semver`; that value is checked against `meta.yaml`'s range, not against this golden:
 
 ```json
 {
   "capability": "observing_quality.assess",
-  "engine_semver": "0.1.0",
   "ok": true,
   "result": {
     "light_pollution": {
@@ -692,7 +691,7 @@ Worked arithmetic (normative; no implementation in the loop):
 - `applied = 6.820636749267599 × 13/15 = 5.911218516031919`
 - `score = Int((72 − applied).rounded()) = Int(66.088….rounded()) = 66` (`rounded()` then `Int`, as in `ObservingQualityCalculator.assess`)
 
-Exact-anchor fixtures `anchor-*-v1` use night-conditions score `80` (usability weight 1) and `equality: observing_quality_anchor`. `unavailable-brightness-v1` covers `light_pollution: null`.
+Exact-anchor fixtures `anchor-*-v1` use night-conditions score `80` (usability weight 1) and `equality: observing_quality_anchor`. Additional F1 boundary goldens: usability weight 0 at night 35 (LP present, applied 0); inclusive brightness `13.0` / `22.5`; `12.999` out of range; night-score clamp at 150 and −5. `unavailable-brightness-v1` covers JSON-null brightness.
 
 #### Worked fixture: weather.decode (`origin: manual`, transcribed from existing tests)
 
@@ -705,7 +704,6 @@ Example `expected.json` for the happy-path two-hour payload (`utc_offset_seconds
 ```json
 {
   "capability": "weather.decode",
-  "engine_semver": "1.0.0",
   "ok": true,
   "result": {
     "hourly": [
@@ -829,7 +827,6 @@ Wind is **3.0** so `FogCalculator` does not add the `windSpeed < 3` term; night 
 ```json
 {
   "capability": "night_conditions.analyze",
-  "engine_semver": "1.0.0",
   "ok": true,
   "result": {
     "details": {
@@ -1147,7 +1144,15 @@ If a branch stays in code, it is **not** claimed as “single source of product 
 
 Three independent versions: iOS `MARKETING_VERSION` (2.3.1), CLI PEP 621, `contracts/ENGINE_VERSION`.
 
-Both hosts report `engine_semver` in the JSON envelope. F1 ships `0.1.0` for the OQ-only slice. 1.0.0 is declared when the 1.0 capability rows are green on both evals — **before** live astronomy / location.compare.
+Both hosts report `engine_semver` in the **runtime** JSON envelope. That field is identity, not a domain golden.
+
+- `ENGINE_VERSION` / `capabilities.yaml` `engine_semver` = current contract release.
+- Capability `since` = introduction version; the capability remains valid in later compatible releases.
+- Fixture `meta.yaml` `engine_semver` = **applicability range**. OQ F1 goldens use `>=0.1.0 <2.0.0`. Phase 12's 1.0.0 declaration does **not** rewrite goldens unless OQ semantics actually change (that would be a major bump).
+- `expected.json` contains `ok` + `result` (and `capability` as a mix-up guard). It does **not** embed `engine_semver`.
+- The parity runner checks `runtime.engine_semver` satisfies `meta.engine_semver`, then compares `result` using `equality-policy.yaml`.
+
+F1 ships current release `0.1.0` for the OQ-only slice. 1.0.0 is declared when the 1.0 capability rows are green on both evals — **before** live astronomy / location.compare.
 
 ---
 
@@ -1515,13 +1520,13 @@ Python live astronomy library remains skyfield for 1.1 sun/moon and Schlyter JSO
 
 4. **1.0 parity is pure scoring + decode**, not ~20 hedged capabilities. Gate: OQ only. After gate 1.0: night analyze/score with injected **night_window + 1:1 moon_series** + clock/tz, fog/seeing/transparency, catalog, weather/ISS decode, LP lookup+validity on tiny fixture, grid. 1.1: live astronomy, target windows/recommend, equipment structured match, location.compare, geocoding, composed CLI. Polar sun fallback is `hosts: [ios]`. Equipment explanations and English summaries are never equality fields. **SharedCode never `import SunCalc` after package extract:** AstroEngine owns SunCalc-backed `MoonSampling`/`SunEventsSampling`.
 
-5. **Fixtures** are `input.json` + `expected.json` + `meta.yaml` with field-level `equality-policy.yaml`. Parity compares **parsed JSON**, not canonical bytes. Required encode rules: ISO-8601 `Z` dates, finite numbers, null-vs-omitted where meaningful. Night analyze: missing moon timestamp is validation; stored `night_start`/`night_end` are first/last included hours; `best_window` omitted. `weather.decode` always emits `timezone` (`string|null`) and `utc_offset_seconds`. Loader: `CONTRACTS_ROOT` + ancestor walk; `$ref` confined to `contracts/fixtures/`. DTO omits UUID `id`, emoji, English copy.
+5. **Fixtures** are `input.json` + `expected.json` + `meta.yaml` with field-level `equality-policy.yaml`. Parity compares **parsed JSON**, not canonical bytes. `expected.json` is the domain result (`ok`/`result`); runtime `engine_semver` is checked against `meta.yaml`'s range, not pinned in the golden. Required encode rules: ISO-8601 `Z` dates, finite numbers, null-vs-omitted where meaningful. Night analyze: missing moon timestamp is validation; stored `night_start`/`night_end` are first/last included hours; `best_window` omitted. `weather.decode` always emits `timezone` (`string|null`) and `utc_offset_seconds`. Loader: `CONTRACTS_ROOT` + ancestor walk; `$ref` confined to `contracts/fixtures/`. DTO omits UUID `id`, emoji, English copy.
 
 6. **CI compares each engine to `expected.json`.** Enable workflows on the feature branch (today they are `main`-only). Incumbent `ios-tests.yml` is retargeted, not replaced by `macos-latest`. Package changes **must** `xcodebuild build`. Parity runs on `contracts/**` **and** both engine packages. Harness GDAL stays macOS. `CODEOWNERS` on `contracts/`. `make parity` locally. `--update` forbidden in CI.
 
 7. **Product numbers live in `contracts/data` (one source-controlled copy).** Procedures exist **only** for scoring algorithms that would otherwise make Swift the oracle. Decode/grid/catalog/LP lookup use fixtures + equality (and existing `BINARY_FORMAT.md`). Tests load `contracts/` directly. Production iOS/watch bundles data at **build time** (gitignored); no committed package copies; no symlinks.
 
-8. **Independent `astro-engine` semver.** 1.0.0 when the freeze set is green. iOS `2.3.1` can remain while implementing 1.0.0.
+8. **Independent `astro-engine` semver.** 1.0.0 when the freeze set is green. iOS `2.3.1` can remain while implementing 1.0.0. Fixture applicability is a **range** in `meta.yaml`; goldens do not churn solely because the current engine version was promoted.
 
 9. **Parity = matrix, not screenshots.** Best Nearby land/water stays iOS-only. `location.compare` (1.1) uses the full `isHigherRanked` order with suitability injected or default `unchecked`. Grid tolerance 1e-4 deg + step lattice, not 1e-9 deg. English summaries stay host-specific. Longer-than-3-day forecast fetch is `agent.forecast_horizon` (`hosts: [cli]`, equality n/a).
 
@@ -1573,9 +1578,9 @@ When a phase disproves an assumption, update **this document in the same commit 
 ### Phase F1 — OQ contract slice
 
 - **Commit intent:** `Add observing_quality.assess contract: procedure, anchors, arithmetic fixtures`
-- **Files:** `contracts/ENGINE_VERSION=0.1.0`; `capabilities.yaml` with `observing_quality.assess` only (`since: "0.1.0"`); `equality-policy.yaml` (`observing_quality` / `observing_quality_anchor` only); `procedures/observing-quality.md`; `data/calibration/observing-quality.json`; fixtures `home-backyard-v1`, `anchor-*-v1`, `unavailable-brightness-v1`; `CODEOWNERS` for `contracts/`.
+- **Files:** `contracts/ENGINE_VERSION=0.1.0`; `capabilities.yaml` with `observing_quality.assess` only (`since: "0.1.0"`); `equality-policy.yaml` (`observing_quality` / `observing_quality_anchor` only); `procedures/observing-quality.md`; `data/calibration/observing-quality.json`; fixtures `home-backyard-v1`, `anchor-*-v1`, boundary cases (usability 0, brightness range, night-score clamp), `unavailable-brightness-v1`; `CODEOWNERS` for `contracts/`.
 - **Depends on:** none (can land with F0)
-- **Notes:** Do **not** write night-conditions / catalog / full 1.0 schema universe yet. iOS still uses Swift literals. Fixture envelopes report `engine_semver: "0.1.0"` until Phase 12.
+- **Notes:** Do **not** write night-conditions / catalog / full 1.0 schema universe yet. iOS still uses Swift literals. `expected.json` does not pin `engine_semver`; `meta.yaml` range is `>=0.1.0 <2.0.0`.
 
 ### Phase F2 — Python OQ + minimal CLI
 

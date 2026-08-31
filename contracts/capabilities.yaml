@@ -1,0 +1,18 @@
+# Astro Engine capability catalog.
+# F1 freeze: observing_quality.assess only. Do not add night conditions,
+# decode, catalog, or grid here until those phases.
+#
+# engine_semver here is the current contract release (matches ENGINE_VERSION).
+# Capability `since` is introduction, not "only valid at this exact version".
+
+engine_semver: "0.1.0"
+
+capabilities:
+  - id: observing_quality.assess
+    hosts: [ios, cli]
+    equality: observing_quality
+    since: "0.1.0"
+    summary: >
+      Adjust a night-conditions integer score for modeled zenith sky
+      brightness. Invalid or missing brightness falls back to the night
+      score exactly; there is no second Moon term.

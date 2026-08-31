@@ -1,0 +1,7 @@
+capability: observing_quality.assess
+engine_semver: ">=0.1.0 <2.0.0"
+equality: observing_quality_anchor
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/observing-quality.md#exact-anchors
+notes: Night score 80 so usability weight is 1. Exact anchor penalty 5.0.

@@ -1,0 +1,13 @@
+{
+  "capability": "observing_quality.assess",
+  "ok": true,
+  "result": {
+    "light_pollution": {
+      "applied_penalty": 0.0,
+      "base_penalty": 6.820636749267599,
+      "modeled_zenith_sky_brightness": 18.5896816253662
+    },
+    "night_conditions_score": 35,
+    "score": 35
+  }
+}

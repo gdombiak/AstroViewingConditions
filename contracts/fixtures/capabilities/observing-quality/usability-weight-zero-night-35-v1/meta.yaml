@@ -1,0 +1,8 @@
+capability: observing_quality.assess
+engine_semver: ">=0.1.0 <2.0.0"
+equality: observing_quality
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/observing-quality.md
+notes: Exact usability anchor 35 → weight 0; LP present but applied_penalty is 0; score equals night score.
+

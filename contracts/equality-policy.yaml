@@ -1,0 +1,35 @@
+# Field-level comparators for parity. Fixtures set equality: <policy-id>.
+# Unknown fields fail closed. Numbers compare numerically (72 equals 72.0).
+#
+# What is compared
+# - Policy fields apply to expected.json "result" (the capability DTO).
+# - expected.json "ok" is exact. "capability" must match meta.capability.
+# - Runtime envelope "engine_semver" is NOT a golden. The runner checks that
+#   the running engine version satisfies meta.engine_semver (a range).
+#   Do not put engine_semver in expected.json.
+version: 1
+default:
+  extra_keys: fail
+  missing_keys: fail
+  arrays: ordered
+  null_vs_omitted: distinct
+
+policies:
+  observing_quality:
+    description: Observing-quality DTO; interpolated penalties use 1e-9
+    fields:
+      score: exact
+      night_conditions_score: exact
+      light_pollution: null_or_object
+      light_pollution.modeled_zenith_sky_brightness: abs_1e9
+      light_pollution.base_penalty: abs_1e9
+      light_pollution.applied_penalty: abs_1e9
+
+  observing_quality_anchor:
+    description: Exact-anchor penalties; 1e-12 on base and applied
+    fields:
+      score: exact
+      night_conditions_score: exact
+      light_pollution.modeled_zenith_sky_brightness: exact
+      light_pollution.base_penalty: abs_1e12
+      light_pollution.applied_penalty: abs_1e12

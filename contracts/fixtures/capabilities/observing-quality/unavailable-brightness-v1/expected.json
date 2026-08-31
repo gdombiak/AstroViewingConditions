@@ -1,0 +1,9 @@
+{
+  "capability": "observing_quality.assess",
+  "ok": true,
+  "result": {
+    "light_pollution": null,
+    "night_conditions_score": 90,
+    "score": 90
+  }
+}
