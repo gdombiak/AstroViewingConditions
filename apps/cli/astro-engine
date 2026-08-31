@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""Repo-checkout launcher for the Astro Engine CLI."""
+
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+
+
+def _prepare_sys_path() -> None:
+    """Add the repo src tree only when the top-level package is missing.
+
+    An ImportError from *inside* an installed `astro_engine` package must
+    propagate; it is not a reason to fall back to the checkout path.
+    """
+    if importlib.util.find_spec("astro_engine") is not None:
+        return
+    src = Path(__file__).resolve().parents[2] / "packages" / "astro-engine-python" / "src"
+    sys.path.insert(0, str(src))
+
+
+_prepare_sys_path()
+from astro_engine.cli import main  # noqa: E402
+
+if __name__ == "__main__":
+    raise SystemExit(main())

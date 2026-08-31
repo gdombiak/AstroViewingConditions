@@ -21,7 +21,11 @@ DerivedData/
 
 # Swift Package Manager
 .build/
-Packages/
+# SPM clones into ./Packages. On case-insensitive volumes that pattern also
+# matches ./packages (our engine tree), so re-include the lowercase path.
+/Packages/
+!/packages/
+!/packages/**
 Package.resolved
 .swiftpm/
 

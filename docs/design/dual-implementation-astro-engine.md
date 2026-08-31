@@ -305,6 +305,8 @@ The current tree is an Apple app with a tools folder and a working iOS CI job. P
 └── tools/light-pollution/           # moved Tools/LightPollution in the relocation phase
 ```
 
+**Gitignore:** SwiftPM’s vendor directory is `/Packages/`. On case-insensitive volumes that also matches `packages/`, so `.gitignore` must re-include `!/packages/` or the engine trees are invisible to git.
+
 **Xcode isolation rules:**
 
 - After the move, `apps/ios/project.yml` may only list paths under `apps/ios/Sources`, `apps/ios/Tests`, and the local package `../../packages/astro-engine-swift`.
@@ -1299,9 +1301,14 @@ astro-engine <capability-id> --pretty --input -
 
 - `<capability-id>` is an allow-list from `capabilities.yaml` with `since <=` implemented engine version and `hosts` containing `cli`. Unknown id → exit 3, stderr usage, no stdout JSON.
 - `--input -` reads stdin. `--input` and flags for lat/lon are **mutually exclusive** in 1.0 (no flag form). Composed flag-style commands are 1.1 CLI-only (`agent.conditions`).
-- **Stdout:** canonical JSON envelope only (compact; `--pretty` adds 2-space indent + sorted keys).
-- **Stderr:** logs and optional stack traces. Never mix traces into stdout.
-- **Exit codes:** `0` if envelope `ok: true`; `2` validation (`payload_too_large`, `ref_escape`, schema fail); `1` engine failure (`decode_failure`, `engine_failure`); `3` usage (bad argv, unknown capability).
+- **Stdout:** JSON for capability invocations and `--engine-version`. Compact; `--pretty` adds 2-space indent + sorted keys.
+- **Stderr:** diagnostics only. Never mix traces into stdout.
+- **Exit codes / envelopes:**
+  - successful **capability** invocation → `ok: true` capability envelope (`capability`, `engine_semver`, `ok`, `result`), exit 0
+  - successful **`--engine-version`** → JSON **identity object** `{"engine_semver":"<version>"}` (no `ok` field), exit 0
+  - validation/input failure → `ok: false` envelope (`error.code` = `validation` / `payload_too_large` / …), exit 2
+  - engine/runtime failure, including `--engine-version` bootstrap failure → `ok: false` envelope (`error.code` = `engine_failure`), exit 1; stderr may repeat the message. Omit `engine_semver` if it cannot truthfully be resolved (do not fabricate a version)
+  - usage / unknown capability → **no** stdout JSON, exit 3
 - Production CLI image **includes** the same `light_pollution_global_v1.bin` the iOS app already bundles (~10 MiB). Default lookup path is that bundled file. `--atlas-path` overrides it (tests, tiny fixture, hostile-file checks).
 - Atlas **file missing or unreadable** is **not** an error for `observing_quality.assess`: `ok: true`, `light_pollution: null`, score = night score. Distinct from `decode_failure` and from `atlas_invalid` (corrupt file that failed header/DFS validation).
 - Hostile `--atlas-path` files must fail closed (same header/DFS validation as Swift `BinaryLightPollutionProvider.init`).
@@ -1311,7 +1318,7 @@ astro-engine <capability-id> --pretty --input -
 
 **1.1 CLI-only composed** (not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They loop 1.0/1.1 capabilities or fetch extra forecast days and are out of `parity.yml` except as optional golden envelopes tagged `hosts: [python]`.
 
-Envelope:
+Capability envelope (success):
 
 ```json
 {
@@ -1320,6 +1327,12 @@ Envelope:
   "ok": true,
   "result": {}
 }
+```
+
+`--engine-version` success identity object (not a capability envelope; no `ok`):
+
+```json
+{"engine_semver":"0.1.0"}
 ```
 
 `error.code` values: `validation`, `decode_failure`, `engine_failure`, `capability_unknown`, `payload_too_large`, `ref_escape`, `grid_cap`, `fixture_missing`, `atlas_invalid`. **No** `missing_atlas` error for OQ fallback.
