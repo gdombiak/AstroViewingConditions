@@ -2,9 +2,12 @@ name: iOS Tests
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - feature/astro-engine-cli
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   test:
