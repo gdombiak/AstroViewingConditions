@@ -91,6 +91,40 @@ final class CuratedDeepSkyCatalogTests: XCTestCase {
         XCTAssertEqual(m64.magnitude, 8.5, "M64's integrated visual magnitude must not be replaced by NASA's 9.8 value")
     }
 
+    func testInjectedCatalogImageIsPreservedAndNilFallsBackToManifest() throws {
+        let supplied = TargetImageCredit(
+            targetID: "m13",
+            assetName: "injected-m13",
+            thumbnailAssetName: "injected-m13-thumb",
+            sourceName: "Injected Source",
+            sourceURL: URL(string: "https://example.test/injected-m13")!,
+            credit: "Injected Credit",
+            licenseName: "CC BY 4.0",
+            licenseURL: URL(string: "https://creativecommons.org/licenses/by/4.0/")!,
+            requiresAttribution: true,
+            isVerified: true,
+            verifiedAt: Date(timeIntervalSince1970: 1)
+        )
+        XCTAssertNotEqual(supplied, TargetImageManifest.image(for: "m13"))
+
+        let catalog = InjectedDeepSkyCatalogProvider(catalogEntries: [
+            Self.minimalEntry(id: "m13", image: supplied),
+            Self.minimalEntry(id: "m31", image: nil)
+        ])
+        let targets = Dictionary(
+            uniqueKeysWithValues: DefaultTargetCatalogProvider(deepSkyCatalog: catalog)
+                .targets(for: context)
+                .filter { $0.type == .deepSky }
+                .map { ($0.id, $0) }
+        )
+
+        XCTAssertEqual(try XCTUnwrap(targets["m13"]).image, supplied)
+        XCTAssertEqual(
+            try XCTUnwrap(targets["m31"]).image,
+            TargetImageManifest.image(for: "m31")
+        )
+    }
+
     func testM36M38AndM77CatalogDefinitions() throws {
         let entries = CuratedDeepSkyCatalogProvider().entries()
         for id in ["m36", "m38", "m77"] {
@@ -132,6 +166,30 @@ final class CuratedDeepSkyCatalogTests: XCTestCase {
 
     private func catalogTarget(id: String) -> ObservableTarget {
         try! XCTUnwrap(targetsByID[id])
+    }
+
+    private struct InjectedDeepSkyCatalogProvider: DeepSkyCatalogProvider {
+        let catalogEntries: [DeepSkyCatalogEntry]
+        func entries() -> [DeepSkyCatalogEntry] { catalogEntries }
+    }
+
+    private static func minimalEntry(id: String, image: TargetImageCredit?) -> DeepSkyCatalogEntry {
+        DeepSkyCatalogEntry(
+            id: id,
+            commonName: id,
+            catalogName: id,
+            objectType: .globularCluster,
+            constellation: "Test",
+            rightAscension: 0,
+            declination: 0,
+            magnitude: 6,
+            apparentSize: "1 arcmin",
+            difficulty: 0.5,
+            observingIntent: .standard,
+            recommendedEquipment: .binoculars,
+            notes: "Injected",
+            image: image
+        )
     }
 
     private var context: TargetRecommendationContext {

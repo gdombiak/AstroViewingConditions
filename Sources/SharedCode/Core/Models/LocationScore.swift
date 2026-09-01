@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 
 public enum LocationSuitabilityStatus: Sendable, Hashable {
     case suitable
@@ -239,15 +238,6 @@ public struct LocationScore: Sendable, Identifiable, Hashable {
         case .good: return "blue"
         case .fair: return "orange"
         case .poor: return "red"
-        }
-    }
-    
-    public var color: Color {
-        switch LocationScoreCategory.resolve(score) {
-        case .excellent: return .green
-        case .good: return .blue
-        case .fair: return .orange
-        case .poor: return .red
         }
     }
 }

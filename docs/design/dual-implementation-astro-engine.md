@@ -50,16 +50,16 @@ This is **not** “feature parity of the whole app,” not a second UI, not a 1:
 
 ### Pain points that make a naive dual implementation fail
 
-1. **`SharedCode` is not a domain engine.** Domain structs are physically mixed into Apple files (see [File-split map](#file-split-map-prerequisite-of-the-swift-package)):
-   - `HourlyForecast`, `FogScore`, `SunEvents`, `MoonInfo`, `NightQualityAssessment`, `ISSPass` live in `ViewingConditions.swift`, which `import SwiftUI` and defines `Color` helpers (`scoreColor`, `rating.color`).
-   - `Coordinate` / `CachedLocation` live in `SavedLocation.swift` next to the SwiftData `@Model`.
-   - `LocationScore` and `LocationSuitabilityStatus` live in `LocationScore.swift`, which `import SwiftUI`.
-   - `NightQualityAssessment.calculatedScore` calls `BestSpotSearcher.calculateScore` (an orchestration type that also `import CoreLocation` for `CoreLocationSuitabilityResolver`).
-   - `CuratedDeepSkyCatalogProvider` embeds `TargetImageManifest.image(for:)` (iOS asset credits).
-   - `EquipmentMatchingService` is in `Sources/SharedCode/Core/Models/EquipmentMatching.swift` (there is **no** `EquipmentMatchingService.swift`). `EquipmentItem` `@Model` shares `Equipment.swift` with non-SwiftData types.
-   - `LocationTimeZoneResolver` and `CoreLocationSuitabilityResolver` depend on `CLGeocoder`.
+1. **`SharedCode` is not a domain engine.** Phase 2 split Foundation DTOs **in place** (still under `Sources/SharedCode`; see [File-split map](#file-split-map-prerequisite-of-the-swift-package)), but the module still mixes engine types with Apple adapters:
+   - `HourlyForecast`, `FogScore`, `SunEvents`, `MoonInfo`, `NightQualityAssessment`, `ISSPass`, `Coordinate`, and `CachedLocation` now live in dedicated Foundation files. SwiftUI `Color` helpers moved to `NightQualityColor.swift` / `LocationScore+Color.swift`. `NightQualityPresentation` stays Foundation-only (copy/tone), not a Color adapter.
+   - `@Model SavedLocation` remains SwiftData; `SelectedLocation` stays with it. `CachedLocation.init(from: SavedLocation)` is an iOS host adapter on `SavedLocation.swift`, **not** on the extractable `CachedLocation.swift`. `@Model EquipmentItem` is now `EquipmentItem.swift` (`#if os(iOS)`); `Equipment.swift` is Foundation-only.
+   - `NightQualityAssessment.calculatedScore` is a convenience that calls `NightConditionsScoring.publicScore` (same formula as the former `BestSpotSearcher.calculateScore` body). It does **not** call `BestSpotSearcher`. The property was kept because Watch/widget/iOS call sites are extensive; deleting it would be API churn with no extraction benefit.
+   - `CuratedDeepSkyCatalogProvider` no longer calls `TargetImageManifest` at type-init. `DefaultTargetCatalogProvider` attaches credits when building `ObservableTarget` (`entry.image` wins, else the host manifest). iOS still loads pixels via `TargetImageRepository` by target id.
+   - `EquipmentMatchingService` is in `Sources/SharedCode/Core/Models/EquipmentMatching.swift` (there is **no** `EquipmentMatchingService.swift`).
+   - `LocationTimeZoneResolver` and `CoreLocationSuitabilityResolver` still depend on `CLGeocoder`.
    - `LocationManager` is CoreLocation + SwiftUI; `WidgetReloadService` imports WidgetKit.
-   - `ISSService` `import CoreLocation` is **unused** (no `CLLocation`). That unused import is hygiene, not architectural coupling. The real Apple coupling in ISS is `URLSession` / actor hosting, not geocoding.
+   - `ISSService` `import CoreLocation` is **unused** (no `CLLocation`). That unused import is hygiene, not architectural coupling. The real Apple coupling in ISS is `URLSession` / actor hosting, not geocoding. Phase 2 did not clean it (not an engine-DTO file).
+   - Remaining `import SunCalc` after Phase 2: `AstronomyService`, `MoonRecommendationService`, `NightQualityAnalyzer`. `BestSpotSearcher` had an unused `import SunCalc` (no `MoonPosition`/`SunTimes` call sites) and Phase 2 removed it. `BestSpotSearcher` still uses CoreLocation for `CLGeocoder`.
    Mirroring `SharedCode` class-for-class in Python would copy this contamination.
 
 2. **Integer product scores currently depend on live astronomy-library floats and Calendar.** `NightQualityAnalyzer.analyzeNight` calls SunCalc `MoonPosition` / `MoonIllumination` per nighttime hour **and** consumes `sunEventsToday` / `sunEventsTomorrow` via `NightForecastFilter.calculateNightRange`, which copies twilight hour/minute into a location-zone `Calendar`. A 60 s twilight disagreement can drop or add an hourly forecast and change the public integer. `ConditionsProvider.fetchConditions` uses `Date()` for `startOfDay` and `fetchedAt`. Injecting only moon samples is not enough.
@@ -326,13 +326,13 @@ Do this **in place** before `Package.swift` exists. Engine XCTest must `import A
 
 | Current file | Extract to AstroEngine (Foundation) | Stay in SharedCode / iOS adapters |
 |---|---|---|
-| `Models/ViewingConditions.swift` | `HourlyForecast` (DTO **omits** `id`), `SunEvents`, `MoonInfo` (DTO omits `phaseName`/`emoji`), `FogScore` (numeric + factor **enums**, not English), `ISSPass` (keep deterministic `id` from rise+duration bitPattern), `NightQualityAssessment` without `calculatedScore` coupling, without `Color` extensions, without `Trend.icon` / English `label` as equality fields | `ViewingConditions` host aggregate may remain as a Codable snapshot **if** SwiftUI extensions move out; `Color` / `scoreColor` / `scoreLabel` → `NightQualityPresentation` adapter; `analyzeConditions(_ ViewingConditions)` wrapper |
-| `Models/SavedLocation.swift` | `Coordinate`, `CachedLocation` (optional `id` omitted from equality DTO) | `@Model SavedLocation`, `SelectedLocation`, SwiftData ordering |
-| `Models/LocationScore.swift` | `LocationSuitabilityStatus` (enum cases only), `BestSpotScoringMode`, `LocationScore` **without** `id` / `summary` / `Color` | SwiftUI `scoreColor`, English `label` / `lightPollutionUnavailableMessage` |
-| `Models/Equipment.swift` | `EquipmentType`, `EquipmentApertureUnit`, `EquipmentDraft`, `EquipmentValidation`, `EquipmentCapability` | `@Model EquipmentItem` (`#if os(iOS)` stays) |
+| `Models/ViewingConditions.swift` | Already split in place: `HourlyForecast.swift`, `SunEvents.swift`, `MoonInfo.swift`, `FogScore.swift`, `ISSPass.swift`, `NightQualityAssessment.swift`. Equality DTO still **omits** `HourlyForecast.id`, `MoonInfo.phaseName`/`emoji`, FogFactor English, `Trend.icon`/`label`. `calculatedScore` stays as a convenience wrapping `NightConditionsScoring.publicScore` | `ViewingConditions` host aggregate remains a Codable snapshot (`import Foundation` only). SwiftUI `Color` / `scoreColor` / `scoreLabel` → `NightQualityColor.swift` (Watch/widgets need SharedCode). Do **not** put Color on `NightQualityPresentation` (that file is Foundation copy/tone). `analyzeConditions(_ ViewingConditions)` wrapper |
+| `Models/SavedLocation.swift` | `Coordinate.swift` and `CachedLocation.swift` are Foundation-only / engine-extractable (optional `id` omitted from equality DTO). `CachedLocation.swift` must **not** reference `SavedLocation` | `@Model SavedLocation`, `SelectedLocation`, SwiftData ordering, and the iOS host adapter `CachedLocation.init(from: SavedLocation)` on `SavedLocation.swift`. `ViewingConditions`'s `SavedLocation` convenience init stays host-side with the aggregate |
+| `Models/LocationScore.swift` | File is Foundation-only after Phase 2 (`LocationSuitabilityStatus`, `BestSpotScoringMode`, `LocationScore`, `BestSpotResult` stay together). Equality DTO still **omits** `id` / `summary` / Color | SwiftUI `LocationScore.color` → `LocationScore+Color.swift`. String `scoreColor` and English `label` / `lightPollutionUnavailableMessage` stay on the Foundation types (not SwiftUI) |
+| `Models/Equipment.swift` | File is Foundation-only after Phase 2: `EquipmentType`, `EquipmentApertureUnit`, `EquipmentDraft`, `EquipmentValidation`. `EquipmentCapability` already had its own file | `@Model EquipmentItem` + persisted snapshot/validation → `EquipmentItem.swift` (`#if os(iOS)` stays) |
 | `Models/EquipmentMatching.swift` | Entire `EquipmentMatchingService.match` structured result (`level`, `reason`, `mode`, apertures). **Equality omits `explanation`** | Host formats `explanation` strings |
 | `Models/TargetEquipmentRequirements.swift` | Entire file | — |
-| `Models/ObservableTarget.swift` | Domain fields; image credit **id** only | iOS image loading |
+| `Models/ObservableTarget.swift` | Domain fields; image credit **id** only. Do not move `TargetImageCredit` presentation metadata into the engine DTO | iOS image loading; host may attach `TargetImageCredit` when building recommendations |
 | `Models/ObservingQualityAssessment.swift` | Entire file | — |
 | `Models/LightPollutionDatasetIdentity.swift` | Entire file | — |
 | `Services/ObservingQualityCalculator.swift` path: `Utilities/ObservingQualityCalculator.swift` | Entire file | — |
@@ -340,14 +340,14 @@ Do this **in place** before `Package.swift` exists. Engine XCTest must `import A
 | `Utilities/NightQualityAnalysisRules.swift` | Entire file (enums; `summaryText` is presentation, omitted from equality) | — |
 | `Utilities/NightForecastFilter.swift` | Entire file as a **separately tested helper** (sun events + local start-of-day → filter window). 1.0 `night_conditions.analyze` does **not** call it live | — |
 | `Utilities/SeeingCalculator.swift`, `TransparencyCalculator.swift`, `FogCalculator.swift` | Entire files | — |
-| `Utilities/GeographicGridGenerator.swift` | Entire file; **delete unused `import CoreLocation`**. `GridPoint` stays here | — |
+| `Utilities/GeographicGridGenerator.swift` | Entire file. Phase 2 already deleted the unused `import CoreLocation`. `GridPoint` stays here | — |
 | `Services/WeatherService.swift` | `OpenMeteoResponse`, `HourlyData`, `parseHourlyForecasts` (pure decode + time parser). Protocol `WeatherForecastProviding` | Actor + `dataLoader` + HTTP + timeouts |
 | `Services/ISSService.swift` | `N2YOResponse` decode → `[ISSPass]` | Actor + `dataLoader` + URL builder + API key encoding |
 | `Services/BinaryLightPollutionProvider.swift`, `LightPollutionProviding.swift`, `ModeledZenithBrightnessValidity.swift` | Entire files | `BundledLightPollutionResource` (CryptoKit SHA-256, app bundle) |
 | `Services/ObservingQualityService.swift` | Pure assess-after-lookup | Bootstrap / session wiring |
-| `Services/DeepSkyCatalogService.swift` | `DeepSkyCatalogEntry` + JSON loader; **no** `TargetImageManifest.image(for:)` | `TargetImageManifest`, iOS images |
+| `Services/DeepSkyCatalogService.swift` | Curated catalog **data** (`DeepSkyCatalogEntry` identity/fields, `CuratedDeepSkyCatalogProvider`). Engine catalog does **not** depend on `TargetImageManifest` and must **not** own `TargetImageCredit` presentation metadata. SharedCode may keep optional `DeepSkyCatalogEntry.image` temporarily so injected providers can supply a credit; Phase 3 must not copy that compatibility field into AstroEngine merely because it exists today. Split this file on extract: curated data moves; host mapping stays | `DefaultTargetCatalogProvider` host mapping (`entry.image ?? TargetImageManifest.image(for: id)`), `TargetImageManifest`, iOS images (`TargetImageRepository` loads pixels by target id) |
 | `Services/TargetRecommendationService.swift` | `DefaultTargetRecommendationScorer` (1.1 fixtures) | Service orchestration, debug logger |
-| `Services/BestSpotSearcher.swift` | `calculateScore` → `NightConditionsScoring.publicScore`; `isHigherRanked` total order (1.1); coherent mode selection | `CoreLocationSuitabilityResolver`, search actor, progress, 40-check cap, English `generateSummary`. **Delete unused `import SunCalc`** (no `MoonPosition`/`SunTimes` call sites) |
+| `Services/BestSpotSearcher.swift` | `NightConditionsScoring.publicScore` (already the formula owner; `BestSpotSearcher.calculateScore` is a one-line wrapper); `isHigherRanked` total order (1.1); coherent mode selection | `CoreLocationSuitabilityResolver`, search actor, progress, 40-check cap, English `generateSummary`. Phase 2 already deleted unused `import SunCalc`. Remaining Apple coupling is real `CLGeocoder` / `CLLocation`, not SunCalc |
 | `Utilities/LocationTimeZoneResolver.swift` | `calendar(for:)` Gregorian+tz; **not** `resolve` / `approximate` | `CLGeocoder` resolve + longitude fallback (iOS host) |
 | `Utilities/AdaptiveFont.swift`, `BestSpotSettings.swift` | Geometry defaults (radius/spacing numbers) may live in calibration JSON | SwiftUI / AppGroup persistence |
 | `Services/AstronomyService.swift` | **1.0:** `MoonSampling` + `SunEventsSampling` protocols and `SunCalcMoonSampler` / `SunCalcSunEventsSampler` (the only `import SunCalc` in the iOS tree). Polar missing-times stay out of the sampler. | Host actor: injects samplers, maps missing SunCalc times through Foundation-only `approximateSunEvents` (`hosts: [ios]`). **Never `import SunCalc`.** |
@@ -355,9 +355,9 @@ Do this **in place** before `Package.swift` exists. Engine XCTest must `import A
 | `Services/MoonRecommendationService.swift` | SunCalc-backed `MoonAstronomyProviding` implementation **moves into AstroEngine in the package-extract phase** (even though live moon recommend is 1.1) so SharedCode does not keep `import SunCalc` | Host orchestration / copy only |
 | Watch / widget / App Group / iCloud / `LocationManager` | — | All stay |
 
-`NightQualityAssessment.calculatedScore` is deleted as a property that calls `BestSpotSearcher`. Callers use `NightConditionsScoring.publicScore(_ assessment)`.
+`NightQualityAssessment.calculatedScore` no longer calls `BestSpotSearcher`. It is a convenience wrapping `NightConditionsScoring.publicScore(_ assessment)`. Callers may use either; there is one implementation. Do not delete the property in a later phase unless the Watch/widget/iOS call sites are migrated for a real API reason.
 
-After the package-extract phase, `rg 'import SunCalc' Sources/` (Apple tree) must be empty. All four current importers (`AstronomyService`, `MoonRecommendationService`, `NightQualityAnalyzer`, `BestSpotSearcher`) are rewritten as above. Do not `@_exported import SunCalc` and do not leave a SharedCode adapter that calls `MoonPosition.compute()`.
+After the package-extract phase, `rg 'import SunCalc' Sources/` (Apple tree) must be empty. Remaining SharedCode importers after Phase 2: `AstronomyService`, `MoonRecommendationService`, `NightQualityAnalyzer`. `BestSpotSearcher` is **not** a SunCalc rewrite. Do not `@_exported import SunCalc` and do not leave a SharedCode adapter that calls `MoonPosition.compute()`.
 
 ---
 
@@ -1636,16 +1636,24 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 ### Phase 2 — Split Foundation types in place
 
 - **Commit intent:** `Split engine DTOs out of SwiftUI/SwiftData SharedCode files`
-- **Files:** new files under `Sources/SharedCode` (`HourlyForecast.swift`, `Coordinate.swift`, `NightQualityAssessment.swift`, …); strip `import SwiftUI` from domain files; `NightConditionsScoring`; drop unused `import CoreLocation` from `GeographicGridGenerator.swift`; catalog entries stop calling `TargetImageManifest` at type-init.
+- **Files:** new files under `Sources/SharedCode` (`HourlyForecast.swift`, `Coordinate.swift`, `NightQualityAssessment.swift`, `NightConditionsScoring.swift`, `NightQualityColor.swift`, `EquipmentItem.swift`, …); strip `import SwiftUI` from domain files; `NightConditionsScoring`; drop unused `import CoreLocation` from `GeographicGridGenerator.swift`; catalog entries stop calling `TargetImageManifest` at type-init.
 - **Depends on:** none after Gate F (parallel with Phase 1)
 - **Notes:** Behavior-neutral. Must satisfy the [iOS migration invariant](#ios-migration-invariant): existing product tests green, iOS/watch compiling. This is the first expensive iOS change; it happens **after** the bot path is proven.
+- **Phase 2 findings (do not treat the original sketch as current code):**
+  - Kept `NightQualityAssessment.calculatedScore` as a convenience over `NightConditionsScoring.publicScore` instead of deleting the property.
+  - Put SwiftUI `Color` on `NightQualityColor.swift`, not `NightQualityPresentation`.
+  - Did not further split `LocationSuitabilityStatus` / `LocationScore` into extra files once `LocationScore.swift` was Foundation-only.
+  - Catalog image boundary is host mapping in `DefaultTargetCatalogProvider`, not lazy stored credits on curated entries. Mapping is `entry.image ?? TargetImageManifest.image(for: id)` so an injected provider credit is preserved. UI pixels were already loaded by target id.
+  - `CachedLocation.swift` is Foundation-only. `CachedLocation.init(from: SavedLocation)` lives on `SavedLocation.swift` as an iOS host adapter, not on the extractable DTO.
+  - Removed unused `import SunCalc` from `BestSpotSearcher` (stale). Phase 3 SunCalc extraction is the remaining three importers, plus injecting samplers into `NightQualityAnalyzer`.
+  - Left `ISSService` unused `import CoreLocation` alone (hygiene; not a DTO-split file).
 
 ### Phase 3 — Extract AstroEngine including Night Conditions
 
 - **Commit intent:** `Extract AstroEngine Swift package with NightQualityAnalyzer and publicScore`
 - **Files:** `packages/astro-engine-swift/` (`Package.swift` **owns SunCalc**); move split types + calculators + decode + **SunCalc samplers**; `astro-engine-eval`; root `project.yml` local package, **remove** `packages.SunCalc` URL; engine tests `import AstroEngine` only.
 - **Depends on:** Phase 2
-- **Notes:** Still repo-root Xcode layout. After this, `rg 'import SunCalc' Sources/` is empty. Night-conditions eval uses injected window + 1:1 moon_series. Tests that move into `AstroEngine` keep their original assertions; iOS app/watch still compile and their remaining tests stay green.
+- **Notes:** Still repo-root Xcode layout. After this, `rg 'import SunCalc' Sources/` is empty. Night-conditions eval uses injected window + 1:1 moon_series. Tests that move into `AstroEngine` keep their original assertions; iOS app/watch still compile and their remaining tests stay green. Do **not** move `CachedLocation.init(from: SavedLocation)` or `TargetImageCredit` / `TargetImageManifest` into the package. Curated catalog data can move; host mapping (`DefaultTargetCatalogProvider`) stays in SharedCode. Optional SharedCode `DeepSkyCatalogEntry.image` is a compatibility surface, not an engine DTO field.
 
 ### Phase 4 — Production Swift loads calibration JSON (build artifact)
 

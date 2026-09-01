@@ -57,19 +57,19 @@ final class Phase1ContractDataTests: XCTestCase {
         let json = try loadJSON("data/calibration/night-quality.json")
         let bases = try XCTUnwrap(F3ObservingQualityContractSupport.asObject(json["public_score"]))
         XCTAssertEqual(
-            BestSpotSearcher.calculateScore(emptyAssessment(.excellent)),
+            NightConditionsScoring.publicScore(emptyAssessment(.excellent)),
             F3ObservingQualityContractSupport.jsonInt(bases["excellent_base"])
         )
         XCTAssertEqual(
-            BestSpotSearcher.calculateScore(emptyAssessment(.good)),
+            NightConditionsScoring.publicScore(emptyAssessment(.good)),
             F3ObservingQualityContractSupport.jsonInt(bases["good_base"])
         )
         XCTAssertEqual(
-            BestSpotSearcher.calculateScore(emptyAssessment(.fair)),
+            NightConditionsScoring.publicScore(emptyAssessment(.fair)),
             F3ObservingQualityContractSupport.jsonInt(bases["fair_base"])
         )
         XCTAssertEqual(
-            BestSpotSearcher.calculateScore(emptyAssessment(.poor)),
+            NightConditionsScoring.publicScore(emptyAssessment(.poor)),
             F3ObservingQualityContractSupport.jsonInt(bases["poor_base"])
         )
     }

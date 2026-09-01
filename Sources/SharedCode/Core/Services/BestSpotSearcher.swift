@@ -1,6 +1,5 @@
 import Foundation
 import CoreLocation
-import SunCalc
 
 /// Errors that can occur during best nearby area search
 public enum BestSpotSearchError: Error, LocalizedError {
@@ -706,29 +705,6 @@ public final class BestSpotSearcher: BestSpotSearching {
     }
 
     nonisolated static func calculateScore(_ assessment: NightQualityAssessment) -> Int {
-        // Base score from rating
-        let baseScore: Int
-        switch assessment.rating {
-        case .excellent:
-            baseScore = 90
-        case .good:
-            baseScore = 70
-        case .fair:
-            baseScore = 45
-        case .poor:
-            baseScore = 20
-        }
-        
-        // Fine-tune based on actual average score within the rating band
-        let hourlyScores = assessment.hourlyRatings.map { $0.score }
-        var adjustment = 0
-        if !hourlyScores.isEmpty {
-            let avgScore = hourlyScores.reduce(0, +) / Double(hourlyScores.count)
-            // Convert avgScore (0-2, lower is better) to adjustment (-10 to +10)
-            adjustment = Int((1.0 - avgScore) * 10)
-        }
-        
-        let finalScore = baseScore + adjustment
-        return min(100, max(0, finalScore))
+        NightConditionsScoring.publicScore(assessment)
     }
 }

@@ -1,5 +1,4 @@
 import Foundation
-import CoreLocation
 
 public struct GridPoint: Sendable, Hashable {
     public let coordinate: Coordinate
