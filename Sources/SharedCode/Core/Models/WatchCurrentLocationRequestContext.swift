@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Transient Phase 4C request correlation for watch-supplied Current Location coordinates.
 ///

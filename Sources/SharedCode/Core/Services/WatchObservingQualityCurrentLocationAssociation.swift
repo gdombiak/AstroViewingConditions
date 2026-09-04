@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Strict Phase 4C Current Location coordinate / request association.
 ///

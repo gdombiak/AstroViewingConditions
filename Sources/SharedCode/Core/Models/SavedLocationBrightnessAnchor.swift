@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Immutable saved-location pin used for modeled-brightness metadata (no name).
 ///

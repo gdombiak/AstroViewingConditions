@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public struct TargetRecommendationContextResolution: Sendable {
     public let context: TargetRecommendationContext

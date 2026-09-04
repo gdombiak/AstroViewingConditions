@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Explicit location identity for cross-surface observing-quality sample association.
 ///

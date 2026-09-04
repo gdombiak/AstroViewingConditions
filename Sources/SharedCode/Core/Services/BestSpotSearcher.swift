@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import AstroEngine
 
 /// Errors that can occur during best nearby area search
 public enum BestSpotSearchError: Error, LocalizedError {

@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Per-process bookkeeping for a *successful* Watch background-refresh schedule.
 ///

@@ -1,15 +1,24 @@
-@testable import SharedCode
 import XCTest
+import Foundation
+@testable import AstroEngine
 
 /// Cross-checks against Python LPATLAS1 fixtures in Tools/LightPollution/fixtures/
 /// and enforces decoder safety on malformed artifacts.
 final class BinaryLightPollutionProviderTests: XCTestCase {
 
     private var repoRoot: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent() // AstroViewingConditionsTests
-            .deletingLastPathComponent() // Tests
-            .deletingLastPathComponent() // repo root
+        var dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        for _ in 0..<ContractsRoot.maxAncestorWalk {
+            if FileManager.default.isReadableFile(
+                atPath: dir.appendingPathComponent("contracts/ENGINE_VERSION").path
+            ) {
+                return dir
+            }
+            let parent = dir.deletingLastPathComponent()
+            if parent.path == dir.path { break }
+            dir = parent
+        }
+        return dir
     }
 
     private var fixtureURL: URL {

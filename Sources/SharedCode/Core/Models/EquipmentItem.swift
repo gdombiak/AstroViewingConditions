@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 #if os(iOS)
 import SwiftData
@@ -184,6 +185,19 @@ public struct EquipmentPersistedValidation: Sendable, Hashable {
 
     public init(issues: [EquipmentPersistedIssue]) {
         self.issues = issues
+    }
+}
+
+public extension EquipmentItem {
+    var matchingCapability: EquipmentCapability? {
+        guard persistedValidation.isAvailable, let type else { return nil }
+        return EquipmentCapability(
+            id: .savedEquipment(id),
+            displayName: inventoryDisplayName,
+            type: type,
+            magnification: magnification,
+            apertureMillimeters: apertureMillimeters
+        )
     }
 }
 #endif

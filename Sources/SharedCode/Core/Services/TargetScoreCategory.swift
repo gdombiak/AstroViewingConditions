@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Shared score bands used by target presentation in the app and widgets.
 public enum TargetScoreCategory: Sendable {

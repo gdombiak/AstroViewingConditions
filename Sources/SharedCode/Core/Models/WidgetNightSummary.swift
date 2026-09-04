@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public struct NightQualityDisplayFactor: Codable, Sendable, Hashable {
     public enum Kind: String, Codable, Sendable, Hashable, CaseIterable {

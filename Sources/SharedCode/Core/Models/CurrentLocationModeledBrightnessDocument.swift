@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// On-disk envelope for Current Location modeled zenith brightness companion metadata.
 ///

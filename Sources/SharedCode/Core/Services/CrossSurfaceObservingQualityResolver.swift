@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Pure canonical observing-quality resolution for widgets and future watch surfaces.
 ///

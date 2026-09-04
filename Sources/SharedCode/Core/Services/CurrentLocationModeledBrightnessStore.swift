@@ -1,5 +1,6 @@
 import Foundation
 import os
+import AstroEngine
 
 /// Package-internal disk I/O for the Current Location modeled-brightness companion file.
 ///

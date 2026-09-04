@@ -1,5 +1,6 @@
 import Foundation
 import os
+import AstroEngine
 
 public struct MigrationHelper {
     private static let migrationVersionKey = "appGroupMigrationVersion"

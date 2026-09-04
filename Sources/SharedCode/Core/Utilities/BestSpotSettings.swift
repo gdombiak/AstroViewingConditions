@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AstroEngine
 
 public enum BestSpotSettings {
     public static let searchRadiusKey = "bestSpotSearchRadius"

@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public enum WidgetTargetScoreTone: String, Codable, Sendable, Hashable {
     case positive

@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Provenance for the payload in `conditions.json`. Keeping this in a
 /// companion file avoids changing the long-lived `ViewingConditions` schema.

@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Strict Phase 4B saved-location identity for conditions ↔ selection ↔ transport association.
 ///

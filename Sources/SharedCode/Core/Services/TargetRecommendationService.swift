@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public struct TargetRecommendationContext: Sendable {
     public let location: CachedLocation

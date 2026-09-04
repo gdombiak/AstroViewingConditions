@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 // MARK: - Companion display policy (read-only complications)
 

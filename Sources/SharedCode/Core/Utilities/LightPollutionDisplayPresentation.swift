@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Pollution-intensity category for modeled zenith sky brightness (mag/arcsec²).
 ///

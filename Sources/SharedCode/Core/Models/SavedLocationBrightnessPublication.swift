@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Process-local monotonic ordering for authoritative saved-location brightness snapshots.
 ///

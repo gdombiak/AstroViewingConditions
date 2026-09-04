@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Structural checks for encoded "available" brightness metadata (decode-time only).
 ///

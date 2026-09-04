@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Shared retention rules for the Tonight's Targets app cache and widget fallback.
 public enum TonightTargetsPersistencePolicy {

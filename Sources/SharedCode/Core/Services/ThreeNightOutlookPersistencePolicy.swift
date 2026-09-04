@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Shared retention rules for the Three-Night Outlook's app cache and widget fallback.
 public enum ThreeNightOutlookPersistencePolicy {

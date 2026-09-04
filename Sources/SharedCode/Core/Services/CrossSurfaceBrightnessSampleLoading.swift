@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Explicit brightness input for publication factories (avoids nil-overload ambiguity).
 public enum CrossSurfaceBrightnessInput: Sendable {

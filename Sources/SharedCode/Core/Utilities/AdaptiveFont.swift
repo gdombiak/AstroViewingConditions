@@ -1,4 +1,5 @@
 import SwiftUI
+import AstroEngine
 
 struct AdaptiveFontModifier: ViewModifier {
 #if os(watchOS)

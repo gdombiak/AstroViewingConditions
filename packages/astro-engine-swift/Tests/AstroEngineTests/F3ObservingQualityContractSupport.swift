@@ -1,5 +1,6 @@
-@testable import SharedCode
+import XCTest
 import Foundation
+@testable import AstroEngine
 
 /// Temporary F3 test infrastructure for observing-quality contract fixtures.
 ///

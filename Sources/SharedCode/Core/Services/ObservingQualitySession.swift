@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Process-level readiness of light-pollution lookup for observing-quality scoring.
 ///

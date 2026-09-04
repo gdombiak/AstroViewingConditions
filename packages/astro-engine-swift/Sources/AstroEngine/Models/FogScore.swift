@@ -15,5 +15,16 @@ public struct FogScore: Sendable, Codable, Hashable {
         case lowVisibility = "Low Visibility"
         case highLowCloud = "High Low-Level Clouds"
         case lowWind = "Calm Winds"
+
+        /// Language-neutral contract factor id. Display `rawValue` stays English.
+        public var contractID: String {
+            switch self {
+            case .highHumidity: return "high_humidity"
+            case .lowTempDewDiff: return "low_temp_dew_diff"
+            case .lowVisibility: return "low_visibility"
+            case .highLowCloud: return "high_low_cloud"
+            case .lowWind: return "low_wind"
+            }
+        }
     }
 }

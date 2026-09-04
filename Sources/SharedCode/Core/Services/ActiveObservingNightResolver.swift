@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public enum ActiveObservingNightResolution {
     case resolved(TargetRecommendationContextResolution)

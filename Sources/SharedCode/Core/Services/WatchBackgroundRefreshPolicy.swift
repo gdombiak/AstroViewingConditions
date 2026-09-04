@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Whether the existing Watch conditions refresh path should run.
 ///

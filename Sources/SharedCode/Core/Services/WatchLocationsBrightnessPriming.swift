@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Additive WatchConnectivity locations-reply field for priming Watch LP cache.
 ///

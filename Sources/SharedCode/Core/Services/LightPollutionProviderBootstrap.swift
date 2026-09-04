@@ -1,5 +1,6 @@
 import Foundation
 import os
+import AstroEngine
 
 /// Process-wide, once-per-process load of the bundled LPATLAS1 provider.
 ///

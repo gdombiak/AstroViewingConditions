@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Generation-aware publication of coordinator applied state to observable UI properties.
 ///

@@ -1,5 +1,6 @@
 import Foundation
 import os
+import AstroEngine
 
 private let logger = Logger(subsystem: "com.astroviewing.conditions", category: "AppGroupStorage")
 

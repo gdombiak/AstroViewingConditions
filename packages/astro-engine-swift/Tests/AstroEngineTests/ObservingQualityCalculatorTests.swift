@@ -1,5 +1,6 @@
-@testable import SharedCode
 import XCTest
+import Foundation
+@testable import AstroEngine
 
 /// Scoring-only prototype tests for light-pollution-adjusted observing quality.
 ///

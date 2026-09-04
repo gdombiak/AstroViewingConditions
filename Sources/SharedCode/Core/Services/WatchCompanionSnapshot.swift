@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Complete WatchConnectivity application-context payload.
 ///

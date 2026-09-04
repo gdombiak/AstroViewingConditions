@@ -1,5 +1,6 @@
-@testable import SharedCode
 import XCTest
+import Foundation
+@testable import AstroEngine
 
 /// Additive Phase 1 drift checks: contract JSON vs current Swift literals.
 /// Does not change production scoring or make production read contracts/data.

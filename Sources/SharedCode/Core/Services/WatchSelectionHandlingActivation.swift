@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// One-time activation of selected-location connectivity delivery + conditions-change handling.
 ///

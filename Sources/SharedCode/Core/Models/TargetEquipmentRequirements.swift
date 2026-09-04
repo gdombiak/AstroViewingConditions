@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public enum TargetEquipmentFraming: String, Codable, Sendable, Hashable {
     case veryWide

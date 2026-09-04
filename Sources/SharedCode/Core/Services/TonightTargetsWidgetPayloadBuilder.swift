@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public enum TonightTargetsWidgetPublicationDecision {
     case publish(TargetRecommendationContextResolution)

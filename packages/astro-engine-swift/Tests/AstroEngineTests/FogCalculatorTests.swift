@@ -1,7 +1,6 @@
-import SharedCode
 import XCTest
 import Foundation
-@testable import AstroViewingConditions
+@testable import AstroEngine
 
 final class FogCalculatorTests: XCTestCase {
     

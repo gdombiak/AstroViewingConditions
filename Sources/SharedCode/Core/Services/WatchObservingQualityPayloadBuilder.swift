@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Phone-side factory for optional watch OQ transport (Phase 4B saved + Phase 4C Current Location).
 public enum WatchObservingQualityPayloadBuilder: Sendable {

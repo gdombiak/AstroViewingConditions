@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public struct PlanetPositionSample: Sendable, Hashable {
     public let time: Date

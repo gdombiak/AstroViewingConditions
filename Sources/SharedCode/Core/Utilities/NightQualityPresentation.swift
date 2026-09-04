@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Shared display adaptation of an already analyzed night. It contains no
 /// scoring, forecasting, or condition-analysis rules.

@@ -1,5 +1,6 @@
 import Foundation
 import os
+import AstroEngine
 
 /// Sole production writer for Current Location modeled brightness metadata.
 ///

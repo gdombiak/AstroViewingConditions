@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import AstroEngine
 
 /// Locates and loads the production LPATLAS1 artifact from an app resource bundle.
 ///

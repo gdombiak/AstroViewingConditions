@@ -1,21 +1,77 @@
 import Foundation
-import SunCalc
+
+public struct NightWindow: Sendable, Hashable {
+    public let start: Date
+    public let end: Date
+
+    public init(start: Date, end: Date) {
+        self.start = start
+        self.end = end
+    }
+}
+
+public enum NightConditionsAnalysisError: Error, Equatable, Sendable {
+    case missingMoonTimestamp(Date)
+    case invalidClock
+    case invalidTimeZone
+
+    public var message: String {
+        switch self {
+        case .missingMoonTimestamp(let time):
+            return "moon_series missing timestamp \(formatUTCTimestamp(time))"
+        case .invalidClock:
+            return "clock is required"
+        case .invalidTimeZone:
+            return "time_zone is required"
+        }
+    }
+}
+
+/// Top-level `night_conditions.analyze` envelope fields. Clipping still uses
+/// `injected.night_window` only; clock and IANA time zone are required identity.
+public enum NightConditionsEnvelope {
+    public static func requireClockAndTimeZone(_ document: [String: Any]) throws {
+        guard parseUTCInstant(document["clock"]) != nil else {
+            throw NightConditionsAnalysisError.invalidClock
+        }
+        guard let identifier = document["time_zone"] as? String, !identifier.isEmpty else {
+            throw NightConditionsAnalysisError.invalidTimeZone
+        }
+        guard TimeZone(identifier: identifier) != nil else {
+            throw NightConditionsAnalysisError.invalidTimeZone
+        }
+    }
+
+    /// ISO-8601 UTC instant (`YYYY-MM-DDTHH:MM:SSZ`). Offset forms are rejected.
+    public static func parseUTCInstant(_ value: Any?) -> Date? {
+        guard let text = value as? String, text.hasSuffix("Z") else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter.date(from: text)
+    }
+}
 
 public struct NightQualityAnalyzer {
-    final class MoonCalculationCache: @unchecked Sendable {
+    public final class MoonCalculationCache: MoonSampling, @unchecked Sendable {
         private struct MoonAltitudeKey: Hashable {
             let latitude: Double
             let longitude: Double
             let time: Date
         }
-        
+
         private let lock = NSLock()
         private var moonAltitudes: [MoonAltitudeKey: Double] = [:]
         private var moonIlluminations: [Date: Int] = [:]
-        
-        func moonAltitude(latitude: Double, longitude: Double, at time: Date) -> Double {
+        private let sampler: any MoonSampling
+
+        public init(sampler: any MoonSampling = SunCalcMoonSampler()) {
+            self.sampler = sampler
+        }
+
+        public func moonAltitude(latitude: Double, longitude: Double, at time: Date) -> Double {
             let key = MoonAltitudeKey(latitude: latitude, longitude: longitude, time: time)
-            
+
             do {
                 lock.lock()
                 defer { lock.unlock() }
@@ -23,23 +79,24 @@ public struct NightQualityAnalyzer {
                     return cachedAltitude
                 }
             }
-            
-            let altitude = NightQualityAnalyzer.calculateMoonAltitude(
-                latitude: latitude,
-                longitude: longitude,
-                at: time
-            )
-            
+
+            let altitude: Double
+            do {
+                altitude = try sampler.position(latitude: latitude, longitude: longitude, at: time).altitude
+            } catch {
+                altitude = 0
+            }
+
             do {
                 lock.lock()
                 defer { lock.unlock() }
                 moonAltitudes[key] = altitude
             }
-            
+
             return altitude
         }
-        
-        func moonIllumination(at time: Date) -> Int {
+
+        public func moonIllumination(at time: Date) -> Int {
             do {
                 lock.lock()
                 defer { lock.unlock() }
@@ -47,32 +104,54 @@ public struct NightQualityAnalyzer {
                     return cachedIllumination
                 }
             }
-            
-            let illumination = NightQualityAnalyzer.calculateMoonIllumination(at: time)
-            
+
+            let illumination: Int
+            do {
+                illumination = try sampler.illumination(at: time).illuminationPercent
+            } catch {
+                illumination = 0
+            }
+
             do {
                 lock.lock()
                 defer { lock.unlock() }
                 moonIlluminations[time] = illumination
             }
-            
+
             return illumination
         }
+
+        public func illumination(at time: Date) throws -> MoonIlluminationSample {
+            let percent = moonIllumination(at: time)
+            return MoonIlluminationSample(fraction: Double(percent) / 100.0, phaseDegrees: 0)
+        }
+
+        public func position(
+            latitude: Double,
+            longitude: Double,
+            at time: Date
+        ) throws -> MoonHorizontalCoordinates {
+            MoonHorizontalCoordinates(
+                altitude: moonAltitude(latitude: latitude, longitude: longitude, at: time),
+                azimuth: 0
+            )
+        }
     }
-    
+
     private enum Constants {
         static let cloudCoverWeight: Double = 0.55
         static let fogWeight: Double = 0.20
         static let moonWeight: Double = 0.15
         static let windWeight: Double = 0.10
-        
+
         static let cloudCoverThresholds: [(max: Int, score: Double)] = [
             (5, 0.0), (20, 0.5), (40, 1.0), (60, 1.5), (100, 2.0)
         ]
-        
+
         static let goodRatingThreshold: Double = 1.0
     }
-    
+
+    /// Production analysis: night window from sun events, moon from an injected sampler.
     public static func analyzeNight(
         forecasts: [HourlyForecast],
         sunEventsToday: SunEvents,
@@ -95,55 +174,8 @@ public struct NightQualityAnalyzer {
             moonCalculationCache: MoonCalculationCache()
         )
     }
-    
-    public static func analyzeConditions(
-        _ conditions: ViewingConditions,
-        dayOffset: Int = 0,
-        referenceDate: Date = Date()
-    ) -> NightQualityAssessment? {
-        guard let firstForecastTime = conditions.hourlyForecasts.first else { return nil }
-        
-        let timeZone = conditions.timeZoneIdentifier
-            .flatMap(TimeZone.init(identifier:))
-            ?? LocationTimeZoneResolver.approximate(longitude: conditions.location.longitude)
-        let calendar = LocationTimeZoneResolver.calendar(for: timeZone)
-        let firstForecastDay = calendar.startOfDay(for: firstForecastTime.time)
-        let referenceDay = calendar.startOfDay(for: referenceDate)
-        let targetDay = calendar.date(byAdding: .day, value: dayOffset, to: referenceDay) ?? referenceDay
-        let dayIndex = calendar.dateComponents([.day], from: firstForecastDay, to: targetDay).day ?? dayOffset
-        
-        guard dayIndex >= 0,
-              dayIndex < conditions.dailySunEvents.count,
-              dayIndex < conditions.dailyMoonInfo.count else {
-            return nil
-        }
-        
-        let startOfSelectedDay = calendar.date(byAdding: .day, value: dayIndex, to: firstForecastDay) ?? targetDay
-        let endOfFollowingDay = calendar.date(byAdding: .day, value: 3, to: startOfSelectedDay) ?? startOfSelectedDay
-        let forecasts = conditions.hourlyForecasts.filter { forecast in
-            forecast.time >= startOfSelectedDay && forecast.time < endOfFollowingDay
-        }
-        
-        let sunEventsToday = conditions.dailySunEvents[dayIndex]
-        let sunEventsTomorrowIndex = dayIndex + 1
-        let sunEventsTomorrow = sunEventsTomorrowIndex < conditions.dailySunEvents.count
-            ? conditions.dailySunEvents[sunEventsTomorrowIndex]
-            : nil
-        let moonInfo = conditions.dailyMoonInfo[dayIndex]
-        
-        return analyzeNight(
-            forecasts: forecasts,
-            sunEventsToday: sunEventsToday,
-            sunEventsTomorrow: sunEventsTomorrow,
-            moonInfo: moonInfo,
-            latitude: conditions.location.latitude,
-            longitude: conditions.location.longitude,
-            for: startOfSelectedDay,
-            calendar: calendar
-        )
-    }
-    
-    static func analyzeNight(
+
+    public static func analyzeNight(
         forecasts: [HourlyForecast],
         sunEventsToday: SunEvents,
         sunEventsTomorrow: SunEvents?,
@@ -154,36 +186,100 @@ public struct NightQualityAnalyzer {
         calendar: Calendar,
         moonCalculationCache: MoonCalculationCache
     ) -> NightQualityAssessment {
-        
-        // Filter forecasts to nighttime hours only
         let (nightStart, nightEnd) = NightForecastFilter.calculateNightRange(
             sunEventsToday: sunEventsToday,
             sunEventsTomorrow: sunEventsTomorrow,
             for: date,
             calendar: calendar
         )
-        
+
         let nightForecasts = forecasts
             .filter { forecast in
                 forecast.time >= nightStart && forecast.time < nightEnd
             }
             .sorted { $0.time < $1.time }
-        
-        guard !nightForecasts.isEmpty else {
-            return createNoNighttimeDataAssessment(sunEvents: sunEventsToday, moonInfo: moonInfo)
+
+        return assessNightForecasts(
+            nightForecasts,
+            emptyNightStart: sunEventsToday.astronomicalNightStart,
+            emptyNightEnd: sunEventsToday.astronomicalNightEnd,
+            emptyMoonIllumination: moonInfo.illumination,
+            moonAltitude: { forecast in
+                moonCalculationCache.moonAltitude(
+                    latitude: latitude,
+                    longitude: longitude,
+                    at: forecast.time
+                )
+            },
+            moonIllumination: { forecast in
+                moonCalculationCache.moonIllumination(at: forecast.time)
+            }
+        )
+    }
+
+    /// Deterministic contract analysis: injected window + required 1:1 moon series.
+    /// Does not call SunCalc or `NightForecastFilter`.
+    public static func analyzeNight(
+        forecasts: [HourlyForecast],
+        nightWindow: NightWindow,
+        moonSeries: [MoonSample]
+    ) throws -> NightQualityAssessment {
+        let nightForecasts = forecasts
+            .filter { forecast in
+                forecast.time >= nightWindow.start && forecast.time < nightWindow.end
+            }
+            .sorted { $0.time < $1.time }
+
+        var moonByTime: [Date: MoonSample] = [:]
+        for sample in moonSeries {
+            if moonByTime[sample.time] == nil {
+                moonByTime[sample.time] = sample
+            }
         }
-        
+
+        return try assessNightForecasts(
+            nightForecasts,
+            emptyNightStart: nightWindow.start,
+            emptyNightEnd: nightWindow.end,
+            emptyMoonIllumination: 0,
+            moonAltitude: { forecast in
+                guard let sample = moonByTime[forecast.time] else {
+                    throw NightConditionsAnalysisError.missingMoonTimestamp(forecast.time)
+                }
+                return sample.altitudeDegrees
+            },
+            moonIllumination: { forecast in
+                guard let sample = moonByTime[forecast.time] else {
+                    throw NightConditionsAnalysisError.missingMoonTimestamp(forecast.time)
+                }
+                return sample.illuminationPercent
+            }
+        )
+    }
+
+    private static func assessNightForecasts(
+        _ nightForecasts: [HourlyForecast],
+        emptyNightStart: Date,
+        emptyNightEnd: Date,
+        emptyMoonIllumination: Int,
+        moonAltitude: (HourlyForecast) throws -> Double,
+        moonIllumination: (HourlyForecast) throws -> Int
+    ) rethrows -> NightQualityAssessment {
+        guard !nightForecasts.isEmpty else {
+            return createNoNighttimeDataAssessment(
+                nightStart: emptyNightStart,
+                nightEnd: emptyNightEnd,
+                moonIllumination: emptyMoonIllumination
+            )
+        }
+
         var hourlyRatings: [NightQualityAssessment.HourlyRating] = []
         var totalScore: Double = 0
-        
+
         for (index, forecast) in nightForecasts.enumerated() {
-            let moonAltitude = moonCalculationCache.moonAltitude(
-                latitude: latitude,
-                longitude: longitude,
-                at: forecast.time
-            )
-            let moonIllumination = moonCalculationCache.moonIllumination(at: forecast.time)
-            
+            let moonAltitudeValue = try moonAltitude(forecast)
+            let moonIlluminationValue = try moonIllumination(forecast)
+
             let fogScore = FogCalculator.calculate(from: forecast)
             let cloudScore = calculateCloudCoverScore(forecast.cloudCover)
             let seeingScore = SeeingCalculator.penalty(
@@ -202,7 +298,10 @@ public struct NightQualityAnalyzer {
                 forecast.lowCloudCover != nil &&
                 forecast.midCloudCover != nil &&
                 forecast.highCloudCover != nil
-            let moonScore = NightQualityAnalysisRules.moonPenalty(illumination: moonIllumination, altitude: moonAltitude)
+            let moonScore = NightQualityAnalysisRules.moonPenalty(
+                illumination: moonIlluminationValue,
+                altitude: moonAltitudeValue
+            )
             let windScore = NightQualityAnalysisRules.windPenalty(forecast.windSpeed)
             let fogPenalty = Double(fogScore.score) / 50.0
             let weightedScore: Double
@@ -227,23 +326,23 @@ public struct NightQualityAnalyzer {
             } else {
                 finalScore = weightedScore
             }
-            
+
             let hourlyRating = NightQualityAssessment.HourlyRating(
                 time: forecast.time,
                 score: finalScore,
                 cloudCover: forecast.cloudCover,
                 fogScore: fogScore.score,
-                moonIllumination: moonIllumination,
-                moonAltitude: moonAltitude,
+                moonIllumination: moonIlluminationValue,
+                moonAltitude: moonAltitudeValue,
                 windSpeed: forecast.windSpeed,
                 seeingScore: seeingScore,
                 transparencyScore: hasTransparencyData ? transparencyScore : nil
             )
-            
+
             hourlyRatings.append(hourlyRating)
             totalScore += finalScore
         }
-        
+
         let rawAverageScore = totalScore / Double(hourlyRatings.count)
         let avgCloudCover =
             Double(hourlyRatings.map(\.cloudCover).reduce(0, +))
@@ -261,7 +360,7 @@ public struct NightQualityAnalyzer {
         let avgWindSpeed = hourlyRatings.map { $0.windSpeed }.reduce(0, +) / Double(hourlyRatings.count)
         let seeingScores = hourlyRatings.compactMap(\.seeingScore)
         let transparencyScores = hourlyRatings.compactMap(\.transparencyScore)
-        
+
         let details = NightQualityAssessment.Details(
             cloudCoverScore: avgCloudCover,
             fogScoreAvg: Double(avgFogScore),
@@ -270,10 +369,10 @@ public struct NightQualityAnalyzer {
             seeingScoreAvg: seeingScores.isEmpty ? nil : seeingScores.reduce(0, +) / Double(seeingScores.count),
             transparencyScoreAvg: transparencyScores.isEmpty ? nil : transparencyScores.reduce(0, +) / Double(transparencyScores.count)
         )
-        
+
         let (trend, firstHalf, secondHalf) = calculateTrend(hourlyRatings: hourlyRatings)
         let cloudTiming = NightQualityAnalysisRules.cloudTiming(in: hourlyRatings)
-        
+
         let summary = generateSummary(
             rating: rating,
             avgScore: avgScore,
@@ -282,12 +381,16 @@ public struct NightQualityAnalyzer {
             seeingScoreAvg: details.seeingScoreAvg,
             cloudTiming: cloudTiming
         )
-        
-        let bestWindowStart = hourlyRatings.first?.time ?? date
-        let bestWindowEnd = hourlyRatings.last?.time ?? date
-        
-        let bestWindow = calculateBestWindow(hourlyRatings: hourlyRatings, nightStart: bestWindowStart, nightEnd: bestWindowEnd)
-        
+
+        let bestWindowStart = hourlyRatings.first?.time ?? emptyNightStart
+        let bestWindowEnd = hourlyRatings.last?.time ?? emptyNightEnd
+
+        let bestWindow = calculateBestWindow(
+            hourlyRatings: hourlyRatings,
+            nightStart: bestWindowStart,
+            nightEnd: bestWindowEnd
+        )
+
         return NightQualityAssessment(
             rating: rating,
             summary: summary,
@@ -301,7 +404,7 @@ public struct NightQualityAnalyzer {
             secondHalfScore: secondHalf
         )
     }
-    
+
     private static func calculateCloudCoverScore(_ cloudCover: Int) -> Double {
         for threshold in Constants.cloudCoverThresholds {
             if cloudCover <= threshold.max {
@@ -310,30 +413,7 @@ public struct NightQualityAnalyzer {
         }
         return 2.0
     }
-    
-    private static func calculateMoonAltitude(latitude: Double, longitude: Double, at time: Date) -> Double {
-        do {
-            let position = try MoonPosition.compute()
-                .at(latitude, longitude)
-                .on(time)
-                .execute()
-            return position.altitude
-        } catch {
-            return 0
-        }
-    }
-    
-    private static func calculateMoonIllumination(at time: Date) -> Int {
-        do {
-            let illumination = try MoonIllumination.compute()
-                .on(time)
-                .execute()
-            return Int(illumination.fraction * 100)
-        } catch {
-            return 0
-        }
-    }
-    
+
     private static func determineRating(_ avgScore: Double) -> NightQualityAssessment.Rating {
         NightQualityAssessment.Rating.from(score: avgScore)
     }
@@ -416,20 +496,20 @@ public struct NightQualityAnalyzer {
             }
         }
     }
-    
+
     private static func calculateTrend(
         hourlyRatings: [NightQualityAssessment.HourlyRating]
     ) -> (trend: NightQualityAssessment.Trend, firstHalf: Double, secondHalf: Double) {
         guard hourlyRatings.count >= 4 else {
             return (.stable, 0, 0)
         }
-        
+
         let midIndex = hourlyRatings.count / 2
         let firstHalf = hourlyRatings[..<midIndex].map { $0.score }.reduce(0, +) / Double(midIndex)
         let secondHalf = hourlyRatings[midIndex...].map { $0.score }.reduce(0, +) / Double(hourlyRatings.count - midIndex)
-        
+
         let diff = secondHalf - firstHalf
-        
+
         let threshold: Double = 0.3
         let trend: NightQualityAssessment.Trend
         if diff > threshold {
@@ -439,20 +519,19 @@ public struct NightQualityAnalyzer {
         } else {
             trend = .stable
         }
-        
+
         return (trend, firstHalf, secondHalf)
     }
-    
+
     private static func calculateBestWindow(
         hourlyRatings: [NightQualityAssessment.HourlyRating],
         nightStart: Date,
         nightEnd: Date
     ) -> NightQualityAssessment.TimeWindow? {
-        
         guard !hourlyRatings.isEmpty else { return nil }
-        
+
         let goodHours = hourlyRatings.filter { $0.score < Constants.goodRatingThreshold }
-        
+
         if goodHours.isEmpty {
             let best = hourlyRatings.min { $0.score < $1.score }
             if let best = best {
@@ -460,19 +539,19 @@ public struct NightQualityAnalyzer {
             }
             return nil
         }
-        
+
         let goodCount = goodHours.count
         let totalCount = hourlyRatings.count
         let goodRatio = Double(goodCount) / Double(totalCount)
-        
+
         if goodRatio >= 0.5 {
             return NightQualityAssessment.TimeWindow(start: nightStart, end: nightEnd)
         }
-        
+
         var longestWindow: (start: Date, end: Date, length: TimeInterval) = (nightStart, nightStart, 0)
         var currentStart: Date?
         var currentLength: TimeInterval = 0
-        
+
         for rating in hourlyRatings.sorted(by: { $0.time < $1.time }) {
             if rating.score < Constants.goodRatingThreshold {
                 if currentStart == nil {
@@ -488,39 +567,47 @@ public struct NightQualityAnalyzer {
                 currentLength = 0
             }
         }
-        
+
         if let start = currentStart, currentLength > longestWindow.length {
             let end = start.addingTimeInterval(currentLength)
             longestWindow = (start, end, currentLength)
         }
-        
+
         if longestWindow.length > 0 {
             return NightQualityAssessment.TimeWindow(start: longestWindow.start, end: longestWindow.end)
         }
-        
+
         return nil
     }
-    
+
     private static func createNoNighttimeDataAssessment(
-        sunEvents: SunEvents,
-        moonInfo: MoonInfo
+        nightStart: Date,
+        nightEnd: Date,
+        moonIllumination: Int
     ) -> NightQualityAssessment {
-        return NightQualityAssessment(
+        NightQualityAssessment(
             rating: .poor,
             summary: "No nighttime data available for analysis.",
             details: NightQualityAssessment.Details(
                 cloudCoverScore: 0,
                 fogScoreAvg: 0,
-                moonIlluminationAvg: moonInfo.illumination,
+                moonIlluminationAvg: moonIllumination,
                 windSpeedAvg: 0
             ),
             bestWindow: nil,
             hourlyRatings: [],
-            nightStart: sunEvents.astronomicalNightStart,
-            nightEnd: sunEvents.astronomicalNightEnd,
+            nightStart: nightStart,
+            nightEnd: nightEnd,
             trend: .stable,
             firstHalfScore: nil,
             secondHalfScore: nil
         )
     }
+}
+
+private func formatUTCTimestamp(_ date: Date) -> String {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime]
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    return formatter.string(from: date)
 }

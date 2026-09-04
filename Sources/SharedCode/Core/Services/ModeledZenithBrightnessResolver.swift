@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Thin helpers over `LightPollutionProviding` that attach dataset identity and
 /// produce portable `ModeledZenithBrightnessSample` values.

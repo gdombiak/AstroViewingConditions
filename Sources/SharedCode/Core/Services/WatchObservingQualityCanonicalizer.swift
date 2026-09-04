@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Watch-side validation + canonical recomputation of transported OQ (Phase 4B + 4C).
 ///

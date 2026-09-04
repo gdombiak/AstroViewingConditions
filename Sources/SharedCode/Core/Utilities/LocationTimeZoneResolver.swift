@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import os
+import AstroEngine
 
 private let timeZoneLogger = Logger(
     subsystem: "com.astroviewing.conditions",
@@ -62,8 +63,6 @@ public struct LocationTimeZoneResolver {
     
     /// Creates a calendar configured for the given timezone.
     public static func calendar(for timeZone: TimeZone) -> Calendar {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = timeZone
-        return calendar
+        ObservingCalendar.gregorian(for: timeZone)
     }
 }

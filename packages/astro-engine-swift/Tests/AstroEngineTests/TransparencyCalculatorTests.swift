@@ -1,5 +1,6 @@
-import SharedCode
 import XCTest
+import Foundation
+@testable import AstroEngine
 
 final class TransparencyCalculatorTests: XCTestCase {
     func testClearAtAllCloudLevels() {

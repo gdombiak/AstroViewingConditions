@@ -1,5 +1,6 @@
 import Foundation
 import os
+import AstroEngine
 
 public enum UnitSystem: String, CaseIterable, Identifiable, Sendable {
     case metric = "Metric"

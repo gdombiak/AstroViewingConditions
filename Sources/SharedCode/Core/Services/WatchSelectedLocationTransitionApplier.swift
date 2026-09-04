@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// FIFO application of selected-location transitions.
 ///

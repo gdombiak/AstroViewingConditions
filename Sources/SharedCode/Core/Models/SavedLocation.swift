@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 #if os(iOS)
 import SwiftData

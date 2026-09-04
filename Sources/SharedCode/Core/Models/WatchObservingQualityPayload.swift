@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Optional versioned OQ block transported beside `ViewingConditions` over WatchConnectivity.
 ///

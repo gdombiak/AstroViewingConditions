@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// On-disk envelope for watch-side durable modeled zenith brightness samples.
 ///

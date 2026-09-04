@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public struct TimeoutError: Error, Sendable, Equatable, LocalizedError {
     public let message: String

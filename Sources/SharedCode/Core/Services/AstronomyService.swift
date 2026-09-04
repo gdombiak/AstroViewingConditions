@@ -1,6 +1,6 @@
 import Foundation
 import os
-import SunCalc
+import AstroEngine
 
 private let astronomyLogger = Logger(subsystem: "com.astroviewing.conditions", category: "AstronomyService")
 
@@ -10,42 +10,36 @@ public protocol AstronomyProviding: Sendable {
 }
 
 public actor AstronomyService: AstronomyProviding {
-    public init() {}
-    
+    private let sunEventsSampler: any SunEventsSampling
+    private let moonSampler: any MoonSampling
+
+    public init(
+        sunEventsSampler: any SunEventsSampling = SunCalcSunEventsSampler(),
+        moonSampler: any MoonSampling = SunCalcMoonSampler()
+    ) {
+        self.sunEventsSampler = sunEventsSampler
+        self.moonSampler = moonSampler
+    }
+
     public func calculateSunEvents(
         latitude: Double,
         longitude: Double,
         on date: Date
     ) -> SunEvents {
         do {
-            // Visual sunrise/sunset
-            let visualTimes = try SunTimes.compute()
-                .at(latitude, longitude)
-                .on(date)
-                .twilight(Twilight.visual)
-                .execute()
-            
-            // Civil twilight
-            let civilTimes = try SunTimes.compute()
-                .at(latitude, longitude)
-                .on(date)
-                .twilight(Twilight.civil)
-                .execute()
-            
-            // Nautical twilight
-            let nauticalTimes = try SunTimes.compute()
-                .at(latitude, longitude)
-                .on(date)
-                .twilight(Twilight.nautical)
-                .execute()
-            
-            // Astronomical twilight
-            let astronomicalTimes = try SunTimes.compute()
-                .at(latitude, longitude)
-                .on(date)
-                .twilight(Twilight.astronomical)
-                .execute()
-            
+            let visualTimes = try sunEventsSampler.sunTimes(
+                latitude: latitude, longitude: longitude, on: date, twilight: .visual
+            )
+            let civilTimes = try sunEventsSampler.sunTimes(
+                latitude: latitude, longitude: longitude, on: date, twilight: .civil
+            )
+            let nauticalTimes = try sunEventsSampler.sunTimes(
+                latitude: latitude, longitude: longitude, on: date, twilight: .nautical
+            )
+            let astronomicalTimes = try sunEventsSampler.sunTimes(
+                latitude: latitude, longitude: longitude, on: date, twilight: .astronomical
+            )
+
             let fallback = approximateSunEvents(on: date)
             let hasMissingTimes = [
                 visualTimes.rise,
@@ -63,47 +57,38 @@ public actor AstronomyService: AstronomyProviding {
             }
 
             return SunEvents(
-                sunrise: visualTimes.rise?.date ?? fallback.sunrise,
-                sunset: visualTimes.set?.date ?? fallback.sunset,
-                civilTwilightBegin: civilTimes.rise?.date ?? fallback.civilTwilightBegin,
-                civilTwilightEnd: civilTimes.set?.date ?? fallback.civilTwilightEnd,
-                nauticalTwilightBegin: nauticalTimes.rise?.date ?? fallback.nauticalTwilightBegin,
-                nauticalTwilightEnd: nauticalTimes.set?.date ?? fallback.nauticalTwilightEnd,
-                astronomicalTwilightBegin: astronomicalTimes.rise?.date ?? fallback.astronomicalTwilightBegin,
-                astronomicalTwilightEnd: astronomicalTimes.set?.date ?? fallback.astronomicalTwilightEnd
+                sunrise: visualTimes.rise ?? fallback.sunrise,
+                sunset: visualTimes.set ?? fallback.sunset,
+                civilTwilightBegin: civilTimes.rise ?? fallback.civilTwilightBegin,
+                civilTwilightEnd: civilTimes.set ?? fallback.civilTwilightEnd,
+                nauticalTwilightBegin: nauticalTimes.rise ?? fallback.nauticalTwilightBegin,
+                nauticalTwilightEnd: nauticalTimes.set ?? fallback.nauticalTwilightEnd,
+                astronomicalTwilightBegin: astronomicalTimes.rise ?? fallback.astronomicalTwilightBegin,
+                astronomicalTwilightEnd: astronomicalTimes.set ?? fallback.astronomicalTwilightEnd
             )
         } catch {
             astronomyLogger.error("Failed to calculate sun events for latitude \(latitude), longitude \(longitude): \(error.localizedDescription)")
             return approximateSunEvents(on: date)
         }
     }
-    
+
     public func calculateMoonInfo(
         latitude: Double,
         longitude: Double,
         on date: Date
     ) -> MoonInfo {
         do {
-            // Moon illumination
-            let illumination = try MoonIllumination.compute()
-                .on(date)
-                .execute()
-            
-            // Moon position
-            let position = try MoonPosition.compute()
-                .at(latitude, longitude)
-                .on(date)
-                .execute()
-            
-            let phase = illumination.phase
+            let illumination = try moonSampler.illumination(at: date)
+            let position = try moonSampler.position(latitude: latitude, longitude: longitude, at: date)
+            let phase = illumination.phaseDegrees
             let phaseName = getMoonPhaseName(phase: phase)
             let emoji = getMoonEmoji(phase: phase)
-            
+
             return MoonInfo(
                 phase: normalizePhase(phase),
                 phaseName: phaseName,
                 altitude: position.altitude,
-                illumination: Int(illumination.fraction * 100),
+                illumination: illumination.illuminationPercent,
                 emoji: emoji
             )
         } catch {
@@ -117,32 +102,26 @@ public actor AstronomyService: AstronomyProviding {
             )
         }
     }
-    
+
     public func calculateMoonAltitude(
         latitude: Double,
         longitude: Double,
         at time: Date
     ) -> Double {
         do {
-            let position = try MoonPosition.compute()
-                .at(latitude, longitude)
-                .on(time)
-                .execute()
-            return position.altitude
+            return try moonSampler.position(latitude: latitude, longitude: longitude, at: time).altitude
         } catch {
             astronomyLogger.error("Failed to calculate moon altitude for latitude \(latitude), longitude \(longitude): \(error.localizedDescription)")
             return 0
         }
     }
-    
-    // MARK: - Helper Methods
-    
+
     private func normalizePhase(_ phase: Double) -> Double {
-        // Convert phase from degrees (-180 to 180) to 0-1 range
         let normalized = (phase + 180) / 360
         return normalized
     }
 
+    /// Foundation-only polar/missing-time fallback. Not part of SunCalc sampling.
     private func approximateSunEvents(on date: Date) -> SunEvents {
         SunEvents(
             sunrise: date.addingTimeInterval(6 * 3600),
@@ -155,11 +134,8 @@ public actor AstronomyService: AstronomyProviding {
             astronomicalTwilightEnd: date.addingTimeInterval(20 * 3600)
         )
     }
-    
+
     private func getMoonPhaseName(phase: Double) -> String {
-        // Phase is in degrees (-180 to 180)
-        // -180° → 0°: Waxing (New Moon → Full Moon)
-        // 0° → 180°: Waning (Full Moon → New Moon)
         switch phase {
         case -10...10:
             return "Full Moon"
@@ -183,9 +159,6 @@ public actor AstronomyService: AstronomyProviding {
     }
 
     private func getMoonEmoji(phase: Double) -> String {
-        // Phase is in degrees (-180 to 180)
-        // -180° → 0°: Waxing (New Moon → Full Moon)
-        // 0° → 180°: Waning (Full Moon → New Moon)
         switch phase {
         case -10...10:
             return "🌕"
@@ -206,13 +179,5 @@ public actor AstronomyService: AstronomyProviding {
         default:
             return "🌙"
         }
-    }
-}
-
-// MARK: - DateTime Extension
-
-extension DateTime {
-    var date: Date {
-        return Date(timeIntervalSince1970: timeIntervalSince1970)
     }
 }

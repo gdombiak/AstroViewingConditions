@@ -2,6 +2,7 @@ import Foundation
 import os.log
 #if os(iOS)
 import SwiftData
+import AstroEngine
 
 private let storageLogger = Logger(subsystem: "com.astroviewing.conditions", category: "LocationStorage")
 #else

@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Durable watch-side cache of validated modeled zenith brightness samples.
 ///

@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public enum WidgetThreeNightOutlookStatus: String, Codable, Sendable, Hashable {
     case available

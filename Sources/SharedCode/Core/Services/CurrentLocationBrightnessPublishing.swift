@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Called on the MainActor after a still-current successful GPS resolution.
 ///

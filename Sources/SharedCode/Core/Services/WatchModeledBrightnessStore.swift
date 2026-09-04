@@ -1,5 +1,6 @@
 import Foundation
 import os
+import AstroEngine
 
 /// Package-internal disk I/O for the watch modeled-brightness companion file.
 ///

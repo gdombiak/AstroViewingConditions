@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Production live-event ingress used by the watch manager.
 ///

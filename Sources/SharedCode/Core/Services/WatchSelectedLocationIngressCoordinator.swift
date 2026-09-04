@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Serializes **all** selected-location ingress into ``WatchSelectedLocationTransitionCoordinator``.
 ///

@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Minimal filesystem seam for watch conditions/OQ pair transactions (testable).
 public protocol WatchConditionsPairFileSystem: Sendable {

@@ -36,18 +36,3 @@ public struct EquipmentCapability: Identifiable, Hashable, Sendable {
         self.apertureMillimeters = apertureMillimeters
     }
 }
-
-#if os(iOS)
-public extension EquipmentItem {
-    var matchingCapability: EquipmentCapability? {
-        guard persistedValidation.isAvailable, let type else { return nil }
-        return EquipmentCapability(
-            id: .savedEquipment(id),
-            displayName: inventoryDisplayName,
-            type: type,
-            magnification: magnification,
-            apertureMillimeters: apertureMillimeters
-        )
-    }
-}
-#endif

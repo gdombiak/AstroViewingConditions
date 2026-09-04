@@ -15,9 +15,8 @@ settings:
     DEVELOPMENT_TEAM: ALV53VY374
 
 packages:
-  SunCalc:
-    url: https://github.com/nikolajjensen/SunCalc.git
-    from: "1.0.0"
+  AstroEngine:
+    path: packages/astro-engine-swift
 
 targets:
   SharedCode:
@@ -34,7 +33,8 @@ targets:
         CODE_SIGN_IDENTITY: "iPhone Developer"
         CODE_SIGNING_ALLOWED: YES
     dependencies:
-      - package: SunCalc
+      - package: AstroEngine
+        product: AstroEngine
 
   AstroViewingConditions:
     type: application

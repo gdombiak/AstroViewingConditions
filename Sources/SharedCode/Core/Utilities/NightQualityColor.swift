@@ -1,4 +1,5 @@
 import SwiftUI
+import AstroEngine
 
 extension NightQualityAssessment.Rating {
     public var color: Color {

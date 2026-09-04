@@ -1,5 +1,6 @@
 import Foundation
 import os
+import AstroEngine
 
 /// Sole production writer and lifecycle owner for saved-location modeled brightness metadata.
 ///

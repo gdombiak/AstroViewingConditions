@@ -1,4 +1,5 @@
 import SwiftUI
+import AstroEngine
 
 extension LocationScore {
     public var color: Color {

@@ -26,6 +26,10 @@ DerivedData/
 /Packages/
 !/packages/
 !/packages/**
+# The re-include above would otherwise track SwiftPM build products.
+packages/astro-engine-swift/.build/
+packages/astro-engine-swift/.swiftpm/
+packages/astro-engine-swift/Package.resolved
 Package.resolved
 .swiftpm/
 

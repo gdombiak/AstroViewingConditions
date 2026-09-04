@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Public **read-only** facade for Current Location modeled brightness companion data.
 ///

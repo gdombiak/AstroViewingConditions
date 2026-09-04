@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public actor ConditionsProvider {
     private let weatherService: WeatherService

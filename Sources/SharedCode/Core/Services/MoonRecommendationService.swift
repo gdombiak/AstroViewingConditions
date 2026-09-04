@@ -1,48 +1,5 @@
 import Foundation
-import SunCalc
-
-public struct MoonPositionSample: Sendable, Hashable {
-    public let time: Date
-    public let altitude: Double
-    public let azimuth: Double?
-
-    public init(time: Date, altitude: Double, azimuth: Double?) {
-        self.time = time
-        self.altitude = altitude
-        self.azimuth = azimuth
-    }
-}
-
-public struct MoonObservationData: Sendable, Hashable {
-    public let phase: Double
-    public let phaseName: String
-    public let illumination: Int
-    public let rise: Date?
-    public let set: Date?
-    public let alwaysUp: Bool
-    public let alwaysDown: Bool
-    public let positionSamples: [MoonPositionSample]
-
-    public init(
-        phase: Double,
-        phaseName: String,
-        illumination: Int,
-        rise: Date?,
-        set: Date?,
-        alwaysUp: Bool,
-        alwaysDown: Bool,
-        positionSamples: [MoonPositionSample]
-    ) {
-        self.phase = min(max(phase, 0), 1)
-        self.phaseName = phaseName
-        self.illumination = min(max(illumination, 0), 100)
-        self.rise = rise
-        self.set = set
-        self.alwaysUp = alwaysUp
-        self.alwaysDown = alwaysDown
-        self.positionSamples = positionSamples
-    }
-}
+import AstroEngine
 
 public protocol MoonAstronomyProviding: Sendable {
     func moonObservation(for context: TargetRecommendationContext) -> MoonObservationData
@@ -56,170 +13,20 @@ public protocol MoonTargetRecommendationProviding: Sendable {
 }
 
 public struct SunCalcMoonAstronomyProvider: MoonAstronomyProviding {
-    private let sampleInterval: TimeInterval
+    private let sampler: SunCalcMoonObservationSampler
 
     public init(sampleInterval: TimeInterval = 30 * 60) {
-        self.sampleInterval = sampleInterval
+        self.sampler = SunCalcMoonObservationSampler(sampleInterval: sampleInterval)
     }
 
     public func moonObservation(for context: TargetRecommendationContext) -> MoonObservationData {
-        let start = context.astronomicalNightStart
-        let end = context.astronomicalNightEnd
-        let midpoint = start.addingTimeInterval(max(end.timeIntervalSince(start), 0) / 2)
-
-        let moonInfo = calculateMoonInfo(
+        sampler.observation(
             latitude: context.location.latitude,
             longitude: context.location.longitude,
-            on: midpoint,
+            nightStart: context.astronomicalNightStart,
+            nightEnd: context.astronomicalNightEnd,
             fallback: context.moonInfo
         )
-        let moonTimes = calculateMoonTimes(
-            latitude: context.location.latitude,
-            longitude: context.location.longitude,
-            start: start,
-            duration: max(end.timeIntervalSince(start), sampleInterval)
-        )
-        let samples = calculatePositionSamples(
-            latitude: context.location.latitude,
-            longitude: context.location.longitude,
-            start: start,
-            end: end
-        )
-
-        return MoonObservationData(
-            phase: moonInfo.phase,
-            phaseName: moonInfo.phaseName,
-            illumination: moonInfo.illumination,
-            rise: moonTimes.rise,
-            set: moonTimes.set,
-            alwaysUp: moonTimes.alwaysUp,
-            alwaysDown: moonTimes.alwaysDown,
-            positionSamples: samples
-        )
-    }
-
-    private func calculateMoonInfo(
-        latitude: Double,
-        longitude: Double,
-        on date: Date,
-        fallback: MoonInfo
-    ) -> MoonInfo {
-        do {
-            let illumination = try MoonIllumination.compute()
-                .on(date)
-                .execute()
-            let position = try MoonPosition.compute()
-                .at(latitude, longitude)
-                .on(date)
-                .execute()
-            let phase = normalizePhase(illumination.phase)
-
-            return MoonInfo(
-                phase: phase,
-                phaseName: phaseName(for: phase),
-                altitude: position.altitude,
-                illumination: Int(illumination.fraction * 100),
-                emoji: fallback.emoji
-            )
-        } catch {
-            return fallback
-        }
-    }
-
-    private func calculateMoonTimes(
-        latitude: Double,
-        longitude: Double,
-        start: Date,
-        duration: TimeInterval
-    ) -> (rise: Date?, set: Date?, alwaysUp: Bool, alwaysDown: Bool) {
-        do {
-            let times = try MoonTimes.compute()
-                .at(latitude, longitude)
-                .on(start)
-                .limit(duration)
-                .execute()
-
-            return (
-                times.rise?.date,
-                times.set?.date,
-                times.alwaysUp,
-                times.alwaysDown
-            )
-        } catch {
-            return (nil, nil, false, false)
-        }
-    }
-
-    private func calculatePositionSamples(
-        latitude: Double,
-        longitude: Double,
-        start: Date,
-        end: Date
-    ) -> [MoonPositionSample] {
-        guard end >= start else { return [] }
-
-        var samples: [MoonPositionSample] = []
-        var time = start
-
-        while time <= end {
-            if let sample = calculatePositionSample(latitude: latitude, longitude: longitude, at: time) {
-                samples.append(sample)
-            }
-            time = time.addingTimeInterval(sampleInterval)
-        }
-
-        if samples.last?.time != end,
-           let endSample = calculatePositionSample(latitude: latitude, longitude: longitude, at: end) {
-            samples.append(endSample)
-        }
-
-        return samples
-    }
-
-    private func calculatePositionSample(
-        latitude: Double,
-        longitude: Double,
-        at time: Date
-    ) -> MoonPositionSample? {
-        do {
-            let position = try MoonPosition.compute()
-                .at(latitude, longitude)
-                .on(time)
-                .execute()
-
-            return MoonPositionSample(
-                time: time,
-                altitude: position.altitude,
-                azimuth: position.azimuth
-            )
-        } catch {
-            return nil
-        }
-    }
-
-    private func normalizePhase(_ phase: Double) -> Double {
-        (phase + 180) / 360
-    }
-
-    private func phaseName(for phase: Double) -> String {
-        switch phase {
-        case 0..<0.05, 0.95...1:
-            return "New Moon"
-        case 0.05..<0.20:
-            return "Waxing Crescent"
-        case 0.20..<0.30:
-            return "First Quarter"
-        case 0.30..<0.45:
-            return "Waxing Gibbous"
-        case 0.45..<0.55:
-            return "Full Moon"
-        case 0.55..<0.70:
-            return "Waning Gibbous"
-        case 0.70..<0.80:
-            return "Last Quarter"
-        default:
-            return "Waning Crescent"
-        }
     }
 }
 

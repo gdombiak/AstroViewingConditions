@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Shared “which night is Tonight?” scoring for watch accept / local refresh.
 ///

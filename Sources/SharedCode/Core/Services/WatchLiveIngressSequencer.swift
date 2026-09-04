@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Identity of a successfully applied conditions/OQ state for ordered UI publication.
 public enum WatchConditionsAppliedStateIdentity: Sendable, Equatable {

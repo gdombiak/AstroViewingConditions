@@ -1,5 +1,6 @@
-@testable import SharedCode
 import XCTest
+import Foundation
+@testable import AstroEngine
 
 /// Additive F3 regression: existing XCTest bundle vs the OQ contract fixtures.
 ///

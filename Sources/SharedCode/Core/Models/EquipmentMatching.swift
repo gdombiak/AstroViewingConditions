@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public enum EquipmentFitLevel: String, CaseIterable, Sendable, Hashable {
     case excellent

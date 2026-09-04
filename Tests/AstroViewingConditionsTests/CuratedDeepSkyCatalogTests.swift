@@ -107,10 +107,13 @@ final class CuratedDeepSkyCatalogTests: XCTestCase {
         )
         XCTAssertNotEqual(supplied, TargetImageManifest.image(for: "m13"))
 
-        let catalog = InjectedDeepSkyCatalogProvider(catalogEntries: [
-            Self.minimalEntry(id: "m13", image: supplied),
-            Self.minimalEntry(id: "m31", image: nil)
-        ])
+        let catalog = InjectedDeepSkyCatalogProvider(
+            catalogEntries: [
+                Self.minimalEntry(id: "m13"),
+                Self.minimalEntry(id: "m31")
+            ],
+            credits: ["m13": supplied]
+        )
         let targets = Dictionary(
             uniqueKeysWithValues: DefaultTargetCatalogProvider(deepSkyCatalog: catalog)
                 .targets(for: context)
@@ -170,10 +173,12 @@ final class CuratedDeepSkyCatalogTests: XCTestCase {
 
     private struct InjectedDeepSkyCatalogProvider: DeepSkyCatalogProvider {
         let catalogEntries: [DeepSkyCatalogEntry]
+        let credits: [String: TargetImageCredit]
         func entries() -> [DeepSkyCatalogEntry] { catalogEntries }
+        func imageCredit(for id: String) -> TargetImageCredit? { credits[id] }
     }
 
-    private static func minimalEntry(id: String, image: TargetImageCredit?) -> DeepSkyCatalogEntry {
+    private static func minimalEntry(id: String) -> DeepSkyCatalogEntry {
         DeepSkyCatalogEntry(
             id: id,
             commonName: id,
@@ -187,8 +192,7 @@ final class CuratedDeepSkyCatalogTests: XCTestCase {
             difficulty: 0.5,
             observingIntent: .standard,
             recommendedEquipment: .binoculars,
-            notes: "Injected",
-            image: image
+            notes: "Injected"
         )
     }
 

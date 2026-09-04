@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Whether modeled zenith brightness was used for observing quality.
 public enum BrightnessAvailability: String, Codable, Sendable, Equatable, Hashable {

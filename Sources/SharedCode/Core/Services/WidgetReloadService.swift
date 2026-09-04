@@ -1,6 +1,7 @@
 import Foundation
 import WidgetKit
 import SwiftUI
+import AstroEngine
 
 @MainActor
 public final class WidgetReloadService {

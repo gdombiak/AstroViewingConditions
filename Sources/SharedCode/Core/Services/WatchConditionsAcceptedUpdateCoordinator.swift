@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 // MARK: - Persistence / reload / gate abstractions
 

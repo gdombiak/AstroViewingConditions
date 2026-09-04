@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Sole production factory for Night Conditions widget cache publication.
 ///

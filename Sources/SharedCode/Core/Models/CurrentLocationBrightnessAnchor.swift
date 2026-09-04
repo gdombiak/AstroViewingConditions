@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Immutable Current Location pin used for modeled-brightness metadata.
 ///

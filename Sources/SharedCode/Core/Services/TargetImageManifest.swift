@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// The curated, reviewable manifest for target imagery. No network lookup occurs at runtime.
 public enum TargetImageManifest {

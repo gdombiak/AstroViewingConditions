@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 public enum EquipmentSessionSelectionMode: Equatable, Sendable {
     case allEquipment

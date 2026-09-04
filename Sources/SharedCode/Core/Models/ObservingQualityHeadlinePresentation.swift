@@ -1,4 +1,5 @@
 import Foundation
+import AstroEngine
 
 /// Display band for the **headline** observing-quality score (0…100).
 ///

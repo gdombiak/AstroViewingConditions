@@ -198,7 +198,7 @@ public enum EquipmentValidation {
         return millimeters
     }
 
-    static func maximumApertureMillimeters(for type: EquipmentType) -> Double {
+    public static func maximumApertureMillimeters(for type: EquipmentType) -> Double {
         type == .binoculars
             ? maximumBinocularApertureMillimeters
             : maximumTelescopeApertureMillimeters
