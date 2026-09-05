@@ -1,0 +1,9 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: >
+  One hour, fog terms sum to 100, moon down, neither regime.
+  fog_penalty 2.0 * 0.20 = 0.4 → good; public 70+6=76.

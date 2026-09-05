@@ -383,9 +383,9 @@ flowchart LR
 
 | Capability ID | Current Swift locus | Equality |
 |---|---|---|
-| `weather.decode` | `WeatherService.parseHourlyForecasts` | Exact DTO: omit `HourlyForecast.id` (`UUID()`). Times exact under the [Open-Meteo time parser](#open-meteo-time-parser). Skip malformed times. |
+| `weather.decode` | `WeatherService.parseHourlyForecasts` | Exact DTO: omit `HourlyForecast.id` (`UUID()`). Times exact under the [Open-Meteo time parser](#open-meteo-time-parser). Skip malformed times. **Bot-facing 1.0 information surface:** structured hourly weather (time, cloud cover, humidity, temperature, dew point, wind speed/direction, visibility, precipitation, layered clouds, seeing/transparency inputs). Do not duplicate this inside night scoring. |
 | `iss.decode` | `ISSService` decode path | Exact `ISSPass` DTO including deterministic `id`; empty array vs missing `passes` as in Swift (`[]` vs no-key → `[]` output either way after map). |
-| `night_conditions.analyze` | `NightQualityAnalyzer.analyzeNight` | Exact DTO given injected `night_window` + **1:1 `moon_series`** + clock/tz. See [Night conditions procedure](#night-conditions-analyzenight). Omit `HourlyRating.id`, English `summary`, `Trend.label`/`icon`, **`best_window`**. |
+| `night_conditions.analyze` | `NightQualityAnalyzer.analyzeNight` | Exact DTO given injected `night_window` + **1:1 `moon_series`** + clock/tz. See [Night conditions procedure](#night-conditions-analyzenight). Omit `HourlyRating.id`, English `summary`, `Trend.label`/`icon`, **`best_window`**. **Bot-facing:** `hourly_ratings` is first-class objective data (time, score, cloud, fog, moon illumination/altitude, wind, optional seeing/transparency), not merely an input to the aggregate `public_score`. |
 | `night_conditions.score` | `BestSpotSearcher.calculateScore` | Integer exact. |
 | `observing_quality.assess` | `ObservingQualityCalculator.assess` | Integer `score` exact. Anchor penalties abs 1e-12. Interpolated penalties abs 1e-9 (matches `ObservingQualityCalculatorTests` home/stub). |
 | `light_pollution.lookup` | `BinaryLightPollutionProvider.modeledZenithSkyBrightness` | Exact dequantized value for fixture coordinates (existing tiny-bin lookups). |
@@ -401,13 +401,38 @@ flowchart LR
 | Capability ID | Notes |
 |---|---|
 | `geocoding.decode` | Open-Meteo search JSON. Not needed to prove scoring. |
-| `astronomy.sun_events` | Live skyfield/SunCalc; times ±60 s. **Polar missing-times / `approximateSunEvents`:** `hosts: [ios]`, not in Python 1.1. Live suite **must not** assert product integers. |
-| `astronomy.moon_info` / `astronomy.moon_series` | Altitude ±0.5°; illumination integer ±1. Phase name/emoji omitted. Not fed live into integer fixtures. |
+| `astronomy.sun_events` | **Required Grok Bot product capability** (1.1). Live skyfield/SunCalc; times ±60 s. Sunset, civil/nautical/astronomical twilight, astronomical night start/end, sunrise. **Polar missing-times / `approximateSunEvents`:** `hosts: [ios]`, not in Python 1.1. Live suite **must not** assert product integers. Not implemented in Phase 6. |
+| `astronomy.moon_info` / `astronomy.moon_series` | **Required Grok Bot product capabilities** (1.1). Illumination, altitude, useful phase identity, waxing/waning if the engine already models it, hourly altitude/illumination through the observing period; moonrise/moonset only if the astronomy capability formally supports those events. Altitude ±0.5°; illumination integer ±1. Phase name/emoji omitted. Not fed live into integer fixtures. Not implemented in Phase 6. |
 | `astronomy.planet_positions` | Exact **after** Schlyter procedure is written in `contracts/procedures/` and coefficients are JSON. Until then, `equality: n/a`. |
 | `targets.windows` | Prefer frozen alt/az samples; live windows are 1.1 astronomy. |
 | `targets.recommend` | Integer scores + sort order exact given **precomputed windows**. |
 | `equipment.match` | `level` / `reason` / `mode` exact. `explanation` **never** in equality (host copy). |
 | `location.compare` | Full [total order](#locationcompare-total-order-11). Suitability is an **injected overlay** (default all `unchecked`). Omit `id` and `summary`. |
+
+#### Grok Bot information surface (objective engine facts, not one mega-capability)
+
+The Bot must answer astronomy-planning questions from objective Astro Engine data, not merely return aggregate scores. Astro Engine owns deterministic facts and calculations. Grok owns subjective interpretation and conversational reasoning across those facts. Do **not** collapse weather, darkness timing, Moon context, and scored hours into one “conditions” capability.
+
+Intended composition:
+
+```text
+weather.decode
++ astronomy.sun_events
++ astronomy.moon_info / astronomy.moon_series
++ night_conditions.analyze
+→ Grok reasoning/planning
+```
+
+Grok should not reimplement astronomical-night calculations, Moon astronomy, weather normalization, or scoring logic.
+
+| Surface | Capability | Version | Phase 6 |
+|---|---|---|---|
+| Normalized hourly weather | `weather.decode` | 1.0 | Not implemented (Phase 8). Documented as Bot-facing now. |
+| Scored hourly observing conditions | `night_conditions.analyze` `hourly_ratings` | 1.0 | Implemented in the Python library (CLI allow-list still F2-only). |
+| Astronomical darkness timing | `astronomy.sun_events` | 1.1 | Required Bot product capability. Not implemented. |
+| Moon context | `astronomy.moon_info`, `astronomy.moon_series` | 1.1 | Required Bot product capabilities. Not implemented. |
+
+Do not add English summaries to parity. Do not invent phase emoji or presentation copy.
 
 #### Swift / iOS only (out of contract)
 
@@ -1533,7 +1558,7 @@ Python live astronomy library remains skyfield for 1.1 sun/moon and Schlyter JSO
 
 3. **Target layout** is `apps/{ios,cli}`, `packages/astro-engine-{swift,python}`, `contracts/`, `tools/light-pollution`, `tests/parity`, `.github/workflows`. Path isolation plus the file-split map.
 
-4. **1.0 parity is pure scoring + decode**, not ~20 hedged capabilities. Gate: OQ only. After gate 1.0: night analyze/score with injected **night_window + 1:1 moon_series** + clock/tz, fog/seeing/transparency, catalog, weather/ISS decode, LP lookup+validity on tiny fixture, grid. 1.1: live astronomy, target windows/recommend, equipment structured match, location.compare, geocoding, composed CLI. Polar sun fallback is `hosts: [ios]`. Equipment explanations and English summaries are never equality fields. **SharedCode never `import SunCalc` after package extract:** AstroEngine owns SunCalc-backed `MoonSampling`/`SunEventsSampling`.
+4. **1.0 parity is pure scoring + decode**, not ~20 hedged capabilities. Gate: OQ only. After gate 1.0: night analyze/score with injected **night_window + 1:1 moon_series** + clock/tz, fog/seeing/transparency, catalog, weather/ISS decode, LP lookup+validity on tiny fixture, grid. 1.1: live astronomy, target windows/recommend, equipment structured match, location.compare, geocoding, composed CLI. Polar sun fallback is `hosts: [ios]`. Equipment explanations and English summaries are never equality fields. **SharedCode never `import SunCalc` after package extract:** AstroEngine owns SunCalc-backed `MoonSampling`/`SunEventsSampling`. **Grok Bot product surface:** `weather.decode` hourly weather and `night_conditions.analyze.hourly_ratings` are 1.0 objective facts; `astronomy.sun_events`, `astronomy.moon_info`, and `astronomy.moon_series` are required 1.1 Bot capabilities, not optional parity experiments. Grok reasons over those facts; it does not reimplement them.
 
 5. **Fixtures** are `input.json` + `expected.json` + `meta.yaml` with field-level `equality-policy.yaml`. Parity compares **parsed JSON**, not canonical bytes. `expected.json` is the domain result (`ok`/`result`); runtime `engine_semver` is checked against `meta.yaml`'s range, not pinned in the golden. Required encode rules: ISO-8601 `Z` dates, finite numbers, null-vs-omitted where meaningful. Night analyze: missing moon timestamp is validation; stored `night_start`/`night_end` are first/last included hours; `best_window` omitted. `weather.decode` always emits `timezone` (`string|null`) and `utc_offset_seconds`. Loader: `CONTRACTS_ROOT` + ancestor walk; `$ref` confined to `contracts/fixtures/`. DTO omits UUID `id`, emoji, English copy.
 
@@ -1702,7 +1727,12 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 - **Commit intent:** `Port fog, seeing, transparency, and night conditions to Python`
 - **Files:** `packages/astro-engine-python/`; hand-authored night-conditions fixtures; `tests/parity`.
 - **Depends on:** Phase 4, Phase 3, F2
-- **Notes:** Injected `night_window` + 1:1 `moon_series` + clock/tz. Missing moon timestamp is validation.
+- **Notes:** Injected `night_window` + 1:1 `moon_series` + clock/tz. Missing moon timestamp is validation. Public Python CLI allow-list remains `observing_quality.assess` (Phase 11 expands it).
+- **Implementation notes (2026-09-05):**
+  - Python library modules `fog.py`, `seeing.py`, `transparency.py`, `night_conditions.py` load canonical `contracts/data/calibration/*.json` through the F2 `contracts_root` / `data_root` path. No copied numbers.
+  - `tests/parity` is a Phase 6 scoring layer only: Python library (private `_capability` adapter, not the user CLI) and Swift `astro-engine-eval` are each compared to hand-authored `expected.json` via `equality-policy.yaml`. Not Phase 10 CI/`scripts/parity`/`Makefile`. Git currently records the files as `Tests/parity` because that collides with iOS `Tests/` on case-insensitive volumes. Executable imports (package `conftest.py`) resolve that Git path, not lowercase `tests/parity`. XcodeGen still lists only `Tests/AstroViewingConditionsTests`, so the Python files are not part of the iOS test target. Phase 13 relocates Apple tests to `apps/ios/Tests/`, after which lowercase `tests/parity` is unambiguous. Until then invoke pytest as `Tests/parity`.
+  - New night-condition fixtures cover fog-heavy, wind penalty, transparency-only, improving trend, extra moon ignored, and half-open window clipping. Public-score truncation stays on `night-conditions-score/truncation-8-5-v1`.
+  - Bot-facing product intent for hourly weather / scored hours / sun events / moon context is documented above. Live 1.1 astronomy was not pulled into this phase.
 
 ### Phase 7 — Extract GDAL-free LP lookup into the Python engine
 

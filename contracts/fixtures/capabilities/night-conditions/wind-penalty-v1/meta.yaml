@@ -1,0 +1,9 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: >
+  One hour, wind 20 m/s → night wind table else 2.0.
+  neither 2.0*0.10=0.2 excellent; public 90+8=98.

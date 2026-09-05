@@ -59,9 +59,30 @@ def engine_semver() -> str:
     return text
 
 
-@lru_cache(maxsize=1)
-def observing_quality_calibration() -> dict:
-    path = data_root() / "calibration" / "observing-quality.json"
+@lru_cache(maxsize=None)
+def load_calibration(stem: str) -> dict:
+    """Load `contracts/data/calibration/<stem>.json`. No package-local copies."""
+    path = data_root() / "calibration" / f"{stem}.json"
     if not path.is_file():
         raise ContractsRootError(f"missing calibration file: {path}")
     return load_json_bytes(path.read_bytes())
+
+
+def observing_quality_calibration() -> dict:
+    return load_calibration("observing-quality")
+
+
+def fog_calibration() -> dict:
+    return load_calibration("fog")
+
+
+def seeing_calibration() -> dict:
+    return load_calibration("seeing")
+
+
+def transparency_calibration() -> dict:
+    return load_calibration("transparency")
+
+
+def night_quality_calibration() -> dict:
+    return load_calibration("night-quality")

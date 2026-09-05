@@ -55,7 +55,11 @@ def parse_simple_meta(text: str) -> dict[str, Any]:
 
 
 def iter_oq_fixtures() -> Iterator[dict[str, Any]]:
-    root = contracts_root() / OQ_FIXTURE_DIR
+    yield from iter_capability_fixtures(OQ_FIXTURE_DIR)
+
+
+def iter_capability_fixtures(relative: str) -> Iterator[dict[str, Any]]:
+    root = contracts_root() / relative
     for directory in sorted(path for path in root.iterdir() if path.is_dir()):
         yield load_fixture(directory)
 

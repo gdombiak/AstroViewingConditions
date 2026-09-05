@@ -1,0 +1,9 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: >
+  All three layers present, no previous temperature, no 200 hPa → T-only.
+  effective cloud 40 → transparency 1.0 * 0.50 = 0.5 good; public 75.

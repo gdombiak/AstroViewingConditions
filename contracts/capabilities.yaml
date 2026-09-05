@@ -34,6 +34,8 @@ capabilities:
     summary: >
       Score an astronomical night from injected hourly forecasts, moon
       samples, and a night window. Does not call SunCalc or NightForecastFilter.
+      hourly_ratings is Bot-facing objective hourly data, not just an
+      aggregate-score input. English summary and best_window are out of equality.
 
   - id: night_conditions.score
     hosts: [ios, cli]

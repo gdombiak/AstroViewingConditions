@@ -109,6 +109,21 @@ def test_unknown_capability_is_usage() -> None:
     assert "unknown capability" in stderr
 
 
+def test_phase6_capability_ids_remain_unknown_on_cli() -> None:
+    for capability in (
+        "fog.score",
+        "seeing.penalty",
+        "transparency.penalty",
+        "night_conditions.analyze",
+        "night_conditions.score",
+    ):
+        code, stdout, stderr = _run([capability, "--input", "-"], stdin=b"{}")
+        assert code == EXIT_USAGE, capability
+        assert stdout == ""
+        assert "unknown capability" in stderr
+        assert "F2 allow-list: observing_quality.assess" in stderr
+
+
 def test_malformed_json_is_validation() -> None:
     code, stdout, stderr = _run(
         [CAPABILITY_ID, "--input", "-"],

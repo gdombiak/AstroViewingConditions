@@ -1,0 +1,32 @@
+{
+  "capability": "night_conditions.analyze",
+  "ok": true,
+  "result": {
+    "rating": "good",
+    "details": {
+      "cloud_cover_score": 40.0,
+      "fog_score_avg": 0.0,
+      "moon_illumination_avg": 0,
+      "wind_speed_avg": 3.0,
+      "transparency_score_avg": 1.0
+    },
+    "hourly_ratings": [
+      {
+        "cloud_cover": 40,
+        "fog_score": 0,
+        "moon_altitude": -10.0,
+        "moon_illumination": 0,
+        "score": 0.5,
+        "time": "2026-03-01T21:00:00Z",
+        "wind_speed": 3.0,
+        "transparency_score": 1.0
+      }
+    ],
+    "night_start": "2026-03-01T21:00:00Z",
+    "night_end": "2026-03-01T21:00:00Z",
+    "trend": "stable",
+    "first_half_score": 0.0,
+    "second_half_score": 0.0,
+    "public_score": 75
+  }
+}
