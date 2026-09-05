@@ -1,0 +1,10 @@
+capability: iss.decode
+engine_semver: ">=0.1.0 <2.0.0"
+equality: iss_decode
+hosts: [swift, python]
+origin: transcribed
+notes: >
+  Named N2YO provider fixture providers/n2yo/visualpasses/nil-passes.json.
+  Raw envelope omits passes; domain result is still an empty pass collection.
+  The raw distinction versus empty-passes-array.json is preserved in the
+  provider fixture, not in the normalized DTO.

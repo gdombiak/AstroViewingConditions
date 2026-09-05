@@ -86,6 +86,39 @@ policies:
     fields:
       modeled_zenith_sky_brightness: abs_1e9
 
+  weather_decode:
+    description: Normalized Open-Meteo hourly DTO; omit HourlyForecast.id
+    fields:
+      timezone: exact
+      utc_offset_seconds: exact
+      hourly[].time: exact
+      hourly[].cloud_cover: exact
+      hourly[].humidity: exact
+      hourly[].wind_speed: abs_1e12
+      hourly[].wind_direction: exact
+      hourly[].temperature: abs_1e12
+      hourly[].dew_point: abs_1e12
+      hourly[].visibility: abs_1e12
+      hourly[].low_cloud_cover: exact
+      hourly[].mid_cloud_cover: exact
+      hourly[].high_cloud_cover: exact
+      hourly[].wind_speed_200hpa: abs_1e12
+
+  iss_decode:
+    description: Exact ISSPass DTO including deterministic id
+    fields:
+      passes[].id: exact
+      passes[].rise_time: exact
+      passes[].duration: exact
+      passes[].max_elevation: exact
+      passes[].max_time: exact
+      passes[].end_time: exact
+      passes[].start_direction: exact
+      passes[].max_direction: exact
+      passes[].end_direction: exact
+      passes[].start_elevation: exact
+      passes[].end_elevation: exact
+
   engine_error:
     description: Validation/engine failure envelope (no result)
     fields:

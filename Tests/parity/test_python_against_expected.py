@@ -4,13 +4,13 @@ from astro_engine.contracts import engine_semver
 from astro_engine.semver import satisfies
 
 from compare import compare_envelope
-from fixtures import iter_scoring_fixtures
+from fixtures import iter_parity_fixtures
 from python_eval import python_envelope
 
 
 def test_python_matches_hand_authored_scoring_fixtures() -> None:
-    fixtures = list(iter_scoring_fixtures())
-    assert len(fixtures) >= 14
+    fixtures = list(iter_parity_fixtures())
+    assert len(fixtures) >= 24
     version = engine_semver()
     for fixture in fixtures:
         meta = fixture["meta"]

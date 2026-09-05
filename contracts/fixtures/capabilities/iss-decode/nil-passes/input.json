@@ -1,0 +1,6 @@
+{
+  "capability": "iss.decode",
+  "injected": {
+    "$ref": "providers/n2yo/visualpasses/nil-passes.json"
+  }
+}

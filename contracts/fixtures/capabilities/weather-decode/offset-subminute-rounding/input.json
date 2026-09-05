@@ -1,0 +1,14 @@
+{
+  "capability": "weather.decode",
+  "injected": {
+    "utc_offset_seconds": 30,
+    "hourly": {
+      "time": ["2026-02-19T00:00"],
+      "cloudcover": [1],
+      "relativehumidity_2m": [1],
+      "windspeed_10m": [1.0],
+      "winddirection_10m": [1],
+      "temperature_2m": [1.0]
+    }
+  }
+}

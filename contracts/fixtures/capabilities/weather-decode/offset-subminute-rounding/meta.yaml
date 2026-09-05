@@ -1,0 +1,9 @@
+capability: weather.decode
+engine_semver: ">=0.1.0 <2.0.0"
+equality: weather_decode
+hosts: [swift, python]
+origin: manual
+notes: >
+  TimeZone(secondsFromGMT:) quantizes in-range offsets to the nearest minute,
+  rounding half away from zero. +30s becomes +1 minute, so local T00:00 is
+  2026-02-18T23:59:00Z. The raw utc_offset_seconds 30 is still emitted.

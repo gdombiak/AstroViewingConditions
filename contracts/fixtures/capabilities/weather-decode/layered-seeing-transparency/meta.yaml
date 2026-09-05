@@ -1,0 +1,10 @@
+capability: weather.decode
+engine_semver: ">=0.1.0 <2.0.0"
+equality: weather_decode
+hosts: [swift, python]
+origin: transcribed
+notes: >
+  Named Open-Meteo provider fixture
+  providers/open-meteo/forecast/layered-seeing-transparency.json.
+  Maps cloud_cover_mid, cloud_cover_high, and wind_speed_200hPa. low_cloud_cover
+  is absent in the raw envelope and omitted.

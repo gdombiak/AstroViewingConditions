@@ -23,6 +23,10 @@ enum CapabilityDispatch {
             return try seeingPenalty(document)
         case "transparency.penalty":
             return try transparencyPenalty(document)
+        case "weather.decode":
+            return try weatherDecode(document)
+        case "iss.decode":
+            return try issDecode(document)
         default:
             throw EvalValidationError(code: "capability_unknown", message: "unknown capability: \(capability)")
         }
@@ -32,7 +36,151 @@ enum CapabilityDispatch {
         guard let injected = document["injected"] as? [String: Any] else {
             throw EvalValidationError(code: "validation", message: "input JSON must contain an 'injected' object")
         }
-        return injected
+        return try resolveInjectedRef(injected)
+    }
+
+    private static func resolveInjectedRef(_ injected: [String: Any]) throws -> [String: Any] {
+        guard injected.count == 1, let ref = injected["$ref"] as? String else {
+            return injected
+        }
+        let data = try fixtureRefData(ref)
+        let raw: Any
+        do {
+            raw = try JSONSerialization.jsonObject(with: data)
+        } catch {
+            throw EvalValidationError(code: "validation", message: "malformed JSON in $ref fixture")
+        }
+        guard let object = raw as? [String: Any] else {
+            throw EvalValidationError(code: "validation", message: "injected.$ref must resolve to an object")
+        }
+        return object
+    }
+
+    private static func injectedJSONData(_ document: [String: Any]) throws -> Data {
+        guard let injected = document["injected"] as? [String: Any] else {
+            throw EvalValidationError(code: "validation", message: "input JSON must contain an 'injected' object")
+        }
+        if injected.count == 1, let ref = injected["$ref"] as? String {
+            return try fixtureRefData(ref)
+        }
+        guard JSONSerialization.isValidJSONObject(injected) else {
+            throw EvalValidationError(code: "validation", message: "injected must be a JSON object")
+        }
+        return try JSONSerialization.data(withJSONObject: injected)
+    }
+
+    private static func fixtureRefData(_ ref: String) throws -> Data {
+        let url: URL
+        do {
+            url = try FixtureRoot.url(ref)
+        } catch let error as FixtureRootError {
+            throw evalError(from: error)
+        }
+        return try Data(contentsOf: url)
+    }
+
+    private static func evalError(from error: FixtureRootError) -> EvalValidationError {
+        switch error {
+        case .refEscape:
+            return EvalValidationError(code: "ref_escape", message: error.message)
+        case .fixtureMissing:
+            return EvalValidationError(code: "fixture_missing", message: error.message)
+        case .fixturesDirectoryMissing:
+            return EvalValidationError(code: "engine_failure", message: error.message)
+        }
+    }
+
+    private static func weatherDecode(_ document: [String: Any]) throws -> [String: Any] {
+        let data = try injectedJSONData(document)
+        let response: OpenMeteoResponse
+        do {
+            response = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
+        } catch {
+            throw EvalValidationError(code: "validation", message: "malformed Open-Meteo forecast envelope")
+        }
+        let forecasts = OpenMeteoForecastDecoder.parseHourlyForecasts(from: response)
+        var result: [String: Any] = [
+            "hourly": forecasts.map { encodeHour($0) },
+            "utc_offset_seconds": response.utcOffsetSeconds,
+        ]
+        if let timezone = response.timezone {
+            result["timezone"] = timezone
+        } else {
+            result["timezone"] = NSNull()
+        }
+        return result
+    }
+
+    private static func issDecode(_ document: [String: Any]) throws -> [String: Any] {
+        let data = try injectedJSONData(document)
+        let passes: [ISSPass]
+        do {
+            passes = try N2YOPassDecoder.decodePasses(from: data)
+        } catch {
+            throw EvalValidationError(code: "validation", message: "malformed N2YO visualpasses envelope")
+        }
+        return ["passes": passes.map { encodePass($0) }]
+    }
+
+    private static func encodeHour(_ forecast: HourlyForecast) -> [String: Any] {
+        var row: [String: Any] = [
+            "time": formatUTC(forecast.time),
+            "cloud_cover": forecast.cloudCover,
+            "humidity": forecast.humidity,
+            "wind_speed": forecast.windSpeed,
+            "wind_direction": forecast.windDirection,
+            "temperature": forecast.temperature,
+        ]
+        if let dewPoint = forecast.dewPoint {
+            row["dew_point"] = dewPoint
+        }
+        if let visibility = forecast.visibility {
+            row["visibility"] = visibility
+        }
+        if let low = forecast.lowCloudCover {
+            row["low_cloud_cover"] = low
+        }
+        if let mid = forecast.midCloudCover {
+            row["mid_cloud_cover"] = mid
+        }
+        if let high = forecast.highCloudCover {
+            row["high_cloud_cover"] = high
+        }
+        if let wind200 = forecast.windSpeed200hPa {
+            row["wind_speed_200hpa"] = wind200
+        }
+        return row
+    }
+
+    private static func encodePass(_ pass: ISSPass) -> [String: Any] {
+        var row: [String: Any] = [
+            "id": pass.id,
+            "rise_time": formatUTC(pass.riseTime),
+            "duration": pass.duration,
+            "max_elevation": pass.maxElevation,
+        ]
+        if let maxTime = pass.maxTime {
+            row["max_time"] = formatUTC(maxTime)
+        }
+        if let endTime = pass.endTime {
+            row["end_time"] = formatUTC(endTime)
+        }
+        if let startDirection = pass.startDirection {
+            row["start_direction"] = startDirection
+        }
+        if let maxDirection = pass.maxDirection {
+            row["max_direction"] = maxDirection
+        }
+        if let endDirection = pass.endDirection {
+            row["end_direction"] = endDirection
+        }
+        if let startElevation = pass.startElevation {
+            row["start_elevation"] = startElevation
+        }
+        if let endElevation = pass.endElevation {
+            row["end_elevation"] = endElevation
+        }
+        return row
     }
 
     private static func observingQuality(_ document: [String: Any]) throws -> [String: Any] {

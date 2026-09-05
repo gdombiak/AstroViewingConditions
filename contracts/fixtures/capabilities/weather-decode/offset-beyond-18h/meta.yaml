@@ -1,0 +1,10 @@
+capability: weather.decode
+engine_semver: ">=0.1.0 <2.0.0"
+equality: weather_decode
+hosts: [swift, python]
+origin: manual
+notes: >
+  OpenMeteoForecastDecoder uses TimeZone(secondsFromGMT:) which is nil outside
+  ±18 hours (64800 seconds), then TimeZone(secondsFromGMT: 0) for parsing.
+  The raw utc_offset_seconds is still emitted. 64801 therefore parses T00:00
+  as 2026-02-19T00:00:00Z, not as a 18h01s offset.

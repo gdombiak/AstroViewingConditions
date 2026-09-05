@@ -1,0 +1,10 @@
+capability: weather.decode
+engine_semver: ">=0.1.0 <2.0.0"
+equality: weather_decode
+hosts: [swift, python]
+origin: transcribed
+notes: >
+  Named Open-Meteo provider fixture
+  providers/open-meteo/forecast/short-optional-arrays.json.
+  Optional arrays shorter than time yield omitted per-hour fields, not zeros
+  and not a whole-response failure.

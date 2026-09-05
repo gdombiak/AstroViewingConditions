@@ -1,6 +1,6 @@
-"""Shared validation errors for scoring capabilities.
+"""Shared validation errors for scoring and decode capabilities.
 
-ObservingQualityError stays F2-specific. New Phase 6 modules raise
+ObservingQualityError stays F2-specific. Phase 6+ modules raise
 ValidationError rather than broadening that name.
 """
 
@@ -9,3 +9,13 @@ from __future__ import annotations
 
 class ValidationError(ValueError):
     """Input/document failed a capability contract check."""
+
+    code = "validation"
+
+
+class FixtureRefError(ValidationError):
+    """Provider `$ref` failed to resolve under `contracts/fixtures`."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code

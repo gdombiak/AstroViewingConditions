@@ -1,11 +1,13 @@
-"""Internal scoring dispatch for tests/parity. Not a public CLI surface."""
+"""Internal library dispatch for tests/parity. Not a public CLI surface."""
 
 from __future__ import annotations
 
 from typing import Any, Mapping
 
+from astro_engine.contracts import load_fixture_ref
 from astro_engine.errors import ValidationError
 from astro_engine.fog import CAPABILITY_ID as FOG_ID, score_fog
+from astro_engine.iss import CAPABILITY_ID as ISS_ID, decode_iss
 from astro_engine.night_conditions import (
     ANALYZE_CAPABILITY_ID,
     SCORE_CAPABILITY_ID,
@@ -15,6 +17,7 @@ from astro_engine.night_conditions import (
 from astro_engine.observing_quality import CAPABILITY_ID as OQ_ID, assess_observing_quality
 from astro_engine.seeing import CAPABILITY_ID as SEEING_ID, seeing_penalty
 from astro_engine.transparency import CAPABILITY_ID as TRANSPARENCY_ID, transparency_penalty
+from astro_engine.weather import CAPABILITY_ID as WEATHER_ID, decode_weather
 
 SCORING_CAPABILITY_IDS = (
     OQ_ID,
@@ -25,16 +28,30 @@ SCORING_CAPABILITY_IDS = (
     TRANSPARENCY_ID,
 )
 
+DECODE_CAPABILITY_IDS = (WEATHER_ID, ISS_ID)
+
 
 def _injected(document: Mapping[str, Any]) -> Mapping[str, Any]:
     injected = document.get("injected")
     if not isinstance(injected, Mapping):
         raise ValidationError("input JSON must contain an 'injected' object")
-    return injected
+    return _resolve_injected_ref(injected)
 
 
-def evaluate_scoring_capability(capability: str, document: Mapping[str, Any]) -> dict[str, Any]:
-    """Return the domain `result` object for a scoring capability.
+def _resolve_injected_ref(injected: Mapping[str, Any]) -> Mapping[str, Any]:
+    if list(injected.keys()) != ["$ref"]:
+        return injected
+    ref = injected["$ref"]
+    if not isinstance(ref, str):
+        raise ValidationError("injected.$ref must be a string")
+    loaded = load_fixture_ref(ref)
+    if not isinstance(loaded, Mapping):
+        raise ValidationError("injected.$ref must resolve to an object")
+    return loaded
+
+
+def evaluate_capability(capability: str, document: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the domain `result` object for a scoring or decode capability.
 
     Raises ValidationError on input failure. Unknown IDs raise ValidationError
     with a distinct message so tests can tell them apart from CLI usage (exit 3).
@@ -63,4 +80,13 @@ def evaluate_scoring_capability(capability: str, document: Mapping[str, Any]) ->
         return seeing_penalty(_injected(document))
     if capability == TRANSPARENCY_ID:
         return transparency_penalty(_injected(document))
+    if capability == WEATHER_ID:
+        return decode_weather(_injected(document))
+    if capability == ISS_ID:
+        return decode_iss(_injected(document))
     raise ValidationError(f"unknown scoring capability: {capability}")
+
+
+def evaluate_scoring_capability(capability: str, document: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the domain `result` object. Includes Phase 8 decode IDs."""
+    return evaluate_capability(capability, document)

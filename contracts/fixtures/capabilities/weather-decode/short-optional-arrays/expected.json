@@ -1,0 +1,29 @@
+{
+  "capability": "weather.decode",
+  "ok": true,
+  "result": {
+    "hourly": [
+      {
+        "cloud_cover": 50,
+        "high_cloud_cover": 30,
+        "humidity": 80,
+        "mid_cloud_cover": 40,
+        "temperature": 12.5,
+        "time": "2026-02-19T00:00:00Z",
+        "wind_direction": 180,
+        "wind_speed": 5.5,
+        "wind_speed_200hpa": 120.0
+      },
+      {
+        "cloud_cover": 50,
+        "humidity": 80,
+        "temperature": 12.5,
+        "time": "2026-02-19T01:00:00Z",
+        "wind_direction": 180,
+        "wind_speed": 5.5
+      }
+    ],
+    "timezone": null,
+    "utc_offset_seconds": 0
+  }
+}

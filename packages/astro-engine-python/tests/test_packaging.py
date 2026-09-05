@@ -8,14 +8,18 @@ from astro_engine import (
     LightPollutionArtifact,
     analyze_night_conditions,
     assess_observing_quality,
+    decode_iss,
+    decode_weather,
     engine_semver,
     public_night_score,
     score_fog,
     seeing_penalty,
     transparency_penalty,
 )
+from astro_engine.iss import CAPABILITY_ID as ISS_CAPABILITY_ID
 from astro_engine.light_pollution import CAPABILITY_ID as LP_CAPABILITY_ID
 from astro_engine.observing_quality import CAPABILITY_ID
+from astro_engine.weather import CAPABILITY_ID as WEATHER_CAPABILITY_ID
 
 
 def test_public_imports() -> None:
@@ -25,10 +29,14 @@ def test_public_imports() -> None:
     assert callable(transparency_penalty)
     assert callable(analyze_night_conditions)
     assert callable(public_night_score)
+    assert callable(decode_weather)
+    assert callable(decode_iss)
     assert LightPollutionArtifact.from_bytes is not None
     assert engine_semver() == "0.1.0"
     assert CAPABILITY_ID == "observing_quality.assess"
     assert LP_CAPABILITY_ID == "light_pollution.lookup"
+    assert WEATHER_CAPABILITY_ID == "weather.decode"
+    assert ISS_CAPABILITY_ID == "iss.decode"
     module = importlib.import_module("astro_engine.cli")
     assert callable(module.main)
     assert "F2 allow-list: observing_quality.assess" in module.USAGE
@@ -39,3 +47,10 @@ def test_pyproject_has_no_runtime_dependencies() -> None:
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     assert data["project"]["dependencies"] == []
     assert data["project"]["requires-python"] == ">=3.11"
+
+
+def test_no_package_local_provider_fixture_copies() -> None:
+    root = Path(__file__).resolve().parents[1]
+    banned = {"happy-path.json", "two-passes.json"}
+    found = [path for path in root.rglob("*.json") if path.name in banned]
+    assert found == []

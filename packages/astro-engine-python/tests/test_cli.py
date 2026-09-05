@@ -117,6 +117,8 @@ def test_phase6_capability_ids_remain_unknown_on_cli() -> None:
         "night_conditions.analyze",
         "night_conditions.score",
         "light_pollution.lookup",
+        "weather.decode",
+        "iss.decode",
     ):
         code, stdout, stderr = _run([capability, "--input", "-"], stdin=b"{}")
         assert code == EXIT_USAGE, capability
@@ -131,6 +133,15 @@ def test_light_pollution_lookup_remains_unknown_on_cli() -> None:
     assert stdout == ""
     assert "unknown capability" in stderr
     assert "F2 allow-list: observing_quality.assess" in stderr
+
+
+def test_weather_and_iss_decode_remain_unknown_on_cli() -> None:
+    for capability in ("weather.decode", "iss.decode"):
+        code, stdout, stderr = _run([capability, "--input", "-"], stdin=b"{}")
+        assert code == EXIT_USAGE, capability
+        assert stdout == ""
+        assert "unknown capability" in stderr
+        assert "F2 allow-list: observing_quality.assess" in stderr
 
 
 def test_malformed_json_is_validation() -> None:

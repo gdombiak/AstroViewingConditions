@@ -1,0 +1,50 @@
+{
+  "capability": "weather.decode",
+  "ok": true,
+  "result": {
+    "hourly": [
+      {
+        "cloud_cover": 10,
+        "humidity": 1,
+        "temperature": 1.0,
+        "time": "2026-02-19T00:00:00Z",
+        "wind_direction": 1,
+        "wind_speed": 1.0
+      },
+      {
+        "cloud_cover": 20,
+        "humidity": 2,
+        "temperature": 2.0,
+        "time": "2026-02-19T00:00:00Z",
+        "wind_direction": 2,
+        "wind_speed": 2.0
+      },
+      {
+        "cloud_cover": 30,
+        "humidity": 3,
+        "temperature": 3.0,
+        "time": "2026-02-19T00:00:00Z",
+        "wind_direction": 3,
+        "wind_speed": 3.0
+      },
+      {
+        "cloud_cover": 40,
+        "humidity": 4,
+        "temperature": 4.0,
+        "time": "2026-02-19T00:00:00Z",
+        "wind_direction": 4,
+        "wind_speed": 4.0
+      },
+      {
+        "cloud_cover": 50,
+        "humidity": 5,
+        "temperature": 5.0,
+        "time": "2026-02-09T00:00:00Z",
+        "wind_direction": 5,
+        "wind_speed": 5.0
+      }
+    ],
+    "timezone": null,
+    "utc_offset_seconds": 0
+  }
+}

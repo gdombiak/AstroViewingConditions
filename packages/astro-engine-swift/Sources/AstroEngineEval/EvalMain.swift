@@ -12,13 +12,15 @@ usage: astro-engine-eval --engine-version
        astro-engine-eval <capability-id> --input -|FILE [--pretty]
        astro-engine-eval --fixture DIR [--pretty]
 
-Phase 3 allow-list:
+Eval allow-list (not the public Python CLI):
   observing_quality.assess
   night_conditions.analyze
   night_conditions.score
   fog.score
   seeing.penalty
   transparency.penalty
+  weather.decode
+  iss.decode
 """
 
 private let supportedCapabilities: Set<String> = [
@@ -28,6 +30,8 @@ private let supportedCapabilities: Set<String> = [
     "fog.score",
     "seeing.penalty",
     "transparency.penalty",
+    "weather.decode",
+    "iss.decode",
 ]
 
 @main

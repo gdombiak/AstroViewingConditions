@@ -17,6 +17,11 @@ SCORING_FIXTURE_DIRS = (
     "fixtures/capabilities/night-conditions-score",
 )
 
+DECODE_FIXTURE_DIRS = (
+    "fixtures/capabilities/weather-decode",
+    "fixtures/capabilities/iss-decode",
+)
+
 
 def parse_simple_meta(text: str) -> dict[str, Any]:
     result: dict[str, Any] = {}
@@ -67,8 +72,21 @@ def load_fixture(directory: Path) -> dict[str, Any]:
 
 
 def iter_scoring_fixtures() -> Iterator[dict[str, Any]]:
+    yield from _iter_fixture_dirs(SCORING_FIXTURE_DIRS)
+
+
+def iter_decode_fixtures() -> Iterator[dict[str, Any]]:
+    yield from _iter_fixture_dirs(DECODE_FIXTURE_DIRS)
+
+
+def iter_parity_fixtures() -> Iterator[dict[str, Any]]:
+    yield from iter_scoring_fixtures()
+    yield from iter_decode_fixtures()
+
+
+def _iter_fixture_dirs(relative_dirs: tuple[str, ...]) -> Iterator[dict[str, Any]]:
     root = contracts_root()
-    for relative in SCORING_FIXTURE_DIRS:
+    for relative in relative_dirs:
         directory = root / relative
         if not directory.is_dir():
             continue

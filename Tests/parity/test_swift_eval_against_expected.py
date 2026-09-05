@@ -6,7 +6,7 @@ from astro_engine.semver import satisfies
 from astro_engine.contracts import engine_semver
 
 from compare import compare_envelope
-from fixtures import iter_scoring_fixtures
+from fixtures import iter_parity_fixtures
 from swift_eval import ensure_eval_binary, run_swift_eval
 
 
@@ -20,7 +20,7 @@ def eval_binary():
 
 def test_swift_eval_matches_hand_authored_scoring_fixtures(eval_binary) -> None:
     assert eval_binary.is_file()
-    fixtures = list(iter_scoring_fixtures())
+    fixtures = list(iter_parity_fixtures())
     version = engine_semver()
     failures: list[str] = []
     for fixture in fixtures:

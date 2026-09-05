@@ -1,0 +1,9 @@
+capability: weather.decode
+engine_semver: ">=0.1.0 <2.0.0"
+equality: weather_decode
+hosts: [swift, python]
+origin: transcribed
+notes: >
+  Named Open-Meteo provider fixture providers/open-meteo/forecast/happy-path.json.
+  Offset-only timestamps; HourlyForecast.id omitted. Precipitation is in the
+  raw envelope and is not a domain field.

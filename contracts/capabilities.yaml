@@ -74,3 +74,22 @@ capabilities:
       Sample modeled zenith sky brightness from a validated LPATLAS1
       artifact. Malformed artifacts fail at load; geographic NoData and
       out-of-coverage queries return null. Public CLI exposure is Phase 11.
+
+  - id: weather.decode
+    hosts: [ios, cli]
+    equality: weather_decode
+    since: "0.1.0"
+    summary: >
+      Normalize a raw Open-Meteo forecast envelope into hourly weather
+      DTOs plus timezone/offset metadata. HourlyForecast.id is omitted.
+      Precipitation is requested by the host but is not a domain field.
+      Public CLI exposure is Phase 11.
+
+  - id: iss.decode
+    hosts: [ios, cli]
+    equality: iss_decode
+    since: "0.1.0"
+    summary: >
+      Normalize a raw N2YO visualpasses envelope into ISSPass DTOs
+      including the deterministic stableID. Empty and missing passes
+      both become an empty collection. Public CLI exposure is Phase 11.

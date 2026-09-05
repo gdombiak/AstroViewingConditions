@@ -383,8 +383,8 @@ flowchart LR
 
 | Capability ID | Current Swift locus | Equality |
 |---|---|---|
-| `weather.decode` | `WeatherService.parseHourlyForecasts` | Exact DTO: omit `HourlyForecast.id` (`UUID()`). Times exact under the [Open-Meteo time parser](#open-meteo-time-parser). Skip malformed times. **Bot-facing 1.0 information surface:** structured hourly weather (time, cloud cover, humidity, temperature, dew point, wind speed/direction, visibility, precipitation, layered clouds, seeing/transparency inputs). Do not duplicate this inside night scoring. |
-| `iss.decode` | `ISSService` decode path | Exact `ISSPass` DTO including deterministic `id`; empty array vs missing `passes` as in Swift (`[]` vs no-key → `[]` output either way after map). |
+| `weather.decode` | `OpenMeteoForecastDecoder.parseHourlyForecasts` | Exact DTO: omit `HourlyForecast.id` (`UUID()`). Times exact under the [Open-Meteo time parser](#open-meteo-time-parser). Skip malformed times. Always emit `timezone` (`string\|null`) and `utc_offset_seconds`. **Phase 8 / current 1.0** mirrors existing `HourlyForecast` (time, cloud cover, humidity, temperature, dew point, wind speed/direction, visibility, layered clouds, 200 hPa wind) and therefore does **not** expose precipitation. Open-Meteo `precipitation` is requested and decoded on the raw envelope but is not a `HourlyForecast` field; do not invent it in Phase 8. That omission is a **known Bot-facing gap**, not a decision that precipitation is out of scope forever — see [Grok Bot information surface](#grok-bot-information-surface-objective-engine-facts-not-one-mega-capability). Do not duplicate scoring inside weather decode. |
+| `iss.decode` | `N2YOPassDecoder` | Exact `ISSPass` DTO including deterministic `id` (`"{riseTime.timeIntervalSince1970.bitPattern}-{duration.bitPattern}"`, IEEE-754 bits as decimal, not Python `hash()`). Empty array vs missing `passes` as in Swift (`[]` vs no-key → `[]` output either way after map). Provider azimuth degrees, magnitude, and `info` satellite metadata are not `ISSPass` fields. |
 | `night_conditions.analyze` | `NightQualityAnalyzer.analyzeNight` | Exact DTO given injected `night_window` + **1:1 `moon_series`** + clock/tz. See [Night conditions procedure](#night-conditions-analyzenight). Omit `HourlyRating.id`, English `summary`, `Trend.label`/`icon`, **`best_window`**. **Bot-facing:** `hourly_ratings` is first-class objective data (time, score, cloud, fog, moon illumination/altitude, wind, optional seeing/transparency), not merely an input to the aggregate `public_score`. |
 | `night_conditions.score` | `BestSpotSearcher.calculateScore` | Integer exact. |
 | `observing_quality.assess` | `ObservingQualityCalculator.assess` | Integer `score` exact. Anchor penalties abs 1e-12. Interpolated penalties abs 1e-9 (matches `ObservingQualityCalculatorTests` home/stub). |
@@ -425,14 +425,15 @@ weather.decode
 
 Grok should not reimplement astronomical-night calculations, Moon astronomy, weather normalization, or scoring logic.
 
-| Surface | Capability | Version | Phase 6 |
+| Surface | Capability | Version | Status |
 |---|---|---|---|
-| Normalized hourly weather | `weather.decode` | 1.0 | Not implemented (Phase 8). Documented as Bot-facing now. |
+| Normalized hourly weather | `weather.decode` | 1.0 | Implemented in the Python library and Swift eval (CLI allow-list still F2-only). Current DTO matches existing `HourlyForecast` and does **not** include precipitation. |
+| Hourly precipitation | `weather.decode` domain extension | after 1.0 parity | **Known Bot-facing gap.** Product requirement (when available) stands. Not in the current `HourlyForecast` model; not in Phase 8 / 1.0 equality. Evaluate as a domain-model extension after the 1.0 parity migration. Not intentionally out of scope forever. |
 | Scored hourly observing conditions | `night_conditions.analyze` `hourly_ratings` | 1.0 | Implemented in the Python library (CLI allow-list still F2-only). |
 | Astronomical darkness timing | `astronomy.sun_events` | 1.1 | Required Bot product capability. Not implemented. |
 | Moon context | `astronomy.moon_info`, `astronomy.moon_series` | 1.1 | Required Bot product capabilities. Not implemented. |
 
-Do not add English summaries to parity. Do not invent phase emoji or presentation copy.
+Do not add English summaries to parity. Do not invent phase emoji or presentation copy. Do not pull precipitation into Phase 8 or the 1.0 `weather.decode` fixtures merely to close this gap.
 
 #### Swift / iOS only (out of contract)
 
@@ -628,7 +629,7 @@ public enum FixtureRoot {
 }
 ```
 
-Python mirrors this in `astro_engine.fixtures.contracts_root()`.
+Python mirrors this in `astro_engine.contracts.contracts_root()`. Provider `$ref` resolution is `astro_engine.contracts.resolve_fixture_ref` (same confinement rules as Swift `FixtureRoot.url`).
 
 ---
 
@@ -933,20 +934,22 @@ A second required fixture `night-conditions/empty-night-v1` uses the same window
 
 ### Open-Meteo time parser
 
-Byte-for-byte with `DateFormatter.openMeteoLocalDateFormatter`:
+Production path is `DateFormatter.openMeteoLocalDateFormatter` as used by `OpenMeteoForecastDecoder`. It is **not** a strict `yyyy-MM-dd'T'HH:mm` regex. Empirically, via `astro-engine-eval weather.decode`:
 
 | Property | Value |
 |---|---|
 | Calendar | Gregorian |
 | Locale | `en_US_POSIX` |
-| Format | `yyyy-MM-dd'T'HH:mm` (no seconds) |
-| Time zone | If `response.timezone` is a non-empty IANA identifier that `TimeZone(identifier:)` / `zoneinfo` accepts, use it. Else `TimeZone(secondsFromGMT: utc_offset_seconds)` (Swift `TimeZone(secondsFromGMT:)`). Do **not** use `TimeZone.current` |
+| Accepted local timestamps | `Y-M-DTH:m` with a **4-digit year**, **1 or 2 digit** month/day/hour/minute, hyphen separators, and a literal `T`. Padded and unpadded fields are equivalent: `2026-02-19T00:00`, `2026-2-19T00:00`, `2026-02-19T0:00`, `2026-02-19T00:0`, and `2026-2-9T0:0` (9 February) all parse. |
+| Rejected | Trailing seconds (`2026-02-19T00:00:00`), `not-a-timestamp`, space instead of `T`, trailing `Z`, lowercase `t`. Do not accept seconds in Python. |
+| Field ranges | Month 1–12; day 1–31 (lenient overflow, e.g. Feb 30 → Mar 2); hour 0–24 (24 rolls into the next day); minute 0–59. Minute 60 and hour 25 are skipped. |
+| Time zone | If `response.timezone` is a non-empty IANA identifier that `TimeZone(identifier:)` / `zoneinfo` accepts, use it. Else `TimeZone(secondsFromGMT: utc_offset_seconds)`. That initializer is nil outside **±18 hours** (64800 seconds); the decoder then uses `TimeZone(secondsFromGMT: 0)` for parsing. **In-range** offsets are quantized to the **nearest minute, rounding half away from zero** (30s → 1 minute; 29s → 0; −30s → −1 minute). The raw `utc_offset_seconds` is still emitted unchanged. Invalid/non-IANA timezone strings are preserved on the result and parsing falls back to the numeric offset. Do **not** use `TimeZone.current` |
 | Malformed `time[i]` | Skip that hour (log + `continue`); do not fail the decode |
 | Missing required arrays (`time`, `cloudcover`, humidity, wind, temperature) | Fail decode |
 | Short optional arrays | Index missing → **omit** that per-hour optional (`testParseHourlyForecastsHandlesShortOptionalArrays`) |
 | Negative values | Pass through (`testParseHourlyForecastsNegativeValues`) |
 
-Python must use `zoneinfo.ZoneInfo` for IANA and `datetime` with a fixed offset for the GMT fallback, then emit UTC `Z`. DST: POSIX formatter + IANA tz uses the tz database for that local civil time; fixtures that include a `timezone` key must pick dates where this is unambiguous or use offset-only.
+Python must use `zoneinfo.ZoneInfo` for IANA and a `TimeZone(secondsFromGMT:)`-equivalent fixed offset for the GMT fallback, then emit UTC `Z`. DST: POSIX formatter + IANA tz uses the tz database for that local civil time; fixtures that include a `timezone` key must pick dates where this is unambiguous or use offset-only.
 
 ---
 
@@ -1558,7 +1561,7 @@ Python live astronomy library remains skyfield for 1.1 sun/moon and Schlyter JSO
 
 3. **Target layout** is `apps/{ios,cli}`, `packages/astro-engine-{swift,python}`, `contracts/`, `tools/light-pollution`, `tests/parity`, `.github/workflows`. Path isolation plus the file-split map.
 
-4. **1.0 parity is pure scoring + decode**, not ~20 hedged capabilities. Gate: OQ only. After gate 1.0: night analyze/score with injected **night_window + 1:1 moon_series** + clock/tz, fog/seeing/transparency, catalog, weather/ISS decode, LP lookup+validity on tiny fixture, grid. 1.1: live astronomy, target windows/recommend, equipment structured match, location.compare, geocoding, composed CLI. Polar sun fallback is `hosts: [ios]`. Equipment explanations and English summaries are never equality fields. **SharedCode never `import SunCalc` after package extract:** AstroEngine owns SunCalc-backed `MoonSampling`/`SunEventsSampling`. **Grok Bot product surface:** `weather.decode` hourly weather and `night_conditions.analyze.hourly_ratings` are 1.0 objective facts; `astronomy.sun_events`, `astronomy.moon_info`, and `astronomy.moon_series` are required 1.1 Bot capabilities, not optional parity experiments. Grok reasons over those facts; it does not reimplement them.
+4. **1.0 parity is pure scoring + decode**, not ~20 hedged capabilities. Gate: OQ only. After gate 1.0: night analyze/score with injected **night_window + 1:1 moon_series** + clock/tz, fog/seeing/transparency, catalog, weather/ISS decode, LP lookup+validity on tiny fixture, grid. 1.1: live astronomy, target windows/recommend, equipment structured match, location.compare, geocoding, composed CLI. Polar sun fallback is `hosts: [ios]`. Equipment explanations and English summaries are never equality fields. **SharedCode never `import SunCalc` after package extract:** AstroEngine owns SunCalc-backed `MoonSampling`/`SunEventsSampling`. **Grok Bot product surface:** `weather.decode` hourly weather and `night_conditions.analyze.hourly_ratings` are 1.0 objective facts; `astronomy.sun_events`, `astronomy.moon_info`, and `astronomy.moon_series` are required 1.1 Bot capabilities, not optional parity experiments. Current 1.0 `weather.decode` mirrors `HourlyForecast` and therefore omits precipitation; that is a known Bot-facing gap to evaluate as a domain-model extension **after** 1.0 parity, not a permanent non-goal. Grok reasons over those facts; it does not reimplement them.
 
 5. **Fixtures** are `input.json` + `expected.json` + `meta.yaml` with field-level `equality-policy.yaml`. Parity compares **parsed JSON**, not canonical bytes. `expected.json` is the domain result (`ok`/`result`); runtime `engine_semver` is checked against `meta.yaml`'s range, not pinned in the golden. Required encode rules: ISO-8601 `Z` dates, finite numbers, null-vs-omitted where meaningful. Night analyze: missing moon timestamp is validation; stored `night_start`/`night_end` are first/last included hours; `best_window` omitted. `weather.decode` always emits `timezone` (`string|null`) and `utc_offset_seconds`. Loader: `CONTRACTS_ROOT` + ancestor walk; `$ref` confined to `contracts/fixtures/`. DTO omits UUID `id`, emoji, English copy.
 
@@ -1752,6 +1755,13 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 
 - **Commit intent:** `Port Open-Meteo and N2YO decode to Python against named fixtures`
 - **Depends on:** Phase 5, Phase 6
+- **Implementation notes (2026-09-05):**
+  - Python library modules `weather.py` (`decode_weather`) and `iss.py` (`decode_iss`) consume raw provider JSON and emit the contract DTO. No HTTP, API keys, URL builders, or current-time dependence. Public CLI allow-list is unchanged (unknown id → exit 3).
+  - Capability wrappers live at `contracts/fixtures/capabilities/weather-decode/` and `iss-decode/`. `input.json` uses confined `$ref` under `contracts/fixtures/` to the Phase 5 provider files; expected domain JSON is hand-authored, not dumped from Swift.
+  - Open-Meteo timestamps: `OpenMeteoForecastDecoder` accepts 4-digit year plus 1–2 digit month/day/hour/minute (`2026-2-9T0:0` is 9 February). Trailing seconds are skipped. GMT fallback matches `TimeZone(secondsFromGMT:)`: nil outside ±18 hours (parse as UTC); in-range offsets quantized to the nearest minute, half away from zero. Raw `utc_offset_seconds` is still emitted. Missing timezone is JSON `null`, never `"UTC"`. Invalid IANA strings are preserved and fall back to the numeric offset. Malformed times are skipped without compacting other arrays.
+  - Phase 8 `weather.decode` mirrors existing `HourlyForecast` and therefore does not expose precipitation. Raw Open-Meteo `precipitation` arrays are type-checked when present and then dropped. That is the current 1.0 DTO, not a retraction of the Bot-facing product requirement: precipitation remains a required future domain-model extension to evaluate after 1.0 parity. N2YO `startAz`/`maxAz`/`endAz`/`mag` and `info` are envelope-validated and not copied onto `ISSPass`.
+  - `ISSPass.id` is portable: IEEE-754 bit pattern of the unix rise instant and duration, joined by `-`. Python uses `struct.pack(">d")`, not `hash()`.
+  - Swift production decoders were already in AstroEngine (Phase 3). Phase 8 adds **eval-only** `weather.decode` / `iss.decode` dispatch so `astro-engine-eval` can parity-test the same fixtures. Host `WeatherService` / `ISSService` still own networking. No production semantic change.
 
 ### Phase 9 — Grid + catalog JSON both engines
 

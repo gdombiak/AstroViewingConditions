@@ -86,3 +86,59 @@ def transparency_calibration() -> dict:
 
 def night_quality_calibration() -> dict:
     return load_calibration("night-quality")
+
+
+def fixtures_root() -> Path:
+    """`contracts/fixtures`. Raises ContractsRootError if the directory is missing."""
+    path = contracts_root() / "fixtures"
+    if not path.is_dir():
+        raise ContractsRootError(f"contracts/fixtures is missing at {path}")
+    return path.resolve()
+
+
+def resolve_fixture_ref(relative_path: str) -> Path:
+    """Resolve a POSIX-relative path under `contracts/fixtures`.
+
+    Not JSON Schema `$ref`. Rejects `..`, `.`, empty components, absolute
+    paths, backslashes, and symlink targets that escape the fixtures tree.
+    """
+    from astro_engine.errors import FixtureRefError
+
+    if (
+        not isinstance(relative_path, str)
+        or not relative_path
+        or relative_path.startswith("/")
+        or "\\" in relative_path
+    ):
+        raise FixtureRefError(
+            "ref_escape",
+            f"fixture path escapes contracts/fixtures: {relative_path}",
+        )
+    parts = relative_path.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        raise FixtureRefError(
+            "ref_escape",
+            f"fixture path escapes contracts/fixtures: {relative_path}",
+        )
+
+    try:
+        fixtures = fixtures_root()
+    except ContractsRootError as exc:
+        raise FixtureRefError("engine_failure", str(exc)) from exc
+    candidate = fixtures.joinpath(*parts)
+    resolved = candidate.resolve()
+    try:
+        resolved.relative_to(fixtures)
+    except ValueError as exc:
+        raise FixtureRefError(
+            "ref_escape",
+            f"fixture path escapes contracts/fixtures: {relative_path}",
+        ) from exc
+    if not resolved.is_file():
+        raise FixtureRefError("fixture_missing", f"missing contract fixture: {relative_path}")
+    return resolved
+
+
+def load_fixture_ref(relative_path: str) -> object:
+    """Load JSON at a confined `$ref` under `contracts/fixtures`."""
+    return load_json_bytes(resolve_fixture_ref(relative_path).read_bytes())
