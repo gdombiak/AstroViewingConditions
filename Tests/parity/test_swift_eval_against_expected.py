@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import shutil
+
 import pytest
 
 from astro_engine.semver import satisfies
@@ -7,15 +9,14 @@ from astro_engine.contracts import engine_semver
 
 from compare import compare_envelope
 from fixtures import iter_parity_fixtures
-from swift_eval import ensure_eval_binary, run_swift_eval
+from swift_eval import ensure_eval_binary, resolve_eval_binary, run_swift_eval
 
 
 @pytest.fixture(scope="session")
 def eval_binary():
-    try:
-        return ensure_eval_binary()
-    except (FileNotFoundError, RuntimeError) as exc:
-        pytest.skip(str(exc))
+    if shutil.which("swift") is None and resolve_eval_binary() is None:
+        pytest.skip("swift is not available to build astro-engine-eval")
+    return ensure_eval_binary()
 
 
 def test_swift_eval_matches_hand_authored_scoring_fixtures(eval_binary) -> None:

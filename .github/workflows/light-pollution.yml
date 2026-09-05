@@ -1,0 +1,45 @@
+name: Light Pollution
+
+on:
+  push:
+    branches:
+      - main
+      - feature/astro-engine-cli
+    paths:
+      - "Tools/LightPollution/**"
+      - "packages/astro-engine-python/src/astro_engine/light_pollution.py"
+      - "contracts/fixtures/providers/lpatlas1/**"
+      - ".github/workflows/light-pollution.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "Tools/LightPollution/**"
+      - "packages/astro-engine-python/src/astro_engine/light_pollution.py"
+      - "contracts/fixtures/providers/lpatlas1/**"
+      - ".github/workflows/light-pollution.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: harness pytest
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Homebrew GDAL
+        run: brew install gdal
+
+      - name: Create venv with Homebrew Python
+        working-directory: Tools/LightPollution
+        run: |
+          set -euo pipefail
+          brew_python="$(brew --prefix)/bin/python3"
+          "$brew_python" -m venv --system-site-packages .venv
+          .venv/bin/python -m pip install -r requirements.txt
+          .venv/bin/python -c "from osgeo import gdal; print('osgeo', gdal.__version__)"
+
+      - name: Test harness
+        working-directory: Tools/LightPollution
+        run: .venv/bin/python -m pytest

@@ -1,0 +1,10 @@
+name: iOS Nightly
+
+on:
+  schedule:
+    - cron: "27 8 * * *"
+  workflow_dispatch:
+
+jobs:
+  test:
+    uses: ./.github/workflows/ios-tests.yml

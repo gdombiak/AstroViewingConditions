@@ -44,7 +44,7 @@ This is **not** “feature parity of the whole app,” not a second UI, not a 1:
 | Data | Open-Meteo weather + geocoding; SunCalc SPM (`nikolajjensen/SunCalc`); optional N2YO ISS; curated local catalog (**29** deep-sky objects in `CuratedDeepSkyCatalogProvider` plus Moon and four planets); offline LPATLAS1 binary ~10 MiB bundled only in the iOS app (`Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin`). |
 | Backend | None. Documented product principle in `PROJECT_DOCUMENTATION.md` and `FEATURES/FEATURE_ROADMAP.md`. |
 | Air quality | **Not present.** Out of 1.0. Schema placeholder only if needed later. |
-| CI | **Incumbent:** `.github/workflows/ios-tests.yml` runs on push/PR to `main`, `macos-26`, timezone `America/Los_Angeles`, `xcodegen generate` from repo root, then `xcodebuild test` on a dynamically selected iOS simulator. `build.sh` is a local `xcodebuild` wrapper and is **not** the CI definition. |
+| CI | **Incumbent:** `.github/workflows/ios-tests.yml` runs on push to `main` / `feature/astro-engine-cli` and PR to `main`, `macos-26`, timezone `America/Los_Angeles`, `xcodegen generate` from repo root, then `xcodebuild test` on a dynamically selected iOS simulator. `build.sh` is a local `xcodebuild` wrapper and is **not** the CI definition. Phase 10 adds path-filtered `swift-engine.yml`, `python.yml`, `parity.yml`, `light-pollution.yml`, plus `ios-nightly.yml`. |
 | Tests | `Tests/AstroViewingConditionsTests/` is one XCTest bundle mixing domain, widget presentation, and watch tests. The test target depends only on `AstroViewingConditions` (`project.yml`), so several “pure” calculator tests `@testable import AstroViewingConditions` (`FogCalculatorTests`, `GeographicGridGeneratorTests`, `WeatherServiceTests`, `ISSServiceTests`, `NightQualityAnalyzerTests`). |
 | Python | `Tools/LightPollution/` is a Python 3.11+ atlas harness (`pyproject.toml` name `light-pollution-harness`). Tiny fixtures exist at `Tools/LightPollution/fixtures/` (harness copies) and `contracts/fixtures/providers/lpatlas1/` (canonical). Runtime lookup is owned by `packages/astro-engine-python` (`astro_engine.light_pollution`, stdlib, no NumPy/GDAL). The harness re-exports that decoder and keeps encoding/GDAL. Full harness (GeoTIFF / `osgeo`) is Mac-only Homebrew GDAL. |
 
@@ -86,7 +86,7 @@ This is **not** “feature parity of the whole app,” not a second UI, not a 1:
 - Idiomatic Swift and idiomatic Python. Shared truth is semantics and procedures, not class names.
 - Xcode remains clean: Python, venv, pytest, contracts, and tools never appear as Xcode groups. `open_in_xcode.sh` opens the `.xcodeproj`, not the directory.
 - Independent `astro-engine` semantic version, reported by both products.
-- Incremental, reviewable **commits on one feature branch** that satisfy the [iOS migration invariant](#ios-migration-invariant). Enable CI on that branch (today the workflow runs only on `main`).
+- Incremental, reviewable **commits on one feature branch** that satisfy the [iOS migration invariant](#ios-migration-invariant). Incumbent iOS CI already runs on this branch; Phase 10 adds path-filtered engine jobs.
 - An explicit Grok Bot feasibility gate before extracting SharedCode or porting the rest of Astro.
 
 ### Non-goals
@@ -250,12 +250,12 @@ The current tree is an Apple app with a tools folder and a working iOS CI job. P
 ├── build.sh
 ├── CODEOWNERS                       # contracts/ required reviewers
 ├── .github/workflows/
-│   ├── ios-tests.yml                # INCUMBENT; retarget after the move; macos-26
-│   ├── swift-engine.yml             # macOS-26, swift test + astro-engine-eval
-│   ├── python.yml                   # ubuntu, engine + CLI pytest (no GDAL)
-│   ├── parity.yml                   # contracts/** OR either engine package
-│   ├── light-pollution.yml          # macos-26 + Homebrew GDAL; harness only
-│   └── ios-nightly.yml              # unfiltered xcodebuild test
+│   ├── ios-tests.yml                # INCUMBENT; unfiltered macos-26 xcodebuild test; workflow_call for nightly
+│   ├── swift-engine.yml             # macos-26, path-filtered swift test (no simulator)
+│   ├── python.yml                   # ubuntu, Python 3.13 pytest (no GDAL)
+│   ├── parity.yml                   # macos-26; scripts/parity (Tests/parity)
+│   ├── light-pollution.yml          # macos-26 + Homebrew GDAL; harness pytest
+│   └── ios-nightly.yml              # cron + workflow_dispatch; reuses ios-tests.yml
 │
 ├── contracts/
 │   ├── ENGINE_VERSION
@@ -1101,15 +1101,14 @@ Treat `.github/workflows/ios-tests.yml` as the incumbent. Do **not** claim CI is
 ```mermaid
 flowchart TB
   Change[Commit on feature branch]
-  Change --> Parity{"contracts/** or packages/astro-engine-*"}
+  Change --> Parity{"contracts/** or packages/astro-engine-* or Tests/parity"}
   Change --> SwiftPkg["packages/astro-engine-swift/**"]
-  Change --> Apple["apps/ios/** or project.yml"]
+  Change --> Apple["any push: incumbent ios-tests.yml"]
   Change --> Py["packages/astro-engine-python/** or apps/cli/**"]
-  Change --> LP["tools/light-pollution/**"]
+  Change --> LP["Tools/LightPollution/**"]
 
-  Parity --> ParityJob["parity.yml: Swift eval + Python eval vs expected.json"]
-  SwiftPkg --> SwiftTest["swift-engine.yml: swift test + eval"]
-  SwiftPkg --> IOSCompile["ios-tests.yml xcodebuild at least build"]
+  Parity --> ParityJob["parity.yml: scripts/parity"]
+  SwiftPkg --> SwiftTest["swift-engine.yml: swift test"]
   Apple --> IOSFull["ios-tests.yml xcodebuild test macos-26"]
   Py --> PyJob["python.yml ubuntu pytest, no GDAL"]
   LP --> LPJob["light-pollution.yml macos-26 + GDAL"]
@@ -1117,16 +1116,16 @@ flowchart TB
 
 | Workflow | Runner | Paths | What |
 |---|---|---|---|
-| `ios-tests.yml` (incumbent, keep name) | `macos-26` | `apps/ios/**` (after move), **`packages/astro-engine-swift/**`**, `project.yml`, `contracts/data/**` | Existing steps (timezone LA, XcodeGen, dynamic simulator, `xcodebuild test`). After the move: `working-directory: apps/ios` (or `-project apps/ios/…`). On **package-only** changes: required `xcodebuild build` (compile iOS+watchOS SharedCode link) even if full XCTest is skipped to save minutes — **compile must not be skipped**. |
-| `swift-engine.yml` | `macos-26` | `packages/astro-engine-swift/**`, `contracts/**` | `swift test` + `astro-engine-eval`. No simulator. |
-| `python.yml` | `ubuntu-latest` | Python packages, CLI, contracts | pytest; `NO_NETWORK=1`; no GDAL. |
-| `parity.yml` | matrix ubuntu + macos-26 | **`contracts/**` OR `packages/astro-engine-swift/**` OR `packages/astro-engine-python/**`** | Each eval vs `expected.json`. Drift gates below. |
-| `light-pollution.yml` | `macos-26` | `tools/light-pollution/**` | Harness pytest with Homebrew GDAL. **Not** an engine gate. **Not** `ubuntu-latest`. |
-| `ios-nightly.yml` | `macos-26` | unfiltered / cron | Full `xcodebuild test` until the split is proven; then keep nightly. |
+| `ios-tests.yml` (incumbent, keep name) | `macos-26` | **none** (unfiltered) | Existing steps (timezone LA, XcodeGen, dynamic simulator, `xcodebuild test`). Also `workflow_call` so nightly can reuse the same job. After Phase 13: `working-directory: apps/ios` (or `-project apps/ios/…`). Path-filtering is deferred: adding `paths` now would skip full iOS XCTest whenever an Apple-relevant file was omitted from the filter. Engine/package/`contracts/data` changes already trigger this job because there is no filter. |
+| `swift-engine.yml` | `macos-26` | Swift package, `contracts/**`, `scripts/bundle-engine-data`, Tools LP fixtures, `.gitignore`, workflow file | `swift test --package-path packages/astro-engine-swift`. No simulator, no XcodeGen, no separate eval invocation. Package tests read canonical `contracts/` (no generated copies). |
+| `python.yml` | `ubuntu-latest` | Python package, `contracts/**`, `Tests/parity/**`, `apps/cli/**`, Tools LP fixtures, workflow file | Python **3.13** (Grok Bot VM is 3.13.5; `requires-python >=3.11`). Editable install + pytest. `NO_NETWORK=1`. No GDAL. Package tests import `Tests/parity` helpers. |
+| `parity.yml` | `macos-26` only | `contracts/**`, both engine packages, `Tests/parity/**`, `scripts/parity`, workflow file | Thin: `scripts/parity`. Each engine vs `expected.json` independently (not Python vs Swift). Not an ubuntu+macos matrix: Linux Swift is not a supported package baseline. |
+| `light-pollution.yml` | `macos-26` | `Tools/LightPollution/**`, Python `light_pollution.py`, contract LP fixtures, workflow file | Homebrew GDAL + Homebrew Python venv `--system-site-packages` (documented harness env) + `osgeo` import smoke + harness pytest. Synthetic tests do **not** fetch the production atlas. **Not** an engine gate. **Not** `ubuntu-latest`. |
+| `ios-nightly.yml` | `macos-26` | unfiltered / cron `27 8 * * *` UTC + `workflow_dispatch` | Calls `ios-tests.yml` via `workflow_call`. `schedule` runs only from the default branch. `workflow_dispatch` becomes available once the workflow exists on the default branch; after that, a different ref/branch may be selected when dispatching. |
 
-**Feature-branch CI:** today’s `ios-tests.yml` runs only on `main`. The dual-engine branch **must** enable workflows on itself from the first feasibility commits (branch filter or `push` without a `main`-only restriction while the branch lives). Otherwise there is no CI until the eventual PR.
+**Feature-branch CI:** `ios-tests.yml` already runs on `feature/astro-engine-cli`. Engine workflows use the same branch/PR filters plus path filters.
 
-**Do not** run full simulator XCTest on Python-only commits (today’s unfiltered job over-tests). **Do** compile the iOS app when the Swift package changes (filtering everything to `apps/ios` would under-test).
+**Incumbent iOS paths (Phase 10 decision):** do **not** path-filter `ios-tests.yml`. The roadmap’s “expand paths for the package” assumed a later `apps/ios` layout and would **reduce** today’s full-simulator protection if applied now. Python-only commits still run iOS XCTest (over-test, accepted). Nightly is additional coverage, not a PR-time backstop. Revisit after Phase 13.
 
 Drift gates:
 
@@ -1140,7 +1139,7 @@ Drift gates:
 
 Add `CODEOWNERS` for `contracts/`.
 
-Local: `make parity` → `scripts/parity` runs Swift eval + Python eval with `CONTRACTS_ROOT`.
+Local: `make parity` → `scripts/parity` runs `python -m pytest Tests/parity` with `CONTRACTS_ROOT` (exact Git-recorded path; Swift eval is built by the existing tests if needed). `make swift-test` / `make python-test` / `make engine-test` delegate to the same package commands.
 
 ---
 
@@ -1365,7 +1364,7 @@ Capability envelope (success):
 
 `error.code` values: `validation`, `decode_failure`, `engine_failure`, `capability_unknown`, `payload_too_large`, `ref_escape`, `grid_cap`, `fixture_missing`, `atlas_invalid`. **No** `missing_atlas` error for OQ fallback.
 
-`astro-engine-eval` (Swift) and `python -m astro_engine.parity_eval` accept a fixture directory, write the same envelope, and are what `scripts/parity` runs. They are not the user-facing CLI.
+`astro-engine-eval` (Swift) accepts a fixture directory and writes the envelope. Python parity uses the private `_capability` adapter (`Tests/parity/python_eval.py`), not the user-facing CLI. `scripts/parity` runs `python -m pytest Tests/parity`.
 
 ---
 
@@ -1733,7 +1732,7 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 - **Notes:** Injected `night_window` + 1:1 `moon_series` + clock/tz. Missing moon timestamp is validation. Public Python CLI allow-list remains `observing_quality.assess` (Phase 11 expands it).
 - **Implementation notes (2026-09-05):**
   - Python library modules `fog.py`, `seeing.py`, `transparency.py`, `night_conditions.py` load canonical `contracts/data/calibration/*.json` through the F2 `contracts_root` / `data_root` path. No copied numbers.
-  - `tests/parity` is a Phase 6 scoring layer only: Python library (private `_capability` adapter, not the user CLI) and Swift `astro-engine-eval` are each compared to hand-authored `expected.json` via `equality-policy.yaml`. Not Phase 10 CI/`scripts/parity`/`Makefile`. Git currently records the files as `Tests/parity` because that collides with iOS `Tests/` on case-insensitive volumes. Executable imports (package `conftest.py`) resolve that Git path, not lowercase `tests/parity`. XcodeGen still lists only `Tests/AstroViewingConditionsTests`, so the Python files are not part of the iOS test target. Phase 13 relocates Apple tests to `apps/ios/Tests/`, after which lowercase `tests/parity` is unambiguous. Until then invoke pytest as `Tests/parity`.
+  - `tests/parity` is a Phase 6 scoring layer: Python library (private `_capability` adapter, not the user CLI) and Swift `astro-engine-eval` are each compared to hand-authored `expected.json` via `equality-policy.yaml`. Phase 10 CI/`scripts/parity`/`Makefile` orchestrate that same suite. Git currently records the files as `Tests/parity` because that collides with iOS `Tests/` on case-insensitive volumes. Executable imports (package `conftest.py`) resolve that Git path, not lowercase `tests/parity`. XcodeGen still lists only `Tests/AstroViewingConditionsTests`, so the Python files are not part of the iOS test target. Phase 13 relocates Apple tests to `apps/ios/Tests/`, after which lowercase `tests/parity` is unambiguous. Until then invoke pytest as `Tests/parity`.
   - New night-condition fixtures cover fog-heavy, wind penalty, transparency-only, improving trend, extra moon ignored, and half-open window clipping. Public-score truncation stays on `night-conditions-score/truncation-8-5-v1`.
   - Bot-facing product intent for hourly weather / scored hours / sun events / moon context is documented above. Live 1.1 astronomy was not pulled into this phase.
 
@@ -1777,9 +1776,19 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 ### Phase 10 — Path-filtered engine CI
 
 - **Commit intent:** `Add path-filtered engine CI and keep macos-26 ios-tests.yml`
-- **Files:** expand `ios-tests.yml` paths for the package; `swift-engine.yml`, `python.yml`, `parity.yml`, `light-pollution.yml` (macos-26 + GDAL), `ios-nightly.yml`; `scripts/parity`; `Makefile`.
+- **Files:** `swift-engine.yml`, `python.yml`, `parity.yml`, `light-pollution.yml`, `ios-nightly.yml`; `ios-tests.yml` gains `workflow_call` only (no `paths`); `scripts/parity`; `Makefile`.
 - **Depends on:** Phase 5–9
-- **Notes:** No committed-copy `--check`. Package changes compile iOS.
+- **Notes:** No committed-copy `--check`. Package/resource changes still hit incumbent iOS CI because that workflow stays unfiltered.
+- **Implementation notes (2026-09-05):**
+  - **Partially Agree** with the roadmap table. Native GitHub `paths:` (no third-party filter Action). No SwiftPM/pip caches. No generated-copy `--check` (copies are gitignored). Public CLI remains F2-only.
+  - `ios-tests.yml` keeps `macos-26` and every existing step. **No path filter.** Adding one would skip full iOS XCTest on a missed Apple-relevant path; that weakens the [iOS migration invariant](#ios-migration-invariant) more than it saves minutes. `workflow_call` lets nightly reuse the simulator-selection job instead of copying it.
+  - `swift-engine.yml`: `macos-26`, `swift test --package-path packages/astro-engine-swift`. Package tests use `CONTRACTS_ROOT` / ancestor walk; they do **not** need generated catalog/calibration copies. A separate `astro-engine-eval` step is omitted — `parity.yml` already builds/runs eval against fixtures. Paths include `scripts/bundle-engine-data` (XCTest invokes it), Tools LP fixtures (byte-identity), and `.gitignore` (generated-copy ignore assertions).
+  - `python.yml`: `ubuntu-latest`, `actions/setup-python@v6`, Python **3.13** (Grok Bot VM `3.13.5`; `requires-python >=3.11`). `pip install -e ".[dev]"` then `python -m pytest` from `packages/astro-engine-python`. No GDAL, no runtime deps. Paths include `Tests/parity/**` (package tests import `compare.py` / `python_eval.py`), `apps/cli/**` (launcher tests), and Tools LP fixtures (byte-identity).
+  - `parity.yml`: **macos-26 only** (not ubuntu+macos). Linux Swift is still an unevaluated experiment. Workflow is thin orchestration of `scripts/parity`. Independent `fixture → Python → expected` and `fixture → Swift → expected`. Physical path remains `Tests/parity` until Phase 13.
+  - `scripts/parity`: repo-root executable; `set -euo pipefail`; requires `swift` and pytest; sets `PYTHONPATH` to the checkout `src`; does not pre-build eval (existing `swift_eval.ensure_eval_binary` does). Swift **build** failure fails the job; missing `swift` skips only the pytest fixture when no binary exists, and the script itself refuses to run without `swift`.
+  - `light-pollution.yml`: macos-26 + `brew install gdal` + Homebrew `python3 -m venv --system-site-packages` matching `Tools/LightPollution/README.md`. Synthetic harness pytest does not open the 2.9 GB GeoTIFF or download `light_pollution_global_v1.bin`. `osgeo` import is smoked because that is the documented preprocessing prerequisite; runtime LP tests stay in `python.yml`.
+  - `ios-nightly.yml`: cron `27 8 * * *` UTC (once daily) + `workflow_dispatch`. `schedule` runs only from the default branch. `workflow_dispatch` is not usable while the file exists only on `feature/astro-engine-cli`; it becomes available once the workflow exists on the default branch, after which a different ref/branch may be selected when dispatching. Same default-branch rule applies to `workflow_dispatch` on the other new engine workflows.
+  - Makefile targets: `swift-test`, `python-test`, `parity`, `engine-test`. No product-build targets. No target-scoring/equipment-limits copy.
 
 ### Phase 11 — Expand CLI 1.0 allow-list
 

@@ -1,0 +1,55 @@
+name: Parity
+
+on:
+  push:
+    branches:
+      - main
+      - feature/astro-engine-cli
+    paths:
+      - "contracts/**"
+      - "packages/astro-engine-swift/**"
+      - "packages/astro-engine-python/**"
+      - "Tests/parity/**"
+      - "scripts/parity"
+      - ".github/workflows/parity.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "contracts/**"
+      - "packages/astro-engine-swift/**"
+      - "packages/astro-engine-python/**"
+      - "Tests/parity/**"
+      - "scripts/parity"
+      - ".github/workflows/parity.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: fixture vs each engine
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install pytest
+        run: python -m pip install pytest
+
+      - name: Run parity
+        env:
+          CONTRACTS_ROOT: ${{ github.workspace }}/contracts
+          PYTHON: python
+        run: scripts/parity

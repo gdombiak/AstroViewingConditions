@@ -1,7 +1,7 @@
 """Field-level compare using contracts/equality-policy.yaml.
 
-Phase 6 only: scoring policies already listed in the contract. This is not
-the Phase 10 CI runner. Extra/missing keys fail. Numbers compare numerically.
+Phase 10 CI invokes this via scripts/parity. Extra/missing keys fail.
+Numbers compare numerically. This is not a second comparator.
 """
 
 from __future__ import annotations

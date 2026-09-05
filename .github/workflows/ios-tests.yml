@@ -1,5 +1,9 @@
 name: iOS Tests
 
+# Incumbent full iOS XCTest. Intentionally unfiltered: adding `paths` would
+# skip this job when an Apple-relevant file was omitted from the filter.
+# Engine/package/resource changes must never bypass iOS coverage. Nightly
+# (`ios-nightly.yml`) is extra, not a substitute. Revisit after Phase 13.
 on:
   push:
     branches:
@@ -8,6 +12,7 @@ on:
   pull_request:
     branches:
       - main
+  workflow_call:
 
 jobs:
   test:
