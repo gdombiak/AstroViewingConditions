@@ -1,6 +1,7 @@
 # astro-engine (Python)
 
-F2 slice: `observing_quality.assess` library + JSON CLI.
+Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the eleven
+catalogued 1.0 capabilities.
 
 Calibration and fixtures are loaded from the repo `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). Do not copy scoring constants into this package.
 

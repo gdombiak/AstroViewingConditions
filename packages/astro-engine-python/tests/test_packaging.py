@@ -18,6 +18,7 @@ from astro_engine import (
     seeing_penalty,
     transparency_penalty,
 )
+from astro_engine.contracts import contracts_root
 from astro_engine.catalog import CAPABILITY_ID as CATALOG_CAPABILITY_ID
 from astro_engine.grid import CAPABILITY_ID as GRID_CAPABILITY_ID
 from astro_engine.iss import CAPABILITY_ID as ISS_CAPABILITY_ID
@@ -38,7 +39,7 @@ def test_public_imports() -> None:
     assert callable(generate_grid)
     assert callable(load_deep_sky_catalog)
     assert LightPollutionArtifact.from_bytes is not None
-    assert engine_semver() == "0.1.0"
+    assert engine_semver() == "1.0.0"
     assert CAPABILITY_ID == "observing_quality.assess"
     assert LP_CAPABILITY_ID == "light_pollution.lookup"
     assert WEATHER_CAPABILITY_ID == "weather.decode"
@@ -72,6 +73,18 @@ def test_pyproject_has_no_runtime_dependencies() -> None:
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     assert data["project"]["dependencies"] == []
     assert data["project"]["requires-python"] == ">=3.11"
+    assert data["project"]["version"] == "1.0.0"
+    assert data["project"]["version"] == engine_semver()
+
+
+def test_catalog_current_release_matches_engine_version() -> None:
+    catalog = (contracts_root() / "capabilities.yaml").read_text(encoding="utf-8")
+    assert 'engine_semver: "1.0.0"' in catalog
+    since_lines = [
+        line for line in catalog.splitlines() if line.startswith("    since: ")
+    ]
+    assert since_lines == ['    since: "0.1.0"'] * 11
+    assert 'since: "1.0.0"' not in catalog
 
 
 def test_no_package_local_provider_fixture_copies() -> None:

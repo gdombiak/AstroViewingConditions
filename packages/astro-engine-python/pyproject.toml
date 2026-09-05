@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "astro-engine"
-version = "0.1.0"
+version = "1.0.0"
 description = "Astro Engine Python library and JSON CLI (1.0 contract allow-list)"
 requires-python = ">=3.11"
 dependencies = []

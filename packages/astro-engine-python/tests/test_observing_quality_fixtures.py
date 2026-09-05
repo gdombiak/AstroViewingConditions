@@ -12,8 +12,8 @@ from support import (
 )
 
 
-def test_engine_semver_is_0_1_0() -> None:
-    assert engine_semver() == "0.1.0"
+def test_engine_semver_is_1_0_0() -> None:
+    assert engine_semver() == "1.0.0"
 
 
 def test_f2_helper_reads_oq_policy_fields_from_contract() -> None:
@@ -31,7 +31,7 @@ def test_all_contract_fixtures() -> None:
     fixtures = list(iter_oq_fixtures())
     assert len(fixtures) == 14
     version = engine_semver()
-    assert version == "0.1.0"
+    assert version == "1.0.0"
     for fixture in fixtures:
         assert fixture["meta"]["capability"] == CAPABILITY_ID
         assert fixture["meta"]["origin"] == "manual"

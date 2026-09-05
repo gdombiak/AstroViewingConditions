@@ -173,8 +173,8 @@ final class Phase1ContractDataTests: XCTestCase {
         XCTAssertEqual(byID["double-cluster"]?.displayTypeNameOverride, "Open Cluster Pair")
     }
 
-    func testEngineVersionRemains010() throws {
-        XCTAssertEqual(try F3ObservingQualityContractSupport.engineSemver(), "0.1.0")
+    func testEngineVersionIs100() throws {
+        XCTAssertEqual(try F3ObservingQualityContractSupport.engineSemver(), "1.0.0")
     }
 
     private func loadJSON(_ relative: String) throws -> [String: Any] {

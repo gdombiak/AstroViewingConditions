@@ -1,19 +1,18 @@
 # Astro Engine capability catalog.
-# Current contract release 0.1.0 (pre-1.0). Phase 12 promotes ENGINE_VERSION
-# to 1.0.0 when both evals are green for the 1.0 allow-list.
+# Current contract release 1.0.0.
 #
 # `since` is the contract release in which this specification was introduced,
-# not "already implemented on every host".
-# `hosts` is the target host/parity requirement for that freeze, not a
-# statement that every listed host already implements the capability in the
-# current branch. Phase 11 public Python CLI allow-lists every 0.1.0 row
-# below. `light_pollution.validity` is not a catalogued capability.
+# not the current engine release and not "already implemented on every host".
+# 1.0 capabilities keep `since: "0.1.0"`. `hosts` is the target host/parity
+# requirement for that freeze. Phase 11 public Python CLI allow-lists every
+# `since: 0.1.0` row below. `light_pollution.validity` is not a catalogued
+# capability.
 #
 # Live astronomy accumulates as later phases implement it. LP identity
 # and parked 1.1 target-scoring numbers live under contracts/data and
 # are not capabilities. Catalog JSON is the catalog.deep_sky source.
 
-engine_semver: "0.1.0"
+engine_semver: "1.0.0"
 
 capabilities:
   - id: observing_quality.assess

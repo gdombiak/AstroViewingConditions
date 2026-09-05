@@ -1,5 +1,11 @@
 # Contract changelog
 
+## 1.0.0
+
+- Phase 12: declare Astro Engine 1.0.0 for the frozen scoring and decode
+  allow-list. No capability additions, no semantic changes, no fixture-range
+  rewrites. Capability `since` values remain `0.1.0`.
+
 ## 0.1.0
 
 - F1: `observing_quality.assess` plus OQ fixtures and calibration.

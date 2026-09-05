@@ -1181,7 +1181,7 @@ Both hosts report `engine_semver` in the **runtime** JSON envelope. That field i
 - `expected.json` contains `ok` + `result` (and `capability` as a mix-up guard). It does **not** embed `engine_semver`.
 - The parity runner checks `runtime.engine_semver` satisfies `meta.engine_semver`, then compares `result` using `equality-policy.yaml`.
 
-F1 ships current release `0.1.0` for the OQ-only slice. 1.0.0 is declared when the 1.0 capability rows are green on both evals — **before** live astronomy / location.compare.
+F1 shipped current release `0.1.0` for the OQ-only slice. 1.0.0 is declared when the 1.0 capability rows are green on both evals — **before** live astronomy / location.compare. Phase 12 made that declaration.
 
 ---
 
@@ -1359,7 +1359,7 @@ Capability envelope (success):
 `--engine-version` success identity object (not a capability envelope; no `ok`):
 
 ```json
-{"engine_semver":"0.1.0"}
+{"engine_semver":"1.0.0"}
 ```
 
 `error.code` values: `validation`, `decode_failure`, `engine_failure`, `capability_unknown`, `payload_too_large`, `ref_escape`, `grid_cap`, `fixture_missing`, `atlas_invalid`. **No** `missing_atlas` error for OQ fallback.
@@ -1810,6 +1810,12 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 
 - **Commit intent:** `Declare astro-engine 1.0.0 for scoring and decode capabilities`
 - **Depends on:** Phase 10, Phase 11
+- **Implementation notes (2026-09-05):**
+  - **Partially Agree** with the original Phase 12 stub. This is a release declaration, not a capability-development phase. The 1.0 public surface was already frozen in Phase 11; this phase only makes the repository report that frozen set as Astro Engine 1.0.0.
+  - Current engine identity is `1.0.0`: `contracts/ENGINE_VERSION`, `capabilities.yaml` top-level `engine_semver`, Python `engine_semver()`, public CLI `--engine-version` and envelopes, Swift eval/package contract version, and Python `pyproject.toml` version. The design lists PEP 621 as independent of iOS `MARKETING_VERSION`; the distribution is named `astro-engine` and previously tracked `0.1.0`, so leaving it would split CLI identity from package metadata. iOS marketing version is unchanged.
+  - Public 1.0 allow-list is unchanged from Phase 11 (eleven IDs). No 1.1 capability became public. No domain algorithm, provider, data, LPATLAS1, or CLI behavior change other than reporting `1.0.0`.
+  - Capability `since: "0.1.0"` was preserved (specification introduction, not current release). Fixture applicability ranges remain `>=0.1.0 <2.0.0` (74 capability fixtures; 73 registered in `Tests/parity`; LP lookup stays `$ref`/host-tested and is not in the Swift parity runner).
+  - Tests: focused version/CLI/package; full Python package; Swift package; `scripts/parity`. iOS product tests were not rerun (no Apple/product source changes).
 
 ### Phase 13 — Relocate Apple product and atlas tool
 
