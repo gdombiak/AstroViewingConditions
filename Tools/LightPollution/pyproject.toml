@@ -10,7 +10,7 @@ dev = ["pytest>=8.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "../../packages/astro-engine-python/src"]
 
 [tool.setuptools.packages.find]
 include = ["light_pollution*"]

@@ -16,7 +16,7 @@
 
 ## Overview
 
-Astro Viewing Conditions is today a root-centric XcodeGen iOS/watch/widget product. Domain logic lives in `Sources/SharedCode`, but that module is a kitchen-sink: pure scoring (`ObservingQualityCalculator.assess`, `NightQualityAnalyzer`, `DefaultTargetRecommendationScorer`) sits beside Apple adapters (`CoreLocationSuitabilityResolver`, SwiftData `@Model SavedLocation` / `EquipmentItem`, SwiftUI presentation on `ViewingConditions` / `LocationScore`, WatchConnectivity, WidgetKit). CI already exists (`.github/workflows/ios-tests.yml` on `macos-26`). The only Python in the repo is `Tools/LightPollution/` (`light-pollution-harness`), an atlas **preprocessing** pipeline that already contains a GDAL-free LPATLAS1 decoder (`light_pollution/binary_format.py`), not a runtime observing engine.
+Astro Viewing Conditions is today a root-centric XcodeGen iOS/watch/widget product. Domain logic lives in `Sources/SharedCode`, but that module is a kitchen-sink: pure scoring (`ObservingQualityCalculator.assess`, `NightQualityAnalyzer`, `DefaultTargetRecommendationScorer`) sits beside Apple adapters (`CoreLocationSuitabilityResolver`, SwiftData `@Model SavedLocation` / `EquipmentItem`, SwiftUI presentation on `ViewingConditions` / `LocationScore`, WatchConnectivity, WidgetKit). CI already exists (`.github/workflows/ios-tests.yml` on `macos-26`). The only Python **preprocessing** tree is `Tools/LightPollution/` (`light-pollution-harness`). Runtime LPATLAS1 decode/lookup is owned by `packages/astro-engine-python` (`astro_engine.light_pollution`); the harness keeps encoding and GDAL and re-exports that decoder.
 
 This document proposes a **contract-first dual-engine** architecture:
 
@@ -46,7 +46,7 @@ This is **not** “feature parity of the whole app,” not a second UI, not a 1:
 | Air quality | **Not present.** Out of 1.0. Schema placeholder only if needed later. |
 | CI | **Incumbent:** `.github/workflows/ios-tests.yml` runs on push/PR to `main`, `macos-26`, timezone `America/Los_Angeles`, `xcodegen generate` from repo root, then `xcodebuild test` on a dynamically selected iOS simulator. `build.sh` is a local `xcodebuild` wrapper and is **not** the CI definition. |
 | Tests | `Tests/AstroViewingConditionsTests/` is one XCTest bundle mixing domain, widget presentation, and watch tests. The test target depends only on `AstroViewingConditions` (`project.yml`), so several “pure” calculator tests `@testable import AstroViewingConditions` (`FogCalculatorTests`, `GeographicGridGeneratorTests`, `WeatherServiceTests`, `ISSServiceTests`, `NightQualityAnalyzerTests`). |
-| Python | `Tools/LightPollution/` is a Python 3.11+ atlas harness (`pyproject.toml` name `light-pollution-harness`). Tiny fixtures exist at `Tools/LightPollution/fixtures/` and are consumed by `BinaryLightPollutionProviderTests`. Runtime lookup already exists as GDAL-free `LightPollutionArtifact.lookup` in `light_pollution/binary_format.py`. Full harness (GeoTIFF / `osgeo`) is Mac-only Homebrew GDAL. |
+| Python | `Tools/LightPollution/` is a Python 3.11+ atlas harness (`pyproject.toml` name `light-pollution-harness`). Tiny fixtures exist at `Tools/LightPollution/fixtures/` (harness copies) and `contracts/fixtures/providers/lpatlas1/` (canonical). Runtime lookup is owned by `packages/astro-engine-python` (`astro_engine.light_pollution`, stdlib, no NumPy/GDAL). The harness re-exports that decoder and keeps encoding/GDAL. Full harness (GeoTIFF / `osgeo`) is Mac-only Homebrew GDAL. |
 
 ### Pain points that make a naive dual implementation fail
 
@@ -1439,7 +1439,7 @@ SwiftPM `.copy("Resources/data")` fails `swift build` / `swift test` if that dir
 
 - Producer: `tools/light-pollution` (after move).
 - Runtime lookup **tests** use the **tiny fixture** only (in-contract, no GDAL).
-- Python runtime: **extract** the GDAL-free decoder (`ArtifactHeader`, `lookup`, fail-closed init/DFS) from `light_pollution/binary_format.py` into `packages/astro-engine-python` (import via a slim extra **or** vendor a copy kept in sync by a test that both trees parse the tiny bin identically). Do **not** reimplement DFS from scratch. Do **not** import `osgeo`.
+- Python runtime: **extracted.** GDAL-free LPATLAS1 decode/lookup lives in `packages/astro-engine-python` as `astro_engine.light_pollution` (`LightPollutionArtifact.from_bytes` / `.lookup`). Stdlib only; no NumPy, GDAL, or Tools import. The Tools harness **re-exports** that runtime decoder (monorepo path bootstrap, not a pip extra) and retains encoding, tree construction, NumPy, and GDAL. Do **not** reimplement DFS from scratch in a second Python owner. Do **not** import `osgeo` from the engine.
 - Production **iOS app** still bundles `light_pollution_global_v1.bin` in the **app target only** (not SharedCode, widgets, or watch — unchanged from `CROSS_SURFACE_ARCHITECTURE.md`).
 - Production **CLI image on the Grok Bot VM also includes** that same `light_pollution_global_v1.bin` (~10 MiB). The existing in-app atlas permission is treated as covering this CLI image. Default lookup path is the bundled file; `--atlas-path` overrides. Fail closed on truncated/bad magic like Swift.
 
@@ -1740,6 +1740,13 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 - **Files:** decoder from `Tools/LightPollution/light_pollution/binary_format.py`; tiny-bin fixtures; harness keeps GDAL.
 - **Depends on:** Phase 5, Phase 6 (feasibility may already import the harness in-place)
 - **Notes:** Fail-closed like Swift. Tests do not import `osgeo`. Replaces the F2 import path.
+- **Implementation notes (2026-09-05):**
+  - Runtime owner is `astro_engine.light_pollution` (`LightPollutionArtifact`). No runtime dependencies. Mask sampling is a single-bit MSB-first packbits inspect, not a full unpack.
+  - Tools `binary_format.py` keeps `pack_header` / `encode_tree_node` / `assemble_artifact` / `quantize_code` and re-exports the engine decoder so harness CLI `artifact-info` / `lookup` and existing tests keep their import paths. Astro Engine never imports Tools.
+  - No surviving F2 `Tools.LightPollution` import existed on this branch; the optional feasibility in-place import was never landed, so there was no path to replace.
+  - Contract fixture `contracts/fixtures/providers/lpatlas1/lpatlas1_tiny_constant.bin` plus `.lookups.json` is the Python test input. Tools copies remain; the Phase 5 byte-identity guard is preserved.
+  - `light_pollution.lookup` is catalogued in `capabilities.yaml` (`hosts: [ios, cli]`, `equality: light_pollution_lookup`) as a library capability. Public CLI allow-list is unchanged (unknown id → exit 3). Swift `astro-engine-eval` still has no LP lookup; `Tests/parity` is unchanged.
+  - Root blobs are still validated as full `root_cells × root_cells` (Swift and the former Tools decoder; format pads edge roots). Not independently “fixed” in Python.
 
 ### Phase 8 — Python weather/ISS decode
 

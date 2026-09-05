@@ -10,9 +10,9 @@
 # catch up. CLI allow-list and host coverage grow in later phases (F2 CLI
 # still allow-lists observing_quality.assess only).
 #
-# Decode, grid, and live astronomy are later phases. Catalog JSON, LP
-# identity, and parked 1.1 target-scoring numbers live under contracts/data
-# and are not capabilities yet.
+# Decode, grid, and live astronomy accumulate as later phases implement
+# them. Catalog JSON, LP identity, and parked 1.1 target-scoring numbers
+# live under contracts/data and are not capabilities yet.
 
 engine_semver: "0.1.0"
 
@@ -65,3 +65,12 @@ capabilities:
     summary: >
       0–2 transparency penalty from total/layered cloud and optional visibility.
       Never null; missing layers fall back to total cloud.
+
+  - id: light_pollution.lookup
+    hosts: [ios, cli]
+    equality: light_pollution_lookup
+    since: "0.1.0"
+    summary: >
+      Sample modeled zenith sky brightness from a validated LPATLAS1
+      artifact. Malformed artifacts fail at load; geographic NoData and
+      out-of-coverage queries return null. Public CLI exposure is Phase 11.

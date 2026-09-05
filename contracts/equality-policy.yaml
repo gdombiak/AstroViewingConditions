@@ -81,6 +81,11 @@ policies:
     fields:
       penalty: abs_1e12
 
+  light_pollution_lookup:
+    description: Dequantized zenith sky brightness for fixture coordinates
+    fields:
+      modeled_zenith_sky_brightness: abs_1e9
+
   engine_error:
     description: Validation/engine failure envelope (no result)
     fields:

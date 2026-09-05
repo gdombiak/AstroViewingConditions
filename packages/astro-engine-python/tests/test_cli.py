@@ -116,12 +116,21 @@ def test_phase6_capability_ids_remain_unknown_on_cli() -> None:
         "transparency.penalty",
         "night_conditions.analyze",
         "night_conditions.score",
+        "light_pollution.lookup",
     ):
         code, stdout, stderr = _run([capability, "--input", "-"], stdin=b"{}")
         assert code == EXIT_USAGE, capability
         assert stdout == ""
         assert "unknown capability" in stderr
         assert "F2 allow-list: observing_quality.assess" in stderr
+
+
+def test_light_pollution_lookup_remains_unknown_on_cli() -> None:
+    code, stdout, stderr = _run(["light_pollution.lookup", "--input", "-"], stdin=b"{}")
+    assert code == EXIT_USAGE
+    assert stdout == ""
+    assert "unknown capability" in stderr
+    assert "F2 allow-list: observing_quality.assess" in stderr
 
 
 def test_malformed_json_is_validation() -> None:
