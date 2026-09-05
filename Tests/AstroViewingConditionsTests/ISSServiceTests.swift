@@ -4,54 +4,15 @@ import Foundation
 @testable import AstroViewingConditions
 
 final class ISSServiceTests: XCTestCase {
-    
-    // MARK: - ISS Response Parsing
-    
-    let mockISSResponse = """
-    {
-      "info": {
-        "satid": 25544,
-        "satname": "ISS (ZARYA)",
-        "transactionscount": 10,
-        "passescount": 3
-      },
-      "passes": [
-        {
-          "startAz": 45.0,
-          "startAzCompass": "NE",
-          "startEl": 10,
-          "startUTC": 1700000000,
-          "maxAz": 90.0,
-          "maxAzCompass": "E",
-          "maxEl": 45.0,
-          "maxUTC": 1700000300,
-          "endAz": 135.0,
-          "endAzCompass": "SE",
-          "endEl": 10,
-          "endUTC": 1700000600,
-          "mag": -2.0,
-          "duration": 300
-        },
-        {
-          "startAz": 180.0,
-          "startAzCompass": "S",
-          "startEl": 5,
-          "startUTC": 1700086400,
-          "maxAz": 270.0,
-          "maxAzCompass": "W",
-          "maxEl": 30.0,
-          "maxUTC": 1700086700,
-          "endAz": 360.0,
-          "endAzCompass": "N",
-          "endEl": 5,
-          "endUTC": 1700087200,
-          "mag": -1.5,
-          "duration": 420
-        }
-      ]
+
+    private func n2yoFixture(_ name: String) throws -> Data {
+        try Data(contentsOf: FixtureRoot.url("providers/n2yo/visualpasses/\(name).json"))
     }
-    """
-    
+
+    private func decodeN2YO(_ name: String) throws -> N2YOResponse {
+        try JSONDecoder().decode(N2YOResponse.self, from: n2yoFixture(name))
+    }
+
     func testVisualPassesURLEncodesAPIKey() throws {
         let url = try XCTUnwrap(ISSService.visualPassesURL(
             latitude: 45.5,
@@ -61,55 +22,62 @@ final class ISSServiceTests: XCTestCase {
             minVisibility: 120,
             apiKey: "abc+123/==&space key"
         ))
-        
+
         XCTAssertEqual(url.scheme, "https")
         XCTAssertEqual(url.host, "api.n2yo.com")
         XCTAssertEqual(url.path, "/rest/v1/satellite/visualpasses/25544/45.5/-122.7/12/5/120")
         XCTAssertTrue(url.absoluteString.contains("apiKey=abc%2B123%2F%3D%3D%26space%20key"))
         XCTAssertEqual(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first?.value, "abc+123/==&space key")
     }
-    
+
     func testISSPassParsing() throws {
-        let data = mockISSResponse.data(using: .utf8)!
-        let decoder = JSONDecoder()
-        
-        let response = try decoder.decode(N2YOResponse.self, from: data)
-        
+        let response = try decodeN2YO("two-passes")
+
         XCTAssertEqual(response.info.satid, 25544)
         XCTAssertEqual(response.info.satname, "ISS (ZARYA)")
         XCTAssertEqual(response.passes?.count, 2)
+
+        let passes = N2YOPassDecoder.passes(from: response)
+        XCTAssertEqual(passes.count, 2)
+        XCTAssertEqual(passes[0].riseTime, Date(timeIntervalSince1970: 1_700_000_000))
+        XCTAssertEqual(passes[0].duration, 300)
+        XCTAssertEqual(passes[0].maxElevation, 45.0)
+        XCTAssertEqual(passes[0].maxTime, Date(timeIntervalSince1970: 1_700_000_300))
+        XCTAssertEqual(passes[0].endTime, Date(timeIntervalSince1970: 1_700_000_600))
+        XCTAssertEqual(passes[0].startDirection, "NE")
+        XCTAssertEqual(passes[0].maxDirection, "E")
+        XCTAssertEqual(passes[0].endDirection, "SE")
+        XCTAssertEqual(passes[0].startElevation, 10)
+        XCTAssertEqual(passes[0].endElevation, 10)
     }
-    
+
     func testISSPassFields() throws {
-        let data = mockISSResponse.data(using: .utf8)!
-        let decoder = JSONDecoder()
-        
-        let response = try decoder.decode(N2YOResponse.self, from: data)
-        
+        let response = try decodeN2YO("two-passes")
+
         guard let passes = response.passes, let firstPass = passes.first else {
             XCTFail("No passes found")
             return
         }
-        
+
         XCTAssertEqual(firstPass.startAz, 45.0)
         XCTAssertEqual(firstPass.startAzCompass, "NE")
         XCTAssertEqual(firstPass.startEl, 10)
         XCTAssertEqual(firstPass.maxEl, 45.0)
         XCTAssertEqual(firstPass.duration, 300)
     }
-    
+
     func testISSPassSetTimeCalculation() {
         let riseTime = Date(timeIntervalSince1970: TimeInterval(1700000000))
         let duration: TimeInterval = 300
-        
+
         let pass = ISSPass(
             riseTime: riseTime,
             duration: duration,
             maxElevation: 45.0
         )
-        
+
         let expectedSetTime = riseTime.addingTimeInterval(duration)
-        
+
         XCTAssertEqual(pass.setTime, expectedSetTime)
     }
 
@@ -179,7 +147,7 @@ final class ISSServiceTests: XCTestCase {
         XCTAssertFalse(range.contains("7/5"))
         XCTAssertFalse(range.contains("7/6"))
     }
-    
+
     func testISSPassIdGeneration() {
         let riseTime = Date(timeIntervalSince1970: 1_700_000_000)
         let pass1 = ISSPass(
@@ -187,13 +155,13 @@ final class ISSServiceTests: XCTestCase {
             duration: 300,
             maxElevation: 45.0
         )
-        
+
         let pass2 = ISSPass(
             riseTime: riseTime,
             duration: 300,
             maxElevation: 45.0
         )
-        
+
         XCTAssertEqual(pass1.id, pass2.id, "The same N2YO event should retain its SwiftUI identity")
 
         let laterPass = ISSPass(
@@ -203,73 +171,38 @@ final class ISSServiceTests: XCTestCase {
         )
         XCTAssertNotEqual(pass1.id, laterPass.id)
     }
-    
+
     // MARK: - Empty Response
-    
-    func testISSPassWithNoPasses() {
-        let json = """
-        {
-          "info": {
-            "satid": 25544,
-            "satname": "ISS (ZARYA)",
-            "transactionscount": 1,
-            "passescount": 0
-          },
-          "passes": []
-        }
-        """
-        
-        let data = json.data(using: .utf8)!
-        let decoder = JSONDecoder()
-        
-        do {
-            let response = try decoder.decode(N2YOResponse.self, from: data)
-            XCTAssertTrue(response.passes?.isEmpty ?? true)
-        } catch {
-            XCTFail("Failed to decode: \(error)")
-        }
+
+    func testISSPassWithNoPasses() throws {
+        let response = try decodeN2YO("empty-passes-array")
+        XCTAssertTrue(response.passes?.isEmpty ?? true)
+        XCTAssertTrue(N2YOPassDecoder.passes(from: response).isEmpty)
     }
-    
-    func testISSPassWithNilPasses() {
-        let json = """
-        {
-          "info": {
-            "satid": 25544,
-            "satname": "ISS (ZARYA)",
-            "transactionscount": 1,
-            "passescount": 0
-          }
-        }
-        """
-        
-        let data = json.data(using: .utf8)!
-        let decoder = JSONDecoder()
-        
-        do {
-            let response = try decoder.decode(N2YOResponse.self, from: data)
-            XCTAssertNil(response.passes)
-        } catch {
-            XCTFail("Failed to decode: \(error)")
-        }
+
+    func testISSPassWithNilPasses() throws {
+        let response = try decodeN2YO("nil-passes")
+        XCTAssertNil(response.passes)
+        XCTAssertTrue(N2YOPassDecoder.passes(from: response).isEmpty)
     }
-    
+
     // MARK: - Error Handling
-    
+
     func testISSErrorInvalidURL() {
         let error = ISSError.invalidURL
-        
+
         XCTAssertNotNil(error.localizedDescription)
     }
-    
+
     func testISSErrorInvalidResponse() {
         let error = ISSError.invalidResponse
-        
+
         XCTAssertNotNil(error.localizedDescription)
     }
-    
+
     func testISSErrorApiError() {
         let error = ISSError.apiError(statusCode: 403, message: "Test error message")
-        
+
         XCTAssertEqual(error.localizedDescription, "Test error message")
     }
 

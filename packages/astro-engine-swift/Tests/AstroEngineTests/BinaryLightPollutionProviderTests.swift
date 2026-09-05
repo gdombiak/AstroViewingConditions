@@ -2,37 +2,23 @@ import XCTest
 import Foundation
 @testable import AstroEngine
 
-/// Cross-checks against Python LPATLAS1 fixtures in Tools/LightPollution/fixtures/
-/// and enforces decoder safety on malformed artifacts.
+/// Cross-checks against the contract-owned LPATLAS1 tiny fixture and enforces
+/// decoder safety on malformed artifacts. The preprocessing harness still owns
+/// copies under Tools/LightPollution/fixtures/.
 final class BinaryLightPollutionProviderTests: XCTestCase {
 
-    private var repoRoot: URL {
-        var dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-        for _ in 0..<ContractsRoot.maxAncestorWalk {
-            if FileManager.default.isReadableFile(
-                atPath: dir.appendingPathComponent("contracts/ENGINE_VERSION").path
-            ) {
-                return dir
-            }
-            let parent = dir.deletingLastPathComponent()
-            if parent.path == dir.path { break }
-            dir = parent
-        }
-        return dir
-    }
+    private var fixtureURL: URL!
+    private var expectedURL: URL!
+    private var globalArtifactURL: URL!
 
-    private var fixtureURL: URL {
-        repoRoot.appendingPathComponent("Tools/LightPollution/fixtures/lpatlas1_tiny_constant.bin")
-    }
-
-    private var expectedURL: URL {
-        repoRoot.appendingPathComponent("Tools/LightPollution/fixtures/lpatlas1_tiny_constant.lookups.json")
-    }
-
-    private var globalArtifactURL: URL {
-        repoRoot.appendingPathComponent(
-            "Tools/LightPollution/output/artifacts/light_pollution_global_v1.bin"
-        )
+    override func setUpWithError() throws {
+        fixtureURL = try FixtureRoot.url("providers/lpatlas1/lpatlas1_tiny_constant.bin")
+        expectedURL = try FixtureRoot.url("providers/lpatlas1/lpatlas1_tiny_constant.lookups.json")
+        globalArtifactURL = try ContractsRoot.resolve()
+            .deletingLastPathComponent()
+            .appendingPathComponent(
+                "Tools/LightPollution/output/artifacts/light_pollution_global_v1.bin"
+            )
     }
 
     private func loadFixtureBytes() throws -> Data {
@@ -101,6 +87,25 @@ final class BinaryLightPollutionProviderTests: XCTestCase {
                 XCTAssertEqual(value, expected!, accuracy: 1e-5, "lat \(lat) lon \(lon)")
             }
         }
+    }
+
+    func testContractTinyAtlasBytesMatchToolsHarnessCopies() throws {
+        let toolsFixtures = try ContractsRoot.resolve()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Tools/LightPollution/fixtures", isDirectory: true)
+        let toolsBin = toolsFixtures.appendingPathComponent("lpatlas1_tiny_constant.bin")
+        let toolsLookups = toolsFixtures.appendingPathComponent("lpatlas1_tiny_constant.lookups.json")
+
+        XCTAssertEqual(
+            try Data(contentsOf: fixtureURL),
+            try Data(contentsOf: toolsBin),
+            "contract LPATLAS1 tiny bin must remain byte-identical to the Tools harness copy"
+        )
+        XCTAssertEqual(
+            try Data(contentsOf: expectedURL),
+            try Data(contentsOf: toolsLookups),
+            "contract LPATLAS1 lookup manifest must remain byte-identical to the Tools harness copy"
+        )
     }
 
     func testChildrenQuadrantsMatchPythonDequantizedValues() throws {
