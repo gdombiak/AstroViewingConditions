@@ -27,6 +27,10 @@ enum CapabilityDispatch {
             return try weatherDecode(document)
         case "iss.decode":
             return try issDecode(document)
+        case "location.grid":
+            return try locationGrid(document)
+        case "catalog.deep_sky":
+            return try catalogDeepSky(document)
         default:
             throw EvalValidationError(code: "capability_unknown", message: "unknown capability: \(capability)")
         }
@@ -88,6 +92,63 @@ enum CapabilityDispatch {
         case .fixturesDirectoryMissing:
             return EvalValidationError(code: "engine_failure", message: error.message)
         }
+    }
+
+    private static func locationGrid(_ document: [String: Any]) throws -> [String: Any] {
+        let injected = try injected(document)
+        guard let centerObject = injected["center"] as? [String: Any] else {
+            throw EvalValidationError(code: "validation", message: "center must be an object")
+        }
+        guard let latitude = jsonDouble(centerObject["latitude"]) else {
+            throw EvalValidationError(code: "validation", message: "center.latitude must be a finite JSON number")
+        }
+        guard let longitude = jsonDouble(centerObject["longitude"]) else {
+            throw EvalValidationError(code: "validation", message: "center.longitude must be a finite JSON number")
+        }
+        guard let radiusMiles = jsonDouble(injected["radius_miles"]) else {
+            throw EvalValidationError(code: "validation", message: "radius_miles is required")
+        }
+        guard let spacingMiles = jsonDouble(injected["spacing_miles"]) else {
+            throw EvalValidationError(code: "validation", message: "spacing_miles is required")
+        }
+        if GeographicGridGenerator.exceedsContractPointCap(
+            radiusMiles: radiusMiles,
+            spacingMiles: spacingMiles
+        ) {
+            throw EvalValidationError(
+                code: "grid_cap",
+                message: "grid exceeds the 1.0 cap (50 mi radius / 3 mi spacing)"
+            )
+        }
+        let samples = GeographicGridGenerator.generateContractGrid(
+            around: Coordinate(latitude: latitude, longitude: longitude),
+            radiusMiles: radiusMiles,
+            spacingMiles: spacingMiles
+        )
+        return [
+            "points": samples.map { sample -> [String: Any] in
+                [
+                    "north_step": sample.northStep as Any? ?? NSNull(),
+                    "east_step": sample.eastStep as Any? ?? NSNull(),
+                    "is_center": sample.isCenter,
+                    "bearing_deg": sample.bearingDegrees,
+                    "distance_miles": sample.distanceMiles,
+                    "latitude": sample.latitude,
+                    "longitude": sample.longitude,
+                ]
+            }
+        ]
+    }
+
+    private static func catalogDeepSky(_ document: [String: Any]) throws -> [String: Any] {
+        _ = try injected(document)
+        let entries: [DeepSkyCatalogEntry]
+        do {
+            entries = try DeepSkyCatalog.loadResolved()
+        } catch let error as DeepSkyCatalogError {
+            throw EvalValidationError(code: "engine_failure", message: error.message)
+        }
+        return DeepSkyCatalog.contractResult(from: entries)
     }
 
     private static func weatherDecode(_ document: [String: Any]) throws -> [String: Any] {

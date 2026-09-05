@@ -245,9 +245,15 @@ final class EngineCalibrationTests: XCTestCase {
         let stale = dest.appendingPathComponent("calibration/target-scoring.json")
         try Data("stale".utf8).write(to: stale)
         XCTAssertTrue(FileManager.default.fileExists(atPath: stale.path))
+        let staleCatalog = dest.appendingPathComponent("catalog/equipment-limits.json")
+        try Data("stale".utf8).write(to: staleCatalog)
 
         try runBundleScript(script, repoRoot: repo, destination: dest)
         XCTAssertFalse(FileManager.default.fileExists(atPath: stale.path), "stale generated files must be removed")
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: staleCatalog.path),
+            "stale generated catalog files must be removed"
+        )
         try assertCopiedBytesMatchCanonical(contracts: contracts, dest: dest)
 
         let first = try contentsByName(in: dest.appendingPathComponent("calibration"))
@@ -257,6 +263,14 @@ final class EngineCalibrationTests: XCTestCase {
 
         let git = try runGit(in: repo, arguments: ["check-ignore", "-q", "packages/astro-engine-swift/Sources/AstroEngine/Resources/data/calibration/fog.json"])
         XCTAssertEqual(git, 0, "generated calibration JSON must be gitignored")
+        XCTAssertEqual(
+            try runGit(in: repo, arguments: [
+                "check-ignore", "-q",
+                "packages/astro-engine-swift/Sources/AstroEngine/Resources/data/catalog/deep-sky.json",
+            ]),
+            0,
+            "generated catalog JSON must be gitignored"
+        )
     }
 
     func testBundleEngineDataPreservesDestinationPathsWithSpaces() throws {
@@ -293,6 +307,20 @@ final class EngineCalibrationTests: XCTestCase {
             try runGit(in: repo, arguments: [
                 "check-ignore", "-q",
                 "contracts/data/calibration/fog.json",
+            ]),
+            1
+        )
+        XCTAssertEqual(
+            try runGit(in: repo, arguments: [
+                "check-ignore", "-q",
+                "packages/astro-engine-swift/Sources/AstroEngine/Resources/data/catalog/deep-sky.json",
+            ]),
+            0
+        )
+        XCTAssertEqual(
+            try runGit(in: repo, arguments: [
+                "check-ignore", "-q",
+                "contracts/data/catalog/deep-sky.json",
             ]),
             1
         )
@@ -401,6 +429,18 @@ final class EngineCalibrationTests: XCTestCase {
         XCTAssertFalse(
             FileManager.default.fileExists(
                 atPath: dest.appendingPathComponent("calibration/target-scoring.json").path
+            )
+        )
+        let catalogExpected = try Data(
+            contentsOf: contracts.appendingPathComponent("data/catalog/deep-sky.json")
+        )
+        let catalogActual = try Data(
+            contentsOf: dest.appendingPathComponent("catalog/deep-sky.json")
+        )
+        XCTAssertEqual(catalogActual, catalogExpected)
+        XCTAssertFalse(
+            FileManager.default.fileExists(
+                atPath: dest.appendingPathComponent("catalog/equipment-limits.json").path
             )
         )
     }

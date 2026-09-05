@@ -119,6 +119,38 @@ policies:
       passes[].start_elevation: exact
       passes[].end_elevation: exact
 
+  grid:
+    description: >
+      Ordered lattice plus center/boundary bearings. Lat/lon use the
+      GeographicGridGeneratorTests 1e-4 deg tolerance (~11 m), not 1e-9.
+    fields:
+      points[].north_step: exact
+      points[].east_step: exact
+      points[].is_center: exact
+      points[].bearing_deg: abs_1e9
+      points[].distance_miles: abs_1e9
+      points[].latitude: abs_1e4
+      points[].longitude: abs_1e4
+
+  catalog_deep_sky:
+    description: Exact curated catalog entries in canonical file order
+    fields:
+      entries[].id: exact
+      entries[].common_name: exact
+      entries[].catalog_name: exact
+      entries[].object_type: exact
+      entries[].constellation: exact
+      entries[].right_ascension: exact
+      entries[].declination: exact
+      entries[].magnitude: exact
+      entries[].apparent_size: exact
+      entries[].surface_brightness: exact
+      entries[].difficulty: exact
+      entries[].recommended_equipment: exact
+      entries[].observing_intent: exact
+      entries[].notes: exact
+      entries[].display_type_name_override: exact
+
   engine_error:
     description: Validation/engine failure envelope (no result)
     fields:

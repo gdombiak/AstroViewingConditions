@@ -21,6 +21,8 @@ Eval allow-list (not the public Python CLI):
   transparency.penalty
   weather.decode
   iss.decode
+  location.grid
+  catalog.deep_sky
 """
 
 private let supportedCapabilities: Set<String> = [
@@ -32,6 +34,8 @@ private let supportedCapabilities: Set<String> = [
     "transparency.penalty",
     "weather.decode",
     "iss.decode",
+    "location.grid",
+    "catalog.deep_sky",
 ]
 
 @main

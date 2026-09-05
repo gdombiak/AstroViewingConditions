@@ -3,7 +3,7 @@ import Foundation
 @testable import AstroEngine
 
 /// Additive Phase 1 drift checks: contract JSON vs the Swift runtime data model.
-/// Scoring calibration is decoded by the production reader; catalog/identity remain literals.
+/// Scoring calibration and the curated catalog are decoded by the production reader.
 final class Phase1ContractDataTests: XCTestCase {
     func testLightPollutionIdentityJSONMatchesSwiftLiterals() throws {
         let json = try loadJSON("data/identity/light-pollution-dataset.json")
@@ -121,8 +121,16 @@ final class Phase1ContractDataTests: XCTestCase {
         let json = try loadJSON("data/catalog/deep-sky.json")
         let entries = try XCTUnwrap(F3ObservingQualityContractSupport.asArray(json["entries"]))
         let swift = CuratedDeepSkyCatalogProvider().entries()
+        let frozenIDs = [
+            "m13", "m31", "m2", "m30", "m52", "m11", "m36", "m38", "m57", "m27",
+            "ngc7009", "ngc7293", "m51", "m64", "m77", "m81", "m82", "m92",
+            "albireo", "epsilon-lyrae", "m45", "m42", "double-cluster", "m5",
+            "m3", "m16", "m20", "m33", "m101",
+        ]
         XCTAssertEqual(entries.count, 29)
         XCTAssertEqual(entries.count, swift.count)
+        XCTAssertEqual(swift.map(\.id), frozenIDs)
+        XCTAssertEqual(Set(frozenIDs).count, frozenIDs.count)
 
         let byID = Dictionary(uniqueKeysWithValues: swift.map { ($0.id, $0) })
         var jsonIDs: [String] = []
@@ -154,7 +162,15 @@ final class Phase1ContractDataTests: XCTestCase {
                 XCTAssertTrue(F3ObservingQualityContractSupport.isNull(obj["surface_brightness"]), id)
             }
         }
-        XCTAssertEqual(Set(jsonIDs), Set(swift.map(\.id)))
+        XCTAssertEqual(jsonIDs, frozenIDs)
+
+        let m20 = try XCTUnwrap(byID["m20"])
+        XCTAssertEqual(m20.rightAscension, 18.0433, accuracy: 0.0001)
+        XCTAssertEqual(m20.declination, -23.0297, accuracy: 0.0001)
+        XCTAssertEqual(m20.magnitude, 6.3)
+        let m64 = try XCTUnwrap(byID["m64"])
+        XCTAssertEqual(m64.magnitude, 8.5)
+        XCTAssertEqual(byID["double-cluster"]?.displayTypeNameOverride, "Open Cluster Pair")
     }
 
     func testEngineVersionRemains010() throws {

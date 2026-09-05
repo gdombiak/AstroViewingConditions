@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Iterator
 
-from astro_engine.contracts import contracts_root
+from astro_engine.contracts import contracts_root, expand_expected_canonical_data
 
 SCORING_FIXTURE_DIRS = (
     "fixtures/capabilities/observing-quality",
@@ -20,6 +20,11 @@ SCORING_FIXTURE_DIRS = (
 DECODE_FIXTURE_DIRS = (
     "fixtures/capabilities/weather-decode",
     "fixtures/capabilities/iss-decode",
+)
+
+DETERMINISTIC_FIXTURE_DIRS = (
+    "fixtures/capabilities/location-grid",
+    "fixtures/capabilities/catalog-deep-sky",
 )
 
 
@@ -62,12 +67,13 @@ def parse_simple_meta(text: str) -> dict[str, Any]:
 
 
 def load_fixture(directory: Path) -> dict[str, Any]:
+    expected = json.loads((directory / "expected.json").read_text(encoding="utf-8"))
     return {
         "id": directory.name,
         "path": directory,
         "meta": parse_simple_meta((directory / "meta.yaml").read_text(encoding="utf-8")),
         "input": json.loads((directory / "input.json").read_text(encoding="utf-8")),
-        "expected": json.loads((directory / "expected.json").read_text(encoding="utf-8")),
+        "expected": expand_expected_canonical_data(expected),
     }
 
 
@@ -79,9 +85,14 @@ def iter_decode_fixtures() -> Iterator[dict[str, Any]]:
     yield from _iter_fixture_dirs(DECODE_FIXTURE_DIRS)
 
 
+def iter_deterministic_fixtures() -> Iterator[dict[str, Any]]:
+    yield from _iter_fixture_dirs(DETERMINISTIC_FIXTURE_DIRS)
+
+
 def iter_parity_fixtures() -> Iterator[dict[str, Any]]:
     yield from iter_scoring_fixtures()
     yield from iter_decode_fixtures()
+    yield from iter_deterministic_fixtures()
 
 
 def _iter_fixture_dirs(relative_dirs: tuple[str, ...]) -> Iterator[dict[str, Any]]:

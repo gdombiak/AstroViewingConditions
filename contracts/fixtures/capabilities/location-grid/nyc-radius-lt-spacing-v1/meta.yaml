@@ -1,0 +1,7 @@
+capability: location.grid
+engine_semver: ">=0.1.0 <2.0.0"
+equality: grid
+hosts: [swift, python]
+origin: transcribed
+notes: >
+  Radius smaller than spacing: center plus eight boundary bearings only (maxSteps=0).

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from astro_engine.catalog import CAPABILITY_ID as CATALOG_ID, catalog_deep_sky
 from astro_engine.contracts import load_fixture_ref
 from astro_engine.errors import ValidationError
 from astro_engine.fog import CAPABILITY_ID as FOG_ID, score_fog
+from astro_engine.grid import CAPABILITY_ID as GRID_ID, location_grid
 from astro_engine.iss import CAPABILITY_ID as ISS_ID, decode_iss
 from astro_engine.night_conditions import (
     ANALYZE_CAPABILITY_ID,
@@ -30,6 +32,8 @@ SCORING_CAPABILITY_IDS = (
 
 DECODE_CAPABILITY_IDS = (WEATHER_ID, ISS_ID)
 
+DETERMINISTIC_CAPABILITY_IDS = (GRID_ID, CATALOG_ID)
+
 
 def _injected(document: Mapping[str, Any]) -> Mapping[str, Any]:
     injected = document.get("injected")
@@ -51,7 +55,7 @@ def _resolve_injected_ref(injected: Mapping[str, Any]) -> Mapping[str, Any]:
 
 
 def evaluate_capability(capability: str, document: Mapping[str, Any]) -> dict[str, Any]:
-    """Return the domain `result` object for a scoring or decode capability.
+    """Return the domain `result` object for a library/parity capability.
 
     Raises ValidationError on input failure. Unknown IDs raise ValidationError
     with a distinct message so tests can tell them apart from CLI usage (exit 3).
@@ -84,6 +88,10 @@ def evaluate_capability(capability: str, document: Mapping[str, Any]) -> dict[st
         return decode_weather(_injected(document))
     if capability == ISS_ID:
         return decode_iss(_injected(document))
+    if capability == GRID_ID:
+        return location_grid(_injected(document))
+    if capability == CATALOG_ID:
+        return catalog_deep_sky(_injected(document))
     raise ValidationError(f"unknown scoring capability: {capability}")
 
 

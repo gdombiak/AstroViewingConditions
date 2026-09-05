@@ -1,0 +1,7 @@
+capability: location.grid
+engine_semver: ">=0.1.0 <2.0.0"
+equality: grid
+hosts: [swift, python]
+origin: transcribed
+notes: >
+  Ordinary mid-latitude center. Independently derived from the documented generateGrid algorithm (haversine destination, 6371000 m, 1609.344 m/mile). Lattice then 8 boundary bearings; duplicate coordinates skipped.

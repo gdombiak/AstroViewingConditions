@@ -1,0 +1,11 @@
+{
+  "capability": "location.grid",
+  "injected": {
+    "center": {
+      "latitude": 0.0,
+      "longitude": 179.5
+    },
+    "radius_miles": 50,
+    "spacing_miles": 50
+  }
+}

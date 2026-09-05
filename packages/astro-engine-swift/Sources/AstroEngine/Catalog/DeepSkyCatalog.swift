@@ -59,6 +59,262 @@ public protocol DeepSkyCatalogProviding: Sendable {
     func entries() -> [DeepSkyCatalogEntry]
 }
 
+public enum DeepSkyCatalogError: Error, Equatable, Sendable {
+    case missingFile(String)
+    case decode(String)
+    case invalid(String)
+    case missingBundledResources
+    case missingContractsData(String)
+
+    public var message: String {
+        switch self {
+        case .missingFile(let path):
+            return "missing deep-sky catalog file: \(path)"
+        case .decode(let detail):
+            return "could not decode deep-sky catalog: \(detail)"
+        case .invalid(let detail):
+            return "invalid deep-sky catalog: \(detail)"
+        case .missingBundledResources:
+            return "AstroEngine deep-sky catalog JSON is missing from the application bundle. This is a packaging failure; rebuild so scripts/bundle-engine-data copies contracts/data/catalog into the product."
+        case .missingContractsData(let detail):
+            return "could not load deep-sky catalog from contracts/data: \(detail)"
+        }
+    }
+}
+
+/// Canonical curated catalog. Source-controlled JSON lives only under `contracts/data/catalog`.
+public enum DeepSkyCatalog {
+    public static let relativePath = "catalog/deep-sky.json"
+
+    public static func loadResolved() throws -> [DeepSkyCatalogEntry] {
+        #if os(iOS) || os(watchOS)
+        guard let bundled = EngineCalibration.findBundledDataDirectory() else {
+            throw DeepSkyCatalogError.missingBundledResources
+        }
+        return try load(fromDataDirectory: bundled)
+        #else
+        return try loadFromContractsRoot()
+        #endif
+    }
+
+    public static func loadFromContractsRoot(
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        startingAt start: URL = URL(fileURLWithPath: #filePath)
+    ) throws -> [DeepSkyCatalogEntry] {
+        let root: URL
+        do {
+            root = try ContractsRoot.resolve(environment: environment, startingAt: start)
+        } catch {
+            throw DeepSkyCatalogError.missingContractsData(
+                (error as? ContractsRootError)?.message ?? String(describing: error)
+            )
+        }
+        return try load(fromDataDirectory: root.appendingPathComponent("data", isDirectory: true))
+    }
+
+    public static func load(fromDataDirectory dataRoot: URL) throws -> [DeepSkyCatalogEntry] {
+        let url = dataRoot.appendingPathComponent(relativePath)
+        let path = url.path
+        guard FileManager.default.isReadableFile(atPath: path) else {
+            throw DeepSkyCatalogError.missingFile(path)
+        }
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            throw DeepSkyCatalogError.missingFile(path)
+        }
+        let raw: Any
+        do {
+            raw = try JSONSerialization.jsonObject(with: data)
+        } catch {
+            throw DeepSkyCatalogError.decode(String(describing: error))
+        }
+        return try decodeDocument(raw)
+    }
+
+    public static func contractResult(from entries: [DeepSkyCatalogEntry]) -> [String: Any] {
+        ["entries": entries.map(encodeContractEntry)]
+    }
+
+    static func decodeDocument(_ raw: Any) throws -> [DeepSkyCatalogEntry] {
+        guard let object = raw as? [String: Any] else {
+            throw DeepSkyCatalogError.invalid("deep-sky catalog must be a JSON object")
+        }
+        let extra = Set(object.keys).subtracting(["entries"])
+        if !extra.isEmpty {
+            throw DeepSkyCatalogError.invalid(
+                "unexpected deep-sky catalog keys: \(extra.sorted())"
+            )
+        }
+        guard let rows = object["entries"] as? [Any] else {
+            throw DeepSkyCatalogError.invalid("deep-sky catalog entries must be an array")
+        }
+        return try rows.enumerated().map { index, item in
+            try decodeEntry(item, index: index)
+        }
+    }
+
+    private static let requiredKeys: Set<String> = [
+        "id", "common_name", "catalog_name", "object_type", "constellation",
+        "right_ascension", "declination", "magnitude", "apparent_size",
+        "surface_brightness", "difficulty", "recommended_equipment",
+        "observing_intent", "notes",
+    ]
+    private static let allowedKeys: Set<String> = requiredKeys.union(["display_type_name_override"])
+
+    private static func decodeEntry(_ raw: Any, index: Int) throws -> DeepSkyCatalogEntry {
+        let prefix = "entries[\(index)]"
+        guard let object = raw as? [String: Any] else {
+            throw DeepSkyCatalogError.invalid("\(prefix) must be an object")
+        }
+        let extra = Set(object.keys).subtracting(allowedKeys)
+        if !extra.isEmpty {
+            throw DeepSkyCatalogError.invalid("\(prefix) unexpected keys: \(extra.sorted())")
+        }
+        let missing = requiredKeys.subtracting(object.keys)
+        if !missing.isEmpty {
+            throw DeepSkyCatalogError.invalid("\(prefix) missing keys: \(missing.sorted())")
+        }
+        let override: String?
+        if object.keys.contains("display_type_name_override") {
+            if object["display_type_name_override"] is NSNull {
+                override = nil
+            } else {
+                override = try requireString(object["display_type_name_override"], "\(prefix).display_type_name_override")
+            }
+        } else {
+            override = nil
+        }
+        return DeepSkyCatalogEntry(
+            id: try requireString(object["id"], "\(prefix).id"),
+            commonName: try requireString(object["common_name"], "\(prefix).common_name"),
+            catalogName: try requireString(object["catalog_name"], "\(prefix).catalog_name"),
+            objectType: try objectType(object["object_type"], "\(prefix).object_type"),
+            constellation: try requireString(object["constellation"], "\(prefix).constellation"),
+            rightAscension: try requireDouble(object["right_ascension"], "\(prefix).right_ascension"),
+            declination: try requireDouble(object["declination"], "\(prefix).declination"),
+            magnitude: try requireDouble(object["magnitude"], "\(prefix).magnitude"),
+            apparentSize: try requireString(object["apparent_size"], "\(prefix).apparent_size"),
+            surfaceBrightness: try optionalDouble(object["surface_brightness"], "\(prefix).surface_brightness"),
+            difficulty: try requireDouble(object["difficulty"], "\(prefix).difficulty"),
+            observingIntent: try observingIntent(object["observing_intent"], "\(prefix).observing_intent"),
+            recommendedEquipment: try equipment(object["recommended_equipment"], "\(prefix).recommended_equipment"),
+            notes: try requireString(object["notes"], "\(prefix).notes"),
+            displayTypeNameOverride: override
+        )
+    }
+
+    private static func encodeContractEntry(_ entry: DeepSkyCatalogEntry) -> [String: Any] {
+        var object: [String: Any] = [
+            "id": entry.id,
+            "common_name": entry.commonName,
+            "catalog_name": entry.catalogName,
+            "object_type": contractObjectType(entry.objectType),
+            "constellation": entry.constellation,
+            "right_ascension": entry.rightAscension,
+            "declination": entry.declination,
+            "magnitude": entry.magnitude,
+            "apparent_size": entry.apparentSize,
+            "surface_brightness": entry.surfaceBrightness as Any? ?? NSNull(),
+            "difficulty": entry.difficulty,
+            "recommended_equipment": contractEquipment(entry.recommendedEquipment),
+            "observing_intent": entry.observingIntent.rawValue,
+            "notes": entry.notes,
+        ]
+        if let override = entry.displayTypeNameOverride {
+            object["display_type_name_override"] = override
+        }
+        return object
+    }
+
+    private static func objectType(_ value: Any?, _ name: String) throws -> DeepSkyObjectType {
+        let raw = try requireString(value, name)
+        switch raw {
+        case "galaxy": return .galaxy
+        case "diffuse_nebula": return .diffuseNebula
+        case "globular_cluster": return .globularCluster
+        case "open_cluster": return .openCluster
+        case "double_star": return .doubleStar
+        case "planetary_nebula": return .planetaryNebula
+        default:
+            throw DeepSkyCatalogError.invalid("\(name) is not a known catalog value")
+        }
+    }
+
+    private static func equipment(_ value: Any?, _ name: String) throws -> TargetEquipmentType {
+        let raw = try requireString(value, name)
+        switch raw {
+        case "naked_eye": return .nakedEye
+        case "binoculars": return .binoculars
+        case "small_telescope": return .smallTelescope
+        case "telescope": return .telescope
+        default:
+            throw DeepSkyCatalogError.invalid("\(name) is not a known catalog value")
+        }
+    }
+
+    private static func observingIntent(_ value: Any?, _ name: String) throws -> TargetObservingIntent {
+        let raw = try requireString(value, name)
+        guard let intent = TargetObservingIntent(rawValue: raw) else {
+            throw DeepSkyCatalogError.invalid("\(name) is not a known catalog value")
+        }
+        return intent
+    }
+
+    private static func contractObjectType(_ type: DeepSkyObjectType) -> String {
+        switch type {
+        case .galaxy: return "galaxy"
+        case .diffuseNebula: return "diffuse_nebula"
+        case .globularCluster: return "globular_cluster"
+        case .openCluster: return "open_cluster"
+        case .doubleStar: return "double_star"
+        case .planetaryNebula: return "planetary_nebula"
+        }
+    }
+
+    private static func contractEquipment(_ type: TargetEquipmentType) -> String {
+        switch type {
+        case .nakedEye: return "naked_eye"
+        case .binoculars: return "binoculars"
+        case .smallTelescope: return "small_telescope"
+        case .telescope: return "telescope"
+        }
+    }
+
+    private static func requireString(_ value: Any?, _ name: String) throws -> String {
+        guard let text = value as? String else {
+            throw DeepSkyCatalogError.invalid("\(name) must be a string")
+        }
+        return text
+    }
+
+    private static func requireDouble(_ value: Any?, _ name: String) throws -> Double {
+        guard let number = jsonDouble(value) else {
+            throw DeepSkyCatalogError.invalid("\(name) must be a finite JSON number")
+        }
+        return number
+    }
+
+    private static func optionalDouble(_ value: Any?, _ name: String) throws -> Double? {
+        if value == nil || value is NSNull { return nil }
+        return try requireDouble(value, name)
+    }
+
+    private static func jsonDouble(_ value: Any?) -> Double? {
+        if value is NSNull { return nil }
+        if value is Bool { return nil }
+        if let number = value as? NSNumber {
+            if CFGetTypeID(number as CFTypeRef) == CFBooleanGetTypeID() { return nil }
+            let doubleValue = number.doubleValue
+            return doubleValue.isFinite ? doubleValue : nil
+        }
+        if let number = value as? Double { return number.isFinite ? number : nil }
+        if let number = value as? Int { return Double(number) }
+        return nil
+    }
+}
+
 public struct CuratedDeepSkyCatalogProvider: DeepSkyCatalogProviding {
     public init() {}
 
@@ -66,71 +322,12 @@ public struct CuratedDeepSkyCatalogProvider: DeepSkyCatalogProviding {
         Self.catalog
     }
 
-    private static let catalog: [DeepSkyCatalogEntry] = [
-        entry("m13", "M13 Hercules Cluster", "M13", .globularCluster, "Hercules", 16.6949, 36.4613, 5.8, "20 arcmin", 12.0, 0.55, .binoculars, .easy, "Bright northern globular cluster."),
-        entry("m31", "M31 Andromeda Galaxy", "M31", .galaxy, "Andromeda", 0.7123, 41.2692, 3.4, "190 x 60 arcmin", 13.5, 0.45, .binoculars, .easy, "Easy to locate, though suburban views may show mostly its bright core rather than the photo-like disk."),
-        entry("m2", "M2 Globular Cluster", "M2", .globularCluster, "Aquarius", 21.5575, -0.8233, 6.2, "16 arcmin", 12.5, 0.55, .binoculars, .standard, "Compact globular cluster."),
-        entry("m30", "M30 Globular Cluster", "M30", .globularCluster, "Capricornus", 21.6728, -23.1799, 7.2, "12 arcmin", 11.0, 0.65, .smallTelescope, .standard, "Dense globular cluster with a bright core."),
-        entry("m52", "M52 Open Cluster", "M52", .openCluster, "Cassiopeia", 23.4133, 61.5931, 6.9, "13 arcmin", 12.0, 0.45, .binoculars, .standard, "Rich open cluster in a crowded Milky Way field."),
-        entry("m11", "M11 Wild Duck Cluster", "M11", .openCluster, "Scutum", 18.8514, -6.2700, 6.3, "14 arcmin", 11.1, 0.4, .binoculars, .easy, "Bright, compact open cluster."),
-        entry("m36", "M36 Pinwheel Cluster", "M36", .openCluster, "Auriga", 5.6017, 34.1400, 6.3, "12 arcmin", nil, 0.25, .binoculars, .easy, "Bright young open cluster that is easy to find with binoculars or a small telescope."),
-        entry("m38", "M38 Starfish Cluster", "M38", .openCluster, "Auriga", 5.4783, 35.8333, 7.4, "21 arcmin", nil, 0.4, .binoculars, .standard, "Large open cluster whose brighter stars form a distinctive cross or starfish pattern."),
-        entry("m57", "M57 Ring Nebula", "M57", .planetaryNebula, "Lyra", 18.8931, 33.0292, 8.8, "1.4 x 1.0 arcmin", 9.3, 0.55, .smallTelescope, .standard, "Small, high-surface-brightness planetary nebula."),
-        entry("m27", "M27 Dumbbell Nebula", "M27", .planetaryNebula, "Vulpecula", 19.9934, 22.7212, 7.5, "8.0 x 5.7 arcmin", 11.3, 0.5, .binoculars, .standard, "Large, bright planetary nebula."),
-        entry("ngc7009", "NGC 7009 Saturn Nebula", "NGC 7009", .planetaryNebula, "Aquarius", 21.0697, -11.3633, 8.0, "0.7 x 0.4 arcmin", 8.1, 0.5, .smallTelescope, .standard, "Compact planetary nebula that tolerates moonlight well."),
-        entry("ngc7293", "NGC 7293 Helix Nebula", "NGC 7293", .planetaryNebula, "Aquarius", 22.4933, -20.8372, 7.6, "25 x 20 arcmin", 13.6, 0.8, .telescope, .challenge, "Very large planetary nebula with low surface brightness."),
-        entry("m51", "M51 Whirlpool Galaxy", "M51", .galaxy, "Canes Venatici", 13.4978, 47.1952, 8.4, "11 x 7 arcmin", 12.9, 0.75, .telescope, .challenge, "Face-on galaxy whose spiral detail needs dark skies."),
-        entry("m64", "M64 Black Eye Galaxy", "M64", .galaxy, "Coma Berenices", 12.9455, 21.6827, 8.5, "10 x 5 arcmin", 12.8, 0.7, .telescope, .challenge, "Galaxy with a prominent dark dust feature."),
-        entry("m77", "M77 Cetus A", "M77", .galaxy, "Cetus", 2.7113, -0.0133, 9.6, "7.1 x 6.0 arcmin", 13.0, 0.8, .telescope, .challenge, "Galaxy with a bright compact core; dark skies are needed to see more than its central region."),
-        entry("m81", "M81 Bode's Galaxy", "M81", .galaxy, "Ursa Major", 9.9259, 69.0653, 6.9, "27 x 14 arcmin", 13.0, 0.55, .binoculars, .standard, "Bright galaxy, though extended detail favors dark skies."),
-        entry("m82", "M82 Cigar Galaxy", "M82", .galaxy, "Ursa Major", 9.9313, 69.6797, 8.4, "11 x 5 arcmin", 12.7, 0.6, .smallTelescope, .standard, "High-surface-brightness edge-on galaxy."),
-        entry("m92", "M92 Globular Cluster", "M92", .globularCluster, "Hercules", 17.2854, 43.1365, 6.4, "14 arcmin", 11.2, 0.5, .binoculars, .standard, "Bright compact globular cluster."),
-        entry("albireo", "Albireo", "Beta Cygni", .doubleStar, "Cygnus", 19.5120, 27.9597, 3.1, "34 arcsec", nil, 0.25, .smallTelescope, .easy, "Colorful gold-and-blue double star."),
-        entry("epsilon-lyrae", "Epsilon Lyrae", "Epsilon Lyrae", .doubleStar, "Lyra", 18.7380, 39.6701, 4.7, "208 arcsec", nil, 0.4, .smallTelescope, .standard, "The Double Double; higher power resolves both pairs."),
-        entry("m45", "M45 Pleiades", "M45", .openCluster, "Taurus", 3.7833, 24.1167, 1.6, "110 arcmin", nil, 0.15, .binoculars, .easy, "Excellent beginner target; best with binoculars or very low power."),
-        entry("m42", "M42 Orion Nebula", "M42", .diffuseNebula, "Orion", 5.5881, -5.3911, 4.0, "85 x 60 arcmin", 13.0, 0.25, .binoculars, .easy, "Excellent beginner nebula; visually it is a gray-green fuzzy patch, not a colorful photograph."),
-        entry("double-cluster", "NGC 869/884 Double Cluster", "NGC 869/884", .openCluster, "Perseus", 2.3333, 57.1333, 3.7, "60 arcmin", nil, 0.2, .binoculars, .easy, "A rewarding pair of clusters for binoculars or low-power telescopes.", displayTypeNameOverride: "Open Cluster Pair"),
-        entry("m5", "M5 Globular Cluster", "M5", .globularCluster, "Serpens", 15.3092, 2.0810, 5.7, "23 arcmin", 12.0, 0.5, .smallTelescope, .standard, "Good telescope target; higher magnification may resolve outer stars."),
-        entry("m3", "M3 Globular Cluster", "M3", .globularCluster, "Canes Venatici", 13.7031, 28.3773, 6.2, "18 arcmin", 12.1, 0.5, .smallTelescope, .standard, "Bright spring and summer globular cluster for a telescope."),
-        entry("m16", "M16 Eagle Nebula", "M16", .diffuseNebula, "Serpens", 18.3133, -13.8067, 6.0, "35 x 28 arcmin", 12.0, 0.6, .telescope, .standard, "The cluster and faint nebulosity may be visible; the Pillars of Creation are mainly an imaging target."),
-        entry("m20", "M20 Trifid Nebula", "M20", .diffuseNebula, "Sagittarius", 18.0433, -23.0297, 6.3, "28 arcmin", 12.4, 0.65, .telescope, .standard, "Look for faint gray nebulosity and possible dark lanes under good dark skies; do not expect photographic color."),
-        entry("m33", "M33 Triangulum Galaxy", "M33", .galaxy, "Triangulum", 1.5641, 30.6602, 5.7, "70 x 42 arcmin", 14.2, 0.8, .binoculars, .challenge, "Dark-sky challenge with low surface brightness; difficult from suburban skies."),
-        entry("m101", "M101 Pinwheel Galaxy", "M101", .galaxy, "Ursa Major", 14.0535, 54.3488, 7.9, "29 x 27 arcmin", 14.8, 0.85, .telescope, .challenge, "Rewarding dark-sky challenge with low surface brightness; difficult from suburban skies.")
-    ]
-
-    private static func entry(
-        _ id: String,
-        _ commonName: String,
-        _ catalogName: String,
-        _ objectType: DeepSkyObjectType,
-        _ constellation: String,
-        _ rightAscension: Double,
-        _ declination: Double,
-        _ magnitude: Double,
-        _ apparentSize: String,
-        _ surfaceBrightness: Double?,
-        _ difficulty: Double,
-        _ equipment: TargetEquipmentType,
-        _ observingIntent: TargetObservingIntent,
-        _ notes: String,
-        displayTypeNameOverride: String? = nil
-    ) -> DeepSkyCatalogEntry {
-        DeepSkyCatalogEntry(
-            id: id,
-            commonName: commonName,
-            catalogName: catalogName,
-            objectType: objectType,
-            constellation: constellation,
-            rightAscension: rightAscension,
-            declination: declination,
-            magnitude: magnitude,
-            apparentSize: apparentSize,
-            surfaceBrightness: surfaceBrightness,
-            difficulty: difficulty,
-            observingIntent: observingIntent,
-            recommendedEquipment: equipment,
-            notes: notes,
-            displayTypeNameOverride: displayTypeNameOverride
-        )
-    }
+    private static let catalog: [DeepSkyCatalogEntry] = {
+        do {
+            return try DeepSkyCatalog.loadResolved()
+        } catch {
+            let detail = (error as? DeepSkyCatalogError)?.message ?? String(describing: error)
+            fatalError("AstroEngine deep-sky catalog is missing or corrupt: \(detail)")
+        }
+    }()
 }

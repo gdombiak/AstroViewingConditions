@@ -21,6 +21,11 @@ _DECODE_DIRS = (
     "fixtures/capabilities/iss-decode",
 )
 
+_DETERMINISTIC_DIRS = (
+    "fixtures/capabilities/location-grid",
+    "fixtures/capabilities/catalog-deep-sky",
+)
+
 
 def test_parity_helpers_exist_at_git_recorded_path() -> None:
     assert PARITY.parts[-2:] == ("Tests", "parity"), PARITY
@@ -36,6 +41,22 @@ def test_phase6_contract_fixtures() -> None:
         for fixture in iter_capability_fixtures(relative)
     ]
     assert len(fixtures) >= 30
+    version = engine_semver()
+    for fixture in fixtures:
+        meta = fixture["meta"]
+        assert satisfies(version, meta["engine_semver"]), fixture["id"]
+        assert "engine_semver" not in fixture["expected"], fixture["id"]
+        actual = python_envelope(meta["capability"], fixture["input"])
+        compare_envelope(actual, fixture["expected"], policy_id=meta["equality"])
+
+
+def test_phase9_deterministic_contract_fixtures() -> None:
+    fixtures = [
+        fixture
+        for relative in _DETERMINISTIC_DIRS
+        for fixture in iter_capability_fixtures(relative)
+    ]
+    assert len(fixtures) == 6
     version = engine_semver()
     for fixture in fixtures:
         meta = fixture["meta"]

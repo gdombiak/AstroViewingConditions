@@ -1,2 +1,2 @@
-Generated calibration JSON is written here by scripts/bundle-engine-data.
-Do not commit copies; canonical files live in contracts/data/calibration.
+Generated calibration and catalog JSON is written here by scripts/bundle-engine-data.
+Do not commit copies; canonical files live in contracts/data.

@@ -142,3 +142,56 @@ def resolve_fixture_ref(relative_path: str) -> Path:
 def load_fixture_ref(relative_path: str) -> object:
     """Load JSON at a confined `$ref` under `contracts/fixtures`."""
     return load_json_bytes(resolve_fixture_ref(relative_path).read_bytes())
+
+
+def resolve_canonical_data(relative_path: str) -> Path:
+    """Resolve a POSIX-relative path under `contracts/data`.
+
+    Same confinement rules as fixture `$ref`: no `..`, absolute paths,
+    backslashes, or symlink targets that escape the data tree.
+    """
+    if (
+        not isinstance(relative_path, str)
+        or not relative_path
+        or relative_path.startswith("/")
+        or "\\" in relative_path
+    ):
+        raise ContractsRootError(
+            f"canonical data path escapes contracts/data: {relative_path}"
+        )
+    parts = relative_path.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        raise ContractsRootError(
+            f"canonical data path escapes contracts/data: {relative_path}"
+        )
+
+    root = data_root()
+    candidate = root.joinpath(*parts)
+    resolved = candidate.resolve()
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise ContractsRootError(
+            f"canonical data path escapes contracts/data: {relative_path}"
+        ) from exc
+    if not resolved.is_file():
+        raise ContractsRootError(f"missing canonical data file: {relative_path}")
+    return resolved
+
+
+def load_canonical_data(relative_path: str) -> object:
+    """Load JSON at a confined path under `contracts/data`."""
+    return load_json_bytes(resolve_canonical_data(relative_path).read_bytes())
+
+
+def expand_expected_canonical_data(expected: dict) -> dict:
+    """Replace `result: {$canonical_data: rel}` with the contracts/data JSON document."""
+    result = expected.get("result")
+    if not isinstance(result, dict) or list(result.keys()) != ["$canonical_data"]:
+        return expected
+    relative = result["$canonical_data"]
+    if not isinstance(relative, str):
+        raise ContractsRootError("$canonical_data must be a string path under contracts/data")
+    expanded = dict(expected)
+    expanded["result"] = load_canonical_data(relative)
+    return expanded

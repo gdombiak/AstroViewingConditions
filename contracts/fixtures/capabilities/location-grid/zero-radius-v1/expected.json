@@ -1,0 +1,7 @@
+{
+  "capability": "location.grid",
+  "ok": true,
+  "result": {
+    "points": []
+  }
+}

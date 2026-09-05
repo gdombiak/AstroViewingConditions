@@ -119,6 +119,8 @@ def test_phase6_capability_ids_remain_unknown_on_cli() -> None:
         "light_pollution.lookup",
         "weather.decode",
         "iss.decode",
+        "location.grid",
+        "catalog.deep_sky",
     ):
         code, stdout, stderr = _run([capability, "--input", "-"], stdin=b"{}")
         assert code == EXIT_USAGE, capability
@@ -137,6 +139,15 @@ def test_light_pollution_lookup_remains_unknown_on_cli() -> None:
 
 def test_weather_and_iss_decode_remain_unknown_on_cli() -> None:
     for capability in ("weather.decode", "iss.decode"):
+        code, stdout, stderr = _run([capability, "--input", "-"], stdin=b"{}")
+        assert code == EXIT_USAGE, capability
+        assert stdout == ""
+        assert "unknown capability" in stderr
+        assert "F2 allow-list: observing_quality.assess" in stderr
+
+
+def test_grid_and_catalog_remain_unknown_on_cli() -> None:
+    for capability in ("location.grid", "catalog.deep_sky"):
         code, stdout, stderr = _run([capability, "--input", "-"], stdin=b"{}")
         assert code == EXIT_USAGE, capability
         assert stdout == ""

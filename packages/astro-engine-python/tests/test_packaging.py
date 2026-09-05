@@ -11,11 +11,15 @@ from astro_engine import (
     decode_iss,
     decode_weather,
     engine_semver,
+    generate_grid,
+    load_deep_sky_catalog,
     public_night_score,
     score_fog,
     seeing_penalty,
     transparency_penalty,
 )
+from astro_engine.catalog import CAPABILITY_ID as CATALOG_CAPABILITY_ID
+from astro_engine.grid import CAPABILITY_ID as GRID_CAPABILITY_ID
 from astro_engine.iss import CAPABILITY_ID as ISS_CAPABILITY_ID
 from astro_engine.light_pollution import CAPABILITY_ID as LP_CAPABILITY_ID
 from astro_engine.observing_quality import CAPABILITY_ID
@@ -31,12 +35,16 @@ def test_public_imports() -> None:
     assert callable(public_night_score)
     assert callable(decode_weather)
     assert callable(decode_iss)
+    assert callable(generate_grid)
+    assert callable(load_deep_sky_catalog)
     assert LightPollutionArtifact.from_bytes is not None
     assert engine_semver() == "0.1.0"
     assert CAPABILITY_ID == "observing_quality.assess"
     assert LP_CAPABILITY_ID == "light_pollution.lookup"
     assert WEATHER_CAPABILITY_ID == "weather.decode"
     assert ISS_CAPABILITY_ID == "iss.decode"
+    assert GRID_CAPABILITY_ID == "location.grid"
+    assert CATALOG_CAPABILITY_ID == "catalog.deep_sky"
     module = importlib.import_module("astro_engine.cli")
     assert callable(module.main)
     assert "F2 allow-list: observing_quality.assess" in module.USAGE
@@ -51,6 +59,6 @@ def test_pyproject_has_no_runtime_dependencies() -> None:
 
 def test_no_package_local_provider_fixture_copies() -> None:
     root = Path(__file__).resolve().parents[1]
-    banned = {"happy-path.json", "two-passes.json"}
+    banned = {"happy-path.json", "two-passes.json", "deep-sky.json"}
     found = [path for path in root.rglob("*.json") if path.name in banned]
     assert found == []

@@ -10,9 +10,9 @@
 # catch up. CLI allow-list and host coverage grow in later phases (F2 CLI
 # still allow-lists observing_quality.assess only).
 #
-# Decode, grid, and live astronomy accumulate as later phases implement
-# them. Catalog JSON, LP identity, and parked 1.1 target-scoring numbers
-# live under contracts/data and are not capabilities yet.
+# Live astronomy accumulates as later phases implement it. LP identity
+# and parked 1.1 target-scoring numbers live under contracts/data and
+# are not capabilities. Catalog JSON is the catalog.deep_sky source.
 
 engine_semver: "0.1.0"
 
@@ -93,3 +93,20 @@ capabilities:
       Normalize a raw N2YO visualpasses envelope into ISSPass DTOs
       including the deterministic stableID. Empty and missing passes
       both become an empty collection. Public CLI exposure is Phase 11.
+
+  - id: location.grid
+    hosts: [ios, cli]
+    equality: grid
+    since: "0.1.0"
+    summary: >
+      Deterministic circular-clipped square lattice around a center,
+      plus eight boundary bearings at the requested radius. Public CLI
+      exposure is Phase 11.
+
+  - id: catalog.deep_sky
+    hosts: [ios, cli]
+    equality: catalog_deep_sky
+    since: "0.1.0"
+    summary: >
+      Curated deep-sky catalog from contracts/data/catalog/deep-sky.json.
+      Public CLI exposure is Phase 11.

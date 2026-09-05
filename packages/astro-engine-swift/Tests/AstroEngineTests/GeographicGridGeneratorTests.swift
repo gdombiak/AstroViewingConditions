@@ -185,6 +185,102 @@ final class GeographicGridGeneratorTests: XCTestCase {
         }
     }
     
+    func testContractGridMatchesGenerateGridAndRecordsLatticeSteps() {
+        let center = Coordinate(latitude: 40.7128, longitude: -74.0060)
+        let grid = GeographicGridGenerator.generateGrid(
+            around: center,
+            radiusMiles: 10,
+            spacingMiles: 5
+        )
+        let samples = GeographicGridGenerator.generateContractGrid(
+            around: center,
+            radiusMiles: 10,
+            spacingMiles: 5
+        )
+        XCTAssertEqual(grid.count, samples.count)
+        XCTAssertEqual(samples.count, 17)
+        XCTAssertEqual(samples[0].northStep, 0)
+        XCTAssertEqual(samples[0].eastStep, 0)
+        XCTAssertTrue(samples[0].isCenter)
+        for (point, sample) in zip(grid, samples) {
+            XCTAssertEqual(point.coordinate.latitude, sample.latitude)
+            XCTAssertEqual(point.coordinate.longitude, sample.longitude)
+            XCTAssertEqual(point.distanceMiles, sample.distanceMiles)
+            XCTAssertEqual(point.bearing, sample.bearingDegrees)
+            XCTAssertEqual(point.isCenter, sample.isCenter)
+            XCTAssertNil(point.elevation)
+        }
+        XCTAssertEqual(samples.filter { $0.northStep == nil }.count, 4)
+    }
+
+    func testAntimeridianLongitudeIsNotWrapped() {
+        let grid = GeographicGridGenerator.generateGrid(
+            around: Coordinate(latitude: 0, longitude: 179.5),
+            radiusMiles: 50,
+            spacingMiles: 50
+        )
+        XCTAssertTrue(grid.contains { $0.coordinate.longitude > 180 })
+    }
+
+    func testContractPointCapMatchesMaxIOSGeometry() {
+        XCTAssertEqual(GeographicGridGenerator.contractPointCap(), 885)
+        XCTAssertEqual(
+            GeographicGridGenerator.estimatedPointCount(radiusMiles: 50, spacingMiles: 3),
+            885
+        )
+        XCTAssertFalse(GeographicGridGenerator.exceedsContractPointCap(radiusMiles: 50, spacingMiles: 3))
+        XCTAssertEqual(
+            GeographicGridGenerator.generateContractGrid(
+                around: Coordinate(latitude: 0, longitude: 0),
+                radiusMiles: 50,
+                spacingMiles: 3
+            ).count,
+            885
+        )
+    }
+
+    func testContractCapRejectsFiftyOneByThree() {
+        XCTAssertTrue(GeographicGridGenerator.exceedsContractPointCap(radiusMiles: 51, spacingMiles: 3))
+        XCTAssertGreaterThan(
+            GeographicGridGenerator.estimatedPointCount(radiusMiles: 51, spacingMiles: 3),
+            885
+        )
+    }
+
+    func testContractCapRejectsTinySpacingWithoutUnboundedSteps() {
+        let started = CFAbsoluteTimeGetCurrent()
+        XCTAssertTrue(GeographicGridGenerator.exceedsContractPointCap(radiusMiles: 50, spacingMiles: 1e-12))
+        XCTAssertLessThan(CFAbsoluteTimeGetCurrent() - started, 0.25)
+    }
+
+    func testContractCapRejectsExtremeFiniteRatioWithoutOverflow() {
+        let started = CFAbsoluteTimeGetCurrent()
+        XCTAssertTrue(
+            GeographicGridGenerator.exceedsContractPointCap(radiusMiles: 1e300, spacingMiles: 1e-300)
+        )
+        XCTAssertLessThan(CFAbsoluteTimeGetCurrent() - started, 0.25)
+    }
+
+    func testContractCapIsPointCountNotRadiusSpacingDomain() {
+        XCTAssertFalse(GeographicGridGenerator.exceedsContractPointCap(radiusMiles: 100, spacingMiles: 6))
+        XCTAssertEqual(
+            GeographicGridGenerator.generateContractGrid(
+                around: Coordinate(latitude: 0, longitude: 0),
+                radiusMiles: 100,
+                spacingMiles: 6
+            ).count,
+            885
+        )
+        XCTAssertFalse(GeographicGridGenerator.exceedsContractPointCap(radiusMiles: 200, spacingMiles: 50))
+        let coarse = GeographicGridGenerator.generateContractGrid(
+            around: Coordinate(latitude: 0, longitude: 0),
+            radiusMiles: 200,
+            spacingMiles: 50
+        )
+        XCTAssertGreaterThan(coarse.count, 1)
+        XCTAssertLessThanOrEqual(coarse.count, 885)
+    }
+
     func testGridAtDifferentLatitudes() {
         // Test at equator
         let equator = Coordinate(latitude: 0, longitude: 0)

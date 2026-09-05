@@ -1,6 +1,8 @@
 #!/bin/sh
-# Copy production engine calibration from contracts/data into generated
-# resource directories. Canonical files are never mutated.
+# Copy production engine calibration and the curated deep-sky catalog from
+# contracts/data into generated resource directories. Canonical files are
+# never mutated. Does not copy parked 1.1 target-scoring.json or
+# equipment-limits.json.
 #
 # Usage:
 #   scripts/bundle-engine-data [--repo-root DIR] [--destination DIR]... [--host-only]
@@ -78,6 +80,7 @@ fi
 
 repo_root=$(cd "$repo_root" && pwd)
 canonical="$repo_root/contracts/data/calibration"
+canonical_catalog="$repo_root/contracts/data/catalog"
 default_dest="$repo_root/packages/astro-engine-swift/Sources/AstroEngine/Resources/data"
 
 if [ ! -f "$repo_root/contracts/ENGINE_VERSION" ]; then
@@ -86,6 +89,10 @@ if [ ! -f "$repo_root/contracts/ENGINE_VERSION" ]; then
 fi
 if [ ! -d "$canonical" ]; then
     echo "error: missing canonical calibration directory: $canonical" >&2
+    exit 1
+fi
+if [ ! -d "$canonical_catalog" ]; then
+    echo "error: missing canonical catalog directory: $canonical_catalog" >&2
     exit 1
 fi
 
@@ -110,10 +117,18 @@ observing-quality.json
 seeing.json
 transparency.json"
 
+required_catalog_files="deep-sky.json"
+
 missing=0
 for name in $required_files; do
     if [ ! -f "$canonical/$name" ]; then
         echo "error: missing canonical calibration file: $canonical/$name" >&2
+        missing=1
+    fi
+done
+for name in $required_catalog_files; do
+    if [ ! -f "$canonical_catalog/$name" ]; then
+        echo "error: missing canonical catalog file: $canonical_catalog/$name" >&2
         missing=1
     fi
 done
@@ -131,9 +146,20 @@ is_required() {
     return 1
 }
 
-copy_calibration() {
+is_required_catalog() {
+    needle=$1
+    for name in $required_catalog_files; do
+        if [ "$name" = "$needle" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+copy_engine_data() {
     dest=$1
     mkdir -p "$dest/calibration"
+    mkdir -p "$dest/catalog"
 
     if [ -d "$dest/calibration" ]; then
         for existing in "$dest/calibration"/*; do
@@ -146,9 +172,23 @@ copy_calibration() {
             fi
         done
     fi
+    if [ -d "$dest/catalog" ]; then
+        for existing in "$dest/catalog"/*; do
+            if [ ! -e "$existing" ]; then
+                continue
+            fi
+            base=$(basename "$existing")
+            if ! is_required_catalog "$base"; then
+                rm -f "$existing"
+            fi
+        done
+    fi
 
     for name in $required_files; do
         cp "$canonical/$name" "$dest/calibration/$name"
+    done
+    for name in $required_catalog_files; do
+        cp "$canonical_catalog/$name" "$dest/catalog/$name"
     done
 }
 
@@ -172,7 +212,7 @@ while IFS= read -r dest; do
     if newline_list_contains "$copied" "$dest"; then
         continue
     fi
-    copy_calibration "$dest"
+    copy_engine_data "$dest"
     copied="$copied
 $dest"
 done <<EOF

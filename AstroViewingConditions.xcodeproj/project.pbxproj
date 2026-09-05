@@ -1497,6 +1497,7 @@
 				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
 				"$(SRCROOT)/contracts/data/calibration/seeing.json",
 				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
 				"$(SRCROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1508,6 +1509,7 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1527,6 +1529,7 @@
 				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
 				"$(SRCROOT)/contracts/data/calibration/seeing.json",
 				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
 				"$(SRCROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1538,6 +1541,7 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1557,6 +1561,7 @@
 				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
 				"$(SRCROOT)/contracts/data/calibration/seeing.json",
 				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
 				"$(SRCROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1568,6 +1573,7 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1587,6 +1593,7 @@
 				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
 				"$(SRCROOT)/contracts/data/calibration/seeing.json",
 				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
 				"$(SRCROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1598,6 +1605,7 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1617,6 +1625,7 @@
 				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
 				"$(SRCROOT)/contracts/data/calibration/seeing.json",
 				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
 				"$(SRCROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1628,6 +1637,7 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1647,6 +1657,7 @@
 				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
 				"$(SRCROOT)/contracts/data/calibration/seeing.json",
 				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
 				"$(SRCROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1658,6 +1669,7 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

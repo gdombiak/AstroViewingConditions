@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from typing import Any, Iterator
 
-from astro_engine.contracts import contracts_root
+from astro_engine.contracts import contracts_root, expand_expected_canonical_data
 from astro_engine.semver import satisfies
 
 OQ_FIXTURE_DIR = "fixtures/capabilities/observing-quality"
@@ -71,7 +71,9 @@ def load_fixture(directory: Path) -> dict[str, Any]:
         "path": directory,
         "meta": meta,
         "input": json.loads((directory / "input.json").read_text(encoding="utf-8")),
-        "expected": json.loads((directory / "expected.json").read_text(encoding="utf-8")),
+        "expected": expand_expected_canonical_data(
+            json.loads((directory / "expected.json").read_text(encoding="utf-8"))
+        ),
     }
     return payload
 

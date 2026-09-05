@@ -19,3 +19,9 @@ class FixtureRefError(ValidationError):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code = code
+
+
+class GridCapError(ValidationError):
+    """location.grid exceeded the 1.0 iOS geometry cap."""
+
+    code = "grid_cap"

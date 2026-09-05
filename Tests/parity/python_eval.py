@@ -1,11 +1,11 @@
-"""Private Python scoring adapter. Does not go through the public CLI."""
+"""Private Python library/parity adapter. Does not go through the public CLI."""
 
 from __future__ import annotations
 
 from typing import Any, Mapping
 
 from astro_engine._capability import evaluate_capability
-from astro_engine.errors import ValidationError
+from astro_engine.errors import GridCapError, ValidationError
 from astro_engine.observing_quality import ObservingQualityError
 
 
@@ -17,7 +17,7 @@ def python_envelope(capability: str, document: Mapping[str, Any]) -> dict[str, A
             "ok": True,
             "result": result,
         }
-    except (ValidationError, ObservingQualityError) as exc:
+    except (ValidationError, ObservingQualityError, GridCapError) as exc:
         return {
             "capability": capability,
             "ok": False,

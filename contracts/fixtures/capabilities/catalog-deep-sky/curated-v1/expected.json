@@ -1,0 +1,7 @@
+{
+  "capability": "catalog.deep_sky",
+  "ok": true,
+  "result": {
+    "$canonical_data": "catalog/deep-sky.json"
+  }
+}

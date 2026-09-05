@@ -1,0 +1,7 @@
+capability: location.grid
+engine_semver: ">=0.1.0 <2.0.0"
+equality: grid
+hosts: [swift, python]
+origin: transcribed
+notes: >
+  Equator near the antimeridian. Production does not wrap longitude into [-180, 180]; east of 179.5 can exceed 180.
