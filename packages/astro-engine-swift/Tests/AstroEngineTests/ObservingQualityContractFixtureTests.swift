@@ -4,7 +4,7 @@ import Foundation
 
 /// Additive F3 regression: existing XCTest bundle vs the OQ contract fixtures.
 ///
-/// Does not generate or rewrite goldens. Production Swift still uses in-source literals.
+/// Does not generate or rewrite goldens. Production Swift loads canonical calibration JSON.
 final class ObservingQualityContractFixtureTests: XCTestCase {
     private let capabilityID = F3ObservingQualityContractSupport.capabilityID
 
@@ -77,10 +77,11 @@ final class ObservingQualityContractFixtureTests: XCTestCase {
         XCTAssertEqual(anchor["light_pollution.modeled_zenith_sky_brightness"], "exact")
     }
 
-    func testCanonicalJSONAnchorsMatchSwiftLiterals() throws {
+    func testCanonicalJSONAnchorsMatchRuntimeCalibration() throws {
         let url = try F3ObservingQualityContractSupport.contractsDirectory()
             .appendingPathComponent(F3ObservingQualityContractSupport.calibrationRelativePath)
         let json = try F3ObservingQualityContractSupport.loadJSONObject(url)
+        let decoded = try EngineCalibration.loadFromContractsRoot().observingQuality
 
         XCTAssertEqual(
             Set(json.keys),
@@ -92,28 +93,35 @@ final class ObservingQualityContractFixtureTests: XCTestCase {
                 "usability_weight_anchors",
             ]
         )
-        XCTAssertEqual(F3ObservingQualityContractSupport.jsonInt(json["score_min"]), 0)
-        XCTAssertEqual(F3ObservingQualityContractSupport.jsonInt(json["score_max"]), 100)
+        XCTAssertEqual(F3ObservingQualityContractSupport.jsonInt(json["score_min"]), decoded.scoreMin)
+        XCTAssertEqual(F3ObservingQualityContractSupport.jsonInt(json["score_max"]), decoded.scoreMax)
 
         let plausible = try XCTUnwrap(
             F3ObservingQualityContractSupport.asObject(json["plausible_brightness"])
         )
         XCTAssertEqual(
             F3ObservingQualityContractSupport.jsonDouble(plausible["min"]),
-            ModeledZenithBrightnessValidity.minimumPlausibleBrightness
+            decoded.plausibleBrightness.min
         )
         XCTAssertEqual(
             F3ObservingQualityContractSupport.jsonDouble(plausible["max"]),
+            decoded.plausibleBrightness.max
+        )
+        XCTAssertEqual(plausible["unit"] as? String, decoded.plausibleBrightness.unit)
+        XCTAssertEqual(
+            decoded.plausibleBrightness.min,
+            ModeledZenithBrightnessValidity.minimumPlausibleBrightness
+        )
+        XCTAssertEqual(
+            decoded.plausibleBrightness.max,
             ModeledZenithBrightnessValidity.maximumPlausibleBrightness
         )
-        XCTAssertEqual(plausible["unit"] as? String, "mag/arcsec2")
 
         let jsonBase = try XCTUnwrap(
             F3ObservingQualityContractSupport.asArray(json["base_penalty_anchors"])
         )
-        let swiftBase = ObservingQualityCalculator.basePenaltyAnchors
-        XCTAssertEqual(jsonBase.count, swiftBase.count, "base_penalty_anchors count drifted")
-        for (rawAnchor, swiftAnchor) in zip(jsonBase, swiftBase) {
+        XCTAssertEqual(jsonBase.count, decoded.basePenaltyAnchors.count, "base_penalty_anchors count drifted")
+        for (rawAnchor, swiftAnchor) in zip(jsonBase, decoded.basePenaltyAnchors) {
             let jsonAnchor = try XCTUnwrap(F3ObservingQualityContractSupport.asObject(rawAnchor))
             XCTAssertEqual(
                 F3ObservingQualityContractSupport.jsonDouble(jsonAnchor["brightness"]),
@@ -128,9 +136,12 @@ final class ObservingQualityContractFixtureTests: XCTestCase {
         let jsonWeight = try XCTUnwrap(
             F3ObservingQualityContractSupport.asArray(json["usability_weight_anchors"])
         )
-        let swiftWeight = ObservingQualityCalculator.usabilityWeightAnchors
-        XCTAssertEqual(jsonWeight.count, swiftWeight.count, "usability_weight_anchors count drifted")
-        for (rawAnchor, swiftAnchor) in zip(jsonWeight, swiftWeight) {
+        XCTAssertEqual(
+            jsonWeight.count,
+            decoded.usabilityWeightAnchors.count,
+            "usability_weight_anchors count drifted"
+        )
+        for (rawAnchor, swiftAnchor) in zip(jsonWeight, decoded.usabilityWeightAnchors) {
             let jsonAnchor = try XCTUnwrap(F3ObservingQualityContractSupport.asObject(rawAnchor))
             XCTAssertEqual(
                 F3ObservingQualityContractSupport.jsonDouble(jsonAnchor["score"]),

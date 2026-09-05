@@ -1258,6 +1258,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = B988BF74E91ED7DA03F463F0 /* Build configuration list for PBXNativeTarget "SharedCode_watchOS" */;
 			buildPhases = (
+				3D2EBB9505834A341180C050 /* Bundle Engine Calibration */,
 				F28CB0D25FECED13461FC93E /* Sources */,
 				F7FEBCCD0FA6ABB60597FB73 /* Frameworks */,
 			);
@@ -1277,6 +1278,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 43E1CD9619243AA83D62D3EB /* Build configuration list for PBXNativeTarget "AstroViewingConditionsWatchWidget" */;
 			buildPhases = (
+				D8874EB6F28199FB42247C97 /* Bundle Engine Calibration */,
 				40D2301348209017FFB16419 /* Sources */,
 				8BABCD265736602F046AD527 /* Frameworks */,
 			);
@@ -1296,6 +1298,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = FA8C12B91E9AB26AF991F3D9 /* Build configuration list for PBXNativeTarget "AstroViewingConditions" */;
 			buildPhases = (
+				3D85D62C214B3538FF138A9E /* Bundle Engine Calibration */,
 				6BAE4E30032A7AA42DBA1E92 /* Sources */,
 				1AF84CDC9F6734853809F867 /* Resources */,
 				3A1C12B081076E3B08D9E6BA /* Frameworks */,
@@ -1321,6 +1324,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = E94DB6ED4CF7E61058A56B9F /* Build configuration list for PBXNativeTarget "AstroViewingConditionsWatch" */;
 			buildPhases = (
+				D433E4B44B4D90A901D87A03 /* Bundle Engine Calibration */,
 				77B609AD9D8C42F934AE1866 /* Sources */,
 				5DB4BC4A2243F8FB1A736057 /* Resources */,
 				3B587D665FEF5C0CD9638213 /* Frameworks */,
@@ -1344,6 +1348,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 70DEA46B4990420562C7CB15 /* Build configuration list for PBXNativeTarget "SharedCode_iOS" */;
 			buildPhases = (
+				EE56FF53B583EBB18DDDBD81 /* Bundle Engine Calibration */,
 				B1804B45118B8C04E7C19DB9 /* Sources */,
 				9A49FD7DBB8646DF3B43C622 /* Frameworks */,
 			);
@@ -1381,6 +1386,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7FCAFFC19C13DA2B38E68AB5 /* Build configuration list for PBXNativeTarget "NightConditionsWidget" */;
 			buildPhases = (
+				442E2DF68CCFCA5BA7BB75F7 /* Bundle Engine Calibration */,
 				B8ACC87017AC45D0054F8643 /* Sources */,
 				AB6D4B8895A14456C57559A6 /* Frameworks */,
 			);
@@ -1476,6 +1482,189 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		3D2EBB9505834A341180C050 /* Bundle Engine Calibration */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/contracts/data/calibration/fog.json",
+				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/seeing.json",
+				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/scripts/bundle-engine-data",
+			);
+			name = "Bundle Engine Calibration";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/fog.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/night-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			showEnvVarsInLog = 0;
+		};
+		3D85D62C214B3538FF138A9E /* Bundle Engine Calibration */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/contracts/data/calibration/fog.json",
+				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/seeing.json",
+				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/scripts/bundle-engine-data",
+			);
+			name = "Bundle Engine Calibration";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/fog.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/night-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			showEnvVarsInLog = 0;
+		};
+		442E2DF68CCFCA5BA7BB75F7 /* Bundle Engine Calibration */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/contracts/data/calibration/fog.json",
+				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/seeing.json",
+				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/scripts/bundle-engine-data",
+			);
+			name = "Bundle Engine Calibration";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/fog.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/night-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			showEnvVarsInLog = 0;
+		};
+		D433E4B44B4D90A901D87A03 /* Bundle Engine Calibration */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/contracts/data/calibration/fog.json",
+				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/seeing.json",
+				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/scripts/bundle-engine-data",
+			);
+			name = "Bundle Engine Calibration";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/fog.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/night-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			showEnvVarsInLog = 0;
+		};
+		D8874EB6F28199FB42247C97 /* Bundle Engine Calibration */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/contracts/data/calibration/fog.json",
+				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/seeing.json",
+				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/scripts/bundle-engine-data",
+			);
+			name = "Bundle Engine Calibration";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/fog.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/night-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			showEnvVarsInLog = 0;
+		};
+		EE56FF53B583EBB18DDDBD81 /* Bundle Engine Calibration */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/contracts/data/calibration/fog.json",
+				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
+				"$(SRCROOT)/contracts/data/calibration/seeing.json",
+				"$(SRCROOT)/contracts/data/calibration/transparency.json",
+				"$(SRCROOT)/scripts/bundle-engine-data",
+			);
+			name = "Bundle Engine Calibration";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/fog.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/night-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		40D2301348209017FFB16419 /* Sources */ = {

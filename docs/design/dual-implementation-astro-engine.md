@@ -1397,16 +1397,18 @@ SwiftPM resources must live **inside the target directory** (Apple: scoped like 
 | iOS / watch production | Xcode **Run Script** build phase (XcodeGen) runs `scripts/bundle-engine-data` into the AstroEngine resource bundle or app/watch resource dir **under `BUILT_PRODUCTS_DIR` / a gitignored `Resources/data`**. `Bundle.module` / host bundle reads that. Watch still must **not** embed the 10 MiB atlas; calibration JSON is tiny. |
 | CLI image on the Grok Bot VM | Ship the repo (or a checkout) so the CLI finds `contracts/data` next to the engine; production also bundles `light_pollution_global_v1.bin` as a **data file**, not via this JSON copy path. |
 
-`scripts/bundle-engine-data` is invoked by Makefile / Xcode script phase / CI **before** `swift test` of a package that uses `Bundle.module` for calibration. Generated directories are gitignored. There is no `--check` of committed copies because copies are not source.
+`scripts/bundle-engine-data` is invoked by the Xcode script phase (and later Makefile / CI) to populate generated calibration JSON. Generated `calibration/` directories are gitignored. There is no `--check` of committed copies because copies are not source.
 
-If a developer runs `swift test` inside `packages/astro-engine-swift` without the script, tests must still pass: they use `CONTRACTS_ROOT` / ancestor walk, **not** `Bundle.module`, for calibration and fixtures. `Bundle.module` is production-only.
+If a developer runs `swift test` inside `packages/astro-engine-swift` without the script, tests must still pass: they use `CONTRACTS_ROOT` / ancestor walk, **not** `Bundle.module`, for calibration and fixtures. `Bundle.module` is production-only. The tracked empty `Resources/data` directory exists only so SwiftPM can evaluate the resource rule.
 
-`.gitignore` (add in the feasibility/setup commits):
+`.gitignore` (generated JSON only; the parent directory is tracked):
 
 ```
-packages/astro-engine-swift/Sources/AstroEngine/Resources/data/
+packages/astro-engine-swift/Sources/AstroEngine/Resources/data/calibration/
 packages/astro-engine-python/src/astro_engine/data/
 ```
+
+SwiftPM `.copy("Resources/data")` fails `swift build` / `swift test` if that directory is absent. A committed `.gitkeep` keeps the directory in the source tree without committing calibration copies. Package tests still read canonical files via `CONTRACTS_ROOT` / ancestor walk and do **not** require the generated `calibration/` JSON.
 
 ### LPATLAS1
 
@@ -1673,6 +1675,13 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 - **Files:** `scripts/bundle-engine-data`; gitignore generated resource dirs; Swift readers; tests that JSON equals former literals via `CONTRACTS_ROOT`; XcodeGen Run Script phase.
 - **Depends on:** Phase 1, Phase 3
 - **Notes:** **No committed copies, no symlinks.** Tests never need the copy.
+- **Implementation notes (2026-09-04):**
+  - Production Swift binds `fog.json`, `night-quality.json`, `observing-quality.json`, `seeing.json`, and `transparency.json`. `target-scoring.json` stays unbound (parked 1.1 numbers; procedure/fixtures/ports are Phase 15). Catalog JSON, equipment limits, and LP identity remain Swift literals until their later phases.
+  - `scripts/bundle-engine-data` copies **only** those five files. It does not copy `target-scoring.json`, so unfinished 1.1 data cannot become a silent production runtime contract.
+  - SwiftPM cannot copy a missing `Resources/data` directory (`swift test` fails). The directory is tracked via `.gitkeep`; generated `Resources/data/calibration/*.json` is gitignored. Empty `data/` is enough for package evaluation; tests use `CONTRACTS_ROOT`.
+  - Scheme pre-actions run `scripts/bundle-engine-data` (package `Resources/data` copy) before SPM compiles AstroEngine. Per-target Xcode Run Scripts use `--host-only` so they copy only into `${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/data`. Declaring the package source files as outputs of every target made Xcode fail with "Multiple commands produce".
+  - Runtime lookup: iOS/watchOS use `Bundle.module` then host/framework bundles only, and fail fast if the copy is missing (no repo walk; a simulator checkout would hide a packaging hole). macOS tests and `astro-engine-eval` load canonical `contracts/data` via `CONTRACTS_ROOT` / ancestor walk only; they do not probe `Bundle.module`. `EngineCalibration.current` is one immutable snapshot; scoring APIs do not reopen JSON per call.
+  - Watch may embed the tiny calibration JSON. Watch still must not embed `light_pollution_global_v1.bin`.
 
 ### Phase 5 — Provider fixtures from existing XCTest inventory
 

@@ -16,26 +16,6 @@ import Foundation
 /// and Best Nearby (when every candidate has valid light-pollution data).
 public enum ObservingQualityCalculator: Sendable {
 
-    // MARK: - Product calibration anchors (not Bortle classes; internal)
-
-    /// Provisional base-penalty anchors: (mag/arcsec², base penalty points).
-    static let basePenaltyAnchors: [(brightness: Double, penalty: Double)] = [
-        (17.5, 8.0),
-        (18.5, 7.0),
-        (19.5, 5.0),
-        (20.5, 3.0),
-        (21.3, 1.0),
-        (21.75, 0.0),
-    ]
-
-    /// Usability weight anchors: (nightConditionsScore, weight).
-    static let usabilityWeightAnchors: [(score: Double, weight: Double)] = [
-        (35, 0.00),
-        (45, 0.25),
-        (65, 0.75),
-        (80, 1.00),
-    ]
-
     // MARK: - Public API
 
     /// Assess overall observing quality from an existing night-conditions score and optional atlas brightness.
@@ -49,10 +29,25 @@ public enum ObservingQualityCalculator: Sendable {
         nightConditionsScore: Int,
         modeledZenithSkyBrightness: Double?
     ) -> ObservingQualityAssessment {
-        let clampedNight = clampScore(nightConditionsScore)
+        assess(
+            nightConditionsScore: nightConditionsScore,
+            modeledZenithSkyBrightness: modeledZenithSkyBrightness,
+            calibration: EngineCalibration.current.observingQuality
+        )
+    }
+
+    public static func assess(
+        nightConditionsScore: Int,
+        modeledZenithSkyBrightness: Double?,
+        calibration: ObservingQualityCalibration
+    ) -> ObservingQualityAssessment {
+        let clampedNight = clampScore(nightConditionsScore, calibration: calibration)
 
         guard let brightness = modeledZenithSkyBrightness,
-              let base = baseLightPollutionPenalty(modeledZenithSkyBrightness: brightness)
+              let base = baseLightPollutionPenalty(
+                modeledZenithSkyBrightness: brightness,
+                calibration: calibration
+              )
         else {
             return ObservingQualityAssessment(
                 score: clampedNight,
@@ -61,10 +56,10 @@ public enum ObservingQualityCalculator: Sendable {
             )
         }
 
-        let weight = usabilityWeight(nightConditionsScore: clampedNight)
+        let weight = usabilityWeight(nightConditionsScore: clampedNight, calibration: calibration)
         let applied = base * weight
         let raw = Double(clampedNight) - applied
-        let overall = clampScore(Int(raw.rounded()))
+        let overall = clampScore(Int(raw.rounded()), calibration: calibration)
 
         return ObservingQualityAssessment(
             score: overall,
@@ -83,22 +78,40 @@ public enum ObservingQualityCalculator: Sendable {
     /// Returns `nil` outside the supported atlas range so invalid values cannot be
     /// endpoint-clamped and mistaken for valid polluted or pristine skies.
     static func baseLightPollutionPenalty(modeledZenithSkyBrightness: Double) -> Double? {
-        guard ModeledZenithBrightnessValidity.isBrightnessInPlausibleRange(
-            modeledZenithSkyBrightness
-        ) else {
+        baseLightPollutionPenalty(
+            modeledZenithSkyBrightness: modeledZenithSkyBrightness,
+            calibration: EngineCalibration.current.observingQuality
+        )
+    }
+
+    static func baseLightPollutionPenalty(
+        modeledZenithSkyBrightness: Double,
+        calibration: ObservingQualityCalibration
+    ) -> Double? {
+        guard calibration.isBrightnessInPlausibleRange(modeledZenithSkyBrightness) else {
             return nil
         }
         return piecewiseLinear(
             x: modeledZenithSkyBrightness,
-            anchors: basePenaltyAnchors.map { ($0.brightness, $0.penalty) }
+            anchors: calibration.basePenaltyAnchors.map { ($0.brightness, $0.penalty) }
         )
     }
 
     /// Usability weight for an existing night-conditions score (0…1).
     static func usabilityWeight(nightConditionsScore: Int) -> Double {
+        usabilityWeight(
+            nightConditionsScore: nightConditionsScore,
+            calibration: EngineCalibration.current.observingQuality
+        )
+    }
+
+    static func usabilityWeight(
+        nightConditionsScore: Int,
+        calibration: ObservingQualityCalibration
+    ) -> Double {
         piecewiseLinear(
-            x: Double(clampScore(nightConditionsScore)),
-            anchors: usabilityWeightAnchors.map { ($0.score, $0.weight) }
+            x: Double(clampScore(nightConditionsScore, calibration: calibration)),
+            anchors: calibration.usabilityWeightAnchors.map { ($0.score, $0.weight) }
         )
     }
 
@@ -129,6 +142,10 @@ public enum ObservingQualityCalculator: Sendable {
     }
 
     static func clampScore(_ score: Int) -> Int {
-        min(100, max(0, score))
+        clampScore(score, calibration: EngineCalibration.current.observingQuality)
+    }
+
+    static func clampScore(_ score: Int, calibration: ObservingQualityCalibration) -> Int {
+        min(calibration.scoreMax, max(calibration.scoreMin, score))
     }
 }

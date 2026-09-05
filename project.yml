@@ -18,8 +18,31 @@ packages:
   AstroEngine:
     path: packages/astro-engine-swift
 
+targetTemplates:
+  BundleEngineCalibration:
+    preBuildScripts:
+      - name: Bundle Engine Calibration
+        script: '"${SRCROOT}/scripts/bundle-engine-data" --host-only'
+        basedOnDependencyAnalysis: true
+        showEnvVars: false
+        inputFiles:
+          - $(SRCROOT)/contracts/data/calibration/fog.json
+          - $(SRCROOT)/contracts/data/calibration/night-quality.json
+          - $(SRCROOT)/contracts/data/calibration/observing-quality.json
+          - $(SRCROOT)/contracts/data/calibration/seeing.json
+          - $(SRCROOT)/contracts/data/calibration/transparency.json
+          - $(SRCROOT)/scripts/bundle-engine-data
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/fog.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/night-quality.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json
+
 targets:
   SharedCode:
+    templates:
+      - BundleEngineCalibration
     type: framework
     platform: [iOS, watchOS]
     sources:
@@ -37,6 +60,8 @@ targets:
         product: AstroEngine
 
   AstroViewingConditions:
+    templates:
+      - BundleEngineCalibration
     type: application
     platform: iOS
     sources:
@@ -70,6 +95,8 @@ targets:
         codeSignOnCopy: true
 
   NightConditionsWidget:
+    templates:
+      - BundleEngineCalibration
     type: app-extension
     platform: iOS
     sources:
@@ -108,6 +135,8 @@ targets:
       - target: AstroViewingConditions
 
   AstroViewingConditionsWatch:
+    templates:
+      - BundleEngineCalibration
     type: application
     platform: watchOS
     deploymentTarget: "11.0"
@@ -137,6 +166,8 @@ targets:
         codeSignOnCopy: true
 
   AstroViewingConditionsWatchWidget:
+    templates:
+      - BundleEngineCalibration
     type: app-extension
     platform: watchOS
     deploymentTarget: "11.0"
@@ -159,12 +190,20 @@ schemes:
     build:
       targets:
         AstroViewingConditions: all
+      preActions:
+        - name: Bundle Engine Calibration
+          script: '"${SRCROOT}/scripts/bundle-engine-data"'
+          settingsTarget: AstroViewingConditions
     run:
       config: Debug
     test:
       config: Debug
       targets:
         - AstroViewingConditionsTests
+      preActions:
+        - name: Bundle Engine Calibration
+          script: '"${SRCROOT}/scripts/bundle-engine-data"'
+          settingsTarget: AstroViewingConditions
     profile:
       config: Release
     analyze:
@@ -175,6 +214,10 @@ schemes:
     build:
       targets:
         AstroViewingConditionsWatch: all
+      preActions:
+        - name: Bundle Engine Calibration
+          script: '"${SRCROOT}/scripts/bundle-engine-data"'
+          settingsTarget: AstroViewingConditionsWatch
     run:
       config: Debug
     profile:

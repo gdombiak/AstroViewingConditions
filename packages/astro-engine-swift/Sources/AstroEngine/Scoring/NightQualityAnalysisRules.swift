@@ -20,26 +20,37 @@ public enum NightQualityAnalysisRules {
     }
 
     public static func moonPenalty(illumination: Int, altitude: Double) -> Double {
+        moonPenalty(
+            illumination: illumination,
+            altitude: altitude,
+            calibration: EngineCalibration.current.nightQuality
+        )
+    }
+
+    public static func moonPenalty(
+        illumination: Int,
+        altitude: Double,
+        calibration: NightQualityCalibration
+    ) -> Double {
         guard altitude > 0 else { return 0 }
 
-        let illuminationScore: Double
-        switch illumination {
-        case ...10: illuminationScore = 0
-        case ...25: illuminationScore = 0.5
-        case ...50: illuminationScore = 1
-        default: illuminationScore = 2
-        }
+        let illuminationScore = CalibrationTables.score(
+            for: illumination,
+            in: calibration.moonIlluminationBuckets
+        )
         let altitudeFactor = min(max(altitude / 90, 0), 1)
         return illuminationScore * (0.5 + 0.5 * altitudeFactor)
     }
 
     public static func windPenalty(_ windSpeed: Double) -> Double {
-        switch windSpeed {
-        case ...3: return 0
-        case ...6: return 0.5
-        case ...10: return 1
-        default: return 2
-        }
+        windPenalty(windSpeed, calibration: EngineCalibration.current.nightQuality)
+    }
+
+    public static func windPenalty(
+        _ windSpeed: Double,
+        calibration: NightQualityCalibration
+    ) -> Double {
+        CalibrationTables.score(for: windSpeed, in: calibration.windPenaltyTable)
     }
 
     public static func cloudTiming(
@@ -106,7 +117,9 @@ public enum NightQualityAnalysisRules {
         }
 
         for index in hourlyRatings.indices {
-            let isHeavyCloud = hourlyRatings[index].cloudCover >= 80
+            let isHeavyCloud =
+                hourlyRatings[index].cloudCover
+                >= EngineCalibration.current.nightQuality.cloudFloor.cloudCoverMin
             let followsPreviousHour = index > 0 &&
                 hourlyRatings[index].time.timeIntervalSince(hourlyRatings[index - 1].time) == 3_600
 

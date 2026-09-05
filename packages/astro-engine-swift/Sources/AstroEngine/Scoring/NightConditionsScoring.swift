@@ -9,16 +9,23 @@ public enum NightConditionsScoring: Sendable {
     /// Converts a night-quality assessment to the public 0–100 score.
     /// Higher is better.
     public static func publicScore(_ assessment: NightQualityAssessment) -> Int {
+        publicScore(assessment, calibration: EngineCalibration.current.nightQuality.publicScore)
+    }
+
+    public static func publicScore(
+        _ assessment: NightQualityAssessment,
+        calibration: NightQualityCalibration.PublicScore
+    ) -> Int {
         let baseScore: Int
         switch assessment.rating {
         case .excellent:
-            baseScore = 90
+            baseScore = calibration.excellentBase
         case .good:
-            baseScore = 70
+            baseScore = calibration.goodBase
         case .fair:
-            baseScore = 45
+            baseScore = calibration.fairBase
         case .poor:
-            baseScore = 20
+            baseScore = calibration.poorBase
         }
 
         let hourlyScores = assessment.hourlyRatings.map { $0.score }
@@ -26,10 +33,10 @@ public enum NightConditionsScoring: Sendable {
         if !hourlyScores.isEmpty {
             let avgScore = hourlyScores.reduce(0, +) / Double(hourlyScores.count)
             // Convert avgScore (0-2, lower is better) to adjustment (-10 to +10)
-            adjustment = Int((1.0 - avgScore) * 10)
+            adjustment = Int((1.0 - avgScore) * calibration.adjustmentScale)
         }
 
         let finalScore = baseScore + adjustment
-        return min(100, max(0, finalScore))
+        return min(calibration.scoreMax, max(calibration.scoreMin, finalScore))
     }
 }

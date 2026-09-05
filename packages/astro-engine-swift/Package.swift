@@ -21,6 +21,9 @@ let package = Package(
             name: "AstroEngine",
             dependencies: [
                 .product(name: "SunCalc", package: "SunCalc"),
+            ],
+            resources: [
+                .copy("Resources/data"),
             ]
         ),
         .executableTarget(

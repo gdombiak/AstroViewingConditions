@@ -33,6 +33,13 @@ packages/astro-engine-swift/Package.resolved
 Package.resolved
 .swiftpm/
 
+# Generated AstroEngine calibration copied at build time.
+# Canonical source is contracts/data/. The parent directory is tracked via
+# .gitkeep so SwiftPM can evaluate `.copy("Resources/data")` on a clean
+# checkout; package tests do not read this copy.
+packages/astro-engine-swift/Sources/AstroEngine/Resources/data/calibration/
+
+
 # IDE
 .vscode/
 .idea/

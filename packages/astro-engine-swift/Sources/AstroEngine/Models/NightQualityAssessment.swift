@@ -69,9 +69,15 @@ public struct NightQualityAssessment: Sendable, Codable, Hashable {
         case poor
         
         public enum Thresholds {
-            public static let excellentMax: Double = 0.3
-            public static let goodMax: Double = 0.7
-            public static let fairMax: Double = 1.0
+            public static var excellentMax: Double {
+                EngineCalibration.current.nightQuality.ratingThresholds.excellentMax
+            }
+            public static var goodMax: Double {
+                EngineCalibration.current.nightQuality.ratingThresholds.goodMax
+            }
+            public static var fairMax: Double {
+                EngineCalibration.current.nightQuality.ratingThresholds.fairMax
+            }
         }
         
         public static func from(score: Double) -> Self {

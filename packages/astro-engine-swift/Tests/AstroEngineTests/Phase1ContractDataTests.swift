@@ -2,8 +2,8 @@ import XCTest
 import Foundation
 @testable import AstroEngine
 
-/// Additive Phase 1 drift checks: contract JSON vs current Swift literals.
-/// Does not change production scoring or make production read contracts/data.
+/// Additive Phase 1 drift checks: contract JSON vs the Swift runtime data model.
+/// Scoring calibration is decoded by the production reader; catalog/identity remain literals.
 final class Phase1ContractDataTests: XCTestCase {
     func testLightPollutionIdentityJSONMatchesSwiftLiterals() throws {
         let json = try loadJSON("data/identity/light-pollution-dataset.json")
@@ -31,32 +31,54 @@ final class Phase1ContractDataTests: XCTestCase {
         )
     }
 
-    func testNightQualityRatingThresholdsMatchSwiftLiterals() throws {
+    func testNightQualityRatingThresholdsMatchRuntimeCalibration() throws {
         let json = try loadJSON("data/calibration/night-quality.json")
+        let decoded = try EngineCalibration.loadFromContractsRoot().nightQuality
         let thresholds = try XCTUnwrap(F3ObservingQualityContractSupport.asObject(json["rating_thresholds"]))
         XCTAssertEqual(
             F3ObservingQualityContractSupport.jsonDouble(thresholds["excellent_max"]),
-            NightQualityAssessment.Rating.Thresholds.excellentMax
+            decoded.ratingThresholds.excellentMax
         )
         XCTAssertEqual(
             F3ObservingQualityContractSupport.jsonDouble(thresholds["good_max"]),
-            NightQualityAssessment.Rating.Thresholds.goodMax
+            decoded.ratingThresholds.goodMax
         )
         XCTAssertEqual(
             F3ObservingQualityContractSupport.jsonDouble(thresholds["fair_max"]),
-            NightQualityAssessment.Rating.Thresholds.fairMax
+            decoded.ratingThresholds.fairMax
+        )
+        XCTAssertEqual(
+            NightQualityAssessment.Rating.Thresholds.excellentMax,
+            decoded.ratingThresholds.excellentMax
+        )
+        XCTAssertEqual(
+            NightQualityAssessment.Rating.Thresholds.goodMax,
+            decoded.ratingThresholds.goodMax
+        )
+        XCTAssertEqual(
+            NightQualityAssessment.Rating.Thresholds.fairMax,
+            decoded.ratingThresholds.fairMax
         )
         let floor = try XCTUnwrap(F3ObservingQualityContractSupport.asObject(json["cloud_floor"]))
         XCTAssertEqual(
             F3ObservingQualityContractSupport.jsonDouble(floor["fair_max"]),
-            NightQualityAssessment.Rating.Thresholds.fairMax
+            decoded.cloudFloor.fairMax
         )
-        XCTAssertEqual(F3ObservingQualityContractSupport.jsonInt(floor["cloud_cover_min"]), 80)
+        XCTAssertEqual(
+            F3ObservingQualityContractSupport.jsonInt(floor["cloud_cover_min"]),
+            decoded.cloudFloor.cloudCoverMin
+        )
+        XCTAssertEqual(decoded.cloudFloor.fairMax, decoded.ratingThresholds.fairMax)
     }
 
     func testPublicScoreJSONBasesMatchCalculateScoreEmptyHours() throws {
         let json = try loadJSON("data/calibration/night-quality.json")
         let bases = try XCTUnwrap(F3ObservingQualityContractSupport.asObject(json["public_score"]))
+        let decoded = try EngineCalibration.loadFromContractsRoot().nightQuality.publicScore
+        XCTAssertEqual(decoded.excellentBase, F3ObservingQualityContractSupport.jsonInt(bases["excellent_base"]))
+        XCTAssertEqual(decoded.goodBase, F3ObservingQualityContractSupport.jsonInt(bases["good_base"]))
+        XCTAssertEqual(decoded.fairBase, F3ObservingQualityContractSupport.jsonInt(bases["fair_base"]))
+        XCTAssertEqual(decoded.poorBase, F3ObservingQualityContractSupport.jsonInt(bases["poor_base"]))
         XCTAssertEqual(
             NightConditionsScoring.publicScore(emptyAssessment(.excellent)),
             F3ObservingQualityContractSupport.jsonInt(bases["excellent_base"])

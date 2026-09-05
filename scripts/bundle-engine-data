@@ -1,0 +1,180 @@
+#!/bin/sh
+# Copy production engine calibration from contracts/data into generated
+# resource directories. Canonical files are never mutated.
+#
+# Usage:
+#   scripts/bundle-engine-data [--repo-root DIR] [--destination DIR]... [--host-only]
+#
+# Default destination:
+#   <repo>/packages/astro-engine-swift/Sources/AstroEngine/Resources/data
+#
+# When invoked from an Xcode Run Script phase, SRCROOT is the repo root and
+# TARGET_BUILD_DIR / UNLOCALIZED_RESOURCES_FOLDER_PATH add a host-bundle copy.
+# --host-only skips the package default so per-target Xcode phases do not all
+# claim the same source-tree outputs.
+set -eu
+
+usage() {
+    cat <<'EOF' >&2
+usage: bundle-engine-data [--repo-root DIR] [--destination DIR]... [--host-only]
+EOF
+}
+
+script_path=$0
+case "$script_path" in
+    /*) ;;
+    *) script_path=$(pwd)/$script_path ;;
+esac
+script_dir=$(cd "$(dirname "$script_path")" && pwd)
+
+repo_root=""
+destinations=""
+host_only=0
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        --repo-root)
+            if [ $# -lt 2 ]; then
+                echo "error: --repo-root requires a directory" >&2
+                usage
+                exit 2
+            fi
+            repo_root=$2
+            shift 2
+            ;;
+        --destination)
+            if [ $# -lt 2 ]; then
+                echo "error: --destination requires a directory" >&2
+                usage
+                exit 2
+            fi
+            destinations="$destinations
+$2"
+            shift 2
+            ;;
+        --host-only)
+            host_only=1
+            shift
+            ;;
+        *)
+            echo "error: unknown argument: $1" >&2
+            usage
+            exit 2
+            ;;
+    esac
+done
+
+if [ -z "$repo_root" ]; then
+    if [ -n "${SRCROOT:-}" ]; then
+        repo_root=$SRCROOT
+    else
+        repo_root=$(cd "$script_dir/.." && pwd)
+    fi
+fi
+
+repo_root=$(cd "$repo_root" && pwd)
+canonical="$repo_root/contracts/data/calibration"
+default_dest="$repo_root/packages/astro-engine-swift/Sources/AstroEngine/Resources/data"
+
+if [ ! -f "$repo_root/contracts/ENGINE_VERSION" ]; then
+    echo "error: repo root '$repo_root' does not contain contracts/ENGINE_VERSION" >&2
+    exit 1
+fi
+if [ ! -d "$canonical" ]; then
+    echo "error: missing canonical calibration directory: $canonical" >&2
+    exit 1
+fi
+
+if [ "$host_only" -eq 0 ]; then
+    destinations="$default_dest
+$destinations"
+fi
+
+if [ -n "${TARGET_BUILD_DIR:-}" ] && [ -n "${UNLOCALIZED_RESOURCES_FOLDER_PATH:-}" ]; then
+    destinations="$destinations
+$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/data"
+fi
+
+if [ -z "$(echo "$destinations" | tr -d '[:space:]')" ]; then
+    echo "error: no destination; pass --destination or omit --host-only" >&2
+    exit 1
+fi
+
+required_files="fog.json
+night-quality.json
+observing-quality.json
+seeing.json
+transparency.json"
+
+missing=0
+for name in $required_files; do
+    if [ ! -f "$canonical/$name" ]; then
+        echo "error: missing canonical calibration file: $canonical/$name" >&2
+        missing=1
+    fi
+done
+if [ "$missing" -ne 0 ]; then
+    exit 1
+fi
+
+is_required() {
+    needle=$1
+    for name in $required_files; do
+        if [ "$name" = "$needle" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+copy_calibration() {
+    dest=$1
+    mkdir -p "$dest/calibration"
+
+    if [ -d "$dest/calibration" ]; then
+        for existing in "$dest/calibration"/*; do
+            if [ ! -e "$existing" ]; then
+                continue
+            fi
+            base=$(basename "$existing")
+            if ! is_required "$base"; then
+                rm -f "$existing"
+            fi
+        done
+    fi
+
+    for name in $required_files; do
+        cp "$canonical/$name" "$dest/calibration/$name"
+    done
+}
+
+newline_list_contains() {
+    haystack=$1
+    needle=$2
+    while IFS= read -r item; do
+        [ -n "$item" ] || continue
+        if [ "$item" = "$needle" ]; then
+            return 0
+        fi
+    done <<EOF
+$haystack
+EOF
+    return 1
+}
+
+copied=""
+while IFS= read -r dest; do
+    [ -n "$dest" ] || continue
+    if newline_list_contains "$copied" "$dest"; then
+        continue
+    fi
+    copy_calibration "$dest"
+    copied="$copied
+$dest"
+done <<EOF
+$destinations
+EOF

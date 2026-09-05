@@ -138,19 +138,6 @@ public struct NightQualityAnalyzer {
         }
     }
 
-    private enum Constants {
-        static let cloudCoverWeight: Double = 0.55
-        static let fogWeight: Double = 0.20
-        static let moonWeight: Double = 0.15
-        static let windWeight: Double = 0.10
-
-        static let cloudCoverThresholds: [(max: Int, score: Double)] = [
-            (5, 0.0), (20, 0.5), (40, 1.0), (60, 1.5), (100, 2.0)
-        ]
-
-        static let goodRatingThreshold: Double = 1.0
-    }
-
     /// Production analysis: night window from sun events, moon from an injected sampler.
     public static func analyzeNight(
         forecasts: [HourlyForecast],
@@ -265,6 +252,9 @@ public struct NightQualityAnalyzer {
         moonAltitude: (HourlyForecast) throws -> Double,
         moonIllumination: (HourlyForecast) throws -> Int
     ) rethrows -> NightQualityAssessment {
+        let calibration = EngineCalibration.current
+        let night = calibration.nightQuality
+
         guard !nightForecasts.isEmpty else {
             return createNoNighttimeDataAssessment(
                 nightStart: emptyNightStart,
@@ -280,19 +270,24 @@ public struct NightQualityAnalyzer {
             let moonAltitudeValue = try moonAltitude(forecast)
             let moonIlluminationValue = try moonIllumination(forecast)
 
-            let fogScore = FogCalculator.calculate(from: forecast)
-            let cloudScore = calculateCloudCoverScore(forecast.cloudCover)
+            let fogScore = FogCalculator.calculate(from: forecast, calibration: calibration.fog)
+            let cloudScore = calculateCloudCoverScore(
+                forecast.cloudCover,
+                table: night.cloudCoverScoreTable
+            )
             let seeingScore = SeeingCalculator.penalty(
                 currentTemperature: forecast.temperature,
                 previousTemperature: index > 0 ? nightForecasts[index - 1].temperature : nil,
-                windSpeed200hPa: forecast.windSpeed200hPa
+                windSpeed200hPa: forecast.windSpeed200hPa,
+                calibration: calibration.seeing
             )
             let transparencyScore = TransparencyCalculator.penalty(
                 totalCloudCover: forecast.cloudCover,
                 lowCloudCover: forecast.lowCloudCover,
                 midCloudCover: forecast.midCloudCover,
                 highCloudCover: forecast.highCloudCover,
-                visibilityMeters: forecast.visibility
+                visibilityMeters: forecast.visibility,
+                calibration: calibration.transparency
             )
             let hasTransparencyData =
                 forecast.lowCloudCover != nil &&
@@ -300,29 +295,44 @@ public struct NightQualityAnalyzer {
                 forecast.highCloudCover != nil
             let moonScore = NightQualityAnalysisRules.moonPenalty(
                 illumination: moonIlluminationValue,
-                altitude: moonAltitudeValue
+                altitude: moonAltitudeValue,
+                calibration: night
             )
-            let windScore = NightQualityAnalysisRules.windPenalty(forecast.windSpeed)
-            let fogPenalty = Double(fogScore.score) / 50.0
+            let windScore = NightQualityAnalysisRules.windPenalty(
+                forecast.windSpeed,
+                calibration: night
+            )
+            let fogPenalty = Double(fogScore.score) / night.fogPenaltyDivisor
             let weightedScore: Double
 
             switch (hasTransparencyData ? transparencyScore : nil, seeingScore) {
             case let (.some(transparency), .some(seeing)):
-                weightedScore = transparency * 0.40 + seeing * 0.20 + fogPenalty * 0.15 + moonScore * 0.15 + windScore * 0.10
+                let weights = night.weightRegimes.transparencyAndSeeing
+                weightedScore =
+                    transparency * requiredWeight(weights.transparency, "transparency_and_seeing.transparency")
+                    + seeing * requiredWeight(weights.seeing, "transparency_and_seeing.seeing")
+                    + fogPenalty * weights.fog + moonScore * weights.moon + windScore * weights.wind
             case let (.some(transparency), nil):
-                weightedScore = transparency * 0.50 + fogPenalty * 0.20 + moonScore * 0.20 + windScore * 0.10
+                let weights = night.weightRegimes.transparencyOnly
+                weightedScore =
+                    transparency * requiredWeight(weights.transparency, "transparency_only.transparency")
+                    + fogPenalty * weights.fog + moonScore * weights.moon + windScore * weights.wind
             case let (nil, .some(seeing)):
-                weightedScore = cloudScore * 0.40 + seeing * 0.20 + fogPenalty * 0.15 + moonScore * 0.15 + windScore * 0.10
+                let weights = night.weightRegimes.seeingOnly
+                weightedScore =
+                    cloudScore * requiredWeight(weights.cloud, "seeing_only.cloud")
+                    + seeing * requiredWeight(weights.seeing, "seeing_only.seeing")
+                    + fogPenalty * weights.fog + moonScore * weights.moon + windScore * weights.wind
             case (nil, nil):
-                weightedScore = cloudScore * Constants.cloudCoverWeight + fogPenalty * Constants.fogWeight + moonScore * Constants.moonWeight + windScore * Constants.windWeight
+                let weights = night.weightRegimes.neither
+                weightedScore =
+                    cloudScore * requiredWeight(weights.cloud, "neither.cloud")
+                    + fogPenalty * weights.fog + moonScore * weights.moon + windScore * weights.wind
             }
 
             let finalScore: Double
-            if forecast.cloudCover >= 80 {
-                finalScore = max(
-                    weightedScore,
-                    NightQualityAssessment.Rating.Thresholds.fairMax
-                )
+            if forecast.cloudCover >= night.cloudFloor.cloudCoverMin {
+                finalScore = max(weightedScore, night.cloudFloor.fairMax)
             } else {
                 finalScore = weightedScore
             }
@@ -349,8 +359,8 @@ public struct NightQualityAnalyzer {
             / Double(hourlyRatings.count)
 
         let avgScore: Double
-        if avgCloudCover >= 80 {
-            avgScore = max(rawAverageScore, NightQualityAssessment.Rating.Thresholds.fairMax)
+        if avgCloudCover >= Double(night.cloudFloor.cloudCoverMin) {
+            avgScore = max(rawAverageScore, night.cloudFloor.fairMax)
         } else {
             avgScore = rawAverageScore
         }
@@ -370,7 +380,10 @@ public struct NightQualityAnalyzer {
             transparencyScoreAvg: transparencyScores.isEmpty ? nil : transparencyScores.reduce(0, +) / Double(transparencyScores.count)
         )
 
-        let (trend, firstHalf, secondHalf) = calculateTrend(hourlyRatings: hourlyRatings)
+        let (trend, firstHalf, secondHalf) = calculateTrend(
+            hourlyRatings: hourlyRatings,
+            calibration: night.trend
+        )
         let cloudTiming = NightQualityAnalysisRules.cloudTiming(in: hourlyRatings)
 
         let summary = generateSummary(
@@ -379,7 +392,8 @@ public struct NightQualityAnalyzer {
             trend: trend,
             averageCloudCover: avgCloudCover,
             seeingScoreAvg: details.seeingScoreAvg,
-            cloudTiming: cloudTiming
+            cloudTiming: cloudTiming,
+            cloudCoverMin: night.cloudFloor.cloudCoverMin
         )
 
         let bestWindowStart = hourlyRatings.first?.time ?? emptyNightStart
@@ -388,7 +402,8 @@ public struct NightQualityAnalyzer {
         let bestWindow = calculateBestWindow(
             hourlyRatings: hourlyRatings,
             nightStart: bestWindowStart,
-            nightEnd: bestWindowEnd
+            nightEnd: bestWindowEnd,
+            goodRatingThreshold: night.ratingThresholds.fairMax
         )
 
         return NightQualityAssessment(
@@ -405,13 +420,18 @@ public struct NightQualityAnalyzer {
         )
     }
 
-    private static func calculateCloudCoverScore(_ cloudCover: Int) -> Double {
-        for threshold in Constants.cloudCoverThresholds {
-            if cloudCover <= threshold.max {
-                return threshold.score
-            }
+    private static func calculateCloudCoverScore(
+        _ cloudCover: Int,
+        table: [IntUpperBoundScoreBucket]
+    ) -> Double {
+        CalibrationTables.score(for: cloudCover, in: table)
+    }
+
+    private static func requiredWeight(_ value: Double?, _ label: String) -> Double {
+        guard let value else {
+            preconditionFailure("night-quality weight_regimes.\(label) missing after calibration validation")
         }
-        return 2.0
+        return value
     }
 
     private static func determineRating(_ avgScore: Double) -> NightQualityAssessment.Rating {
@@ -424,13 +444,14 @@ public struct NightQualityAnalyzer {
         trend: NightQualityAssessment.Trend,
         averageCloudCover: Double,
         seeingScoreAvg: Double?,
-        cloudTiming: NightQualityAnalysisRules.CloudTiming
+        cloudTiming: NightQualityAnalysisRules.CloudTiming,
+        cloudCoverMin: Int
     ) -> String {
         let seeingWarning = seeingScoreAvg.map { NightQualityAssessment.Rating.from(score: $0) == .poor } == true
             ? " Poor seeing may limit fine detail."
             : ""
 
-        if averageCloudCover >= 80 {
+        if averageCloudCover >= Double(cloudCoverMin) {
             switch trend {
             case .improving:
                 return "Poor conditions early, but overall conditions improve through the night." + seeingWarning
@@ -498,9 +519,10 @@ public struct NightQualityAnalyzer {
     }
 
     private static func calculateTrend(
-        hourlyRatings: [NightQualityAssessment.HourlyRating]
+        hourlyRatings: [NightQualityAssessment.HourlyRating],
+        calibration: NightQualityCalibration.Trend
     ) -> (trend: NightQualityAssessment.Trend, firstHalf: Double, secondHalf: Double) {
-        guard hourlyRatings.count >= 4 else {
+        guard hourlyRatings.count >= calibration.minHours else {
             return (.stable, 0, 0)
         }
 
@@ -510,7 +532,7 @@ public struct NightQualityAnalyzer {
 
         let diff = secondHalf - firstHalf
 
-        let threshold: Double = 0.3
+        let threshold = calibration.diffThreshold
         let trend: NightQualityAssessment.Trend
         if diff > threshold {
             trend = .degrading
@@ -526,11 +548,12 @@ public struct NightQualityAnalyzer {
     private static func calculateBestWindow(
         hourlyRatings: [NightQualityAssessment.HourlyRating],
         nightStart: Date,
-        nightEnd: Date
+        nightEnd: Date,
+        goodRatingThreshold: Double
     ) -> NightQualityAssessment.TimeWindow? {
         guard !hourlyRatings.isEmpty else { return nil }
 
-        let goodHours = hourlyRatings.filter { $0.score < Constants.goodRatingThreshold }
+        let goodHours = hourlyRatings.filter { $0.score < goodRatingThreshold }
 
         if goodHours.isEmpty {
             let best = hourlyRatings.min { $0.score < $1.score }
@@ -553,7 +576,7 @@ public struct NightQualityAnalyzer {
         var currentLength: TimeInterval = 0
 
         for rating in hourlyRatings.sorted(by: { $0.time < $1.time }) {
-            if rating.score < Constants.goodRatingThreshold {
+            if rating.score < goodRatingThreshold {
                 if currentStart == nil {
                     currentStart = rating.time
                 }
