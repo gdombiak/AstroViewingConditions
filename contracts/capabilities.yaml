@@ -6,9 +6,8 @@
 # not "already implemented on every host".
 # `hosts` is the target host/parity requirement for that freeze, not a
 # statement that every listed host already implements the capability in the
-# current branch. The pre-1.0 catalog may accumulate specs before CLI/Python
-# catch up. CLI allow-list and host coverage grow in later phases (F2 CLI
-# still allow-lists observing_quality.assess only).
+# current branch. Phase 11 public Python CLI allow-lists every 0.1.0 row
+# below. `light_pollution.validity` is not a catalogued capability.
 #
 # Live astronomy accumulates as later phases implement it. LP identity
 # and parked 1.1 target-scoring numbers live under contracts/data and
@@ -73,7 +72,9 @@ capabilities:
     summary: >
       Sample modeled zenith sky brightness from a validated LPATLAS1
       artifact. Malformed artifacts fail at load; geographic NoData and
-      out-of-coverage queries return null. Public CLI exposure is Phase 11.
+      out-of-coverage queries return null. Public CLI uses the production
+      bundled atlas by default, `--atlas-path` as an operator override, or
+      a confined injected.artifact.$ref under contracts/fixtures for tests.
 
   - id: weather.decode
     hosts: [ios, cli]
@@ -83,7 +84,6 @@ capabilities:
       Normalize a raw Open-Meteo forecast envelope into hourly weather
       DTOs plus timezone/offset metadata. HourlyForecast.id is omitted.
       Precipitation is requested by the host but is not a domain field.
-      Public CLI exposure is Phase 11.
 
   - id: iss.decode
     hosts: [ios, cli]
@@ -92,7 +92,7 @@ capabilities:
     summary: >
       Normalize a raw N2YO visualpasses envelope into ISSPass DTOs
       including the deterministic stableID. Empty and missing passes
-      both become an empty collection. Public CLI exposure is Phase 11.
+      both become an empty collection.
 
   - id: location.grid
     hosts: [ios, cli]
@@ -100,8 +100,7 @@ capabilities:
     since: "0.1.0"
     summary: >
       Deterministic circular-clipped square lattice around a center,
-      plus eight boundary bearings at the requested radius. Public CLI
-      exposure is Phase 11.
+      plus eight boundary bearings at the requested radius.
 
   - id: catalog.deep_sky
     hosts: [ios, cli]
@@ -109,4 +108,3 @@ capabilities:
     since: "0.1.0"
     summary: >
       Curated deep-sky catalog from contracts/data/catalog/deep-sky.json.
-      Public CLI exposure is Phase 11.

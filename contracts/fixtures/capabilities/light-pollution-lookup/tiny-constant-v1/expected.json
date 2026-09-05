@@ -1,0 +1,7 @@
+{
+  "capability": "light_pollution.lookup",
+  "ok": true,
+  "result": {
+    "modeled_zenith_sky_brightness": 18.016535541204018
+  }
+}

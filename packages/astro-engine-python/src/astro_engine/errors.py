@@ -25,3 +25,9 @@ class GridCapError(ValidationError):
     """location.grid exceeded the 1.0 iOS geometry cap."""
 
     code = "grid_cap"
+
+
+class AtlasInvalidError(ValidationError):
+    """LPATLAS1 artifact failed header/DFS validation at load."""
+
+    code = "atlas_invalid"

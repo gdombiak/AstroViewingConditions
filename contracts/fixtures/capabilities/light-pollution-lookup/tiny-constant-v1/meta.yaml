@@ -1,0 +1,9 @@
+capability: light_pollution.lookup
+engine_semver: ">=0.1.0 <2.0.0"
+equality: light_pollution_lookup
+hosts: [python]
+origin: transcribed
+notes: >
+  Public CLI / Python dispatcher lookup against the contract tiny-bin via
+  confined injected.artifact.$ref. Not registered in Tests/parity: Swift
+  astro-engine-eval does not dispatch light_pollution.lookup.

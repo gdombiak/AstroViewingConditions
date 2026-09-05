@@ -1,8 +1,9 @@
 """Astro Engine Python library.
 
-Public CLI 1.0 allow-list remains observing_quality.assess (Phase 11 expands it).
-Library surface includes Phase 6 scoring, Phase 7 LPATLAS1 lookup,
-Phase 8 weather/ISS provider decode, and Phase 9 grid + curated catalog.
+Public CLI 1.0 allow-list is the catalogued contract set in cli.py.
+Library surface includes scoring, LPATLAS1 lookup, weather/ISS decode,
+grid, and the curated catalog. Capability execution is shared with the
+CLI through `_capability.evaluate_capability`.
 """
 
 from astro_engine.catalog import load_deep_sky_catalog

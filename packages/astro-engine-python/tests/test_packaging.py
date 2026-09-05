@@ -47,7 +47,24 @@ def test_public_imports() -> None:
     assert CATALOG_CAPABILITY_ID == "catalog.deep_sky"
     module = importlib.import_module("astro_engine.cli")
     assert callable(module.main)
-    assert "F2 allow-list: observing_quality.assess" in module.USAGE
+    assert "1.0 allow-list:" in module.USAGE
+    assert "F2 allow-list" not in module.USAGE
+    assert "--atlas-path FILE" in module.USAGE
+    for capability in module.PUBLIC_CAPABILITY_IDS:
+        assert capability in module.USAGE
+    assert module.PUBLIC_CAPABILITY_IDS == (
+        "observing_quality.assess",
+        "night_conditions.analyze",
+        "night_conditions.score",
+        "fog.score",
+        "seeing.penalty",
+        "transparency.penalty",
+        "light_pollution.lookup",
+        "weather.decode",
+        "iss.decode",
+        "location.grid",
+        "catalog.deep_sky",
+    )
 
 
 def test_pyproject_has_no_runtime_dependencies() -> None:

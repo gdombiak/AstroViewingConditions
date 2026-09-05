@@ -11,7 +11,9 @@ CAPABILITY_ID = "observing_quality.assess"
 
 
 class ObservingQualityError(ValueError):
-    pass
+    """OQ input failed a contract check. Public CLI maps this to validation."""
+
+    code = "validation"
 
 
 def _as_night_score(value: Any) -> int:
