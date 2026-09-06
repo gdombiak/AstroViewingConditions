@@ -383,9 +383,9 @@ flowchart LR
 
 | Capability ID | Current Swift locus | Equality |
 |---|---|---|
-| `weather.decode` | `OpenMeteoForecastDecoder.parseHourlyForecasts` | Exact DTO: omit `HourlyForecast.id` (`UUID()`). Times exact under the [Open-Meteo time parser](#open-meteo-time-parser). Skip malformed times. Always emit `timezone` (`string\|null`) and `utc_offset_seconds`. **Phase 8 / current 1.0** mirrors existing `HourlyForecast` (time, cloud cover, humidity, temperature, dew point, wind speed/direction, visibility, layered clouds, 200 hPa wind) and therefore does **not** expose precipitation. Open-Meteo `precipitation` is requested and decoded on the raw envelope but is not a `HourlyForecast` field; do not invent it in Phase 8. That omission is a **known Bot-facing gap**, not a decision that precipitation is out of scope forever — see [Grok Bot information surface](#grok-bot-information-surface-objective-engine-facts-not-one-mega-capability). Do not duplicate scoring inside weather decode. |
+| `weather.decode` | `OpenMeteoForecastDecoder.parseHourlyForecasts` | Exact DTO: omit `HourlyForecast.id` (`UUID()`). Times exact under the [Open-Meteo time parser](#open-meteo-time-parser). Skip malformed times. Always emit `timezone` (`string\|null`) and `utc_offset_seconds`. **Phase 8 / current 1.0** mirrors existing `HourlyForecast` (time, cloud cover, humidity, temperature, dew point, wind speed/direction, visibility, layered clouds, 200 hPa wind) and therefore does **not** expose precipitation. Open-Meteo `precipitation` is requested and decoded on the raw envelope but is not a `HourlyForecast` field; do not invent it in Phase 8. That omission is a **known Bot-facing domain gap**, not a current production recommendation-rule parity blocker — see [Grok Bot information surface](#grok-bot-information-surface-objective-engine-facts-not-one-mega-capability). Do not duplicate scoring inside weather decode. |
 | `iss.decode` | `N2YOPassDecoder` | Exact `ISSPass` DTO including deterministic `id` (`"{riseTime.timeIntervalSince1970.bitPattern}-{duration.bitPattern}"`, IEEE-754 bits as decimal, not Python `hash()`). Empty array vs missing `passes` as in Swift (`[]` vs no-key → `[]` output either way after map). Provider azimuth degrees, magnitude, and `info` satellite metadata are not `ISSPass` fields. |
-| `night_conditions.analyze` | `NightQualityAnalyzer.analyzeNight` | Exact DTO given injected `night_window` + **1:1 `moon_series`** + clock/tz. See [Night conditions procedure](#night-conditions-analyzenight). Omit `HourlyRating.id`, English `summary`, `Trend.label`/`icon`, **`best_window`**. **Bot-facing:** `hourly_ratings` is first-class objective data (time, score, cloud, fog, moon illumination/altitude, wind, optional seeing/transparency), not merely an input to the aggregate `public_score`. |
+| `night_conditions.analyze` | `NightQualityAnalyzer.analyzeNight` | Exact DTO given injected `night_window` + **1:1 `moon_series`** + clock/tz. See [Night conditions procedure](#night-conditions-analyzenight). Omit `HourlyRating.id`, English `summary`, `Trend.label`/`icon`, **`best_window`**. The omission is an intentional current contract boundary, not evidence that the production decision is presentation-only or already portable; the [compatibility audit](#production-business-logic-compatibility-audit-2026-09-05) makes it a pre-1.0 requirement. **Bot-facing:** `hourly_ratings` is first-class objective data (time, score, cloud, fog, moon illumination/altitude, wind, optional seeing/transparency), not merely an input to the aggregate `public_score`. |
 | `night_conditions.score` | `BestSpotSearcher.calculateScore` | Integer exact. |
 | `observing_quality.assess` | `ObservingQualityCalculator.assess` | Integer `score` exact. Anchor penalties abs 1e-12. Interpolated penalties abs 1e-9 (matches `ObservingQualityCalculatorTests` home/stub). |
 | `light_pollution.lookup` | `BinaryLightPollutionProvider.modeledZenithSkyBrightness` | Exact dequantized value for fixture coordinates (existing tiny-bin lookups). |
@@ -396,15 +396,15 @@ flowchart LR
 | `location.grid` | `GeographicGridGenerator.generateGrid` | Equality on discrete `(northStep, eastStep)` lattice plus center/boundary bearings. Derived lat/lon abs **1e-4 deg** (~11 m), matching `GeographicGridGeneratorTests`. Not 1e-9 deg. |
 | `catalog.deep_sky` | `CuratedDeepSkyCatalogProvider` | Exact JSON round-trip of the 29 entries (image **id** only). |
 
-#### Later unreleased first-1.0 in-contract slices (hedges removed first)
+#### Additional unreleased first-1.0 in-contract slices (hedges removed first)
 
 | Capability ID | Notes |
 |---|---|
 | `geocoding.decode` | Open-Meteo search JSON. Not needed to prove scoring. |
-| `astronomy.sun_events` | **Required Grok Bot product capability** in a later unreleased first-1.0 slice. Live Skyfield/SunCalc; times ±60 s. Sunset, civil/nautical/astronomical twilight, astronomical night start/end, sunrise. **Polar missing-times / `approximateSunEvents`:** `hosts: [ios]`, not in Python. Live suite **must not** assert product integers. Not implemented in Phase 6. |
-| `astronomy.moon_info` / `astronomy.moon_series` | **Required Grok Bot product capabilities** in a later unreleased first-1.0 slice. Illumination, altitude, useful phase identity, waxing/waning if the engine already models it, hourly altitude/illumination through the observing period; moonrise/moonset only if the astronomy capability formally supports those events. Altitude ±0.5°; illumination integer ±1. Phase name/emoji omitted. Not fed live into integer fixtures. Not implemented in Phase 6. |
+| `astronomy.sun_events` | **Implemented in Phase 16; unreleased first-1.0 work.** Required Grok Bot product capability. Live Skyfield/SunCalc; times ±60 s. Sunset, civil/nautical/astronomical twilight, astronomical night start/end, sunrise, and explicit nullable crossings. The legacy Apple-only `approximateSunEvents` polar fallback is host-owned and outside portable equality. Live suite **must not** assert product integers. |
+| `astronomy.moon_info` / `astronomy.moon_series` | **Implemented in Phase 16; unreleased first-1.0 work.** Required Grok Bot product capabilities. Public results contain explicit UTC time, altitude, and integer illumination; the series accepts explicit instants. Altitude ±0.5°; illumination integer ±1. Phase name/emoji, continuous phase identity, waxing/waning, and rise/set are not public Phase 16 fields. Not fed live into integer fixtures. Phase 16's public facts are not complete lunar-recommendation parity: the remaining production observation, useful-window, scoring, and semantic-reason decisions are release-gate work. |
 | `astronomy.planet_positions` | Exact **after** Schlyter procedure is written in `contracts/procedures/` and coefficients are JSON. Until then, `equality: n/a`. |
-| `targets.windows` | Prefer frozen alt/az samples; live windows are later unreleased astronomy work. |
+| `targets.windows` | Prefer frozen alt/az samples; specialized live target-window work is out of Phase 16 scope and remains later unreleased astronomy work. |
 | `targets.recommend` | Integer scores + sort order exact given **precomputed windows**. |
 | `equipment.match` | `level` / `reason` / `mode` exact. `explanation` **never** in equality (host copy). |
 | `location.compare` | Full [total order](#locationcompare-total-order-11). Suitability is an **injected overlay** (default all `unchecked`). Omit `id` and `summary`. |
@@ -428,7 +428,7 @@ Grok should not reimplement astronomical-night calculations, Moon astronomy, wea
 | Surface | Capability | Version | Status |
 |---|---|---|---|
 | Normalized hourly weather | `weather.decode` | 1.0 | Implemented in the Python library, Swift eval, and the public Python CLI (Phase 11). Current DTO matches existing `HourlyForecast` and does **not** include precipitation. |
-| Hourly precipitation | `weather.decode` domain extension | after 1.0 parity | **Known Bot-facing gap.** Product requirement (when available) stands. Not in the current `HourlyForecast` model; not in Phase 8 / 1.0 equality. Evaluate as a domain-model extension after the 1.0 parity migration. Not intentionally out of scope forever. |
+| Hourly precipitation | `weather.decode` domain extension | after 1.0 parity | **Known Bot-facing domain gap.** It is not in the current `HourlyForecast` model or Phase 8 / 1.0 equality. The production audit found it decoded but not mapped to `HourlyForecast` or consumed by current conditions, target/equipment/location scoring, so it is not required for current business-logic parity. Evaluate it deliberately as a future domain extension. |
 | Scored hourly observing conditions | `night_conditions.analyze` `hourly_ratings` | 1.0 | Implemented in the Python library and public CLI (Phase 11). |
 | Astronomical darkness timing | `astronomy.sun_events` | Unreleased 1.0 | Implemented in Phase 16; explicit UTC interval and nullable crossings. |
 | Moon context | `astronomy.moon_info`, `astronomy.moon_series` | Unreleased 1.0 | Implemented in Phase 16; explicit UTC samples and field tolerances. |
@@ -1958,6 +1958,89 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
   since `1.0.0`, fixture applicability `>=1.0.0 <2.0.0`. Engine/package versions
   remain unreleased `1.0.0`. No release, commit or push belongs to this change.
 
+### Production business-logic compatibility audit (2026-09-05)
+
+**Completed source-audit verdict: Agree. Documentation-pass assessment of the
+prior roadmap: Partially Agree.** The existing compatibility gate correctly says
+that public capability availability is not parity, and Phase 16 correctly kept
+planets and generic live target windows out of scope. The completed source audit
+shows, however, that the gate did not yet name several production-only decision
+and composition layers. They must remain visible until deliberately shared or
+host-composed. Full Astronomer Bot parity means behavioral/objective business-
+logic compatibility with production Astro Conditions, not merely availability of
+the current public engine capabilities. It is not iOS UI parity.
+
+| Audit area | Confirmed production behavior | Pre-1.0 consequence |
+|---|---|---|
+| Observing-window decision | `NightQualityAnalyzer.calculateBestWindow` returns no window for no ratings; a one-hour window beginning at the minimum-score rating when no ratings qualify; the interval from the first included rating timestamp to the last included rating timestamp when at least half qualify; otherwise the longest qualifying run. Its current traversal/tie behavior counts consecutive qualifying rows as one hour each without verifying timestamp continuity. `DefaultMoonTargetRecommendationProvider` consumes that result and falls back to the astronomical night only when it is absent. | Required. Review the cleanest deterministic contract boundary; do not casually add a field to the Phase 11 DTO. Also preserve astronomical-night/calendar composition, sustained/heavy-cloud timing classification, forecast-availability semantics, and other semantic advisory facts that affect advice. English text remains host presentation. |
+| Target metadata and equipment requirements | `TargetEquipmentRequirements` resolves type fallbacks and individual overrides (including M77), aperture, magnification, observing-mode and framing needs. `DefaultTargetCatalogProvider` also supplies solar-system candidates and derives deep-sky Moon sensitivity. `equipment.match` only evaluates already-resolved requirements. | Required. Preserve authoritative language-neutral data/procedures where appropriate, without prescribing a storage format. The Bot must not ask Grok to invent requirements. Equipment selection filters recommendations; it does not rescore or reorder retained target scores. |
+| Target-type-specific live policies | Deep sky uses catalog RA/Dec, 15-minute samples, a 15-degree threshold, contiguous runs, interpolated crossings, and highest sampled altitude. Moon uses its own 30-minute, useful-window and visible-sample policy. Planets use an extended interval, 15-minute samples, an 8-degree threshold, interpolation, specialized best-time scoring, and Venus twilight treatment. | Required. A shared result vocabulary may be useful, but do not promise one generic `targets.windows` algorithm. Prefer shared lower-level numeric astronomy facts with target-type-specific observation and recommendation policies. |
+| Specialized recommendation and composition | Production has dedicated deep-sky, Moon, and planet providers. Lunar observation facts include continuous phase, illumination, altitude/azimuth, rise/set, always-up/down state, and position samples where applicable; eligibility requires visible samples in the useful window. Numeric lunar scoring uses phase/illumination, visible fraction, and weather quality, while semantic reasons may use facts such as set time and `alwaysDown`. Planet recommendations use the low-precision model rather than generic Skyfield output. | Required. Preserve specialized scores, stable order/ties, reasons, equipment filtering before result-count truncation, and no generic re-score of Moon or planet results. The LLM may explain authoritative facts but must not recreate them. |
+| Location and forecast-horizon composition | `BestSpotSearcher` has search-wide scoring-mode selection and suitability policy. `ActiveObservingNightResolver` retains the preceding civil date after midnight when its astronomical night is active; the three-night outlook requires complete hourly coverage and retains the first best-score tie. | Required. Preserve candidate forecast eligibility; center/candidate cloud, wind and fog composition; fog-factor union where surfaced; all-or-nothing light-pollution ranking; suitability states; center improvement and missing-center behavior; complete-night and deterministic best-night rules; timezone/DST and provider/data-state distinctions. Host geocoding, search expansion, batching and cache lifecycle may remain host-owned. |
+
+The following boundaries are deliberate:
+
+- Objective semantic reasons (cloud timing, poor conditions, lunar visibility and
+  phase categories, early Moon-set opportunity, and planet/Venus suitability)
+  must be shared or deliberately composed. Prose, emoji, labels, colors, and UI
+  copy remain host-owned.
+- “Host-owned” is still real product behavior, not permission for Grok to
+  improvise. This includes provider acquisition, date/timezone and active-night
+  composition, saved/default location and equipment selection, caches/freshness,
+  failure states, aliases/confirmation, and user history. Astro Engine remains
+  stateless with respect to user history.
+- Precipitation is not a current production business-logic parity blocker: it is
+  requested and decoded but not mapped into `HourlyForecast` or consumed by the
+  current conditions, target, equipment, or location scoring paths. It remains a
+  future domain/Bot enhancement, not a reason to modify `weather.decode` here.
+- The audit found a wind-unit naming/semantic inconsistency: UI formatting treats
+  wind as km/h while fog calibration names a threshold `maxMetersPerSecond` and
+  the decoder passes provider values through. Resolve the intended unit contract
+  deliberately before changing calculations or documenting Bot weather facts.
+- Current production scope must not be inferred from dormant enums or generic
+  fallbacks. Supported default planet recommendations cover Venus, Mars, Jupiter,
+  and Saturn;
+  not Mercury, Uranus, Neptune, Pluto, meteors, generic satellites, comets,
+  aurora, or terrain/horizon obstruction. ISS remains a separate decoder/provider
+  path, not target or weather scoring. Suitability is modeled verification, not
+  parking, legal access, terrain visibility, or real-world site access.
+
+#### Required implementation order after the audit
+
+Use the smallest coherent contract slices discovered in design review; this is
+an ordering of dependencies and product value, not seven public IDs or new
+numbered phases:
+
+1. Observing-window decisions: production best conditions window, night-boundary
+   composition, and downstream semantic advisory decisions.
+2. Target metadata/requirement resolution: solar-system candidate metadata,
+   Moon-sensitivity derivation, and type/per-target equipment requirements.
+3. Deep-sky observation facts: live position, altitude/azimuth, specialized
+   visibility windows, interpolation, and best time.
+4. Lunar observation and recommendation parity: richer facts, rise/set,
+   preparation, useful windows, specialized scoring, and reasons.
+5. Planet observation and recommendation parity: the production low-precision
+   coefficients/procedure, position/elongation, windows, best-time selection,
+   Venus behavior, scoring, and reasons. Do not replace that model with Skyfield
+   without explicit product review.
+6. Mixed-target and equipment-aware composition.
+7. Location-set/Best Nearby and multi-night forecast composition.
+
+#### Current Bot readiness boundary
+
+With today’s 17 public capabilities plus correct host acquisition/composition,
+the Bot can authoritatively provide represented hourly weather; cloud, fog,
+seeing, transparency and wind facts; scored hours and Night Conditions;
+Observing Quality; Sun/twilight events; Moon altitude and integer illumination;
+catalog facts; supplied-requirement equipment matching; ordering of already
+scored candidates; and normalized ISS passes. It cannot yet claim
+production-authoritative best observing windows, live target position/window/
+best-time facts, full lunar or planet advice, equipment-aware target
+recommendations without requirement resolution and composition, full Best
+Nearby, complete multi-night advice, or precipitation in the normalized weather
+domain. Missing objective facts are an explicit limitation, never an invitation
+for Grok to calculate or guess them.
+
 ### Remaining product integration work
 
 Numbered engine phases are not the whole product. After Phase 16, complete the following before the first actual Astro Engine 1.0.0 release and the single PR to `main`:
@@ -1976,30 +2059,58 @@ capabilities used by production Astro Conditions for astronomy advice, with the
 LLM layered on top. Availability of the current 17 engine capabilities alone
 does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
 
-- **Production audit:** inventory every production behavior that contributes
-  objective facts or decisions to astronomy advice. Classify each as a shared
-  Astro Engine capability, intentionally Bot/iOS-host-owned, presentation-only,
-  or deliberately deferred/non-goal, recording the rationale and any remaining
-  compatibility limitation. No accidental Bot-versus-app business-logic gap may
-  remain; explicit deferrals must not be represented as full parity.
-- **Live target facts:** resolve the objective layer supplying Phase 15's
-  precomputed/frozen windows for Bot use: target position/altitude/azimuth,
-  observable start/end, best observing time, eligibility, and target-type-specific
-  visibility/window semantics where applicable. Production uses separate
-  `DeepSkyTargetPositionProvider`, Moon, and planet paths, including specialized
-  recommendation rules; do not substitute one generic algorithm. Prefer portable
-  Astro Engine contracts where the production architecture supports sharing
-  objective behavior between iOS and Bot.
+- **Audit closure:** reconcile every behavior named in the [production
+  compatibility audit](#production-business-logic-compatibility-audit-2026-09-05).
+  Classify each as shared engine work, intentionally host-owned behavior,
+  presentation-only behavior, or an explicit non-goal. A host-owned requirement
+  still needs an implementation and tests; no accidental Bot-versus-app
+  decision gap may be represented as full parity.
+- **Conditions and time composition:** preserve `calculateBestWindow`, its
+  downstream lunar dependency, astronomical-night boundaries/calendar behavior,
+  semantic cloud/advisory facts that affect recommendations, active-night
+  selection across midnight, authoritative timezone/DST behavior, complete-night
+  availability, deterministic best-night ties, and distinguishable provider
+  failure, empty, stale, and unavailable states.
+- **Requirement resolution and equipment:** preserve authoritative solar-system
+  candidate metadata, deep-sky Moon-sensitivity derivation, type fallbacks and
+  target-specific requirements before calling `equipment.match`. Equipment must
+  filter specialized recommendations before count truncation; retained scores and
+  order must not be silently changed. The LLM may describe selected equipment but
+  must not invent a requirement or an objective target score.
+- **Live target facts and target-specific policies:** supply Phase 15's
+  frozen/precomputed window inputs from authoritative target-specific fact
+  producers, while preserving `targets.recommend` as a deterministic scorer over
+  injected/precomputed inputs and preserving frozen fixtures. Preserve deep-sky
+  RA/Dec, sampling, threshold, contiguous-run and interpolation conventions.
+  Preserve distinct Moon and planet observation-window semantics rather than
+  imposing a generic window algorithm.
+- **Moon:** carry the richer lunar observation facts and decisions used in
+  production: continuous phase, illumination, altitude/azimuth, rise/set,
+  always-up/down state, and 30-minute samples with an explicit end sample.
+  Preserve useful-window clipping and visible-sample eligibility; numeric scoring
+  from phase/illumination, visible fraction, and weather quality (including the
+  near-new-Moon cap); and semantic reasons that may use set time or always-down
+  state. Preserve the dependency `best conditions window → lunar useful window →
+  lunar recommendation`.
 - **Planets:** excluding `astronomy.planet_positions` from Phase 16 was a scope
-  and contract decision, not a Bot product non-goal. Production recommendations
-  use `LowPrecisionPlanetAstronomyProvider` and planet windows; portable planet
-  procedure/coefficient work therefore remains required before declaring full
-  business-logic parity.
-- **Equipment-aware composition:** combine live target position/window facts,
-  `targets.recommend`, `equipment.match`, and observing/weather/Moon/darkness
-  facts, preserving the specialized target paths above. A request such as
-  "What should I observe tonight with my S30 Pro?" must produce rankings based
-  on both tonight's conditions and the selected equipment.
+  decision, not a Bot product non-goal. Preserve the production
+  `LowPrecisionPlanetAstronomyProvider` / `PlanetOrbitalElements` model: supported
+  bodies and order (Venus, Mars, Jupiter, Saturn; Earth/Sun only as internal
+  reference), coefficients, epoch/day and unit conventions, transforms,
+  elongation, sampling, threshold/interpolation/terminal-window behavior,
+  best-time, convenience, penalties, score rules, Venus twilight, and reasons.
+  Do not substitute Skyfield merely because it is already present for Sun/Moon.
+- **Mixed-target composition:** preserve specialized deep-sky, Moon, and planet
+  score paths, stable ordering/ties, missing-specialized-result behavior,
+  semantic reason facts, and no generic re-score of specialized Moon/planet
+  results. A request such as "What should I observe tonight with my S30 Pro?"
+  must use both conditions and selected equipment.
+- **Best Nearby and location composition:** preserve candidate nighttime-forecast
+  eligibility; center/candidate composition; cloud/wind/fog aggregation and any
+  surfaced fog-factor union; Observing Quality only when every scorable candidate
+  has valid light-pollution data; coherent Night Conditions fallback otherwise;
+  suitability eligibility/states; center improvement; and missing-center
+  behavior. Do not use light-pollution NoData as a land/water classifier.
 - **Target finding:** Astro supplies objective catalog, coordinate, position,
   and window facts for where a recommended target is, when it is observable,
   its best time, and its useful observing window. The LLM may translate those
@@ -2019,11 +2130,12 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   "How is tonight?"; "What are my best targets tonight?"; "What should I observe
   tonight with [selected equipment]?"; "When is the best time to observe
   [target]?"; "Where will [target] be and how do I find it?"; comparing two
-  observing locations; and changing selected equipment to verify recommendations
-  can change appropriately; record a user-confirmed observation; query the last
-  observation of a target; recommend an unseen target; remove or correct an
-  observation; and verify that changing observation history can change
-  personalized advice without changing the underlying objective Astro result.
+  observing locations; selecting a complete versus incomplete forecast night;
+  changing selected equipment to verify recommendations can change appropriately;
+  record a user-confirmed observation; query the last observation of a target;
+  recommend an unseen target; remove or correct an observation; and verify that
+  changing observation history can change personalized advice without changing
+  the underlying objective Astro result.
 
 This gate records remaining product requirements; it does not reopen Phase 16,
 add a numbered phase, or change current contracts, capabilities, or versions.
