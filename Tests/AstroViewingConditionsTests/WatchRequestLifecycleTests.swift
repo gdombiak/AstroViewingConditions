@@ -305,6 +305,9 @@ final class WatchRequestLifecycleControllerTests: XCTestCase {
         let idA = UUID()
         let idB = UUID()
 
+        // Signal only after begin returns: yielding does not guarantee another task runs.
+        let registeredA = expectation(description: "request A registered")
+        let registeredB = expectation(description: "request B registered")
         let taskA = Task {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
                 lifecycle.begin(
@@ -313,9 +316,11 @@ final class WatchRequestLifecycleControllerTests: XCTestCase {
                     timeoutError: { LifecycleTestError.timeout },
                     continuation: cont
                 )
+                registeredA.fulfill()
             }
         }
-        await waitUntil(lifecycle.contains(idA))
+        await fulfillment(of: [registeredA], timeout: 5)
+        XCTAssertTrue(lifecycle.contains(idA))
         let taskB = Task {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
                 lifecycle.begin(
@@ -324,9 +329,11 @@ final class WatchRequestLifecycleControllerTests: XCTestCase {
                     timeoutError: { LifecycleTestError.timeout },
                     continuation: cont
                 )
+                registeredB.fulfill()
             }
         }
-        await waitUntil(lifecycle.contains(idB))
+        await fulfillment(of: [registeredB], timeout: 5)
+        XCTAssertTrue(lifecycle.contains(idB))
         XCTAssertEqual(lifecycle.outstandingCount, 2)
 
         XCTAssertTrue(lifecycle.complete(idA, with: .success("A")))
@@ -349,6 +356,9 @@ final class WatchRequestLifecycleControllerTests: XCTestCase {
         let idA = UUID()
         let idB = UUID()
 
+        // Signal only after begin returns: yielding does not guarantee another task runs.
+        let registeredA = expectation(description: "request A registered")
+        let registeredB = expectation(description: "request B registered")
         let taskA = Task {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Int, Error>) in
                 lifecycle.begin(
@@ -356,9 +366,11 @@ final class WatchRequestLifecycleControllerTests: XCTestCase {
                     timeoutError: { LifecycleTestError.timeout },
                     continuation: cont
                 )
+                registeredA.fulfill()
             }
         }
-        await waitUntil(lifecycle.contains(idA))
+        await fulfillment(of: [registeredA], timeout: 5)
+        XCTAssertTrue(lifecycle.contains(idA))
         let taskB = Task {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Int, Error>) in
                 lifecycle.begin(
@@ -366,9 +378,11 @@ final class WatchRequestLifecycleControllerTests: XCTestCase {
                     timeoutError: { LifecycleTestError.timeout },
                     continuation: cont
                 )
+                registeredB.fulfill()
             }
         }
-        await waitUntil(lifecycle.contains(idB))
+        await fulfillment(of: [registeredB], timeout: 5)
+        XCTAssertTrue(lifecycle.contains(idB))
         XCTAssertEqual(lifecycle.outstandingCount, 2)
         XCTAssertTrue(lifecycle.complete(idA, with: .success(1)))
         // A removed; B still outstanding and not resumed.
@@ -380,19 +394,6 @@ final class WatchRequestLifecycleControllerTests: XCTestCase {
         let b = try await taskB.value
         XCTAssertEqual(a, 1)
         XCTAssertEqual(b, 2)
-    }
-
-    /// Deterministic wait for registry registration (no wall-clock sleep primary).
-    private func waitUntil(
-        _ predicate: @autoclosure () -> Bool,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) async {
-        for _ in 0..<1_000 {
-            if predicate() { return }
-            await Task.yield()
-        }
-        XCTFail("predicate not satisfied", file: file, line: line)
     }
 }
 
