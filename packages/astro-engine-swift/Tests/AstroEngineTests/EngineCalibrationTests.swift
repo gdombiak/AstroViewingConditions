@@ -382,6 +382,7 @@ final class EngineCalibrationTests: XCTestCase {
             "transparency.json",
             "target-scoring.json",
             "moon-recommendation.json",
+            "planet-recommendation.json",
             "equipment-matching.json",
         ] {
             try FileManager.default.copyItem(
@@ -426,6 +427,7 @@ final class EngineCalibrationTests: XCTestCase {
             "transparency.json",
             "target-scoring.json",
             "moon-recommendation.json",
+            "planet-recommendation.json",
             "equipment-matching.json",
         ] {
             let expected = try Data(contentsOf: canonical.appendingPathComponent(name))

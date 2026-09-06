@@ -117,6 +117,7 @@ seeing.json
 transparency.json
 target-scoring.json
 moon-recommendation.json
+planet-recommendation.json
 equipment-matching.json"
 
 required_catalog_files="deep-sky.json

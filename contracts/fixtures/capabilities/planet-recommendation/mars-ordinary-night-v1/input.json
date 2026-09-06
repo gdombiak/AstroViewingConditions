@@ -1,0 +1,42 @@
+{
+  "capability": "targets.planet_recommendation",
+  "injected": {
+    "target_id": "mars",
+    "night_start": "2026-03-01T20:00:00Z",
+    "night_end": "2026-03-02T05:00:00Z",
+    "samples": [
+      {
+        "time": "2026-03-01T21:00:00Z",
+        "altitude": 12,
+        "azimuth": 120,
+        "solar_elongation": 40
+      },
+      {
+        "time": "2026-03-01T22:00:00Z",
+        "altitude": 34,
+        "azimuth": 150,
+        "solar_elongation": 40
+      },
+      {
+        "time": "2026-03-01T23:00:00Z",
+        "altitude": 51,
+        "azimuth": 180,
+        "solar_elongation": 40
+      },
+      {
+        "time": "2026-03-02T00:00:00Z",
+        "altitude": 33,
+        "azimuth": 210,
+        "solar_elongation": 40
+      },
+      {
+        "time": "2026-03-02T01:00:00Z",
+        "altitude": 9,
+        "azimuth": 240,
+        "solar_elongation": 40
+      }
+    ],
+    "cloud_cover_score": 5.0,
+    "hourly_ratings": []
+  }
+}

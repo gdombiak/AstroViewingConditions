@@ -98,7 +98,7 @@ Sources: [Skyfield local loading](https://rhodesmill.org/skyfield/api.html),
 `{time, score}` rows and an optional threshold. See the
 [procedure](../../contracts/procedures/observing-window.md) for exact endpoint,
 row-count, sorting and tie behavior. It uses no live astronomy and does not change
-`night_conditions.analyze`. The public catalog now contains 21 capabilities;
+`night_conditions.analyze`. The public catalog now contains 27 capabilities;
 engine/package identity remains unreleased 1.0.0.
 
 Target metadata is available through `targets.requirements`,

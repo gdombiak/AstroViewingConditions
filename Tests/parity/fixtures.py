@@ -33,6 +33,7 @@ DETERMINISTIC_FIXTURE_DIRS = (
     "fixtures/capabilities/horizontal-position",
     "fixtures/capabilities/deep-sky-windows",
     "fixtures/capabilities/moon-recommendation",
+    "fixtures/capabilities/planet-recommendation",
 )
 
 

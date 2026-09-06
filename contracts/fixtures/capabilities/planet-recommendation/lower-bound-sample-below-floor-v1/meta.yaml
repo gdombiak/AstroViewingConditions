@@ -1,0 +1,7 @@
+capability: targets.planet_recommendation
+engine_semver: ">=1.0.0 <2.0.0"
+equality: planet_recommendation
+hosts: [swift, python]
+origin: manual
+notes: >
+  One second below the sample floor is outside the justified spill and fails closed.

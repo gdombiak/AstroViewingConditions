@@ -88,6 +88,21 @@ enum CapabilityDispatch {
             } catch let error as MoonRecommendationInputError {
                 throw EvalValidationError(code: error.code, message: error.message)
             }
+        case "astronomy.planet_observation":
+            guard Set(document.keys).isSubset(of: ["capability", "injected"]) else {
+                throw EvalValidationError(code: "validation", message: "invalid astronomy envelope")
+            }
+            do {
+                return try PlanetObservationContract.evaluate(injected(document))
+            } catch let error as PlanetObservationInputError {
+                throw EvalValidationError(code: error.code, message: error.message)
+            }
+        case "targets.planet_recommendation":
+            do {
+                return try PlanetRecommendationContract.evaluate(injected(document))
+            } catch let error as PlanetRecommendationInputError {
+                throw EvalValidationError(code: error.code, message: error.message)
+            }
         case "location.compare":
             return try locationCompare(document)
         case "catalog.deep_sky":

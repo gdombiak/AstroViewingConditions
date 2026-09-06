@@ -517,5 +517,293 @@
     },
     "semantics": "always_down",
     "sample_count": 21
+  },
+  {
+    "id": "planet-observation-venus-el-segundo",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "venus",
+        "latitude": 33.8078,
+        "longitude": -118.3183,
+        "night_start": "2026-07-18T04:43:38Z",
+        "night_end": "2026-07-18T11:16:06Z"
+      }
+    },
+    "semantics": "has_visible",
+    "sample_count": 39
+  },
+  {
+    "id": "planet-observation-mars-cupertino",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "mars",
+        "latitude": 37.323,
+        "longitude": -122.032,
+        "night_start": "2026-06-30T03:26:00Z",
+        "night_end": "2026-06-30T11:26:00Z"
+      }
+    },
+    "semantics": "has_visible",
+    "sample_count": 45
+  },
+  {
+    "id": "planet-observation-jupiter-cupertino",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "jupiter",
+        "latitude": 37.323,
+        "longitude": -122.032,
+        "night_start": "2026-06-30T03:26:00Z",
+        "night_end": "2026-06-30T11:26:00Z"
+      }
+    },
+    "semantics": "has_visible",
+    "sample_count": 45
+  },
+  {
+    "id": "planet-observation-saturn-sydney",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "saturn",
+        "latitude": -33.87,
+        "longitude": 151.21,
+        "night_start": "2026-09-14T09:30:00Z",
+        "night_end": "2026-09-14T18:40:00Z"
+      }
+    },
+    "semantics": "has_visible",
+    "sample_count": 49
+  },
+  {
+    "id": "planet-observation-high-latitude-winter",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "mars",
+        "latitude": 78.22,
+        "longitude": 15.65,
+        "night_start": "2027-12-21T00:00:00Z",
+        "night_end": "2027-12-21T09:30:00Z"
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 51
+  },
+  {
+    "id": "planet-observation-equatorial",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "venus",
+        "latitude": -0.18,
+        "longitude": -78.47,
+        "night_start": "2049-12-29T01:05:00Z",
+        "night_end": "2049-12-29T10:40:00Z"
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 51
+  },
+  {
+    "id": "planet-observation-hourly-cadence",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "jupiter",
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2026-03-01T04:00:00Z",
+        "night_end": "2026-03-01T12:00:00Z",
+        "sample_interval_seconds": 3600
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 12
+  },
+  {
+    "id": "planet-observation-end-not-divisible",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "jupiter",
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2026-03-01T04:00:00Z",
+        "night_end": "2026-03-01T12:07:30Z"
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 45
+  },
+  {
+    "id": "planet-observation-endpoint-divides-exactly",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "jupiter",
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2026-03-01T04:00:00Z",
+        "night_end": "2026-03-01T13:00:00Z",
+        "sample_interval_seconds": 7200
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 7
+  },
+  {
+    "id": "planet-observation-zero-length-night",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "venus",
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2026-03-01T04:00:00Z",
+        "night_end": "2026-03-01T04:00:00Z"
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 13
+  },
+  {
+    "id": "planet-observation-inverted-within-lead-and-trail",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "venus",
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2026-03-01T04:00:00Z",
+        "night_end": "2026-03-01T01:00:01Z"
+      }
+    },
+    "semantics": "single_sample",
+    "sample_count": 1
+  },
+  {
+    "id": "planet-observation-inverted-past-lead-and-trail",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "venus",
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2026-03-01T04:00:00Z",
+        "night_end": "2026-03-01T01:00:00Z"
+      }
+    },
+    "semantics": "null_observation",
+    "sample_count": 0
+  },
+  {
+    "id": "planet-observation-range-lower-edge",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "saturn",
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2000-01-01T00:00:00Z",
+        "night_end": "2000-01-01T08:00:00Z"
+      }
+    },
+    "semantics": "samples_precede_range",
+    "sample_count": 45
+  },
+  {
+    "id": "planet-observation-range-upper-edge",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "saturn",
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2049-12-31T14:00:00Z",
+        "night_end": "2049-12-31T22:59:59Z"
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 48
+  },
+  {
+    "id": "planet-observation-maximum-span",
+    "capability": "astronomy.planet_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_planet_observation",
+    "input": {
+      "capability": "astronomy.planet_observation",
+      "injected": {
+        "target_id": "mars",
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2026-03-01T00:00:00Z",
+        "night_end": "2026-03-02T02:00:00Z",
+        "sample_interval_seconds": 3600
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 30
   }
 ]

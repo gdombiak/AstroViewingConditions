@@ -1,0 +1,23 @@
+{
+  "capability": "targets.planet_recommendation",
+  "result": {
+    "recommendation": {
+      "reasons": [
+        "astronomicalDarkness",
+        "lateOrEarlyPlanetWindow",
+        "goodNightQuality",
+        "planetMoonlightResistant"
+      ],
+      "score": 66,
+      "visibility_window": {
+        "azimuth": 120,
+        "best_time": "2026-03-02T04:00:00Z",
+        "direction": "ESE",
+        "end": "2026-03-02T04:15:00Z",
+        "max_altitude": 31,
+        "start": "2026-03-02T03:00:00Z"
+      }
+    }
+  },
+  "ok": true
+}

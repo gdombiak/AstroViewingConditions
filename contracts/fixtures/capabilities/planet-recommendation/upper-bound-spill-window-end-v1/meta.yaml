@@ -1,0 +1,7 @@
+capability: targets.planet_recommendation
+engine_semver: ">=1.0.0 <2.0.0"
+equality: planet_recommendation
+hosts: [swift, python]
+origin: manual
+notes: >
+  The latest supported night with samples through night_end plus the 3600 s trail. The run ends on the final sample, so the emitted window end is the last sample plus the fixed 900 s extension: 2500-01-01T01:14:59Z, exactly the emitted ceiling.

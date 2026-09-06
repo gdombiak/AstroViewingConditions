@@ -41,8 +41,9 @@ The oracle has no new engine-helper or calibration dependency.
 
 ## Architecture and public surface
 
-There are **25 unique public capabilities**, with catalog order matching the
-Python CLI allow-list. The new Swift eval dispatches are exercised by parity:
+There are **25 unique public capabilities** as of this review, with catalog order
+matching the Python CLI allow-list. (The subsequent planet slice took the count to
+27; this document is the point-in-time record of the lunar slice.) The new Swift eval dispatches are exercised by parity:
 
 - `astronomy.moon_observation`: bounded night-scoped provider facts. Both hosts
   now use the production SunCalc analytic model; Python needs no ephemeris file

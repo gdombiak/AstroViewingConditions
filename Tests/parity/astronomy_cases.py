@@ -39,6 +39,9 @@ def assert_semantics(case, result):
     if case['capability'] == 'astronomy.moon_observation':
         assert_moon_observation(case, result)
         return
+    if case['capability'] == 'astronomy.planet_observation':
+        assert_planet_observation(case, result)
+        return
     samples = [result] if case['capability'] == 'astronomy.moon_info' else result['samples']
     times = [input['time']] if 'time' in input else input['times']
     assert [s['time'] for s in samples] == times
@@ -118,3 +121,73 @@ def assert_moon_observation(case, result):
         assert min(result['phase'], 1 - result['phase']) <= 0.04
     if semantic == 'no_samples':
         assert samples == []
+
+
+PLANET_OBSERVATION_FIELDS = {'target_id', 'night_start', 'night_end', 'observation'}
+PLANET_LEAD_SECONDS = 2 * 3600
+PLANET_TRAIL_SECONDS = 3600
+PLANET_MINIMUM_VISIBLE_ALTITUDE = 8
+
+
+def _planet_instant(text):
+    """Local UTC parser: the sampling lead can reach before the 2000 bound that
+    `astronomy.instant` enforces on *input* instants."""
+    from datetime import datetime, timezone
+
+    return datetime.strptime(text, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)
+
+
+def assert_planet_observation(case, result):
+    """Structure, sampling span and per-case semantics, without numeric goldens."""
+    from datetime import timedelta
+
+    input = case['input']['injected']
+    cadence = input.get('sample_interval_seconds', 900)
+    start = _planet_instant(input['night_start'])
+    end = _planet_instant(input['night_end'])
+    sample_start = start - timedelta(seconds=PLANET_LEAD_SECONDS)
+    sample_end = end + timedelta(seconds=PLANET_TRAIL_SECONDS)
+
+    assert set(result) == PLANET_OBSERVATION_FIELDS
+    assert result['target_id'] == input['target_id']
+    assert result['night_start'] == input['night_start']
+    assert result['night_end'] == input['night_end']
+
+    if case['semantics'] == 'null_observation':
+        # The production guard: an interval inverted past lead + trail.
+        assert result['observation'] is None
+        assert sample_end <= sample_start
+        assert case['sample_count'] == 0
+        return
+
+    observation = result['observation']
+    assert set(observation) == {'sample_start', 'sample_end', 'samples'}
+    assert _planet_instant(observation['sample_start']) == sample_start
+    assert _planet_instant(observation['sample_end']) == sample_end
+
+    samples = observation['samples']
+    assert len(samples) == case['sample_count']
+    times = [_planet_instant(sample['time']) for sample in samples]
+    assert times[0] == sample_start
+    assert all(a < b for a, b in zip(times, times[1:]))
+    # Repeated addition of the cadence under an inclusive `<= sample_end` test,
+    # with no explicit interval-end sample: the lead endpoint is always sampled,
+    # the trailing endpoint only when the cadence lands on it.
+    for index, time in enumerate(times):
+        assert (time - sample_start).total_seconds() == index * cadence
+    assert times[-1] <= sample_end
+    assert times[-1] + timedelta(seconds=cadence) > sample_end
+
+    for sample in samples:
+        assert set(sample) == {'time', 'altitude', 'azimuth', 'solar_elongation'}
+        assert -90 <= sample['altitude'] <= 90
+        assert 0 <= sample['azimuth'] < 360
+        assert 0 <= sample['solar_elongation'] <= 180
+
+    if case['semantics'] == 'has_visible':
+        assert max(sample['altitude'] for sample in samples) >= PLANET_MINIMUM_VISIBLE_ALTITUDE
+    if case['semantics'] == 'single_sample':
+        assert len(samples) == 1
+    if case['semantics'] == 'samples_precede_range':
+        # The sampling lead deliberately reaches before the accepted instant window.
+        assert observation['sample_start'] < '2000-01-01T00:00:00Z'

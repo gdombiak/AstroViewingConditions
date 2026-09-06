@@ -1,0 +1,36 @@
+{
+  "capability": "targets.planet_recommendation",
+  "injected": {
+    "target_id": "jupiter",
+    "night_start": "2026-03-01T20:00:00Z",
+    "night_end": "2026-03-02T05:00:00Z",
+    "samples": [
+      {
+        "time": "2026-03-01T20:00:00Z",
+        "altitude": 6,
+        "azimuth": 120,
+        "solar_elongation": 30
+      },
+      {
+        "time": "2026-03-01T20:15:00Z",
+        "altitude": 10,
+        "azimuth": 125,
+        "solar_elongation": 30
+      },
+      {
+        "time": "2026-03-01T20:30:00Z",
+        "altitude": 12,
+        "azimuth": 130,
+        "solar_elongation": 30
+      },
+      {
+        "time": "2026-03-01T20:45:00Z",
+        "altitude": 4,
+        "azimuth": 135,
+        "solar_elongation": 30
+      }
+    ],
+    "cloud_cover_score": 0.0,
+    "hourly_ratings": []
+  }
+}

@@ -35,7 +35,10 @@ def test_moon_catalog_and_fixture_contract():
     catalog = (contracts_root() / "capabilities.yaml").read_text()
     catalog_ids = [line.split(": ", 1)[1] for line in catalog.splitlines() if line.startswith("  - id: ")]
     assert tuple(catalog_ids) == PUBLIC_CAPABILITY_IDS
-    assert catalog_ids[-2:] == ["astronomy.moon_observation", "targets.moon_recommendation"]
+    # The lunar pair stays adjacent and ordered; later slices append after it.
+    moon_index = catalog_ids.index("astronomy.moon_observation")
+    assert catalog_ids[moon_index:moon_index + 2] == [
+        "astronomy.moon_observation", "targets.moon_recommendation"]
     for capability, equality in (("astronomy.moon_observation", "astronomy_moon_observation"),
                                  ("targets.moon_recommendation", "moon_recommendation")):
         block = catalog.split(f"  - id: {capability}\n", 1)[1].split("  - id:", 1)[0]

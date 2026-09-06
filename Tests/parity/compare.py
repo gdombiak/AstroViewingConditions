@@ -16,6 +16,7 @@ from astro_engine.contracts import contracts_root
 _CYCLIC = {
     "cyclic_phase_abs_0_002": (1.0, 0.002),
     "cyclic_azimuth_abs_2": (360.0, 2.0),
+    "cyclic_azimuth_abs_0_01": (360.0, 0.01),
 }
 
 _ABS_TOL = {

@@ -36,6 +36,7 @@ public struct EngineCalibration: Hashable, Sendable {
     public let equipmentMatching: EquipmentMatchingCalibration
     public let targetScoring: TargetScoringCalibration
     public let moonRecommendation: MoonRecommendationCalibration
+    public let planetRecommendation: PlanetRecommendationCalibration
     public let transparency: TransparencyCalibration
 
     /// Production/default snapshot, loaded once.
@@ -80,8 +81,11 @@ public struct EngineCalibration: Hashable, Sendable {
             from: calibrationDir.appendingPathComponent("target-scoring.json"))
         let moonRecommendation = try decode(MoonRecommendationCalibration.self,
             from: calibrationDir.appendingPathComponent("moon-recommendation.json"))
+        let planetRecommendation = try decode(PlanetRecommendationCalibration.self,
+            from: calibrationDir.appendingPathComponent("planet-recommendation.json"))
         try targetScoring.validate()
         try moonRecommendation.validate()
+        try planetRecommendation.validate()
         try observingQuality.validate()
         try nightQuality.validate()
         try fog.validate()
@@ -96,6 +100,7 @@ public struct EngineCalibration: Hashable, Sendable {
             equipmentMatching: equipmentMatching,
             targetScoring: targetScoring,
             moonRecommendation: moonRecommendation,
+            planetRecommendation: planetRecommendation,
             transparency: transparency
         )
     }

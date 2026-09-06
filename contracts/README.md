@@ -10,13 +10,14 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `catalog.deep_sky`, `targets.recommend`, `equipment.match`, `observing_window.select`, `targets.requirements`,
 `catalog.solar_system`, `targets.moon_sensitivity`, `astronomy.horizontal_position`,
 `targets.deep_sky_windows`, `astronomy.sun_events`, `astronomy.moon_info`,
-`astronomy.moon_series`, `astronomy.moon_observation`, and
-`targets.moon_recommendation`. Composed agent hosts remain
+`astronomy.moon_series`, `astronomy.moon_observation`,
+`targets.moon_recommendation`, `astronomy.planet_observation`, and
+`targets.planet_recommendation`. Composed agent hosts remain
 later integration work. Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those twenty-five IDs. Capability
+The public Python CLI allow-lists exactly those twenty-seven IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
 rows keep `since: "0.1.0"`; `location.compare`, `targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
 they are introduced under the unreleased 1.0.0 identity. Do not invent a second
@@ -30,6 +31,14 @@ rows, preserve production endpoints and row-count quirks, and leave the existing
 for one night; [lunar recommendation](procedures/moon-recommendation.md) is the
 deterministic scorer that consumes it together with an already-selected best
 conditions window. Both use `since: "1.0.0"`.
+
+[Planet observation](procedures/planet-observation.md) is the live fact bundle
+for one planet over one night, using the production low-precision orbital-element
+model; [planet recommendation](procedures/planet-recommendation.md) is the
+deterministic scorer that consumes it. Planets never route through
+`targets.recommend`: production runs a dedicated altitude-heavy planet scorer
+ahead of the generic one, calibrated by
+`data/calibration/planet-recommendation.json`. Both use `since: "1.0.0"`.
 
 ## Versioning
 
@@ -61,4 +70,4 @@ none consume live astronomy. Live-provider equality remains forbidden.
 Target metadata: `targets.requirements`, `catalog.solar_system`, and
 `targets.moon_sensitivity` share production data and minimal procedures. See
 [the normative boundary and precedence](procedures/target-metadata.md). Public
-capability count is 21; version remains unreleased 1.0.0.
+capability count is 27; version remains unreleased 1.0.0.

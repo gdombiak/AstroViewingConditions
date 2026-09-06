@@ -2,6 +2,60 @@
 
 ## 1.0.0
 
+- Planet observation and recommendation slice (unreleased): add
+  `astronomy.planet_observation` (live night-scoped planet facts: geometric
+  altitude, azimuth and geocentric solar elongation for Venus, Mars, Jupiter or
+  Saturn at the production 900 s cadence, sampled by repeated addition from two
+  hours before astronomical-night start while the instant stays at or before one
+  hour after its end — the lead endpoint is always sampled, the trailing endpoint
+  only when the cadence lands on it, and there is no explicit interval-end
+  sample) and `targets.planet_recommendation`
+  (deterministic visibility window, integer score and objective reason codes from
+  injected observation samples, hourly ratings and a cloud-cover score).
+  Production `DefaultPlanetTargetRecommendationProvider` and
+  `LowPrecisionPlanetAstronomyProvider` now delegate their astronomy and
+  window/score/reason math to the shared implementation, with a
+  migration-equivalence sweep against verbatim copies of the pre-migration code;
+  the English summary, the poor-conditions branches and the validation logging
+  stay host-side. The astronomy model is unchanged and deliberately *not* an
+  ephemeris: Schlyter low-precision orbital elements with the `JD - 2451543.5`
+  day number, one eccentric-anomaly correction term, Earth's elements supplying
+  the geocentric Sun vector, no refraction, parallax or light-time, and the
+  planet path's own unclamped `asin` and `degrees(atan2(...)) + 180` azimuth
+  rather than the deep-sky conversion. New calibration file
+  `contracts/data/calibration/planet-recommendation.json` holds the 45/30/12/13
+  weights, the inclusive 8 degree visible altitude, the 70 degree normalization,
+  the 18 point low-altitude penalty, the fixed 900 s end-of-run window extension,
+  the ordered convenience bands and the Venus twilight terms; the production
+  debug breakdown reads that same file rather than keeping its own copies.
+  `astronomy.planet_observation` bounds its night interval at 26 hours, requires
+  an integral cadence and caps sampling at 1440 samples over the lead/trail span
+  (`sample_cap`), reusing the conservative `targets.deep_sky_windows` preflight;
+  `targets.planet_recommendation` caps each injected array at 1440 rows and
+  requires strictly ordered sample instants. Its `night_start` / `night_end`
+  keep the unspilled 2000...2499 range, while injected sample instants
+  (`-7200 / +3600`), injected rating instants (`-10800 / +4500`) and emitted
+  window instants (`-7200 / +4500`) carry a bounded spill derived from the
+  observation lead/trail, the 3600 s rating hour and the fixed 900 s final-sample
+  window extension — so a valid `astronomy.planet_observation` bundle for the
+  earliest supported night, whose samples begin at 1999-12-31T22:00:00Z, is
+  consumable verbatim on both hosts. One second outside any of those bounds still
+  fails closed. One new equality comparator,
+  `cyclic_azimuth_abs_0_01`, compares planet azimuth across north at a tenth of
+  the lunar ceiling. Swift and Python agree bit-for-bit across the adversarial
+  sweep (0.0 worst difference on altitude, azimuth and solar elongation over
+  25,175 samples in 394 intervals), so the public ceilings exist only for
+  cross-platform libm ULPs. `targets.planet_recommendation` carries
+  `requires_injected`, like `targets.moon_recommendation`: its exact parity is
+  conditioned on the injected facts, because every decision is a strict
+  cut-point. Planets are deliberately not routed through `targets.recommend`, and
+  `earth` is accepted by the host mapping only as an artifact of the orbital
+  model — the capability rejects it, as it does Mercury, Uranus and Neptune.
+  27 public IDs; new rows use `since: "1.0.0"` and fixtures `>=1.0.0 <2.0.0`. No
+  version bump, no release, and no change to any existing capability's numbers.
+  See [planet observation](procedures/planet-observation.md) and
+  [planet recommendation](procedures/planet-recommendation.md).
+
 - Lunar observation and recommendation slice (unreleased): add
   `astronomy.moon_observation` (live night-scoped lunar facts: continuous phase
   and integer illuminated percent at the interval midpoint, rise/set and

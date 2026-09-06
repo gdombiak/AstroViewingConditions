@@ -314,3 +314,47 @@ policies:
       recommendation.reasons: exact
       code: exact
       message: exact
+
+  astronomy_planet_observation:
+    description: >
+      Live night-scoped planet facts from the same production low-precision
+      orbital-element model in Swift and Python. Measured agreement on the
+      reference platform is bit-exact across the adversarial sweep; the public
+      ceilings leave room only for libm ULP differences between platforms, not
+      for a different astronomy model. Azimuth compares cyclically. The whole
+      observation is null when the night interval is inverted past the sampling
+      lead plus trail, and null presence is exact.
+    fields:
+      target_id: exact
+      night_start: exact
+      night_end: exact
+      observation: null_or_object
+      observation.sample_start: exact
+      observation.sample_end: exact
+      observation.samples[].time: exact
+      observation.samples[].altitude: abs_1e4
+      observation.samples[].azimuth: cyclic_azimuth_abs_0_01
+      observation.samples[].solar_elongation: abs_1e4
+      code: exact
+      message: exact
+
+  planet_recommendation:
+    description: >
+      Deterministic planet recommendation. The whole result is null when no
+      injected sample reaches the visible altitude. Window instants are injected
+      instants plus interpolated offsets floored to whole seconds and compare
+      exactly; altitude/azimuth are echoed from the injected best sample, so
+      1e-12 bounds transport rounding only. direction is the objective
+      sixteen-point code, not presentation copy.
+    fields:
+      recommendation: null_or_object
+      recommendation.score: exact
+      recommendation.visibility_window.start: exact
+      recommendation.visibility_window.end: exact
+      recommendation.visibility_window.best_time: exact
+      recommendation.visibility_window.max_altitude: abs_1e12
+      recommendation.visibility_window.direction: exact
+      recommendation.visibility_window.azimuth: abs_1e12
+      recommendation.reasons: exact
+      code: exact
+      message: exact

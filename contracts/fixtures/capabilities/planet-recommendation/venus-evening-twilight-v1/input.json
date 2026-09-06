@@ -1,0 +1,30 @@
+{
+  "capability": "targets.planet_recommendation",
+  "injected": {
+    "target_id": "venus",
+    "night_start": "2026-03-01T20:00:00Z",
+    "night_end": "2026-03-02T05:00:00Z",
+    "samples": [
+      {
+        "time": "2026-03-01T18:00:00Z",
+        "altitude": 22,
+        "azimuth": 260,
+        "solar_elongation": 46
+      },
+      {
+        "time": "2026-03-01T19:00:00Z",
+        "altitude": 12,
+        "azimuth": 270,
+        "solar_elongation": 46
+      },
+      {
+        "time": "2026-03-01T20:00:00Z",
+        "altitude": 7.9,
+        "azimuth": 280,
+        "solar_elongation": 46
+      }
+    ],
+    "cloud_cover_score": 0.0,
+    "hourly_ratings": []
+  }
+}

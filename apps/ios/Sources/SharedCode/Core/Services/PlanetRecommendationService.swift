@@ -44,147 +44,59 @@ public protocol PlanetTargetRecommendationProviding: Sendable {
     ) -> TargetRecommendation?
 }
 
+/// Host adapter over the shared low-precision planet astronomy.
+///
+/// The orbital-element model, the Schlyter day number, the 900 s cadence and the
+/// two-hour lead / one-hour trail around astronomical night live in
+/// `AstroEngine.LowPrecisionPlanetObservationSampler`; see
+/// contracts/procedures/planet-observation.md. What stays here is the host
+/// target-identity mapping and the host DTO.
 public struct LowPrecisionPlanetAstronomyProvider: PlanetAstronomyProviding {
-    private let sampleInterval: TimeInterval
+    private let sampler: LowPrecisionPlanetObservationSampler
 
-    public init(sampleInterval: TimeInterval = 15 * 60) {
-        self.sampleInterval = sampleInterval
+    public init(sampleInterval: TimeInterval = LowPrecisionPlanetObservationSampler.defaultSampleInterval) {
+        self.sampler = LowPrecisionPlanetObservationSampler(sampleInterval: sampleInterval)
     }
 
     public func planetObservation(
         for target: ObservableTarget,
         context: TargetRecommendationContext
     ) -> PlanetObservationData? {
-        guard let planet = PlanetOrbitalElements.Planet(rawValue: target.id.lowercased()) else {
+        guard let body = PlanetBody(rawValue: target.id.lowercased()) else {
+            return nil
+        }
+        guard let samples = sampler.samples(
+            body: body,
+            latitude: context.location.latitude,
+            longitude: context.location.longitude,
+            nightStart: context.astronomicalNightStart,
+            nightEnd: context.astronomicalNightEnd
+        ) else {
             return nil
         }
 
-        let start = context.astronomicalNightStart.addingTimeInterval(-2 * 3600)
-        let end = context.astronomicalNightEnd.addingTimeInterval(60 * 60)
-        guard end > start else { return nil }
-
-        var samples: [PlanetPositionSample] = []
-        var time = start
-
-        while time <= end {
-            samples.append(position(
-                for: planet,
-                at: time,
-                latitude: context.location.latitude,
-                longitude: context.location.longitude
-            ))
-            time = time.addingTimeInterval(sampleInterval)
-        }
-
-        return PlanetObservationData(targetID: target.id, samples: samples)
-    }
-
-    private func position(
-        for planet: PlanetOrbitalElements.Planet,
-        at date: Date,
-        latitude: Double,
-        longitude: Double
-    ) -> PlanetPositionSample {
-        let jd = Self.julianDate(from: date)
-        // These low-precision orbital elements use Schlyter's day-number convention:
-        // d = JD - 2451543.5 (rather than the J2000.0 epoch JD 2451545.0).
-        let d = jd - 2_451_543.5
-        let sunGeocentric = PlanetOrbitalElements.elements(for: .earth, schlyterDayNumber: d).heliocentricCoordinates()
-        let planetCoordinates = PlanetOrbitalElements.elements(for: planet, schlyterDayNumber: d).heliocentricCoordinates()
-
-        let x = planetCoordinates.x + sunGeocentric.x
-        let y = planetCoordinates.y + sunGeocentric.y
-        let z = planetCoordinates.z + sunGeocentric.z
-        let obliquity = Self.radians(23.4393 - 3.563e-7 * d)
-
-        let equatorialX = x
-        let equatorialY = y * cos(obliquity) - z * sin(obliquity)
-        let equatorialZ = y * sin(obliquity) + z * cos(obliquity)
-        let rightAscension = atan2(equatorialY, equatorialX)
-        let declination = atan2(equatorialZ, sqrt(equatorialX * equatorialX + equatorialY * equatorialY))
-
-        let localSiderealTime = Self.radians(Self.normalizedDegrees(
-            280.460_618_37 + 360.985_647_366_29 * (jd - 2_451_545.0) + longitude
-        ))
-        let hourAngle = Self.normalizedRadians(localSiderealTime - rightAscension)
-        let latitudeRadians = Self.radians(latitude)
-
-        let altitude = asin(
-            sin(declination) * sin(latitudeRadians)
-            + cos(declination) * cos(latitudeRadians) * cos(hourAngle)
+        return PlanetObservationData(
+            targetID: target.id,
+            samples: samples.map {
+                PlanetPositionSample(
+                    time: $0.time,
+                    altitude: $0.altitude,
+                    azimuth: $0.azimuth,
+                    solarElongation: $0.solarElongation
+                )
+            }
         )
-        let azimuth = atan2(
-            sin(hourAngle),
-            cos(hourAngle) * sin(latitudeRadians) - tan(declination) * cos(latitudeRadians)
-        )
-
-        return PlanetPositionSample(
-            time: date,
-            altitude: Self.degrees(altitude),
-            azimuth: Self.normalizedDegrees(Self.degrees(azimuth) + 180),
-            solarElongation: Self.angularSeparation(
-                first: (x, y, z),
-                second: sunGeocentric
-            )
-        )
-    }
-
-    private static func angularSeparation(
-        first: (x: Double, y: Double, z: Double),
-        second: (x: Double, y: Double, z: Double)
-    ) -> Double {
-        let dotProduct = first.x * second.x + first.y * second.y + first.z * second.z
-        let firstMagnitude = sqrt(first.x * first.x + first.y * first.y + first.z * first.z)
-        let secondMagnitude = sqrt(second.x * second.x + second.y * second.y + second.z * second.z)
-        guard firstMagnitude > 0, secondMagnitude > 0 else { return 0 }
-
-        let cosine = min(max(dotProduct / (firstMagnitude * secondMagnitude), -1), 1)
-        return degrees(acos(cosine))
-    }
-
-    private static func julianDate(from date: Date) -> Double {
-        date.timeIntervalSince1970 / 86_400 + 2_440_587.5
-    }
-
-    private static func radians(_ degrees: Double) -> Double {
-        degrees * .pi / 180
-    }
-
-    private static func degrees(_ radians: Double) -> Double {
-        radians * 180 / .pi
-    }
-
-    private static func normalizedDegrees(_ degrees: Double) -> Double {
-        (degrees.truncatingRemainder(dividingBy: 360) + 360)
-            .truncatingRemainder(dividingBy: 360)
-    }
-
-    private static func normalizedRadians(_ radians: Double) -> Double {
-        let twoPi = 2 * Double.pi
-        return (radians.truncatingRemainder(dividingBy: twoPi) + twoPi)
-            .truncatingRemainder(dividingBy: twoPi)
     }
 }
 
+/// Host adapter over the shared planet recommendation.
+///
+/// Best-sample selection, the visibility window, scoring, Venus twilight
+/// suitability and reason semantics live in `AstroEngine.PlanetRecommendation`;
+/// see contracts/procedures/planet-recommendation.md. What stays here is
+/// host-owned: the target-type guard, the presentation summary and the
+/// validation logging.
 public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendationProviding {
-    private static let minimumVisibleAltitude = 8.0
-    // Planets use a dedicated, altitude-heavy scoring model. Altitude quality intentionally
-    // saturates at 70°, independently of the generic deep-sky scorer's normalization.
-    private static let planetAltitudeNormalizationDegrees = 70.0
-    // These are product heuristics, not physical definitions of twilight. Two hours matches
-    // the extended evening/dawn candidate range and prevents daytime visibility from earning
-    // twilight credit; 45 minutes is enough time to find and casually observe Venus while
-    // keeping a fleeting near-horizon window meaningfully weaker.
-    private static let venusTwilightEligibilityWindow: TimeInterval = 2 * 3600
-    private static let venusTwilightUsefulDuration: TimeInterval = 45 * 60
-    // Product heuristics: altitude is weighted highest because horizon extinction and local
-    // obstructions dominate naked-eye Venus; duration is next; elongation confirms useful
-    // separation from the Sun. The weights sum to one and should be revalidated if another
-    // twilight-object scoring model is introduced.
-    private static let venusTwilightAltitudeWeight = 0.45
-    private static let venusTwilightDurationWeight = 0.30
-    private static let venusTwilightElongationWeight = 0.25
-
     private let planetAstronomyProvider: any PlanetAstronomyProviding
 
     public init(planetAstronomyProvider: any PlanetAstronomyProviding = LowPrecisionPlanetAstronomyProvider()) {
@@ -200,53 +112,42 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
             return nil
         }
 
-        let visibleSamples = observation.samples.filter { $0.altitude >= Self.minimumVisibleAltitude }
-        guard !visibleSamples.isEmpty,
-              let bestSample = bestSample(from: visibleSamples, context: context) else {
-            return nil
+        let samples = observation.samples.map {
+            PlanetRecommendation.Sample(
+                time: $0.time,
+                altitude: $0.altitude,
+                azimuth: $0.azimuth,
+                solarElongation: $0.solarElongation
+            )
         }
+        guard let evaluation = PlanetRecommendation.evaluate(
+            targetID: target.id,
+            samples: samples,
+            nightStart: context.astronomicalNightStart,
+            nightEnd: context.astronomicalNightEnd,
+            cloudCoverScore: context.nightQuality.details.cloudCoverScore,
+            hourlyRatings: context.nightQuality.hourlyRatings.map {
+                PlanetRecommendation.HourlyRating(time: $0.time, score: $0.score)
+            }
+        ) else { return nil }
 
-        let window = visibilityWindow(
-            from: observation.samples,
-            visibleSamples: visibleSamples,
-            bestSample: bestSample
+        let window = TargetVisibilityWindow(
+            start: evaluation.window.start,
+            end: evaluation.window.end,
+            bestTime: evaluation.window.bestTime,
+            maxAltitude: evaluation.window.maxAltitude,
+            direction: Self.userFacingCompassDirection(for: evaluation.window.azimuth),
+            azimuth: evaluation.window.azimuth
         )
-        let weatherQuality = weatherQuality(in: window, context: context)
-        let darknessOverlap = overlapFraction(
-            windowStart: window.start,
-            windowEnd: window.end,
-            darknessStart: context.astronomicalNightStart,
-            darknessEnd: context.astronomicalNightEnd
-        )
-        let convenience = convenienceScore(for: bestSample.time, context: context)
-        let visibilityQuality = visibilityQuality(
-            for: target,
-            bestSample: bestSample,
-            window: window,
-            darknessOverlap: darknessOverlap,
-            context: context
-        )
-        let score = score(
-            altitude: bestSample.altitude,
-            weatherQuality: weatherQuality,
-            visibilityQuality: visibilityQuality,
-            convenience: convenience
-        )
-        let reasons = reasons(
-            bestSample: bestSample,
-            weatherQuality: weatherQuality,
-            darknessOverlap: darknessOverlap,
-            convenience: convenience
-        )
-
+        let reasons = evaluation.reasons.compactMap {
+            TargetRecommendationReason(rawValue: $0.rawValue)
+        }
         let recommendation = TargetRecommendation(
             target: target,
-            score: score,
+            score: evaluation.score,
             visibilityWindow: window,
             reasons: reasons,
             summary: summary(
-                for: target,
-                bestSample: bestSample,
                 window: window,
                 context: context
             )
@@ -260,313 +161,91 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
             ),
             samplesSummary: Self.samplesSummary(
                 allSamples: observation.samples,
-                visibleSamples: visibleSamples
+                visibleSamples: Self.visibleSamples(observation.samples)
             ),
-            bestAltitude: bestSample.altitude,
-            bestAzimuth: bestSample.azimuth,
-            scoreBreakdown: scoreBreakdown(
-                altitude: bestSample.altitude,
-                weatherQuality: weatherQuality,
-                visibilityQuality: visibilityQuality,
-                convenience: convenience
-            )
+            bestAltitude: evaluation.window.maxAltitude,
+            bestAzimuth: evaluation.window.azimuth,
+            scoreBreakdown: Self.scoreBreakdown(evaluation: evaluation)
         )
         return recommendation
     }
 
-    private func bestSample(
-        from samples: [PlanetPositionSample],
-        context: TargetRecommendationContext
-    ) -> PlanetPositionSample? {
-        samples.max { lhs, rhs in
-            weightedScore(for: lhs, context: context) < weightedScore(for: rhs, context: context)
-        }
+    /// Samples at or above the shared visible-altitude threshold. Derived
+    /// host-side so the validation summary keeps its pre-migration meaning
+    /// without widening the shared recommendation result.
+    static func visibleSamples(_ samples: [PlanetPositionSample]) -> [PlanetPositionSample] {
+        samples.filter { $0.altitude >= Self.minimumVisibleAltitude }
     }
 
-    private func weightedScore(
-        for sample: PlanetPositionSample,
-        context: TargetRecommendationContext
-    ) -> Double {
-        let altitude = min(max(sample.altitude / Self.planetAltitudeNormalizationDegrees, 0), 1)
-        let darkness = sample.time >= context.astronomicalNightStart
-            && sample.time <= context.astronomicalNightEnd ? 1.0 : 0.55
-        let convenience = convenienceScore(for: sample.time, context: context)
-        return altitude * 0.70 + darkness * 0.15 + convenience * 0.15
+    private static var minimumVisibleAltitude: Double {
+        EngineCalibration.current.planetRecommendation.visibility.minimum_altitude_degrees
     }
 
-    private func visibilityWindow(
-        from samples: [PlanetPositionSample],
-        visibleSamples: [PlanetPositionSample],
-        bestSample: PlanetPositionSample
-    ) -> TargetVisibilityWindow {
-        let firstVisible = visibleSamples.first
-        let lastVisible = visibleSamples.last
-        let firstVisibleIndex = firstVisible.flatMap { sample in
-            samples.firstIndex(where: { $0.time == sample.time })
-        }
-        let lastVisibleIndex = lastVisible.flatMap { sample in
-            samples.lastIndex(where: { $0.time == sample.time })
-        }
-
-        let start: Date
-        if let firstVisible, let firstVisibleIndex, firstVisibleIndex > samples.startIndex {
-            start = thresholdCrossing(between: samples[firstVisibleIndex - 1], and: firstVisible)
-        } else {
-            start = firstVisible?.time ?? bestSample.time
-        }
-
-        let end: Date
-        if let lastVisible, let lastVisibleIndex, lastVisibleIndex < samples.index(before: samples.endIndex) {
-            end = thresholdCrossing(between: lastVisible, and: samples[lastVisibleIndex + 1])
-        } else {
-            end = lastVisible?.time.addingTimeInterval(15 * 60)
-                ?? bestSample.time.addingTimeInterval(15 * 60)
-        }
-
-        return TargetVisibilityWindow(
-            start: start,
-            end: end,
-            bestTime: bestSample.time,
-            maxAltitude: bestSample.altitude,
-            direction: Self.userFacingCompassDirection(for: bestSample.azimuth),
-            azimuth: bestSample.azimuth
-        )
-    }
-
-    private func thresholdCrossing(
-        between first: PlanetPositionSample,
-        and second: PlanetPositionSample
-    ) -> Date {
-        let altitudeChange = second.altitude - first.altitude
-        guard abs(altitudeChange) > 0.0001 else { return first.time }
-        let fraction = min(
-            max((Self.minimumVisibleAltitude - first.altitude) / altitudeChange, 0),
-            1
-        )
-        return first.time.addingTimeInterval(second.time.timeIntervalSince(first.time) * fraction)
-    }
-
-    private func score(
-        altitude: Double,
-        weatherQuality: Double,
-        visibilityQuality: Double,
-        convenience: Double
-    ) -> Int {
-        let altitudeQuality = min(max(altitude / Self.planetAltitudeNormalizationDegrees, 0), 1)
-        let lowAltitudePenalty = altitude < 15 ? 18.0 : 0
-        let rawScore = altitudeQuality * 45
-            + weatherQuality * 30
-            + visibilityQuality * 12
-            + convenience * 13
-            - lowAltitudePenalty
-        return Int(round(min(max(rawScore, 0), 100)))
-    }
-
-    private func scoreBreakdown(
-        altitude: Double,
-        weatherQuality: Double,
-        visibilityQuality: Double,
-        convenience: Double
-    ) -> [String] {
-        let altitudeQuality = min(max(altitude / Self.planetAltitudeNormalizationDegrees, 0), 1)
-        let lowAltitudePenalty = altitude < 15 ? 18.0 : 0
-        let altitudeComponent = altitudeQuality * 45
-        let weatherComponent = weatherQuality * 30
-        let visibilityComponent = visibilityQuality * 12
-        let convenienceComponent = convenience * 13
+    private static func scoreBreakdown(evaluation: PlanetRecommendation.Result) -> [String] {
+        let breakdown = evaluation.breakdown
+        let weights = EngineCalibration.current.planetRecommendation.weights
+        let altitudeComponent = breakdown.altitudeQuality * weights.altitude
+        let weatherComponent = breakdown.weatherQuality * weights.weather
+        let visibilityComponent = breakdown.visibilityQuality * weights.visibility
+        let convenienceComponent = breakdown.convenience * weights.convenience
         let rawScore = altitudeComponent
             + weatherComponent
             + visibilityComponent
             + convenienceComponent
-            - lowAltitudePenalty
+            - breakdown.lowAltitudePenalty
 
         return [
             String(format: "altitude %.1f", altitudeComponent),
             String(format: "weather %.1f", weatherComponent),
             String(format: "visibility %.1f", visibilityComponent),
             String(format: "convenience %.1f", convenienceComponent),
-            String(format: "lowAltitudePenalty -%.1f", lowAltitudePenalty),
+            String(format: "lowAltitudePenalty -%.1f", breakdown.lowAltitudePenalty),
             String(format: "raw %.1f", rawScore)
         ]
     }
 
-    private func visibilityQuality(
-        for target: ObservableTarget,
-        bestSample: PlanetPositionSample,
-        window: TargetVisibilityWindow,
-        darknessOverlap: Double,
-        context: TargetRecommendationContext
-    ) -> Double {
-        guard target.id.lowercased() == "venus" else {
-            return darknessOverlap
-        }
-
-        // Venus can be an excellent naked-eye twilight target. Credit it only when
-        // altitude, available time, and solar elongation support that use case.
-        // Weather is scored separately by the shared 30-point weather component.
-        return max(
-            darknessOverlap,
-            venusTwilightSuitability(
-                bestSample: bestSample,
-                window: window,
-                context: context
-            )
-        )
-    }
-
-    private func venusTwilightSuitability(
-        bestSample: PlanetPositionSample,
-        window: TargetVisibilityWindow,
-        context: TargetRecommendationContext
-    ) -> Double {
-        let isEveningTwilight = bestSample.time < context.astronomicalNightStart
-            && window.end > context.astronomicalNightStart.addingTimeInterval(-Self.venusTwilightEligibilityWindow)
-        let isMorningTwilight = bestSample.time > context.astronomicalNightEnd
-            && window.start < context.astronomicalNightEnd.addingTimeInterval(Self.venusTwilightEligibilityWindow)
-        guard isEveningTwilight || isMorningTwilight else { return 0 }
-
-        let altitudeQuality = min(max((bestSample.altitude - Self.minimumVisibleAltitude) / 12, 0), 1)
-        let durationQuality = min(max(window.duration / Self.venusTwilightUsefulDuration, 0), 1)
-        let elongationQuality = min(max(((bestSample.solarElongation ?? 0) - 15) / 30, 0), 1)
-
-        return altitudeQuality * Self.venusTwilightAltitudeWeight
-            + durationQuality * Self.venusTwilightDurationWeight
-            + elongationQuality * Self.venusTwilightElongationWeight
-    }
-
-    private func reasons(
-        bestSample: PlanetPositionSample,
-        weatherQuality: Double,
-        darknessOverlap: Double,
-        convenience: Double
-    ) -> [TargetRecommendationReason] {
-        var reasons: [TargetRecommendationReason] = []
-
-        if bestSample.altitude >= 45 {
-            reasons.append(.highAltitude)
-        } else if bestSample.altitude < 20 {
-            reasons.append(.lowAltitude)
-        }
-
-        if darknessOverlap >= 0.45 {
-            reasons.append(.astronomicalDarkness)
-        }
-
-        if convenience >= 0.72 {
-            reasons.append(.convenientPlanetWindow)
-        } else if convenience <= 0.35 {
-            reasons.append(.lateOrEarlyPlanetWindow)
-        }
-
-        if weatherQuality >= 0.7 {
-            reasons.append(.goodNightQuality)
-        } else if weatherQuality < 0.45 {
-            reasons.append(.poorWeather)
-        }
-
-        reasons.append(.planetMoonlightResistant)
-        return reasons
-    }
-
     private func summary(
-        for target: ObservableTarget,
-        bestSample: PlanetPositionSample,
         window: TargetVisibilityWindow,
         context: TargetRecommendationContext
     ) -> String {
-        let direction = Self.userFacingCompassDirection(for: bestSample.azimuth)
-        let altitude = Int(round(bestSample.altitude))
+        let direction = window.direction ?? ""
+        let bestAltitude = window.maxAltitude ?? 0
+        let altitude = Int(round(bestAltitude))
 
         if context.hasPoorTargetRecommendationConditions(in: window) {
-            if bestSample.time < context.astronomicalNightStart {
+            if window.bestTime < context.astronomicalNightStart {
                 return "Well placed after sunset, but clouds may block the view."
             }
 
-            if bestSample.time > context.astronomicalNightEnd.addingTimeInterval(-2 * 3600) {
+            if window.bestTime > context.astronomicalNightEnd.addingTimeInterval(-2 * 3600) {
                 return "Well placed before dawn, but clouds may block the view."
             }
 
             return "Well placed tonight, but clouds may block the view."
         }
 
-        if bestSample.time < context.astronomicalNightStart {
-            if bestSample.altitude < 20 {
+        if window.bestTime < context.astronomicalNightStart {
+            if bestAltitude < 20 {
                 return "Low in the \(direction) shortly after sunset; horizon obstructions may matter."
             }
             return "Look \(direction), about \(altitude)° high shortly after sunset."
         }
 
-        if bestSample.time > context.astronomicalNightEnd.addingTimeInterval(-2 * 3600) {
-            if bestSample.altitude < 20 {
+        if window.bestTime > context.astronomicalNightEnd.addingTimeInterval(-2 * 3600) {
+            if bestAltitude < 20 {
                 return "Visible before dawn, but low altitude limits the view."
             }
-            if bestSample.altitude < 35 {
+            if bestAltitude < 35 {
                 return "Best before dawn; only moderately high."
             }
             return "Visible before dawn in the \(direction), about \(altitude)° high."
         }
 
-        return "Highest around \(Self.timeFormatter.string(from: bestSample.time)), facing \(direction)."
-    }
-
-    private func convenienceScore(for time: Date, context: TargetRecommendationContext) -> Double {
-        let eveningStart = context.astronomicalNightStart.addingTimeInterval(-2 * 3600)
-        let eveningEnd = context.astronomicalNightStart.addingTimeInterval(4 * 3600)
-        if time >= eveningStart && time <= eveningEnd {
-            return 1
-        }
-
-        let lateNightStart = context.astronomicalNightEnd.addingTimeInterval(-3 * 3600)
-        if time >= lateNightStart {
-            return 0.35
-        }
-
-        return 0.65
-    }
-
-    private func weatherQuality(
-        in window: TargetVisibilityWindow,
-        context: TargetRecommendationContext
-    ) -> Double {
-        let overlappingRatings = context.nightQuality.hourlyRatings.filter { rating in
-            let ratingEnd = rating.time.addingTimeInterval(3600)
-            return ratingEnd > window.start && rating.time < window.end
-        }
-
-        guard !overlappingRatings.isEmpty else {
-            return 1 - min(max(context.nightQuality.details.cloudCoverScore / 100, 0), 1)
-        }
-
-        let averageScore = overlappingRatings.map(\.score).reduce(0, +) / Double(overlappingRatings.count)
-        return 1 - min(max(averageScore / 2, 0), 1)
-    }
-
-    private func overlapFraction(
-        windowStart: Date,
-        windowEnd: Date,
-        darknessStart: Date,
-        darknessEnd: Date
-    ) -> Double {
-        guard windowEnd > windowStart else { return 0 }
-
-        let overlapStart = max(windowStart, darknessStart)
-        let overlapEnd = min(windowEnd, darknessEnd)
-        guard overlapEnd > overlapStart else { return 0 }
-
-        return overlapEnd.timeIntervalSince(overlapStart) / windowEnd.timeIntervalSince(windowStart)
+        return "Highest around \(Self.timeFormatter.string(from: window.bestTime)), facing \(direction)."
     }
 
     public static func compassDirection(for azimuth: Double) -> String {
-        let directions = [
-            "N", "NNE", "NE", "ENE",
-            "E", "ESE", "SE", "SSE",
-            "S", "SSW", "SW", "WSW",
-            "W", "WNW", "NW", "NNW"
-        ]
-        let normalized = (azimuth.truncatingRemainder(dividingBy: 360) + 360)
-            .truncatingRemainder(dividingBy: 360)
-        let index = Int((normalized / 22.5).rounded()) % directions.count
-        return directions[index]
+        PlanetRecommendation.compassDirection(forAzimuth: azimuth)
     }
 
     private static func userFacingCompassDirection(for azimuth: Double) -> String {
@@ -606,101 +285,4 @@ public struct DefaultPlanetTargetRecommendationProvider: PlanetTargetRecommendat
         formatter.timeStyle = .short
         return formatter
     }()
-}
-
-private struct PlanetOrbitalElements {
-    enum Planet: String {
-        case earth
-        case venus
-        case mars
-        case jupiter
-        case saturn
-    }
-
-    let longitudeOfAscendingNode: Double
-    let inclination: Double
-    let argumentOfPerihelion: Double
-    let semiMajorAxis: Double
-    let eccentricity: Double
-    let meanAnomaly: Double
-
-    static func elements(for planet: Planet, schlyterDayNumber d: Double) -> PlanetOrbitalElements {
-        switch planet {
-        case .earth:
-            return PlanetOrbitalElements(
-                longitudeOfAscendingNode: 0,
-                inclination: 0,
-                argumentOfPerihelion: 282.9404 + 4.70935e-5 * d,
-                semiMajorAxis: 1,
-                eccentricity: 0.016709 - 1.151e-9 * d,
-                meanAnomaly: 356.0470 + 0.9856002585 * d
-            )
-        case .venus:
-            return PlanetOrbitalElements(
-                longitudeOfAscendingNode: 76.6799 + 2.46590e-5 * d,
-                inclination: 3.3946 + 2.75e-8 * d,
-                argumentOfPerihelion: 54.8910 + 1.38374e-5 * d,
-                semiMajorAxis: 0.723330,
-                eccentricity: 0.006773 - 1.302e-9 * d,
-                meanAnomaly: 48.0052 + 1.6021302244 * d
-            )
-        case .mars:
-            return PlanetOrbitalElements(
-                longitudeOfAscendingNode: 49.5574 + 2.11081e-5 * d,
-                inclination: 1.8497 - 1.78e-8 * d,
-                argumentOfPerihelion: 286.5016 + 2.92961e-5 * d,
-                semiMajorAxis: 1.523688,
-                eccentricity: 0.093405 + 2.516e-9 * d,
-                meanAnomaly: 18.6021 + 0.5240207766 * d
-            )
-        case .jupiter:
-            return PlanetOrbitalElements(
-                longitudeOfAscendingNode: 100.4542 + 2.76854e-5 * d,
-                inclination: 1.3030 - 1.557e-7 * d,
-                argumentOfPerihelion: 273.8777 + 1.64505e-5 * d,
-                semiMajorAxis: 5.20256,
-                eccentricity: 0.048498 + 4.469e-9 * d,
-                meanAnomaly: 19.8950 + 0.0830853001 * d
-            )
-        case .saturn:
-            return PlanetOrbitalElements(
-                longitudeOfAscendingNode: 113.6634 + 2.38980e-5 * d,
-                inclination: 2.4886 - 1.081e-7 * d,
-                argumentOfPerihelion: 339.3939 + 2.97661e-5 * d,
-                semiMajorAxis: 9.55475,
-                eccentricity: 0.055546 - 9.499e-9 * d,
-                meanAnomaly: 316.9670 + 0.0334442282 * d
-            )
-        }
-    }
-
-    func heliocentricCoordinates() -> (x: Double, y: Double, z: Double) {
-        let meanAnomalyRadians = Self.radians(Self.normalizedDegrees(meanAnomaly))
-        let eccentricAnomaly = meanAnomalyRadians
-            + eccentricity * sin(meanAnomalyRadians) * (1 + eccentricity * cos(meanAnomalyRadians))
-
-        let xv = semiMajorAxis * (cos(eccentricAnomaly) - eccentricity)
-        let yv = semiMajorAxis * sqrt(1 - eccentricity * eccentricity) * sin(eccentricAnomaly)
-        let trueAnomaly = atan2(yv, xv)
-        let radius = sqrt(xv * xv + yv * yv)
-
-        let node = Self.radians(longitudeOfAscendingNode)
-        let inclinationRadians = Self.radians(inclination)
-        let argument = trueAnomaly + Self.radians(argumentOfPerihelion)
-
-        let x = radius * (cos(node) * cos(argument) - sin(node) * sin(argument) * cos(inclinationRadians))
-        let y = radius * (sin(node) * cos(argument) + cos(node) * sin(argument) * cos(inclinationRadians))
-        let z = radius * sin(argument) * sin(inclinationRadians)
-
-        return (x, y, z)
-    }
-
-    private static func radians(_ degrees: Double) -> Double {
-        degrees * .pi / 180
-    }
-
-    private static func normalizedDegrees(_ degrees: Double) -> Double {
-        (degrees.truncatingRemainder(dividingBy: 360) + 360)
-            .truncatingRemainder(dividingBy: 360)
-    }
 }

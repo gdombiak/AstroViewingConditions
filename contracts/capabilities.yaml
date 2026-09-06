@@ -234,3 +234,41 @@ capabilities:
       observation is an external provider fact, and two hosts that each derive
       it from their own ephemeris can land on opposite sides of the strict
       thresholds below. See contracts/procedures/moon-recommendation.md.
+
+  - id: astronomy.planet_observation
+    hosts: [ios, cli]
+    equality: astronomy_planet_observation
+    since: "1.0.0"
+    summary: >
+      Live planet observation facts for one bounded UTC night: geometric
+      altitude/azimuth and geocentric solar elongation for Venus, Mars, Jupiter
+      or Saturn at the production 900 s cadence, sampled by repeated addition from
+      two hours before night start while the instant stays at or before one hour
+      after night end. The lead endpoint is always sampled; the trailing endpoint
+      only when the cadence lands on it, and there is no explicit end sample. Uses
+      the production low-precision Schlyter orbital-element model with the
+      JD - 2451543.5 day number, not an ephemeris. Earth is internal to the
+      geocentric Sun vector and is not a target. Null observation when the night
+      interval is inverted by more than the lead plus trail. No scoring, no
+      windows, no presentation copy.
+
+  - id: targets.planet_recommendation
+    hosts: [ios, cli]
+    equality: planet_recommendation
+    since: "1.0.0"
+    requires_injected: [planet_observation, hourly_ratings, cloud_cover_score]
+    summary: >
+      Dedicated deterministic planet recommendation from injected
+      astronomy.planet_observation samples, hourly ratings and a cloud-cover
+      score. Emits the visibility window, integer score and objective reason
+      codes; null when no sample reaches the visible altitude. Injected sample and
+      rating instants carry a bounded spill around the night range, derived from
+      the observation lead/trail and the rating hour, so a valid
+      astronomy.planet_observation bundle is consumable verbatim. Venus alone adds
+      twilight suitability to the darkness-overlap visibility term. No live
+      astronomy, no mixed-target composition, no English copy; planets never
+      route through targets.recommend. Exact parity is conditioned on the
+      injected facts, as it is for targets.moon_recommendation: the planet
+      observation is a provider fact, and two hosts that each derive it
+      independently can land on opposite sides of the strict thresholds below.
+      See contracts/procedures/planet-recommendation.md.

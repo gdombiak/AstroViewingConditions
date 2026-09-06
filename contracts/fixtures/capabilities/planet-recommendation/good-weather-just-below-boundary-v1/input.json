@@ -1,0 +1,23 @@
+{
+  "capability": "targets.planet_recommendation",
+  "injected": {
+    "target_id": "jupiter",
+    "night_start": "2026-03-01T20:00:00Z",
+    "night_end": "2026-03-02T05:00:00Z",
+    "samples": [
+      {
+        "time": "2026-03-01T22:00:00Z",
+        "altitude": 30,
+        "azimuth": 180.0,
+        "solar_elongation": 45.0
+      }
+    ],
+    "cloud_cover_score": 0.0,
+    "hourly_ratings": [
+      {
+        "time": "2026-03-01T22:00:00Z",
+        "score": 0.6000000000000003
+      }
+    ]
+  }
+}

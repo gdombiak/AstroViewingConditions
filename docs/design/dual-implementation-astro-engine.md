@@ -271,10 +271,12 @@ The current tree is an Apple app with a tools folder and a working iOS CI job. P
 │   │   └── target-scoring.md        # later unreleased 1.0 slice
 │   ├── schemas/
 │   ├── data/
-│   │   ├── calibration/
+│   │   ├── calibration/                    # + moon-/planet-recommendation.json
 │   │   ├── catalog/deep-sky.json
-│   │   ├── orbital/schlyter-planets.json   # later unreleased 1.0 slice
 │   │   └── identity/light-pollution-dataset.json
+│   │   # No orbital/schlyter-planets.json: the planet slice kept the Schlyter
+│   │   # coefficients as code in both hosts. They are the model, not tunable
+│   │   # calibration. See the planet slice below.
 │   └── fixtures/
 │       ├── providers/
 │       └── capabilities/
@@ -351,8 +353,8 @@ Do this **in place** before `Package.swift` exists. Engine XCTest must `import A
 | `Utilities/LocationTimeZoneResolver.swift` | `calendar(for:)` Gregorian+tz; **not** `resolve` / `approximate` | `CLGeocoder` resolve + longitude fallback (iOS host) |
 | `Utilities/AdaptiveFont.swift`, `BestSpotSettings.swift` | Geometry defaults (radius/spacing numbers) may live in calibration JSON | SwiftUI / AppGroup persistence |
 | `Services/AstronomyService.swift` | **1.0:** `MoonSampling` + `SunEventsSampling` protocols and `SunCalcMoonSampler` / `SunCalcSunEventsSampler` (the only `import SunCalc` in the iOS tree). Polar missing-times stay out of the sampler. | Host actor: injects samplers, maps missing SunCalc times through Foundation-only `approximateSunEvents` (`hosts: [ios]`). **Never `import SunCalc`.** |
-| `Services/PlanetRecommendationService.swift` | `PlanetOrbitalElements` algorithm + coefficients (later unreleased slice) | Recommendation copy |
-| `Services/MoonRecommendationService.swift` | SunCalc-backed `MoonAstronomyProviding` implementation **moves into AstroEngine in the package-extract phase** (even though live moon recommend is later unreleased work) so SharedCode does not keep `import SunCalc` | Host orchestration / copy only |
+| `Services/PlanetRecommendationService.swift` | **Done:** the orbital-element algorithm and coefficients are `AstroEngine.LowPrecisionPlanetObservationSampler`; the specialized scorer is `AstroEngine.PlanetRecommendation` | Target-type guard, `TargetVisibilityWindow` mapping, recommendation copy, validation logging |
+| `Services/MoonRecommendationService.swift` | SunCalc-backed `MoonAstronomyProviding` implementation moved into AstroEngine in the package-extract phase so SharedCode does not keep `import SunCalc`. **Done:** the sampler is `AstroEngine.SunCalcMoonObservationSampler` and the scorer is `AstroEngine.MoonRecommendation` | Host orchestration / copy only |
 | Watch / widget / App Group / iCloud / `LocationManager` | — | All stay |
 
 `NightQualityAssessment.calculatedScore` no longer calls `BestSpotSearcher`. It is a convenience wrapping `NightConditionsScoring.publicScore(_ assessment)`. Callers may use either; there is one implementation. Do not delete the property in a later phase unless the Watch/widget/iOS call sites are migrated for a real API reason.
@@ -406,8 +408,8 @@ flowchart LR
 | `geocoding.decode` | Open-Meteo search JSON. Not needed to prove scoring. |
 | `astronomy.sun_events` | **Implemented in Phase 16; unreleased first-1.0 work.** Required Grok Bot product capability. Live Skyfield/SunCalc; times ±60 s. Sunset, civil/nautical/astronomical twilight, astronomical night start/end, sunrise, and explicit nullable crossings. The legacy Apple-only `approximateSunEvents` polar fallback is host-owned and outside portable equality. Live suite **must not** assert product integers. |
 | `astronomy.moon_info` / `astronomy.moon_series` | **Implemented in Phase 16; unreleased first-1.0 work.** Required Grok Bot product capabilities. Public results contain explicit UTC time, altitude, and integer illumination; the series accepts explicit instants. Altitude ±0.5°; illumination integer ±1. Phase name/emoji, continuous phase identity, waxing/waning, and rise/set are not public Phase 16 fields. Not fed live into integer fixtures. Phase 16's public facts are not complete lunar-recommendation parity: the remaining production observation, useful-window, scoring, and semantic-reason decisions are release-gate work. |
-| `astronomy.planet_positions` | Exact **after** Schlyter procedure is written in `contracts/procedures/` and coefficients are JSON. Until then, `equality: n/a`. |
-| `targets.windows` | Prefer frozen alt/az samples; specialized live target-window work is out of Phase 16 scope and remains later unreleased astronomy work. |
+| `astronomy.planet_positions` | **Superseded.** The planet slice shipped `astronomy.planet_observation` (night-scoped facts) instead of a bare position capability, and kept the Schlyter coefficients as code rather than JSON. This ID remains unimplemented and CLI-unknown. |
+| `targets.windows` | **Deliberately never shipped.** `targets.recommend` still prefers frozen alt/az samples. Window semantics landed as three target-type-specific capabilities — `targets.deep_sky_windows`, `targets.moon_recommendation`, `targets.planet_recommendation` — because production's three providers differ in threshold, source model, endpoint rules and eligibility. |
 | `targets.recommend` | Integer scores + sort order exact given **precomputed windows**. |
 | `equipment.match` | `level` / `reason` / `mode` exact. `explanation` **never** in equality (host copy). |
 | `location.compare` | Full [total order](#locationcompare-total-order-11). Suitability is an **injected overlay** (default all `unchecked`). Omit `id` and `summary`. |
@@ -435,6 +437,10 @@ Grok should not reimplement astronomical-night calculations, Moon astronomy, wea
 | Scored hourly observing conditions | `night_conditions.analyze` `hourly_ratings` | 1.0 | Implemented in the Python library and public CLI (Phase 11). |
 | Astronomical darkness timing | `astronomy.sun_events` | Unreleased 1.0 | Implemented in Phase 16; explicit UTC interval and nullable crossings. |
 | Moon context | `astronomy.moon_info`, `astronomy.moon_series` | Unreleased 1.0 | Implemented in Phase 16; explicit UTC samples and field tolerances. |
+| Night-scoped lunar facts | `astronomy.moon_observation` | Unreleased 1.0 | Implemented in the lunar slice: phase, illumination, rise/set, always-up/down and altitude/azimuth samples. |
+| Lunar recommendation | `targets.moon_recommendation` | Unreleased 1.0 | Implemented in the lunar slice: useful window, integer score and objective reason codes from injected facts. |
+| Planet facts | `astronomy.planet_observation` | Unreleased 1.0 | Implemented in the planet slice: altitude, azimuth and solar elongation samples for Venus, Mars, Jupiter and Saturn. |
+| Planet recommendation | `targets.planet_recommendation` | Unreleased 1.0 | Implemented in the planet slice: visibility window, best time, integer score and objective reasons, including Venus twilight. |
 
 Do not add English summaries to parity. Do not invent phase emoji or presentation copy. Do not pull precipitation into Phase 8 or the 1.0 `weather.decode` fixtures merely to close this gap.
 
@@ -1160,10 +1166,10 @@ Local: `make parity` → `scripts/parity` runs `python -m pytest Tests/parity` w
 | Cloud-cover score table, moon buckets, wind buckets | |
 | Seeing / transparency / fog tables | including layer 0.50/0.30/0.20 and fog integer formula |
 | `calculateScore` bases 90/70/45/20 and ±10 map | |
-| Target darkness **per type** and moon **ceilings including planet 6 / meteor 28 / satellite 4 / moon 0** | even though capability is later unreleased work |
+| Target darkness **per type** and moon **ceilings including planet 6 / meteor 28 / satellite 4 / moon 0** | generic `targets.recommend` fallback calibration; the specialized Moon and planet scorers never use it |
 | Equipment numeric thresholds | catalog JSON |
 | 29 deep-sky entries | |
-| Schlyter coefficients | later unreleased work |
+| Schlyter coefficients | shipped in the planet slice as code in both hosts, not calibration; the planet *scoring* constants are `calibration/planet-recommendation.json` |
 | LP identity + `[13.0, 22.5]` + 1000 m | |
 | Grid defaults 30/5 mi, Earth radius 6_371_000, 1609.344 m/mi | |
 
@@ -1546,10 +1552,11 @@ Do not require Python to use SunCalc. Initial-1.0 scoring fixtures inject `night
 | Quantity | 1.x | Swift | Python | Parity |
 |---|---|---|---|---|
 | Night integers | 1.0 | Injected samples | Injected samples | Exact |
-| Sun twilight live | Later unreleased 1.0 slice | `SunCalcSunEventsSampler` in AstroEngine | Skyfield | ±60 s; **no** integer assertions |
+| Sun twilight live | Implemented in Phase 16 | `SunCalcSunEventsSampler` in AstroEngine | Skyfield | ±60 s; **no** integer assertions |
 | Polar missing times | iOS host | Foundation `approximateSunEvents` (no SunCalc) | not implemented | `hosts: [ios]` |
-| Moon live | Later unreleased 1.0 slice | `SunCalcMoonSampler` in AstroEngine | Skyfield | ±0.5° / illumination ±1; omit emoji/name |
-| Planets | Reality check before Phase 16 | Schlyter in-repo if already intended | Same JSON + procedure | Exact once procedure is written |
+| Moon live (`moon_info` / `moon_series`) | Implemented in Phase 16 | `SunCalcMoonSampler` in AstroEngine | Skyfield | ±0.5° / illumination ±1; omit emoji/name |
+| Moon observation (`moon_observation`) | Implemented in the lunar slice | `SunCalcMoonObservationSampler` | **Port of the production SunCalc model** (Skyfield rejected) | Cyclic phase/azimuth, ±0.5° altitude, integer ±1 |
+| Planets | Implemented in the planet slice | Production Schlyter low-precision model in AstroEngine | Same model ported, not Skyfield | Bit-exact measured; public ceilings 1e-4 / cyclic 0.01° |
 | ISS | 1.0 | Decode | Decode | Exact DTO |
 
 ---
@@ -1588,7 +1595,7 @@ All four product questions are **Resolved** (2026-08-30). Do not re-open them in
 3. **English summary strings — Resolved: no.** Parity is integers, enums, rankings, and decoded DTOs. English copy stays host-specific.
 4. **Forecast horizon — Resolved: CLI may request a longer horizon as an agent-only feature.** Out of contract (`agent.forecast_horizon`, `hosts: [cli]`, `equality: n/a`). 1.0 fixtures stay 3-day (iOS Open-Meteo product). iOS is not required to match.
 
-Python live astronomy uses Skyfield for the Phase 16 sun/moon scope. Whether planets and/or live target windows are in Phase 16 is not committed here; verify the production architecture and available procedures/fixtures immediately before implementation rather than expanding that phase by assumption.
+Python live astronomy uses Skyfield for the Phase 16 sun/moon scope. Whether planets and/or live target windows are in Phase 16 is not committed here; verify the production architecture and available procedures/fixtures immediately before implementation rather than expanding that phase by assumption. *Subsequently implemented outside Phase 16:* the lunar and planet slices below added night-scoped observation and recommendation capabilities. Neither uses Skyfield — Python ports the production SunCalc lunar model and the production Schlyter planet model.
 
 ---
 
@@ -1901,6 +1908,13 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 - **Depends on:** Phase 3, Phase 12
 - **Notes:** Implement `astronomy.sun_events`, `astronomy.moon_info`, and `astronomy.moon_series` using Swift SunCalc and Python Skyfield. Sun events compare at about ±60 seconds, moon altitude at about ±0.5°, and illumination at integer ±1. Live astronomy must never feed product-integer parity assertions. Polar approximate fallback remains `hosts: [ios]`. Planets and live target windows are deliberately not committed by this phase label: before implementation, perform a reality check against the intended production architecture, procedures, and fixtures; add neither by assumption. Optional composed `agent.conditions` remains subsequent Bot-host work, not engine math.
 
+- **Subsequently implemented (outside this phase).** The reality checks below were
+  carried out and their conclusions held: the deep-sky, lunar and planet slices
+  each added target-type-specific capabilities rather than widening Phase 16 or
+  inventing a generic `targets.windows`. The Phase 16 findings are retained as the
+  decision record of what was *not* committed here; they are not a current
+  statement that planets or lunar windows lack a portable implementation.
+
 - **Reality check: Partially Agree. A: Yes**, the committed scope is exactly
   `astronomy.sun_events`, `astronomy.moon_info`, `astronomy.moon_series`.
   Production requires explicit observing instants, not an implicit UTC date or
@@ -2015,7 +2029,7 @@ choose a small public `observing_window.select` capability (option B). Extending
 `night_conditions.analyze` would alter its established DTO; a broad advisory
 capability bundles independent rules; a host-only policy duplicates a decision
 already owned by the shared production engine. Existing analysis equality stays
-unchanged. The public count is now 18, with `since: "1.0.0"`, exact endpoints/null
+unchanged. That slice took the public count to 18, with `since: "1.0.0"`, exact endpoints/null
 and manual fixtures applying to `>=1.0.0 <2.0.0`. No version or release change.
 
 Swift production delegates to `ObservingWindowSelector`; Python implements the
@@ -2038,23 +2052,40 @@ Use the smallest coherent contract slices discovered in design review; this is
 an ordering of dependencies and product value, not seven public IDs or new
 numbered phases:
 
-1. Observing-window decisions: shared best conditions window complete in this
-   slice; host night-boundary composition and downstream semantic advisory
-   policies still require Bot implementation/validation.
+An engine capability existing is not the same as the Bot host composing it into a
+complete product answer. Items 1–5 are engine-side complete; every one of them
+still has host composition listed under "still outstanding".
+
+**Completed (engine-side):**
+
+1. Observing-window decisions: shared best conditions window, `observing_window.select`.
 2. Target metadata/requirement resolution: shared solar-system candidate metadata,
-   Moon-sensitivity derivation, and type/per-target equipment requirements are
-   complete in the slice below; downstream Bot composition remains.
+   Moon-sensitivity derivation, and type/per-target equipment requirements.
 3. Deep-sky observation facts: position, altitude/azimuth, visibility windows,
-   interpolation and best time are complete in the slice below; host night-boundary
-   composition and mixed-target assembly remain.
-4. Lunar observation and recommendation parity: richer facts, rise/set,
-   preparation, useful windows, specialized scoring, and reasons.
+   interpolation and best time, plus the production migration.
+4. Lunar observation and recommendation parity: richer facts, rise/set, useful
+   windows, specialized scoring and objective reasons — the lunar slice below.
 5. Planet observation and recommendation parity: the production low-precision
-   coefficients/procedure, position/elongation, windows, best-time selection,
-   Venus behavior, scoring, and reasons. Do not replace that model with Skyfield
-   without explicit product review.
-6. Mixed-target and equipment-aware composition.
-7. Location-set/Best Nearby and multi-night forecast composition.
+   Schlyter model, position/elongation, windows, best-time selection, Venus
+   behavior, scoring and reasons — the planet slice below. The model was preserved
+   rather than replaced with Skyfield.
+
+**Still outstanding:**
+
+6. Host night/time composition where it is not yet portable: astronomical-night
+   and calendar boundaries, active-night date semantics across midnight, and
+   timezone/DST authority.
+7. Semantic advisory facts that remain intentionally host-owned or composed,
+   including cloud-timing classification.
+8. Mixed-target composition across deep-sky, Moon and planet results, preserving
+   specialized scores, ordering and ties with no generic re-score.
+9. Equipment-aware target composition and filtering before result-count truncation.
+10. Best Nearby / location-set composition, and its candidate-generation and
+    orchestration behavior.
+11. Multi-night forecast eligibility and composition.
+12. Provider availability, failure and staleness semantics.
+13. Bot host persistence: saved locations, selected equipment and user state.
+14. The full pre-1.0 business-logic compatibility / release gate below.
 
 ### Target metadata / requirements slice (implemented; unreleased 1.0)
 
@@ -2074,8 +2105,9 @@ That slice took the public count to **21**; all its new IDs use `since: "1.0.0"`
 
 `equipment.match` still consumes resolved requirements; `targets.recommend`
 scoring, target windows, ranking and equipment filtering semantics are unchanged.
-Deep-sky live facts, specialized Moon/planet scoring and facts, mixed composition,
-Best Nearby and Bot host work remain outstanding as described below.
+After that slice, deep-sky live facts, specialized Moon/planet scoring and facts,
+mixed composition, Best Nearby and Bot host work were still outstanding; the first
+three landed in the slices below.
 
 ### Deep-sky observation facts slice (implemented; unreleased 1.0)
 
@@ -2094,7 +2126,7 @@ interpolation, best-sample selection and the 8-point compass code. A generic
 `targets.windows` shared with Moon and planets was rejected: production's three
 providers differ in threshold, source model, endpoint rules and eligibility, and
 the planet path re-derives its own horizontal step with different normalization
-order. The public count is now **23**; both IDs use `since: "1.0.0"` and fixtures
+order. That slice took the public count to **23**; both IDs use `since: "1.0.0"` and fixtures
 use `>=1.0.0 <2.0.0`. No canonical data changed — RA/Dec already live in
 `contracts/data/catalog/deep-sky.json` and remain authoritative. There is no
 engine/package version change and no public release.
@@ -2110,26 +2142,170 @@ field exactly.
 
 `targets.recommend` remains deterministic over injected/precomputed facts; it does
 not call either new capability, and scoring, ranking, ties and equipment filtering
-are unchanged. Moon and planet observation/recommendation parity, mixed-target
+are unchanged. After that slice, Moon and planet observation/recommendation parity
+were still outstanding; both landed in the two slices below. Mixed-target
 composition, Best Nearby, multi-night composition and Bot host orchestration
-remain outstanding as described below.
+remain outstanding.
+
+### Lunar observation and recommendation slice (implemented; unreleased 1.0)
+
+Assessment: **Partially Agree** with the pre-slice expectation. Chosen boundary is
+a provider capability plus a deterministic scorer, not one lunar mega-capability
+and not an extension of `astronomy.moon_info` / `astronomy.moon_series`, which
+stay unchanged as instantaneous facts at caller-chosen instants. See the normative
+[lunar observation](../../contracts/procedures/moon-observation.md) and
+[lunar recommendation](../../contracts/procedures/moon-recommendation.md)
+procedures for the archaeology, preserved quirks and rejected alternatives.
+
+`astronomy.moon_observation` returns night-scoped facts: continuous phase and
+integer illuminated percent at the interval midpoint, rise/set and
+always-up/always-down over `max(span, cadence)`, and altitude/azimuth samples at
+the production 1800 s cadence plus an explicit interval-end sample.
+`targets.moon_recommendation` consumes that bundle plus an optional
+already-selected best conditions window, hourly ratings and a cloud-cover score,
+and emits the visibility window, integer score and objective reason codes.
+
+**Production SunCalc compatibility finding.** Python's inherited Skyfield
+observation did *not* meet the contract: azimuth differed by 112° near the zenith,
+and the two models disagreed on event presence and the always-up flag. With
+explicit approval the pinned production SunCalc lunar model was ported to Python;
+Swift astronomy was not replaced. Rise/set keep the production
+`asin(R_earth/r) − refraction_at_horizon − asin(R_moon/r)` threshold and hourly
+quadratic search, which is deliberately a *different* threshold from the `> 0`
+sample visibility rule.
+
+**Useful-window and scoring specialization.** The useful window is the best
+conditions window, falling back to the astronomical night only when absent, so the
+dependency `best conditions window → lunar useful window → lunar recommendation`
+is preserved. Scoring is phase quality, visible fraction and weather quality at
+45/30/25 with the near-new-Moon cap, in
+`contracts/data/calibration/moon-recommendation.json`. The generic
+`targets.recommend` scorer never runs for the Moon.
+
+**Production migration.** `DefaultMoonTargetRecommendationProvider` delegates its
+window, score and reason math to `AstroEngine.MoonRecommendation`; the English
+summary, phase names, emoji and validation logging stay host-owned.
+`MoonRecommendationMigrationTests` compares the shared implementation against a
+verbatim copy of the pre-migration math across a 180-case sweep of phases,
+illuminations, altitude profiles, best windows and weather, asserting score,
+reasons and every window field.
+
+That slice took the public count to **25**; both new IDs use `since: "1.0.0"` and
+fixtures use `>=1.0.0 <2.0.0`. No engine/package version change and no release.
+Exact recommendation parity is explicitly conditioned on the injected observation,
+because every decision is a strict cut-point on a provider quantity; the rejected
+Skyfield composition is retained as characterized test evidence.
+
+After that slice, planet observation and recommendation parity were still
+outstanding, along with mixed-target composition, equipment-aware composition,
+Best Nearby, multi-night composition and Bot host orchestration.
+
+### Planet observation and recommendation slice (implemented; unreleased 1.0)
+
+Assessment: **Agree, with corrections** to the audit's description. Chosen boundary
+mirrors the lunar one: a provider capability plus a deterministic scorer. See the
+normative [planet observation](../../contracts/procedures/planet-observation.md)
+and [planet recommendation](../../contracts/procedures/planet-recommendation.md)
+procedures for the full archaeology and rejected alternatives.
+
+**The production model is preserved, not replaced.** `astronomy.planet_observation`
+runs the production Schlyter low-precision orbital-element model with the
+`JD − 2451543.5` day number, one eccentric-anomaly correction term, no light-time
+and no refraction. Skyfield was rejected: it would move every altitude, every
+visible-run boundary and therefore every planet score. The coefficients stayed as
+code in both hosts rather than becoming a JSON resource — they are the model, not
+tunable calibration. Reusing `astronomy.horizontal_position` was also rejected,
+because the planet path does not clamp before `asin` and normalizes azimuth as
+`degrees(atan2(…)) + 180`, which is not bit-identical to the deep-sky conversion.
+
+**Supported bodies.** Venus, Mars, Jupiter and Saturn are the public targets, the
+`catalog.solar_system` planet rows. Earth is in the model only to supply the
+geocentric Sun vector and is **not** a recommendation target: the host mapping
+still accepts it as an artifact of the production enum, and the capability rejects
+it, as it does Mercury, Uranus and Neptune.
+
+**Observation semantics.** Sampling runs from `night_start − 7200` through
+`night_end + 3600` at the production 900 s cadence, by repeated addition under an
+inclusive `<= sample_end` test. The lead endpoint is always sampled; the trailing
+endpoint only when the cadence lands on it, and there is **no** explicit
+interval-end sample — deliberately unlike the lunar observation. An interval
+inverted past lead plus trail yields a null observation rather than an empty array.
+
+**Specialized deterministic recommendation.** `targets.planet_recommendation`
+consumes injected samples, hourly ratings and a cloud-cover score. It keeps the
+inclusive 8° visible threshold, altitude-weighted best-sample selection with
+earliest-wins ties, interpolated interior crossings, a fixed 900 s final-sample
+window extension that is *not* tied to the cadence, ordered convenience bands,
+45/30/12/13 weights, the 18-point low-altitude penalty, and the production reason
+order ending in `planetMoonlightResistant`. Constants live in
+`contracts/data/calibration/planet-recommendation.json`, and the production debug
+breakdown reads that same file. Planets deliberately do **not** route through
+generic `targets.recommend`.
+
+**Venus twilight.** Venus alone takes `max(darkness overlap, twilight suitability)`
+for its visibility term, from altitude, useful duration and solar elongation at
+0.45/0.30/0.25 inside a two-hour evening or morning eligibility window. The
+`astronomicalDarkness` reason still keys on the raw darkness overlap, not on the
+Venus-adjusted value.
+
+**Migration and parity evidence.** Production
+`LowPrecisionPlanetAstronomyProvider` and `DefaultPlanetTargetRecommendationProvider`
+delegate to the shared implementation; the English summary and validation logging
+stay host-owned. `PlanetRecommendationMigrationTests` compares both halves against
+verbatim pre-migration copies that keep their own literals and read no shared
+helper or calibration, over a boundary-first matrix plus a four-planet astronomy
+sweep. Swift and Python agree **bit-for-bit** on the astronomy across an
+adversarial sweep, so the published tolerances exist only for cross-platform libm
+differences, not to conceal a different model.
+
+**Bounded spill transport correction.** The observation samples outside the night
+interval by construction, so a valid bundle for the earliest supported night
+contains 1999 instants. The recommendation transport originally validated every
+injected instant against its plain night range and could not consume its own
+documented producer. Injected and emitted instants now carry a *bounded* spill
+derived from production constants — samples `−7200/+3600`, ratings
+`−10800/+4500`, emitted window `−7200/+4500` — while `night_start` / `night_end`
+keep the unspilled range. The invariant is that a valid
+`astronomy.planet_observation` bundle is consumable **verbatim**, including at the
+date boundaries; one second outside any bound still fails closed.
+
+That slice takes the public count to **27**; both new IDs use `since: "1.0.0"` and
+fixtures use `>=1.0.0 <2.0.0`. No engine/package version change and no release.
+This slice is complete in the working tree but **not yet committed**.
+
+Still outstanding downstream: mixed-target composition, equipment-aware
+composition and filtering, Best Nearby / location-set composition and its
+orchestration, multi-night forecast eligibility, active-night date semantics,
+provider availability/failure/staleness semantics, Bot host persistence, and the
+full compatibility gate.
 
 #### Current Bot readiness boundary
 
-With today’s 23 public capabilities plus correct host acquisition/composition,
+With today’s 27 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
-Observing Quality; Sun/twilight events; Moon altitude and integer illumination;
-catalog facts and solar candidate metadata; authoritative requirement resolution
-and Moon-sensitivity derivation; equipment matching; ordering of already
-scored candidates; normalized ISS passes; production observing-window
-decisions over supplied scored rows; and deep-sky horizontal position, visible
-windows and best time. It cannot yet claim lunar or planet position/window/
-best-time facts, full lunar or planet advice, equipment-aware target
-recommendations without later composition, full Best
-Nearby, complete multi-night advice, or precipitation in the normalized weather
-domain. Missing objective facts are an explicit limitation, never an invitation
-for Grok to calculate or guess them.
+Observing Quality; Sun/twilight events; catalog facts and solar candidate
+metadata; authoritative requirement resolution and Moon-sensitivity derivation;
+equipment matching; ordering of already scored candidates; normalized ISS passes;
+production observing-window decisions over supplied scored rows; deep-sky
+horizontal position, visible windows and best time; Moon phase, illumination,
+altitude/azimuth, rise/set, always-up/always-down state and night-scoped Moon
+samples, plus lunar useful-window and visibility recommendation facts with
+objective lunar reasons; and planet altitude, azimuth and solar-elongation
+samples for Venus, Mars, Jupiter and Saturn, with planet visibility windows,
+best times, specialized planet scores and objective reasons including Venus
+twilight behavior.
+
+**An engine capability existing is not the same as the Bot host composing it into
+a complete product answer.** Each fact above still depends on the host supplying
+correct night boundaries, dates and provider data. The Bot cannot yet claim
+mixed-target composition across deep-sky, Moon and planet results; equipment-aware
+target recommendations; full Best Nearby or location-set composition; complete
+multi-night advice; active-night date semantics; provider availability, failure
+and staleness semantics; durable host persistence; or precipitation in the
+normalized weather domain. The overall Astronomer Bot compatibility gate is
+**not** complete. Missing objective facts are an explicit limitation, never an
+invitation for Grok to calculate or guess them.
 
 ### Remaining product integration work
 
@@ -2146,7 +2322,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 **Pre-1.0 business-logic compatibility/release gate.** Before the first public
 Astro Engine / Astronomer Bot 1.0, the Bot must expose the objective/business-logic
 capabilities used by production Astro Conditions for astronomy advice, with the
-LLM layered on top. Availability of the current 21 engine capabilities alone
+LLM layered on top. Availability of the current 27 engine capabilities alone
 does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
 
 - **Audit closure:** reconcile every behavior named in the [production
@@ -2167,29 +2343,37 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   filter specialized recommendations before count truncation; retained scores and
   order must not be silently changed. The LLM may describe selected equipment but
   must not invent a requirement or an objective target score.
-- **Live target facts and target-specific policies:** supply Phase 15's
-  frozen/precomputed window inputs from authoritative target-specific fact
-  producers, while preserving `targets.recommend` as a deterministic scorer over
-  injected/precomputed inputs and preserving frozen fixtures. Preserve deep-sky
-  RA/Dec, sampling, threshold, contiguous-run and interpolation conventions.
-  Preserve distinct Moon and planet observation-window semantics rather than
-  imposing a generic window algorithm.
-- **Moon:** carry the richer lunar observation facts and decisions used in
-  production: continuous phase, illumination, altitude/azimuth, rise/set,
-  always-up/down state, and 30-minute samples with an explicit end sample.
-  Preserve useful-window clipping and visible-sample eligibility; numeric scoring
-  from phase/illumination, visible fraction, and weather quality (including the
-  near-new-Moon cap); and semantic reasons that may use set time or always-down
-  state. Preserve the dependency `best conditions window → lunar useful window →
-  lunar recommendation`.
-- **Planets:** excluding `astronomy.planet_positions` from Phase 16 was a scope
-  decision, not a Bot product non-goal. Preserve the production
-  `LowPrecisionPlanetAstronomyProvider` / `PlanetOrbitalElements` model: supported
-  bodies and order (Venus, Mars, Jupiter, Saturn; Earth/Sun only as internal
-  reference), coefficients, epoch/day and unit conventions, transforms,
-  elongation, sampling, threshold/interpolation/terminal-window behavior,
-  best-time, convenience, penalties, score rules, Venus twilight, and reasons.
-  Do not substitute Skyfield merely because it is already present for Sun/Moon.
+- **Live target facts and target-specific policies:** the authoritative
+  target-specific fact producers now exist — `targets.deep_sky_windows`,
+  `targets.moon_recommendation` and `targets.planet_recommendation`, each with its
+  own observation capability. This gate still requires the host to supply Phase
+  15's frozen/precomputed window inputs from them, while preserving
+  `targets.recommend` as a deterministic scorer over injected/precomputed inputs
+  and preserving frozen fixtures. Deep-sky RA/Dec, sampling, threshold,
+  contiguous-run and interpolation conventions, and the distinct Moon and planet
+  observation-window semantics, are preserved; no generic window algorithm was
+  imposed.
+- **Moon: engine side complete; host composition outstanding.** The lunar slice
+  shipped the richer observation facts and decisions used in production —
+  continuous phase, illumination, altitude/azimuth, rise/set, always-up/down
+  state, and 30-minute samples with an explicit end sample — plus useful-window
+  clipping, visible-sample eligibility, numeric scoring from phase/illumination,
+  visible fraction and weather quality including the near-new-Moon cap, and
+  semantic reasons that may use set time or always-down state. The dependency
+  `best conditions window → lunar useful window → lunar recommendation` is
+  preserved. What this gate still needs is the Bot host feeding that chain
+  correct night boundaries and provider facts, and surfacing the result without
+  re-deriving it.
+- **Planets: engine side complete; host composition outstanding.** Excluding
+  `astronomy.planet_positions` from Phase 16 was a scope decision, not a Bot
+  product non-goal. The planet slice preserved the production
+  `LowPrecisionPlanetAstronomyProvider` / `PlanetOrbitalElements` model rather
+  than substituting Skyfield: supported bodies and order (Venus, Mars, Jupiter,
+  Saturn; Earth/Sun only as internal reference), coefficients, epoch/day and unit
+  conventions, transforms, elongation, sampling, threshold/interpolation/terminal-
+  window behavior, best-time, convenience, penalties, score rules, Venus twilight
+  and reasons. What this gate still needs is the Bot host supplying the night
+  interval and weather facts and consuming the result without recreating it.
 - **Mixed-target composition:** preserve specialized deep-sky, Moon, and planet
   score paths, stable ordering/ties, missing-specialized-result behavior,
   semantic reason facts, and no generic re-score of specialized Moon/planet

@@ -32,6 +32,7 @@
 		0BF05AE83E7AED95435F57E1 /* CuratedDeepSkyCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B28EFC4C0C327C246584AEE4 /* CuratedDeepSkyCatalogTests.swift */; };
 		0BF64CBDDE0AC959E53641A2 /* ViewingConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F41E5D52C842A86937C4A75C /* ViewingConditions.swift */; };
 		0CD80C7D967D2CF2B1DAC636 /* WatchRequestLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564825EA7A0DDFA3DBBC55B /* WatchRequestLifecycleTests.swift */; };
+		0D1314666F761009CCC4CA87 /* PlanetRecommendationMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F37A417C3D93755A0D39C192 /* PlanetRecommendationMigrationTests.swift */; };
 		0DFC09875D5EDCEE4EEC1D2A /* CurrentLocationBrightnessAnchor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50C8C30D39697BA43CF3A74B /* CurrentLocationBrightnessAnchor.swift */; };
 		0E42355F7886017A7A9A199F /* MoonRecommendationMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6413851CD0FB1467437B890 /* MoonRecommendationMigrationTests.swift */; };
 		0E72CD7226CF8913BB3F590E /* NightQualityPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D3352211A5644B08C309568 /* NightQualityPresentation.swift */; };
@@ -716,6 +717,7 @@
 		F2BC41A1D1E06F5996890857 /* MapPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapPickerView.swift; sourceTree = "<group>"; };
 		F302F40B584E071A2408D6CC /* AstronomyServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstronomyServiceTests.swift; sourceTree = "<group>"; };
 		F31C5B412CF6A4B7681A599A /* UnitSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitSystemTests.swift; sourceTree = "<group>"; };
+		F37A417C3D93755A0D39C192 /* PlanetRecommendationMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanetRecommendationMigrationTests.swift; sourceTree = "<group>"; };
 		F41E5D52C842A86937C4A75C /* ViewingConditions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewingConditions.swift; sourceTree = "<group>"; };
 		F5865CB10D114AB5A2F2383D /* LocationScoreColorProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationScoreColorProvider.swift; sourceTree = "<group>"; };
 		F6D47B15C66A320158C0619F /* ObservingQualityHeadlinePresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservingQualityHeadlinePresentationTests.swift; sourceTree = "<group>"; };
@@ -811,6 +813,7 @@
 				2682083B9852AAE4BF0A0E4D /* NightQualityAnalyzerHostTests.swift */,
 				F6D47B15C66A320158C0619F /* ObservingQualityHeadlinePresentationTests.swift */,
 				5FF2424891C34525456FF94F /* ObservingQualityServiceTests.swift */,
+				F37A417C3D93755A0D39C192 /* PlanetRecommendationMigrationTests.swift */,
 				0CF88510DCAFB8FB39AC89AC /* PlanetRecommendationTests.swift */,
 				CB321FC9CBBA48A8E08171A3 /* SavedLocationModeledBrightnessCoordinatorTests.swift */,
 				01CD3B22B3BC4F81F7E9826A /* SavedLocationModeledBrightnessStoreTests.swift */,
@@ -1504,6 +1507,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/moon-recommendation.json",
+				"$(REPO_ROOT)/contracts/data/calibration/planet-recommendation.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
@@ -1520,6 +1525,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/moon-recommendation.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/planet-recommendation.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
@@ -1544,6 +1551,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/moon-recommendation.json",
+				"$(REPO_ROOT)/contracts/data/calibration/planet-recommendation.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
@@ -1560,6 +1569,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/moon-recommendation.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/planet-recommendation.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
@@ -1584,6 +1595,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/moon-recommendation.json",
+				"$(REPO_ROOT)/contracts/data/calibration/planet-recommendation.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
@@ -1600,6 +1613,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/moon-recommendation.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/planet-recommendation.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
@@ -1624,6 +1639,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/moon-recommendation.json",
+				"$(REPO_ROOT)/contracts/data/calibration/planet-recommendation.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
@@ -1640,6 +1657,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/moon-recommendation.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/planet-recommendation.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
@@ -1664,6 +1683,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/moon-recommendation.json",
+				"$(REPO_ROOT)/contracts/data/calibration/planet-recommendation.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
@@ -1680,6 +1701,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/moon-recommendation.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/planet-recommendation.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
@@ -1704,6 +1727,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/moon-recommendation.json",
+				"$(REPO_ROOT)/contracts/data/calibration/planet-recommendation.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
@@ -1720,6 +1745,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/moon-recommendation.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/planet-recommendation.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
@@ -1945,6 +1972,7 @@
 				4F6717AA7803A343D4016B19 /* NightQualityAnalyzerHostTests.swift in Sources */,
 				EF9940BC916286F1313D2045 /* ObservingQualityHeadlinePresentationTests.swift in Sources */,
 				93C478BAEB1DFD50E92D1F7F /* ObservingQualityServiceTests.swift in Sources */,
+				0D1314666F761009CCC4CA87 /* PlanetRecommendationMigrationTests.swift in Sources */,
 				3AF213ACAB235599D8E1C258 /* PlanetRecommendationTests.swift in Sources */,
 				FB790129C37D85E7DAB089B0 /* SavedLocationModeledBrightnessCoordinatorTests.swift in Sources */,
 				94759D9827B6D588C2B65BAC /* SavedLocationModeledBrightnessStoreTests.swift in Sources */,

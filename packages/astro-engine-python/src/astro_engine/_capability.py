@@ -21,6 +21,11 @@ from astro_engine.moon_recommendation import (
     CAPABILITY_ID as MOON_RECOMMENDATION_ID,
     recommend_moon,
 )
+from astro_engine.planet_observation import CAPABILITY_ID as PLANET_OBSERVATION_ID
+from astro_engine.planet_recommendation import (
+    CAPABILITY_ID as PLANET_RECOMMENDATION_ID,
+    recommend_planet,
+)
 from astro_engine.target_metadata import CAPABILITY_IDS as METADATA_IDS, evaluate_metadata
 from astro_engine.observing_window import CAPABILITY_ID as WINDOW_ID, select_observing_window
 from astro_engine.targets import CAPABILITY_ID as TARGETS_ID, recommend_targets
@@ -65,7 +70,7 @@ DECODE_CAPABILITY_IDS = (WEATHER_ID, ISS_ID)
 
 DETERMINISTIC_CAPABILITY_IDS = (
     WINDOW_ID, GRID_ID, COMPARE_ID, CATALOG_ID, TARGETS_ID, EQUIPMENT_ID, *DEEP_SKY_IDS,
-    MOON_RECOMMENDATION_ID,
+    MOON_RECOMMENDATION_ID, PLANET_RECOMMENDATION_ID,
 )
 
 LOOKUP_CAPABILITY_IDS = (LP_ID,)
@@ -192,6 +197,13 @@ def evaluate_capability(
         return evaluate_moon_observation(_injected(document))
     if capability == MOON_RECOMMENDATION_ID:
         return recommend_moon(_injected(document))
+    if capability == PLANET_OBSERVATION_ID:
+        if set(document) - {"capability", "injected"}:
+            raise ValidationError("invalid astronomy envelope")
+        from astro_engine.planet_observation import evaluate_planet_observation
+        return evaluate_planet_observation(_injected(document))
+    if capability == PLANET_RECOMMENDATION_ID:
+        return recommend_planet(_injected(document))
     if capability == OQ_ID:
         injected = _injected(document)
         if "night_conditions_score" not in injected:

@@ -1,0 +1,7 @@
+{
+  "capability": "targets.planet_recommendation",
+  "result": {
+    "recommendation": null
+  },
+  "ok": true
+}
