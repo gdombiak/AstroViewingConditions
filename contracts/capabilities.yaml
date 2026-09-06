@@ -137,3 +137,21 @@ capabilities:
     summary: >
       Match selected instruments against resolved target requirements. Exact
       best key, other suitable keys, level, reason and mode; no English copy.
+
+  - id: astronomy.sun_events
+    hosts: [ios, cli]
+    equality: astronomy_sun_events
+    since: "1.0.0"
+    summary: Bounded live solar crossings in an explicit UTC interval; missing events are null, with no host approximation.
+
+  - id: astronomy.moon_info
+    hosts: [ios, cli]
+    equality: astronomy_moon_info
+    since: "1.0.0"
+    summary: Live geocentric refracted Moon altitude and integer illuminated percent at one UTC instant.
+
+  - id: astronomy.moon_series
+    hosts: [ios, cli]
+    equality: astronomy_moon_series
+    since: "1.0.0"
+    summary: Live Moon facts at explicit ordered caller UTC instants; no interpolation or scoring.

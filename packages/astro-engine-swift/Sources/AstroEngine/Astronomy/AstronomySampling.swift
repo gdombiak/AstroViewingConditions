@@ -113,6 +113,9 @@ public struct SampledRiseSet: Sendable, Hashable {
 }
 
 public protocol SunEventsSampling: Sendable {
+    func sunTimes(latitude: Double, longitude: Double, on date: Date,
+                  twilight: SunTwilightKind, duration: TimeInterval) throws -> SampledRiseSet
+
     func sunTimes(
         latitude: Double,
         longitude: Double,
@@ -121,14 +124,31 @@ public protocol SunEventsSampling: Sendable {
     ) throws -> SampledRiseSet
 }
 
+public extension SunEventsSampling {
+    /// Compatibility for injected samplers. Production SunCalc overrides with a bounded search.
+    func sunTimes(latitude: Double, longitude: Double, on date: Date,
+                  twilight: SunTwilightKind, duration: TimeInterval) throws -> SampledRiseSet {
+        let result = try sunTimes(latitude: latitude, longitude: longitude, on: date, twilight: twilight)
+        let end = date.addingTimeInterval(duration)
+        func confined(_ value: Date?) -> Date? {
+            guard let value, value >= date, value < end else { return nil }
+            return value
+        }
+        return SampledRiseSet(rise: confined(result.rise), set: confined(result.set))
+    }
+}
+
 // MARK: - SunCalc-backed implementations
 
 public struct SunCalcMoonSampler: MoonSampling {
-    public init() {}
+    private let timeZone: TimeZone?
+
+    /// Legacy hosts retain their current timezone; portable callers choose UTC.
+    public init(timeZone: TimeZone? = nil) { self.timeZone = timeZone }
 
     public func illumination(at time: Date) throws -> MoonIlluminationSample {
         let illumination = try MoonIllumination.compute()
-            .on(time)
+            .on(time, timeZone: timeZone ?? Calendar.current.timeZone)
             .execute()
         return MoonIlluminationSample(fraction: illumination.fraction, phaseDegrees: illumination.phase)
     }
@@ -140,7 +160,7 @@ public struct SunCalcMoonSampler: MoonSampling {
     ) throws -> MoonHorizontalCoordinates {
         let position = try MoonPosition.compute()
             .at(latitude, longitude)
-            .on(time)
+            .on(time, timeZone: timeZone ?? Calendar.current.timeZone)
             .execute()
         return MoonHorizontalCoordinates(altitude: position.altitude, azimuth: position.azimuth)
     }
@@ -171,6 +191,14 @@ public struct SunCalcMoonTimesSampler: MoonTimesSampling {
 
 public struct SunCalcSunEventsSampler: SunEventsSampling {
     public init() {}
+
+    public func sunTimes(latitude: Double, longitude: Double, on date: Date,
+                         twilight: SunTwilightKind, duration: TimeInterval) throws -> SampledRiseSet {
+        let times = try SunTimes.compute().at(latitude, longitude)
+            .on(date, timeZone: TimeZone(secondsFromGMT: 0)!)
+            .twilight(twilight.sunCalcTwilight).limit(duration).execute()
+        return SampledRiseSet(rise: times.rise?.date, set: times.set?.date)
+    }
 
     public func sunTimes(
         latitude: Double,

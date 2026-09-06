@@ -56,7 +56,7 @@ REPRESENTATIVE_FIXTURES: tuple[tuple[str, str, str], ...] = (
 )
 
 UNIMPLEMENTED_IDS = (
-    "astronomy.sun_events",
+    "astronomy.planet_positions",
     "agent.conditions",
     "light_pollution.validity",
 )
@@ -113,8 +113,9 @@ def test_engine_version() -> None:
 
 
 def test_public_allow_list_matches_catalog_order() -> None:
-    assert PUBLIC_CAPABILITY_IDS == tuple(item[0] for item in REPRESENTATIVE_FIXTURES)
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 14
+    assert PUBLIC_CAPABILITY_IDS == tuple(item[0] for item in REPRESENTATIVE_FIXTURES) + (
+        "astronomy.sun_events", "astronomy.moon_info", "astronomy.moon_series")
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 17
 
 
 def test_every_public_capability_is_accepted() -> None:

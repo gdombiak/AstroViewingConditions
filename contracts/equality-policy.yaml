@@ -191,3 +191,33 @@ policies:
       match.reason: exact
       match.mode: exact
       match.other_suitable_keys: ordered_ids
+
+  astronomy_sun_events:
+    description: Symmetric live solar event comparison; null matches only null. Never used for product scoring integers.
+    fields:
+      start: exact
+      end: exact
+      sunrise: null_or_seconds_60
+      sunset: null_or_seconds_60
+      civil_twilight_begin: null_or_seconds_60
+      civil_twilight_end: null_or_seconds_60
+      nautical_twilight_begin: null_or_seconds_60
+      nautical_twilight_end: null_or_seconds_60
+      astronomical_twilight_begin: null_or_seconds_60
+      astronomical_twilight_end: null_or_seconds_60
+      astronomical_night_start: null_or_seconds_60
+      astronomical_night_end: null_or_seconds_60
+
+  astronomy_moon_info:
+    description: Product geocentric refracted altitude and truncated illuminated percent; no name or emoji.
+    fields:
+      time: exact
+      altitude: abs_0_5
+      illumination: integer_abs_1
+
+  astronomy_moon_series:
+    description: Ordered explicit samples; timestamps and structure exact, per-field numeric tolerances.
+    fields:
+      samples[].time: exact
+      samples[].altitude: abs_0_5
+      samples[].illumination: integer_abs_1

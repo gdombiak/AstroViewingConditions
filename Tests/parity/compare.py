@@ -14,6 +14,7 @@ _ABS_TOL = {
     "abs_1e9": 1e-9,
     "abs_1e12": 1e-12,
     "abs_1e4": 1e-4,
+    "abs_0_5": 0.5,
 }
 
 
@@ -76,6 +77,18 @@ def compare_value(
     path: str,
 ) -> None:
     spec = _spec_for(path, fields)
+    if spec == "null_or_seconds_60":
+        if actual is None or expected is None:
+            assert actual is None and expected is None, f"{path}: null/event mismatch"
+        else:
+            from astro_engine.astronomy import instant
+            assert abs((instant(actual) - instant(expected)).total_seconds()) <= 60, f"{path}: events differ by more than 60s"
+        return
+    if spec == "integer_abs_1":
+        assert type(actual) is int and type(expected) is int, f"{path}: expected integer percents"
+        assert 0 <= actual <= 100 and 0 <= expected <= 100, f"{path}: percent out of range"
+        _assert_number(actual, expected, abs_tol=1, path=path)
+        return
     if spec in {"null_or_object"}:
         if expected is None:
             assert actual is None, f"{path}: expected null, got {actual!r}"

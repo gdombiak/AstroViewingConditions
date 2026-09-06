@@ -64,9 +64,12 @@ class CapabilityHost:
     `atlas_path` is an operator override or the host-resolved production
     default LPATLAS1 file. It is never taken from JSON. Fixture `$ref`
     stays under `contracts/fixtures` and does not use this field.
+    `ephemeris_path` is a local astronomy kernel override. None uses installed
+    skyfield-data; it is never taken from JSON or downloaded by execution.
     """
 
     atlas_path: Path | str | None = None
+    ephemeris_path: Path | str | None = None
 
 
 def _injected(document: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -162,6 +165,12 @@ def evaluate_capability(
     if "capability" in document and document["capability"] != capability:
         raise ValidationError("input capability does not match the invoked capability-id")
 
+    if capability in ("astronomy.sun_events", "astronomy.moon_info", "astronomy.moon_series"):
+        if set(document) - {"capability", "injected"}:
+            raise ValidationError("invalid astronomy envelope")
+        from astro_engine.astronomy import evaluate_astronomy
+        return evaluate_astronomy(capability, _injected(document),
+                                  ephemeris_path=host.ephemeris_path if host else None)
     if capability == OQ_ID:
         injected = _injected(document)
         if "night_conditions_score" not in injected:

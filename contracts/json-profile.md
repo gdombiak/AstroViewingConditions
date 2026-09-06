@@ -31,3 +31,14 @@ input order. Output extra/missing fields fail equality; unknown injected input
 fields are ignored. Required/optional/null distinctions and enum wire values are
 specified in the [target](procedures/targets-recommend.md) and
 [equipment](procedures/equipment-match.md) procedures.
+
+## Phase 16 live astronomy
+
+Astronomy inputs reject unknown keys and require valid Gregorian UTC instants
+at whole seconds within 2000–2049; offsets, leap-second labels, fractional
+seconds and invalid normalized calendar dates are validation failures. Solar
+crossings are selected before rounding, then serialized by truncating to whole
+seconds. Missing crossings are explicit nulls, never omitted or replaced by
+zero. Moon timestamps exactly echo caller instants. Live fixtures are semantic
+cases and symmetric cross-language comparisons, not expected.json output dumps.
+See [astronomy](procedures/astronomy.md) for input caps and field tolerances.

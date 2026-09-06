@@ -18,6 +18,16 @@
   have `since: "1.0.0"`, fixtures `>=1.0.0 <2.0.0`. Identity remains unreleased
   `1.0.0`; existing versions, since values and fixture ranges are unchanged.
 
+- Phase 16: add `astronomy.sun_events`, `astronomy.moon_info`, and
+  `astronomy.moon_series` with a normative UTC/altitude procedure, explicit
+  missing-event semantics, per-field symmetric tolerances and manual semantic
+  cases. Swift reuses package-owned SunCalc; Python uses pinned Skyfield and
+  locally installed DE421. Both dispatchers and the CLI expose the new IDs.
+  Apple host search defaults, fallback and presentation are preserved; frozen
+  scoring fixtures remain exact and injected. Planets/live target windows are
+  deferred. New rows use since `1.0.0`, cases `>=1.0.0 <2.0.0`; this remains
+  unreleased first-1.0 work, without a version bump or release declaration.
+
 ## 0.1.0
 
 - F1: `observing_quality.assess` plus OQ fixtures and calibration.

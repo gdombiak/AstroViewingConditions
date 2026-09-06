@@ -89,8 +89,9 @@ public struct SunCalcMoonObservationSampler: Sendable {
         fallback: MoonInfo
     ) -> MoonInfo {
         do {
-            let illumination = try moonSampler.illumination(at: date)
-            let position = try moonSampler.position(latitude: latitude, longitude: longitude, at: date)
+            let facts = try moonSampler.facts(latitude: latitude, longitude: longitude, at: date)
+            let illumination = facts.illumination
+            let position = facts.position
             let phase = normalizePhase(illumination.phaseDegrees)
             return MoonInfo(
                 phase: phase,

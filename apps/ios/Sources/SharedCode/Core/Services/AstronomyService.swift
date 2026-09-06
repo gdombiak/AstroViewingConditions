@@ -27,18 +27,12 @@ public actor AstronomyService: AstronomyProviding {
         on date: Date
     ) -> SunEvents {
         do {
-            let visualTimes = try sunEventsSampler.sunTimes(
-                latitude: latitude, longitude: longitude, on: date, twilight: .visual
-            )
-            let civilTimes = try sunEventsSampler.sunTimes(
-                latitude: latitude, longitude: longitude, on: date, twilight: .civil
-            )
-            let nauticalTimes = try sunEventsSampler.sunTimes(
-                latitude: latitude, longitude: longitude, on: date, twilight: .nautical
-            )
-            let astronomicalTimes = try sunEventsSampler.sunTimes(
-                latitude: latitude, longitude: longitude, on: date, twilight: .astronomical
-            )
+            let samples = try SunEventSamples.sample(latitude: latitude, longitude: longitude,
+                                                       on: date, sampler: sunEventsSampler)
+            let visualTimes = samples.visual
+            let civilTimes = samples.civil
+            let nauticalTimes = samples.nautical
+            let astronomicalTimes = samples.astronomical
 
             let fallback = approximateSunEvents(on: date)
             let hasMissingTimes = [
@@ -78,8 +72,9 @@ public actor AstronomyService: AstronomyProviding {
         on date: Date
     ) -> MoonInfo {
         do {
-            let illumination = try moonSampler.illumination(at: date)
-            let position = try moonSampler.position(latitude: latitude, longitude: longitude, at: date)
+            let facts = try moonSampler.facts(latitude: latitude, longitude: longitude, at: date)
+            let illumination = facts.illumination
+            let position = facts.position
             let phase = illumination.phaseDegrees
             let phaseName = getMoonPhaseName(phase: phase)
             let emoji = getMoonEmoji(phase: phase)

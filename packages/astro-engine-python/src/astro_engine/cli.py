@@ -63,6 +63,9 @@ PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     CATALOG_ID,
     TARGETS_ID,
     EQUIPMENT_ID,
+    "astronomy.sun_events",
+    "astronomy.moon_info",
+    "astronomy.moon_series",
 )
 
 _PUBLIC_ALLOW_LIST = frozenset(PUBLIC_CAPABILITY_IDS)
@@ -252,6 +255,9 @@ def _capability_host(
     args: argparse.Namespace,
     document: Mapping[str, Any],
 ) -> CapabilityHost | None:
+    if capability in ("astronomy.sun_events", "astronomy.moon_info", "astronomy.moon_series"):
+        path = os.environ.get("ASTRO_ENGINE_EPHEMERIS_PATH")
+        return CapabilityHost(ephemeris_path=Path(path)) if path else None
     if capability != LP_ID:
         return None
     if args.atlas_path:

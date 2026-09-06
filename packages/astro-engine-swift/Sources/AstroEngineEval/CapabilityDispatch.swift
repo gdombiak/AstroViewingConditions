@@ -36,6 +36,16 @@ enum CapabilityDispatch {
             } catch let error as Phase15InputError {
                 throw EvalValidationError(code: "validation", message: error.message)
             }
+        case "astronomy.sun_events", "astronomy.moon_info", "astronomy.moon_series":
+            guard Set(document.keys).isSubset(of: ["capability", "injected"]),
+                  document["capability"] == nil || document["capability"] as? String == capability else {
+                throw EvalValidationError(code: "validation", message: "invalid astronomy envelope")
+            }
+            do {
+                return try LiveAstronomy.evaluate(capability, input: injected(document))
+            } catch let error as AstronomyInputError {
+                throw EvalValidationError(code: "validation", message: error.message)
+            }
         case "location.compare":
             return try locationCompare(document)
         case "catalog.deep_sky":

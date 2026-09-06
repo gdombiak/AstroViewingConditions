@@ -72,13 +72,16 @@ def test_public_imports() -> None:
         "catalog.deep_sky",
         "targets.recommend",
         "equipment.match",
+        "astronomy.sun_events",
+        "astronomy.moon_info",
+        "astronomy.moon_series",
     )
 
 
-def test_pyproject_has_no_runtime_dependencies() -> None:
+def test_pyproject_pins_offline_astronomy_dependencies() -> None:
     path = Path(__file__).resolve().parents[1] / "pyproject.toml"
     data = tomllib.loads(path.read_text(encoding="utf-8"))
-    assert data["project"]["dependencies"] == []
+    assert data["project"]["dependencies"] == ["skyfield==1.55", "skyfield-data==7.0.0"]
     assert data["project"]["requires-python"] == ">=3.11"
     assert data["project"]["version"] == "1.0.0"
     assert data["project"]["version"] == engine_semver()
@@ -93,7 +96,7 @@ def test_catalog_current_release_matches_engine_version() -> None:
     assert since_lines == (
         ['    since: "0.1.0"'] * 10
         + ['    since: "1.0.0"', '    since: "0.1.0"']
-        + ['    since: "1.0.0"'] * 2
+        + ['    since: "1.0.0"'] * 5
     )
 
 

@@ -1,0 +1,322 @@
+[
+  {
+    "id": "california-equinox",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "start": "2024-03-20T19:00:00Z",
+        "end": "2024-03-21T19:00:00Z"
+      }
+    },
+    "semantics": "complete_night"
+  },
+  {
+    "id": "california-winter",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "start": "2024-12-21T20:00:00Z",
+        "end": "2024-12-22T20:00:00Z"
+      }
+    },
+    "semantics": "complete_night"
+  },
+  {
+    "id": "california-summer",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "start": "2024-06-21T19:00:00Z",
+        "end": "2024-06-22T19:00:00Z"
+      }
+    },
+    "semantics": "complete_night"
+  },
+  {
+    "id": "new-york-dst-spring",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "start": "2024-03-09T17:00:00Z",
+        "end": "2024-03-10T16:00:00Z"
+      }
+    },
+    "semantics": "complete_night"
+  },
+  {
+    "id": "new-york-dst-fall",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "start": "2024-11-02T16:00:00Z",
+        "end": "2024-11-03T17:00:00Z"
+      }
+    },
+    "semantics": "complete_night"
+  },
+  {
+    "id": "auckland-utc-boundary",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": -36.8485,
+        "longitude": 174.7633,
+        "start": "2024-06-20T00:00:00Z",
+        "end": "2024-06-21T00:00:00Z"
+      }
+    },
+    "semantics": "complete_night"
+  },
+  {
+    "id": "tromso-polar-day",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": 69.6492,
+        "longitude": 18.9553,
+        "start": "2024-06-21T10:00:00Z",
+        "end": "2024-06-22T10:00:00Z"
+      }
+    },
+    "semantics": "no_events"
+  },
+  {
+    "id": "tromso-winter",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": 69.6492,
+        "longitude": 18.9553,
+        "start": "2024-12-21T11:00:00Z",
+        "end": "2024-12-22T11:00:00Z"
+      }
+    },
+    "semantics": "no_visual"
+  },
+  {
+    "id": "london-no-astronomical-night",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": 51.5074,
+        "longitude": -0.1278,
+        "start": "2024-06-21T11:00:00Z",
+        "end": "2024-06-22T11:00:00Z"
+      }
+    },
+    "semantics": "no_astronomical"
+  },
+  {
+    "id": "north-pole-winter",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": 90,
+        "longitude": 0,
+        "start": "2024-12-21T12:00:00Z",
+        "end": "2024-12-22T12:00:00Z"
+      }
+    },
+    "semantics": "no_events"
+  },
+  {
+    "id": "short-daylight-interval",
+    "capability": "astronomy.sun_events",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_sun_events",
+    "input": {
+      "capability": "astronomy.sun_events",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "start": "2024-03-20T20:00:00Z",
+        "end": "2024-03-20T20:01:00Z"
+      }
+    },
+    "semantics": "no_events"
+  },
+  {
+    "id": "full-above",
+    "capability": "astronomy.moon_info",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_info",
+    "input": {
+      "capability": "astronomy.moon_info",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "time": "2024-03-25T07:00:00Z"
+      }
+    },
+    "semantics": "high_above"
+  },
+  {
+    "id": "full-below",
+    "capability": "astronomy.moon_info",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_info",
+    "input": {
+      "capability": "astronomy.moon_info",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "time": "2024-03-25T19:00:00Z"
+      }
+    },
+    "semantics": "high_below"
+  },
+  {
+    "id": "new-moon",
+    "capability": "astronomy.moon_info",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_info",
+    "input": {
+      "capability": "astronomy.moon_info",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "time": "2024-04-08T18:00:00Z"
+      }
+    },
+    "semantics": "low"
+  },
+  {
+    "id": "quarter-moon",
+    "capability": "astronomy.moon_info",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_info",
+    "input": {
+      "capability": "astronomy.moon_info",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "time": "2024-03-17T04:00:00Z"
+      }
+    },
+    "semantics": "mid"
+  },
+  {
+    "id": "hourly-observing-window",
+    "capability": "astronomy.moon_series",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_series",
+    "input": {
+      "capability": "astronomy.moon_series",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "times": [
+          "2024-03-25T02:00:00Z",
+          "2024-03-25T03:00:00Z",
+          "2024-03-25T04:00:00Z",
+          "2024-03-25T05:00:00Z",
+          "2024-03-25T06:00:00Z",
+          "2024-03-25T07:00:00Z",
+          "2024-03-25T08:00:00Z",
+          "2024-03-25T09:00:00Z",
+          "2024-03-25T10:00:00Z",
+          "2024-03-25T11:00:00Z",
+          "2024-03-25T12:00:00Z",
+          "2024-03-25T13:00:00Z",
+          "2024-03-25T14:00:00Z",
+          "2024-03-25T15:00:00Z",
+          "2024-03-25T16:00:00Z",
+          "2024-03-25T17:00:00Z",
+          "2024-03-25T18:00:00Z"
+        ]
+      }
+    },
+    "semantics": "crosses_horizon"
+  },
+  {
+    "id": "repeated-dst-hours",
+    "capability": "astronomy.moon_series",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_series",
+    "input": {
+      "capability": "astronomy.moon_series",
+      "injected": {
+        "latitude": 40.7128,
+        "longitude": -74.006,
+        "times": [
+          "2024-11-03T05:00:00Z",
+          "2024-11-03T06:00:00Z"
+        ]
+      }
+    },
+    "semantics": "identity"
+  },
+  {
+    "id": "empty-series",
+    "capability": "astronomy.moon_series",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_series",
+    "input": {
+      "capability": "astronomy.moon_series",
+      "injected": {
+        "latitude": 0,
+        "longitude": 180,
+        "times": []
+      }
+    },
+    "semantics": "identity"
+  }
+]
