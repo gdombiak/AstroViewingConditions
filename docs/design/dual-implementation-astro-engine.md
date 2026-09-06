@@ -1965,6 +1965,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 - satisfy the pre-1.0 business-logic compatibility gate below;
 - CLI/Bot-host composition: `agent.conditions`, `agent.batch_compare`, and the longer `agent.forecast_horizon` where needed;
 - Bot saved-location persistence, onboarding, selected/default-location handling, aliases, confirmation, geocoding, and one-off overrides at the host boundary;
+- **Persistent user state / observing history:** conversation/chat history may provide recent-dialogue references, temporary intent, and continuity, but is not the authoritative observation log. The Bot host owns durable user profile/preferences where appropriate (owned equipment, preferred observing locations, favorite target types, and other personalization facts) and a structured, persistent, user-confirmed observation history. Observation records support create, query, correct, and delete, and capture target identity plus observation time/date, location, equipment, notes, rating, or metadata when known. Do not persist an observation merely because a target was recommended or discussed; obtain explicit or clear user confirmation when a statement is ambiguous. Astro Engine remains stateless with respect to individual user history and authoritative for objective astronomy facts and target ranking. Grok may use host state to personalize its recommendation reasoning, but must visibly distinguish that advice from the underlying objective Astro ranking and must not silently fold history into deterministic scoring. This roadmap does not dictate a future persistence implementation.
 - production Grok Bot VM installation/deployment and real end-to-end Astronomer Bot integration;
 - final release-readiness validation; and
 - the first public Astro Engine 1.0.0 release, followed by the eventual single PR to `main`.
@@ -2019,7 +2020,10 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   tonight with [selected equipment]?"; "When is the best time to observe
   [target]?"; "Where will [target] be and how do I find it?"; comparing two
   observing locations; and changing selected equipment to verify recommendations
-  can change appropriately.
+  can change appropriately; record a user-confirmed observation; query the last
+  observation of a target; recommend an unseen target; remove or correct an
+  observation; and verify that changing observation history can change
+  personalized advice without changing the underlying objective Astro result.
 
 This gate records remaining product requirements; it does not reopen Phase 16,
 add a numbered phase, or change current contracts, capabilities, or versions.
