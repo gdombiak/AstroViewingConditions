@@ -29,6 +29,7 @@ from astro_engine.contracts import ContractsRootError, engine_semver
 from astro_engine.errors import ValidationError
 from astro_engine.fog import CAPABILITY_ID as FOG_ID
 from astro_engine.grid import CAPABILITY_ID as GRID_ID
+from astro_engine.observing_window import CAPABILITY_ID as WINDOW_ID
 from astro_engine.targets import CAPABILITY_ID as TARGETS_ID
 from astro_engine.equipment import CAPABILITY_ID as EQUIPMENT_ID
 from astro_engine.location_compare import CAPABILITY_ID as COMPARE_ID
@@ -63,6 +64,7 @@ PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     CATALOG_ID,
     TARGETS_ID,
     EQUIPMENT_ID,
+    WINDOW_ID,
     "astronomy.sun_events",
     "astronomy.moon_info",
     "astronomy.moon_series",

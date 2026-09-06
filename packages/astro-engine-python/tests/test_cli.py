@@ -53,6 +53,7 @@ REPRESENTATIVE_FIXTURES: tuple[tuple[str, str, str], ...] = (
     ("catalog.deep_sky", "fixtures/capabilities/catalog-deep-sky", "curated-v1"),
     ("targets.recommend", "fixtures/capabilities/targets-recommend", "basic-v1"),
     ("equipment.match", "fixtures/capabilities/equipment-match", "selected-ranking-v1"),
+    ("observing_window.select", "fixtures/capabilities/observing-window", "empty-v1"),
 )
 
 UNIMPLEMENTED_IDS = (
@@ -115,7 +116,7 @@ def test_engine_version() -> None:
 def test_public_allow_list_matches_catalog_order() -> None:
     assert PUBLIC_CAPABILITY_IDS == tuple(item[0] for item in REPRESENTATIVE_FIXTURES) + (
         "astronomy.sun_events", "astronomy.moon_info", "astronomy.moon_series")
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 17
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 18
 
 
 def test_every_public_capability_is_accepted() -> None:

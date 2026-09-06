@@ -385,8 +385,9 @@ flowchart LR
 |---|---|---|
 | `weather.decode` | `OpenMeteoForecastDecoder.parseHourlyForecasts` | Exact DTO: omit `HourlyForecast.id` (`UUID()`). Times exact under the [Open-Meteo time parser](#open-meteo-time-parser). Skip malformed times. Always emit `timezone` (`string\|null`) and `utc_offset_seconds`. **Phase 8 / current 1.0** mirrors existing `HourlyForecast` (time, cloud cover, humidity, temperature, dew point, wind speed/direction, visibility, layered clouds, 200 hPa wind) and therefore does **not** expose precipitation. Open-Meteo `precipitation` is requested and decoded on the raw envelope but is not a `HourlyForecast` field; do not invent it in Phase 8. That omission is a **known Bot-facing domain gap**, not a current production recommendation-rule parity blocker — see [Grok Bot information surface](#grok-bot-information-surface-objective-engine-facts-not-one-mega-capability). Do not duplicate scoring inside weather decode. |
 | `iss.decode` | `N2YOPassDecoder` | Exact `ISSPass` DTO including deterministic `id` (`"{riseTime.timeIntervalSince1970.bitPattern}-{duration.bitPattern}"`, IEEE-754 bits as decimal, not Python `hash()`). Empty array vs missing `passes` as in Swift (`[]` vs no-key → `[]` output either way after map). Provider azimuth degrees, magnitude, and `info` satellite metadata are not `ISSPass` fields. |
-| `night_conditions.analyze` | `NightQualityAnalyzer.analyzeNight` | Exact DTO given injected `night_window` + **1:1 `moon_series`** + clock/tz. See [Night conditions procedure](#night-conditions-analyzenight). Omit `HourlyRating.id`, English `summary`, `Trend.label`/`icon`, **`best_window`**. The omission is an intentional current contract boundary, not evidence that the production decision is presentation-only or already portable; the [compatibility audit](#production-business-logic-compatibility-audit-2026-09-05) makes it a pre-1.0 requirement. **Bot-facing:** `hourly_ratings` is first-class objective data (time, score, cloud, fog, moon illumination/altitude, wind, optional seeing/transparency), not merely an input to the aggregate `public_score`. |
+| `night_conditions.analyze` | `NightQualityAnalyzer.analyzeNight` | Exact DTO given injected `night_window` + **1:1 `moon_series`** + clock/tz. See [Night conditions procedure](#night-conditions-analyzenight). Omit `HourlyRating.id`, English `summary`, `Trend.label`/`icon`, **`best_window`**. The omission remains intentional; the production decision is now separately portable through `observing_window.select`, as reviewed after the [compatibility audit](#production-business-logic-compatibility-audit-2026-09-05). **Bot-facing:** `hourly_ratings` is first-class objective data (time, score, cloud, fog, moon illumination/altitude, wind, optional seeing/transparency), not merely an input to the aggregate `public_score`. |
 | `night_conditions.score` | `BestSpotSearcher.calculateScore` | Integer exact. |
+| `observing_window.select` | `ObservingWindowSelector.select`, used by `NightQualityAnalyzer` | Exact nullable endpoint pair over already-included scored rows; see [procedure](../../contracts/procedures/observing-window.md). |
 | `observing_quality.assess` | `ObservingQualityCalculator.assess` | Integer `score` exact. Anchor penalties abs 1e-12. Interpolated penalties abs 1e-9 (matches `ObservingQualityCalculatorTests` home/stub). |
 | `light_pollution.lookup` | `BinaryLightPollutionProvider.modeledZenithSkyBrightness` | Exact dequantized value for fixture coordinates (existing tiny-bin lookups). |
 | `light_pollution.validity` | `ModeledZenithBrightnessValidity`, `LightPollutionDatasetIdentity` | Exact (1000 m haversine, `[13.0, 22.5]`, identity triple). |
@@ -1972,7 +1973,7 @@ the current public engine capabilities. It is not iOS UI parity.
 
 | Audit area | Confirmed production behavior | Pre-1.0 consequence |
 |---|---|---|
-| Observing-window decision | `NightQualityAnalyzer.calculateBestWindow` returns no window for no ratings; a one-hour window beginning at the minimum-score rating when no ratings qualify; the interval from the first included rating timestamp to the last included rating timestamp when at least half qualify; otherwise the longest qualifying run. Its current traversal/tie behavior counts consecutive qualifying rows as one hour each without verifying timestamp continuity. `DefaultMoonTargetRecommendationProvider` consumes that result and falls back to the astronomical night only when it is absent. | Required. Review the cleanest deterministic contract boundary; do not casually add a field to the Phase 11 DTO. Also preserve astronomical-night/calendar composition, sustained/heavy-cloud timing classification, forecast-availability semantics, and other semantic advisory facts that affect advice. English text remains host presentation. |
+| Observing-window decision | The audited `NightQualityAnalyzer.calculateBestWindow` (now delegated to `ObservingWindowSelector`) returns no window for no ratings; a one-hour window beginning at the minimum-score rating when no ratings qualify; the interval from the first included rating timestamp to the last included rating timestamp when at least half qualify; otherwise the longest qualifying run. Its current traversal/tie behavior counts consecutive qualifying rows as one hour each without verifying timestamp continuity. `DefaultMoonTargetRecommendationProvider` consumes that result and falls back to the astronomical night only when it is absent. | Best-window decision implemented by `observing_window.select`; see the boundary review below. Phase 11 DTO/equality unchanged. Astronomical-night/calendar composition, sustained/heavy-cloud timing advice and forecast-availability semantics remain host responsibilities requiring Bot validation. English text remains host presentation. |
 | Target metadata and equipment requirements | `TargetEquipmentRequirements` resolves type fallbacks and individual overrides (including M77), aperture, magnification, observing-mode and framing needs. `DefaultTargetCatalogProvider` also supplies solar-system candidates and derives deep-sky Moon sensitivity. `equipment.match` only evaluates already-resolved requirements. | Required. Preserve authoritative language-neutral data/procedures where appropriate, without prescribing a storage format. The Bot must not ask Grok to invent requirements. Equipment selection filters recommendations; it does not rescore or reorder retained target scores. |
 | Target-type-specific live policies | Deep sky uses catalog RA/Dec, 15-minute samples, a 15-degree threshold, contiguous runs, interpolated crossings, and highest sampled altitude. Moon uses its own 30-minute, useful-window and visible-sample policy. Planets use an extended interval, 15-minute samples, an 8-degree threshold, interpolation, specialized best-time scoring, and Venus twilight treatment. | Required. A shared result vocabulary may be useful, but do not promise one generic `targets.windows` algorithm. Prefer shared lower-level numeric astronomy facts with target-type-specific observation and recommendation policies. |
 | Specialized recommendation and composition | Production has dedicated deep-sky, Moon, and planet providers. Lunar observation facts include continuous phase, illumination, altitude/azimuth, rise/set, always-up/down state, and position samples where applicable; eligibility requires visible samples in the useful window. Numeric lunar scoring uses phase/illumination, visible fraction, and weather quality, while semantic reasons may use facts such as set time and `alwaysDown`. Planet recommendations use the low-precision model rather than generic Skyfield output. | Required. Preserve specialized scores, stable order/ties, reasons, equipment filtering before result-count truncation, and no generic re-score of Moon or planet results. The LLM may explain authoritative facts but must not recreate them. |
@@ -2005,14 +2006,39 @@ The following boundaries are deliberate:
   path, not target or weather scoring. Suitability is modeled verification, not
   parking, legal access, terrain visibility, or real-world site access.
 
+#### Observing-window slice (2026-09-06; unreleased first-1.0 work)
+
+Initial assessment: **Agree**. The [contract-boundary review and procedure](../../contracts/procedures/observing-window.md)
+choose a small public `observing_window.select` capability (option B). Extending
+`night_conditions.analyze` would alter its established DTO; a broad advisory
+capability bundles independent rules; a host-only policy duplicates a decision
+already owned by the shared production engine. Existing analysis equality stays
+unchanged. The public count is now 18, with `since: "1.0.0"`, exact endpoints/null
+and manual fixtures applying to `>=1.0.0 <2.0.0`. No version or release change.
+
+Swift production delegates to `ObservingWindowSelector`; Python implements the
+written row/threshold decision independently. Empty, minimum fallback, >=50%,
+longest-run and first-tie semantics are preserved, including zero duration and
+3600 seconds per qualifying row across gaps or duplicates. Inputs are minimal
+scored rows; upstream analysis retains explicit injected bounds and Moon facts.
+
+Source review finds cloud timing used by summary generation only. It remains an
+independent host policy: no Bot may improvise sustained-heavy/early/late semantic
+classifications. `NightForecastFilter` calendar/DST/date composition also remains
+an upstream deterministic adapter, requiring Bot-host validation separately.
+Moon consumes the result with inclusive sample endpoints and falls back to
+astronomical bounds only for nil. This slice does not complete lunar parity,
+cloud-timing Bot advice, active-night composition or later audit areas.
+
 #### Required implementation order after the audit
 
 Use the smallest coherent contract slices discovered in design review; this is
 an ordering of dependencies and product value, not seven public IDs or new
 numbered phases:
 
-1. Observing-window decisions: production best conditions window, night-boundary
-   composition, and downstream semantic advisory decisions.
+1. Observing-window decisions: shared best conditions window complete in this
+   slice; host night-boundary composition and downstream semantic advisory
+   policies still require Bot implementation/validation.
 2. Target metadata/requirement resolution: solar-system candidate metadata,
    Moon-sensitivity derivation, and type/per-target equipment requirements.
 3. Deep-sky observation facts: live position, altitude/azimuth, specialized
@@ -2028,13 +2054,13 @@ numbered phases:
 
 #### Current Bot readiness boundary
 
-With today’s 17 public capabilities plus correct host acquisition/composition,
+With today’s 18 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
 Observing Quality; Sun/twilight events; Moon altitude and integer illumination;
 catalog facts; supplied-requirement equipment matching; ordering of already
-scored candidates; and normalized ISS passes. It cannot yet claim
-production-authoritative best observing windows, live target position/window/
+scored candidates; normalized ISS passes; and production observing-window
+decisions over supplied scored rows. It cannot yet claim live target position/window/
 best-time facts, full lunar or planet advice, equipment-aware target
 recommendations without requirement resolution and composition, full Best
 Nearby, complete multi-night advice, or precipitation in the normalized weather
@@ -2056,7 +2082,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 **Pre-1.0 business-logic compatibility/release gate.** Before the first public
 Astro Engine / Astronomer Bot 1.0, the Bot must expose the objective/business-logic
 capabilities used by production Astro Conditions for astronomy advice, with the
-LLM layered on top. Availability of the current 17 engine capabilities alone
+LLM layered on top. Availability of the current 18 engine capabilities alone
 does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
 
 - **Audit closure:** reconcile every behavior named in the [production

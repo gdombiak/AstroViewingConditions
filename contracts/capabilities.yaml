@@ -138,6 +138,15 @@ capabilities:
       Match selected instruments against resolved target requirements. Exact
       best key, other suitable keys, level, reason and mode; no English copy.
 
+  - id: observing_window.select
+    hosts: [ios, cli]
+    equality: observing_window
+    since: "1.0.0"
+    summary: >
+      Select the production best conditions window from already-included scored
+      hourly rows and an optional good-rating threshold. Exact endpoints, null
+      when empty; no live astronomy or calendar composition.
+
   - id: astronomy.sun_events
     hosts: [ios, cli]
     equality: astronomy_sun_events

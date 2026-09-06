@@ -1,6 +1,6 @@
 # astro-engine (Python)
 
-Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the seventeen
+Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the eighteen
 catalogued capabilities.
 
 Calibration and fixtures are loaded from the repo `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). Do not copy scoring constants into this package.
@@ -93,3 +93,10 @@ Sources: [Skyfield local loading](https://rhodesmill.org/skyfield/api.html),
 [Skyfield time scales](https://rhodesmill.org/skyfield/time.html),
 [skyfield-data distribution and copyright](https://pypi.org/project/skyfield-data/),
 [JPL ephemeris descriptions](https://ssd.jpl.nasa.gov/planets/eph_export.html).
+
+`observing_window.select` selects production observing windows from already-included
+`{time, score}` rows and an optional threshold. See the
+[procedure](../../contracts/procedures/observing-window.md) for exact endpoint,
+row-count, sorting and tie behavior. It uses no live astronomy and does not change
+`night_conditions.analyze`. The public catalog now contains 18 capabilities;
+engine/package identity remains unreleased 1.0.0.

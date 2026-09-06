@@ -26,6 +26,7 @@ Eval allow-list (not the public Python CLI):
   catalog.deep_sky
   targets.recommend
   equipment.match
+  observing_window.select
   astronomy.sun_events
   astronomy.moon_info
   astronomy.moon_series
@@ -45,6 +46,7 @@ private let supportedCapabilities: Set<String> = [
     "catalog.deep_sky",
     "targets.recommend",
     "equipment.match",
+    "observing_window.select",
     "astronomy.sun_events",
     "astronomy.moon_info",
     "astronomy.moon_series",

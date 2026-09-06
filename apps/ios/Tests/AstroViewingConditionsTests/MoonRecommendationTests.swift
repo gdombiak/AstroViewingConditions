@@ -1,4 +1,5 @@
 import SharedCode
+import AstroEngine
 import XCTest
 
 final class MoonRecommendationTests: XCTestCase {
@@ -101,6 +102,33 @@ final class MoonRecommendationTests: XCTestCase {
         XCTAssertEqual(fakeMoonProvider.callCount, 1)
     }
 
+    func testSelectedZeroLengthWindowIsUsedAndOnlyNilFallsBack() throws {
+        let provider = DefaultMoonTargetRecommendationProvider(
+            moonAstronomyProvider: FakeMoonAstronomyProvider(
+                observation: Self.observation(phase: 0.25, illumination: 50), onObservation: {}
+            )
+        )
+        let atSample = ObservingWindowSelector.select(hourlyRatings: [
+            .init(time: Self.date(hour: 22), score: 0)
+        ])
+        let result = try XCTUnwrap(provider.recommendation(
+            for: Self.moonTarget, context: Self.context(bestWindow: atSample)))
+        // Both endpoints are inclusive, even for a single instant.
+        XCTAssertEqual(result.visibilityWindow.start, Self.date(hour: 22))
+        XCTAssertEqual(result.visibilityWindow.end, Self.date(hour: 22))
+        XCTAssertEqual(result.visibilityWindow.bestTime, Self.date(hour: 22))
+
+        let betweenSamples = ObservingWindowSelector.select(hourlyRatings: [
+            .init(time: Self.date(hour: 22).addingTimeInterval(60), score: 0)
+        ])
+        XCTAssertNil(provider.recommendation(
+            for: Self.moonTarget, context: Self.context(bestWindow: betweenSamples)))
+        let fallback = try XCTUnwrap(provider.recommendation(
+            for: Self.moonTarget, context: Self.context(bestWindow: nil)))
+        XCTAssertEqual(fallback.visibilityWindow.start, Self.date(hour: 21))
+        XCTAssertEqual(fallback.visibilityWindow.end, Self.date(hour: 24).addingTimeInterval(1800))
+    }
+
     private func recommendation(
         phase: Double,
         illumination: Int,
@@ -175,7 +203,10 @@ final class MoonRecommendationTests: XCTestCase {
         }
     }
 
-    private static func context(hourlyScore: Double = 0.2) -> TargetRecommendationContext {
+    private static func context(
+        hourlyScore: Double = 0.2,
+        bestWindow: NightQualityAssessment.TimeWindow? = .init(start: date(hour: 21), end: date(hour: 25))
+    ) -> TargetRecommendationContext {
         TargetRecommendationContext(
             location: CachedLocation(name: "Test", latitude: 34, longitude: -118, elevation: 0),
             astronomicalNightStart: date(hour: 20),
@@ -189,10 +220,7 @@ final class MoonRecommendationTests: XCTestCase {
                     moonIlluminationAvg: 50,
                     windSpeedAvg: hourlyScore >= 1 ? 18 : 2
                 ),
-                bestWindow: NightQualityAssessment.TimeWindow(
-                    start: date(hour: 21),
-                    end: date(hour: 25)
-                ),
+                bestWindow: bestWindow,
                 hourlyRatings: (20..<29).map { hour in
                     NightQualityAssessment.HourlyRating(
                         time: date(hour: hour),

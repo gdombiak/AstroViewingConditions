@@ -1,0 +1,7 @@
+capability: observing_window.select
+engine_semver: ">=1.0.0 <2.0.0"
+equality: observing_window
+hosts: [swift, python]
+origin: manual
+notes: >
+  Two of five qualify; the two-row run lasts two hours.

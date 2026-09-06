@@ -1,0 +1,11 @@
+{
+  "capability": "observing_window.select",
+  "injected": {
+    "hourly_ratings": [
+      {
+        "time": "2026-02-30T01:00:00Z",
+        "score": 0
+      }
+    ]
+  }
+}

@@ -399,10 +399,8 @@ public struct NightQualityAnalyzer {
         let bestWindowStart = hourlyRatings.first?.time ?? emptyNightStart
         let bestWindowEnd = hourlyRatings.last?.time ?? emptyNightEnd
 
-        let bestWindow = calculateBestWindow(
-            hourlyRatings: hourlyRatings,
-            nightStart: bestWindowStart,
-            nightEnd: bestWindowEnd,
+        let bestWindow = ObservingWindowSelector.select(
+            hourlyRatings: hourlyRatings.map { .init(time: $0.time, score: $0.score) },
             goodRatingThreshold: night.ratingThresholds.fairMax
         )
 
@@ -543,64 +541,6 @@ public struct NightQualityAnalyzer {
         }
 
         return (trend, firstHalf, secondHalf)
-    }
-
-    private static func calculateBestWindow(
-        hourlyRatings: [NightQualityAssessment.HourlyRating],
-        nightStart: Date,
-        nightEnd: Date,
-        goodRatingThreshold: Double
-    ) -> NightQualityAssessment.TimeWindow? {
-        guard !hourlyRatings.isEmpty else { return nil }
-
-        let goodHours = hourlyRatings.filter { $0.score < goodRatingThreshold }
-
-        if goodHours.isEmpty {
-            let best = hourlyRatings.min { $0.score < $1.score }
-            if let best = best {
-                return NightQualityAssessment.TimeWindow(start: best.time, end: best.time.addingTimeInterval(3600))
-            }
-            return nil
-        }
-
-        let goodCount = goodHours.count
-        let totalCount = hourlyRatings.count
-        let goodRatio = Double(goodCount) / Double(totalCount)
-
-        if goodRatio >= 0.5 {
-            return NightQualityAssessment.TimeWindow(start: nightStart, end: nightEnd)
-        }
-
-        var longestWindow: (start: Date, end: Date, length: TimeInterval) = (nightStart, nightStart, 0)
-        var currentStart: Date?
-        var currentLength: TimeInterval = 0
-
-        for rating in hourlyRatings.sorted(by: { $0.time < $1.time }) {
-            if rating.score < goodRatingThreshold {
-                if currentStart == nil {
-                    currentStart = rating.time
-                }
-                currentLength += 3600
-            } else {
-                if let start = currentStart, currentLength > longestWindow.length {
-                    let end = start.addingTimeInterval(currentLength)
-                    longestWindow = (start, end, currentLength)
-                }
-                currentStart = nil
-                currentLength = 0
-            }
-        }
-
-        if let start = currentStart, currentLength > longestWindow.length {
-            let end = start.addingTimeInterval(currentLength)
-            longestWindow = (start, end, currentLength)
-        }
-
-        if longestWindow.length > 0 {
-            return NightQualityAssessment.TimeWindow(start: longestWindow.start, end: longestWindow.end)
-        }
-
-        return nil
     }
 
     private static func createNoNighttimeDataAssessment(

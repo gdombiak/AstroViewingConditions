@@ -1,0 +1,10 @@
+{
+  "capability": "observing_window.select",
+  "result": {
+    "best_window": {
+      "start": "2026-09-06T00:00:00Z",
+      "end": "2026-09-06T02:00:00Z"
+    }
+  },
+  "ok": true
+}

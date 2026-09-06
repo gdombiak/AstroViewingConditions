@@ -221,3 +221,11 @@ policies:
       samples[].time: exact
       samples[].altitude: abs_0_5
       samples[].illumination: integer_abs_1
+
+  observing_window:
+    fields:
+      best_window: null_or_object
+      best_window.start: exact
+      best_window.end: exact
+      code: exact
+      message: exact

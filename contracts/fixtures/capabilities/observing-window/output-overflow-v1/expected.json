@@ -1,0 +1,8 @@
+{
+  "capability": "observing_window.select",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid observing_window.select input"
+  }
+}
