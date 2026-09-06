@@ -1,0 +1,73 @@
+{
+  "capability": "targets.recommend",
+  "injected": {
+    "darkness_window": {
+      "start": "2026-03-01T19:00:00Z",
+      "end": "2026-03-01T20:00:00Z"
+    },
+    "moon": {
+      "altitude": 0,
+      "illumination": 100
+    },
+    "hourly_ratings": [],
+    "cloud_cover_score": 120,
+    "candidates": [
+      {
+        "key": "below",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 3.999
+        }
+      },
+      {
+        "key": "half",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 4
+        }
+      },
+      {
+        "key": "above",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 4.001
+        }
+      },
+      {
+        "key": "missing",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": null
+        }
+      },
+      {
+        "key": "clamp",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 100
+        }
+      }
+    ],
+    "limit": 100
+  }
+}

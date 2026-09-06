@@ -1,0 +1,7 @@
+capability: targets.recommend
+engine_semver: ">=1.0.0 <2.0.0"
+equality: targets_recommend
+hosts: [swift, python]
+origin: manual
+notes: >
+  Negative altitude, no darkness/weather, maximum sensitivity and difficulty clamp negative raw score to zero.

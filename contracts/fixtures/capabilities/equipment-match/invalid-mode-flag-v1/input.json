@@ -1,0 +1,8 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {},
+    "capabilities": [],
+    "is_planet": 1
+  }
+}

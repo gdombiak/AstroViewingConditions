@@ -26,6 +26,8 @@ DETERMINISTIC_FIXTURE_DIRS = (
     "fixtures/capabilities/location-grid",
     "fixtures/capabilities/location-compare",
     "fixtures/capabilities/catalog-deep-sky",
+    "fixtures/capabilities/targets-recommend",
+    "fixtures/capabilities/equipment-match",
 )
 
 

@@ -221,13 +221,13 @@ final class EngineCalibrationTests: XCTestCase {
         XCTAssertEqual(score, 32)
     }
 
-    func testTargetScoringIsNotPartOfProductionSnapshot() throws {
+    func testTargetScoringIsBoundInProductionSnapshot() throws {
         let contracts = try F3ObservingQualityContractSupport.contractsDirectory()
         let target = contracts.appendingPathComponent("data/calibration/target-scoring.json")
         XCTAssertTrue(FileManager.default.isReadableFile(atPath: target.path))
         let snapshot = try EngineCalibration.loadFromContractsRoot()
-        XCTAssertNotNil(snapshot.fog)
-        // Presence of the parked 1.1 file must not be required to construct EngineCalibration.
+        XCTAssertEqual(snapshot.targetScoring.altitude.weight, 30)
+        XCTAssertEqual(snapshot.equipmentMatching.preferences.visual_preferred, 85)
     }
 
     func testBundleEngineDataCopiesCanonicalFilesAndRemovesStale() throws {
@@ -242,7 +242,7 @@ final class EngineCalibrationTests: XCTestCase {
         try runBundleScript(script, repoRoot: repo, destination: dest)
         try assertCopiedBytesMatchCanonical(contracts: contracts, dest: dest)
 
-        let stale = dest.appendingPathComponent("calibration/target-scoring.json")
+        let stale = dest.appendingPathComponent("calibration/obsolete.json")
         try Data("stale".utf8).write(to: stale)
         XCTAssertTrue(FileManager.default.fileExists(atPath: stale.path))
         let staleCatalog = dest.appendingPathComponent("catalog/equipment-limits.json")
@@ -380,6 +380,8 @@ final class EngineCalibrationTests: XCTestCase {
             "observing-quality.json",
             "seeing.json",
             "transparency.json",
+            "target-scoring.json",
+            "equipment-matching.json",
         ] {
             try FileManager.default.copyItem(
                 at: source.appendingPathComponent(name),
@@ -421,6 +423,8 @@ final class EngineCalibrationTests: XCTestCase {
             "observing-quality.json",
             "seeing.json",
             "transparency.json",
+            "target-scoring.json",
+            "equipment-matching.json",
         ] {
             let expected = try Data(contentsOf: canonical.appendingPathComponent(name))
             let actual = try Data(contentsOf: dest.appendingPathComponent("calibration").appendingPathComponent(name))
@@ -428,7 +432,7 @@ final class EngineCalibrationTests: XCTestCase {
         }
         XCTAssertFalse(
             FileManager.default.fileExists(
-                atPath: dest.appendingPathComponent("calibration/target-scoring.json").path
+                atPath: dest.appendingPathComponent("calibration/obsolete.json").path
             )
         )
         let catalogExpected = try Data(

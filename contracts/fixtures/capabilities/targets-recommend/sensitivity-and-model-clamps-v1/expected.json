@@ -1,0 +1,24 @@
+{
+  "capability": "targets.recommend",
+  "ok": true,
+  "result": {
+    "recommendations": [
+      {
+        "key": "zero",
+        "score": 100
+      },
+      {
+        "key": "difficulty",
+        "score": 92
+      },
+      {
+        "key": "bright",
+        "score": 86
+      },
+      {
+        "key": "clamped",
+        "score": 18
+      }
+    ]
+  }
+}

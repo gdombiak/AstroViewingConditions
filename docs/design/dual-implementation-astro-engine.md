@@ -1075,7 +1075,7 @@ Document Swift `Int(Double)` truncation toward zero, not banker's rounding.
 
 Export the exact switch tables already in Swift (`FogCalculator`, `SeeingCalculator`, `TransparencyCalculator` including 0.50/0.30/0.20 layer weights and 0.75/0.25 combine). These stay data, not “close enough” prose.
 
-#### Target scoring (later unreleased procedure; numbers in JSON now so they are not reverse-engineered later)
+#### Target scoring (Phase 15 procedure; unreleased 1.0 work)
 
 ```
 altitudeComponent = clamp(maxAltitude/80, 0, 1) * 30
@@ -1091,7 +1091,7 @@ difficultyPenalty = difficulty * 8
 score = round(clamp(sum − moon − difficulty, 0, 100))
 ```
 
-Until the Phase 15 fixtures exist, these numbers still belong in `contracts/data/calibration/target-scoring.json` so Python authors do not scrape Swift.
+Phase 15 verified these coefficients against production and bound the calibration. The normative [targets.recommend procedure](../../contracts/procedures/targets-recommend.md) also specifies model clamps, deep-sky sensitivity, weather overlap/fallback, and stable complete ties omitted from this sketch.
 
 ---
 
@@ -1882,10 +1882,16 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
   - Public CLI allow-list expands to include `location.compare` because `hosts` includes `cli`; catalog and CLI must not diverge. Remaining unimplemented IDs stay usage/exit 3.
   - No `--suitability-json` flag: the overlay lives in the JSON envelope, like other injected inputs.
 
-### Phase 15 — targets.recommend + equipment.match (later unreleased first-1.0 work)
+### Phase 15 — targets.recommend + equipment.match (implemented; unreleased first-1.0 work)
 
 - **Depends on:** Phase 12
 - **Notes:** Deterministic only: no live alt/az; target windows are precomputed/frozen. Target scores and order are exact integers; equipment `level`, `reason`, and `mode` are exact. Equality omits host `explanation` copy. Numeric calibration is already parked in `contracts/data/calibration/target-scoring.json` from Phase 1; this phase owns the calibration procedure, fixtures, and both ports. This remains unreleased work toward the first real 1.0.0 release.
+
+- **Implementation assessment: Partially Agree.** Production confirms the parked numeric scoring coefficients; the old JSON's "1.1" comment was stale, not a release or a numeric discrepancy. Generic scoring also requires constructor difficulty/sensitivity clamps, equal-weight overlapping hourly scores with cloud fallback, and deep-sky sensitivity. Darkness is a score contribution, not eligibility filtering. Nonpositive windows have zero darkness overlap. Complete score/best-time ties preserve input order.
+- **Boundary refinement:** `targets.recommend` takes keyed frozen target/window candidates plus injected darkness, hourly weather, cloud fallback and Moon facts. It returns ordered keys and exact integer scores. Production's specialized Moon/planet providers remain host-side and outside this capability; their generic fallback enum calibration is retained. No samplers changed.
+- **Equipment evidence:** production returns the best selected instrument even when poor, and null only for no selection. `equipment.match` accepts resolved requirements and stable caller keys, returns exact best/other-suitable keys and level/reason/mode. The host keeps catalog fallbacks/overrides, saved identities and English copy. Matching preferences became canonical `equipment-matching.json`; inventory limits are unrelated and remain unchanged.
+- **Reuse/data:** Swift generic scoring and ranking plus equipment candidate/selection rules are in AstroEngine; Apple services delegate while retaining explanations and orchestration. `EngineCalibration` and bundle-engine-data bind target scoring and equipment preferences, including catalog sensitivity values. Generated resources remain ignored. Python loads the same canonical data; both IDs are public CLI/eval and deterministic parity capabilities.
+- **Contract:** normative [target procedure](../../contracts/procedures/targets-recommend.md) and [equipment procedure](../../contracts/procedures/equipment-match.md), manual fixtures and exact equality. Both new rows use `since: "1.0.0"`; new fixture applicability is `>=1.0.0 <2.0.0`. Existing since/ranges and both engine/package versions stay unchanged. Still unreleased; no Phase 16, Bot or persistence work.
 
 ### Phase 16 — Live astronomy (later unreleased first-1.0 work, with tolerances)
 

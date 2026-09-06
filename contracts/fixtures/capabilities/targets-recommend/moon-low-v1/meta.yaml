@@ -1,0 +1,7 @@
+capability: targets.recommend
+engine_semver: ">=1.0.0 <2.0.0"
+equality: targets_recommend
+hosts: [swift, python]
+origin: manual
+notes: >
+  At 45 degrees and 50 percent illumination, interference .375 times 55 gives 20.625 penalty; score 79.375.

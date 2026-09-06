@@ -11,6 +11,13 @@
   Compare fixtures use applicability `>=1.0.0 <2.0.0`. Suitability overlay
   is an array of `{key, suitability}` entries.
 
+- Phase 15: add deterministic `targets.recommend` and `equipment.match`, their
+  normative procedures, manual fixtures, exact equality and Swift/Python ports.
+  Bind canonical target scoring and equipment preferences; reuse engine rules in
+  Apple hosts without changing live providers or English copy. Both capabilities
+  have `since: "1.0.0"`, fixtures `>=1.0.0 <2.0.0`. Identity remains unreleased
+  `1.0.0`; existing versions, since values and fixture ranges are unchanged.
+
 ## 0.1.0
 
 - F1: `observing_quality.assess` plus OQ fixtures and calibration.

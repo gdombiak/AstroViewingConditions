@@ -1,0 +1,8 @@
+{
+  "capability": "equipment.match",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid equipment.match input"
+  }
+}

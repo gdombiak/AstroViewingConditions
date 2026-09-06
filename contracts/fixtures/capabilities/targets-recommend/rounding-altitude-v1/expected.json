@@ -1,0 +1,28 @@
+{
+  "capability": "targets.recommend",
+  "ok": true,
+  "result": {
+    "recommendations": [
+      {
+        "key": "clamp",
+        "score": 30
+      },
+      {
+        "key": "half",
+        "score": 2
+      },
+      {
+        "key": "above",
+        "score": 2
+      },
+      {
+        "key": "below",
+        "score": 1
+      },
+      {
+        "key": "missing",
+        "score": 0
+      }
+    ]
+  }
+}

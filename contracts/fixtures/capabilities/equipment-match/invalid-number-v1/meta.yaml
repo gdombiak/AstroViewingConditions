@@ -1,0 +1,7 @@
+capability: equipment.match
+engine_semver: ">=1.0.0 <2.0.0"
+equality: engine_error
+hosts: [swift, python]
+origin: manual
+notes: >
+  Malformed inputs reject before matching, including empty inventories.

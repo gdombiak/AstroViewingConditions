@@ -24,6 +24,8 @@ Eval allow-list (not the public Python CLI):
   location.grid
   location.compare
   catalog.deep_sky
+  targets.recommend
+  equipment.match
 """
 
 private let supportedCapabilities: Set<String> = [
@@ -38,6 +40,8 @@ private let supportedCapabilities: Set<String> = [
     "location.grid",
     "location.compare",
     "catalog.deep_sky",
+    "targets.recommend",
+    "equipment.match",
 ]
 
 @main

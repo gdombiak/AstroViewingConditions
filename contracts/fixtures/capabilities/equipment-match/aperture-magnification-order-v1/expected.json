@@ -1,0 +1,16 @@
+{
+  "capability": "equipment.match",
+  "ok": true,
+  "result": {
+    "match": {
+      "key": "large",
+      "level": "excellent",
+      "reason": "binocularMagnificationInRange",
+      "mode": "visual",
+      "other_suitable_keys": [
+        "high",
+        "low"
+      ]
+    }
+  }
+}

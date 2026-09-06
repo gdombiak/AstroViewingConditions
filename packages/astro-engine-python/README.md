@@ -1,6 +1,6 @@
 # astro-engine (Python)
 
-Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the twelve
+Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the fourteen
 catalogued capabilities.
 
 Calibration and fixtures are loaded from the repo `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). Do not copy scoring constants into this package.
@@ -14,3 +14,9 @@ pytest
 python -m astro_engine --engine-version
 python -m astro_engine observing_quality.assess --input ../../contracts/fixtures/capabilities/observing-quality/home-backyard-v1/input.json
 ```
+
+Phase 15 adds `targets.recommend` for generic frozen target windows and
+`equipment.match` for resolved requirements and selected instrument facts.
+Both run through the shared library dispatcher, with canonical calibration and
+no network or live astronomy. See the corresponding `contracts/procedures/`
+documents. This remains unreleased 1.0.0 work.

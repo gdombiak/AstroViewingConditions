@@ -1,8 +1,7 @@
 #!/bin/sh
 # Copy production engine calibration and the curated deep-sky catalog from
 # contracts/data into generated resource directories. Canonical files are
-# never mutated. Does not copy parked 1.1 target-scoring.json or
-# equipment-limits.json.
+# never mutated. Equipment inventory limits remain outside matching.
 #
 # Usage:
 #   scripts/bundle-engine-data [--repo-root DIR] [--destination DIR]... [--host-only]
@@ -115,7 +114,9 @@ required_files="fog.json
 night-quality.json
 observing-quality.json
 seeing.json
-transparency.json"
+transparency.json
+target-scoring.json
+equipment-matching.json"
 
 required_catalog_files="deep-sky.json"
 

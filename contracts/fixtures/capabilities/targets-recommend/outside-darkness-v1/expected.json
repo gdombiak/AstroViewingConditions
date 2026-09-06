@@ -1,0 +1,28 @@
+{
+  "capability": "targets.recommend",
+  "ok": true,
+  "result": {
+    "recommendations": [
+      {
+        "key": "moon",
+        "score": 83
+      },
+      {
+        "key": "planet",
+        "score": 83
+      },
+      {
+        "key": "satellite",
+        "score": 77
+      },
+      {
+        "key": "deepSky",
+        "score": 65
+      },
+      {
+        "key": "meteorShower",
+        "score": 65
+      }
+    ]
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "capability": "targets.recommend",
+  "injected": {
+    "darkness_window": {
+      "start": "2026-03-01T22:00:00Z",
+      "end": "2026-03-01T23:00:00Z"
+    },
+    "moon": {
+      "altitude": 0,
+      "illumination": 100
+    },
+    "hourly_ratings": [
+      {
+        "time": "2026-03-01T20:30:00Z",
+        "score": 2
+      },
+      {
+        "time": "2026-03-01T21:59:59Z",
+        "score": 0
+      },
+      {
+        "time": "2026-03-01T22:00:00Z",
+        "score": 2
+      },
+      {
+        "time": "2026-03-01T22:30:00Z",
+        "score": 2
+      }
+    ],
+    "cloud_cover_score": 100,
+    "candidates": [
+      {
+        "key": "partial",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:30:00Z",
+          "end": "2026-03-01T22:30:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 40
+        }
+      }
+    ],
+    "limit": 100
+  }
+}

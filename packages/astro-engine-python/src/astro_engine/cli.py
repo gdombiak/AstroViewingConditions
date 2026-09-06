@@ -29,6 +29,8 @@ from astro_engine.contracts import ContractsRootError, engine_semver
 from astro_engine.errors import ValidationError
 from astro_engine.fog import CAPABILITY_ID as FOG_ID
 from astro_engine.grid import CAPABILITY_ID as GRID_ID
+from astro_engine.targets import CAPABILITY_ID as TARGETS_ID
+from astro_engine.equipment import CAPABILITY_ID as EQUIPMENT_ID
 from astro_engine.location_compare import CAPABILITY_ID as COMPARE_ID
 from astro_engine.iss import CAPABILITY_ID as ISS_ID
 from astro_engine.jsonio import JSONCodecError, STDIN_LIMIT_BYTES, dump_json, load_json_bytes
@@ -59,6 +61,8 @@ PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     GRID_ID,
     COMPARE_ID,
     CATALOG_ID,
+    TARGETS_ID,
+    EQUIPMENT_ID,
 )
 
 _PUBLIC_ALLOW_LIST = frozenset(PUBLIC_CAPABILITY_IDS)

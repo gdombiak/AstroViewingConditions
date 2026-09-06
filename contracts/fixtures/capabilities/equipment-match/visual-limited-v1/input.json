@@ -1,0 +1,17 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {
+      "practical_visual_aperture_mm": 60,
+      "preferred_visual_aperture_mm": 100
+    },
+    "capabilities": [
+      {
+        "key": "scope",
+        "type": "visualTelescope",
+        "aperture_mm": 59.9,
+        "magnification": null
+      }
+    ]
+  }
+}

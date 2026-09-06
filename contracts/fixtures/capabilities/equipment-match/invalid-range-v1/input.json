@@ -1,0 +1,12 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {
+      "preferred_binocular_magnification": [
+        12,
+        7
+      ]
+    },
+    "capabilities": []
+  }
+}

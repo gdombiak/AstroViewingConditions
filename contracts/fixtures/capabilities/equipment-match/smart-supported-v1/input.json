@@ -1,0 +1,18 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {
+      "smart_eaa_suitability": "supported",
+      "practical_smart_eaa_aperture_mm": 30,
+      "preferred_smart_eaa_aperture_mm": 50
+    },
+    "capabilities": [
+      {
+        "key": "scope",
+        "type": "smartTelescope",
+        "aperture_mm": 50,
+        "magnification": null
+      }
+    ]
+  }
+}

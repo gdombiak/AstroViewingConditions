@@ -189,7 +189,7 @@ public final class DefaultTargetRecommendationService: TargetRecommendationProvi
         for context: TargetRecommendationContext,
         limit: Int = 5
     ) -> [TargetRecommendation] {
-        let recommendations = catalogProvider.targets(for: context)
+        let candidates = catalogProvider.targets(for: context)
             .flatMap { target in
                 if target.type == .moon,
                    let moonRecommendation = moonRecommendationProvider.recommendation(
@@ -211,14 +211,10 @@ public final class DefaultTargetRecommendationService: TargetRecommendationProvi
                     .visibilityWindows(for: target, context: context)
                     .map { scorer.recommendation(for: target, window: $0, context: context) }
             }
-            .sorted { lhs, rhs in
-                if lhs.score != rhs.score {
-                    return lhs.score > rhs.score
-                }
-                return lhs.visibilityWindow.bestTime < rhs.visibilityWindow.bestTime
-            }
-            .prefix(limit)
-            .map { $0 }
+        let recommendations = TargetScoring.rankedIndices(
+            scores: candidates.map(\.score),
+            bestTimes: candidates.map { $0.visibilityWindow.bestTime }, limit: limit
+        ).map { candidates[$0] }
         TargetRecommendationDebugLogger.logFinalSortedRecommendations(
             recommendations,
             context: context,
@@ -236,26 +232,24 @@ public struct DefaultTargetRecommendationScorer: TargetRecommendationScoring {
         window: TargetVisibilityWindow,
         context: TargetRecommendationContext
     ) -> TargetRecommendation {
-        let altitude = min(max((window.maxAltitude ?? 0) / 80, 0), 1)
-        let darknessOverlap = Self.overlapFraction(
-            windowStart: window.start,
-            windowEnd: window.end,
-            darknessStart: context.astronomicalNightStart,
-            darknessEnd: context.astronomicalNightEnd
-        )
-        let weatherQuality = Self.weatherQuality(in: window, context: context)
-        let moonPenalty = Self.moonPenalty(for: target, context: context)
-        let difficultyPenalty = target.difficulty * 8
-
-        let altitudeComponent = altitude * 30
-        let darknessComponent = Self.darknessComponent(
-            for: target.type,
-            overlap: darknessOverlap
-        )
-        let weatherComponent = weatherQuality * 35
-
-        let rawScore = altitudeComponent + darknessComponent + weatherComponent - moonPenalty - difficultyPenalty
-        let score = Int(round(min(max(rawScore, 0), 100)))
+        let components = TargetScoring.score(
+            type: FrozenTargetType(rawValue: target.type.rawValue)!,
+            objectType: target.deepSkyObjectType, difficulty: target.difficulty,
+            sensitivity: target.moonInterferenceSensitivity, maxAltitude: window.maxAltitude,
+            start: window.start, end: window.end,
+            darknessStart: context.astronomicalNightStart, darknessEnd: context.astronomicalNightEnd,
+            cloudCoverScore: context.nightQuality.details.cloudCoverScore,
+            hourlyRatings: context.nightQuality.hourlyRatings.map { ($0.time, $0.score) },
+            moonAltitude: context.moonInfo.altitude, moonIllumination: Double(context.moonInfo.illumination))
+        let altitudeComponent = components.altitudeComponent
+        let darknessComponent = components.darknessComponent
+        let weatherComponent = components.weatherComponent
+        let darknessOverlap = components.darknessOverlap
+        let weatherQuality = components.weatherQuality
+        let moonPenalty = components.moonPenalty
+        let difficultyPenalty = components.difficultyPenalty
+        let rawScore = components.rawScore
+        let score = components.score
         let reasons = Self.reasons(
             for: target,
             altitude: window.maxAltitude,
@@ -299,92 +293,6 @@ public struct DefaultTargetRecommendationScorer: TargetRecommendationScoring {
             ]
         )
         return recommendation
-    }
-
-    private static func darknessComponent(
-        for type: ObservableTargetType,
-        overlap: Double
-    ) -> Double {
-        switch type {
-        case .deepSky, .meteorShower:
-            return overlap * 35
-        case .satellite:
-            return 12 + overlap * 8
-        case .moon, .planet:
-            return 18 + overlap * 10
-        }
-    }
-
-    private static func moonPenalty(
-        for target: ObservableTarget,
-        context: TargetRecommendationContext
-    ) -> Double {
-        guard context.moonInfo.altitude > 0 else { return 0 }
-        let illumination = Double(min(max(context.moonInfo.illumination, 0), 100)) / 100
-        let altitudeFactor = min(max(context.moonInfo.altitude / 90, 0), 1)
-        let interference = illumination * (0.5 + altitudeFactor * 0.5)
-
-        switch target.type {
-        case .deepSky:
-            return interference
-                * deepSkyMoonPenaltyCeiling(for: target.deepSkyObjectType)
-                * (target.moonInterferenceSensitivity ?? 1)
-        case .meteorShower:
-            return interference * 28
-        case .planet:
-            return interference * 6
-        case .satellite:
-            return interference * 4
-        case .moon:
-            return 0
-        }
-    }
-
-    private static func deepSkyMoonPenaltyCeiling(for objectType: DeepSkyObjectType?) -> Double {
-        switch objectType {
-        case .galaxy, .diffuseNebula:
-            return 55
-        case .globularCluster, .openCluster:
-            return 28
-        case .doubleStar:
-            return 5
-        case .planetaryNebula:
-            return 22
-        case nil:
-            return 28
-        }
-    }
-
-    private static func weatherQuality(
-        in window: TargetVisibilityWindow,
-        context: TargetRecommendationContext
-    ) -> Double {
-        let overlappingRatings = context.nightQuality.hourlyRatings.filter { rating in
-            let ratingEnd = rating.time.addingTimeInterval(3600)
-            return ratingEnd > window.start && rating.time < window.end
-        }
-
-        guard !overlappingRatings.isEmpty else {
-            return 1 - min(max(context.nightQuality.details.cloudCoverScore / 100, 0), 1)
-        }
-
-        let averageScore = overlappingRatings.map(\.score).reduce(0, +) / Double(overlappingRatings.count)
-        return 1 - min(max(averageScore / 2, 0), 1)
-    }
-
-    private static func overlapFraction(
-        windowStart: Date,
-        windowEnd: Date,
-        darknessStart: Date,
-        darknessEnd: Date
-    ) -> Double {
-        guard windowEnd > windowStart else { return 0 }
-
-        let overlapStart = max(windowStart, darknessStart)
-        let overlapEnd = min(windowEnd, darknessEnd)
-        guard overlapEnd > overlapStart else { return 0 }
-
-        return overlapEnd.timeIntervalSince(overlapStart) / windowEnd.timeIntervalSince(windowStart)
     }
 
     private static func reasons(

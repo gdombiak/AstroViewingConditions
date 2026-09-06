@@ -1,0 +1,9 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {
+      "practical_smart_eaa_aperture_mm": 30
+    },
+    "capabilities": []
+  }
+}

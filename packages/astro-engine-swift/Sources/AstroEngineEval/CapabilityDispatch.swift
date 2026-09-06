@@ -29,6 +29,13 @@ enum CapabilityDispatch {
             return try issDecode(document)
         case "location.grid":
             return try locationGrid(document)
+        case "targets.recommend", "equipment.match":
+            do {
+                let input = try injected(document)
+                return try capability == "targets.recommend" ? Phase15Contracts.targets(input) : Phase15Contracts.equipment(input)
+            } catch let error as Phase15InputError {
+                throw EvalValidationError(code: "validation", message: error.message)
+            }
         case "location.compare":
             return try locationCompare(document)
         case "catalog.deep_sky":

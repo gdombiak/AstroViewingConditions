@@ -1,0 +1,30 @@
+{
+  "capability": "targets.recommend",
+  "injected": {
+    "darkness_window": {
+      "start": "2026-03-01T21:00:00Z",
+      "end": "2026-03-01T23:00:00Z"
+    },
+    "moon": {
+      "altitude": 0,
+      "illumination": 100
+    },
+    "hourly_ratings": [],
+    "cloud_cover_score": -10,
+    "candidates": [
+      {
+        "key": "horizon",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "object_type": "galaxy"
+      }
+    ],
+    "limit": 100
+  }
+}

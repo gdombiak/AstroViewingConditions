@@ -1,0 +1,69 @@
+{
+  "capability": "targets.recommend",
+  "injected": {
+    "darkness_window": {
+      "start": "2026-03-01T21:00:00Z",
+      "end": "2026-03-01T23:00:00Z"
+    },
+    "moon": {
+      "altitude": 90,
+      "illumination": 100
+    },
+    "hourly_ratings": [],
+    "cloud_cover_score": 0,
+    "candidates": [
+      {
+        "key": "bright",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "object_type": "planetaryNebula",
+        "sensitivity": 0.65
+      },
+      {
+        "key": "clamped",
+        "type": "deepSky",
+        "difficulty": -1,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "object_type": "galaxy",
+        "sensitivity": 2
+      },
+      {
+        "key": "zero",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "object_type": "galaxy",
+        "sensitivity": -1
+      },
+      {
+        "key": "difficulty",
+        "type": "deepSky",
+        "difficulty": 2,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "sensitivity": 0
+      }
+    ],
+    "limit": 100
+  }
+}

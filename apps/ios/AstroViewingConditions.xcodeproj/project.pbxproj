@@ -1497,6 +1497,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
@@ -1509,6 +1511,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1529,6 +1533,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
@@ -1541,6 +1547,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1561,6 +1569,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
@@ -1573,6 +1583,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1593,6 +1605,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
@@ -1605,6 +1619,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1625,6 +1641,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
@@ -1637,6 +1655,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1657,6 +1677,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
 				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
 				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
+				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
@@ -1669,6 +1691,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;

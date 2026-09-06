@@ -19,3 +19,15 @@ On-disk fixtures are pretty-printed (2-space indent, trailing newline) for revie
 Do **not** treat RFC 8785, UTF-16 key order, or “integers must encode without `.0`” as pass/fail rules.
 
 `expected.json` is the domain result (`ok`, `capability`, `result` or `error`). It must not pin `engine_semver`.
+
+## Phase 15 injected facts
+
+`targets.recommend` and `equipment.match` use the existing UTC-second and finite
+JSON rules. Their numeric transport inputs additionally have absolute value <=1e9
+(booleans are not numbers). Instrument/candidate keys are nonempty strings with
+UTF-8 identity; arrays avoid Unicode-normalizing object-key maps. Equipment's
+last ordering key is UTF-8 byte order; complete target score/time ties retain
+input order. Output extra/missing fields fail equality; unknown injected input
+fields are ignored. Required/optional/null distinctions and enum wire values are
+specified in the [target](procedures/targets-recommend.md) and
+[equipment](procedures/equipment-match.md) procedures.

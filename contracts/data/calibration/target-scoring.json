@@ -1,5 +1,5 @@
 {
-  "comment": "Parked 1.1 product numbers from DefaultTargetRecommendationScorer and DefaultTargetCatalogProvider.moonInterferenceSensitivity. Not a capability. Procedure, fixtures, and ports are Phase 15.",
+  "comment": "Unreleased 1.0 deterministic generic frozen-window target scoring. See contracts/procedures/targets-recommend.md. Specialized live Moon/planet providers are outside this capability.",
   "score": {
     "min": 0,
     "max": 100,
@@ -11,9 +11,18 @@
     "weight": 30
   },
   "darkness": {
-    "deep_sky_and_meteor_shower": { "base": 0, "overlap_weight": 35 },
-    "satellite": { "base": 12, "overlap_weight": 8 },
-    "moon_and_planet": { "base": 18, "overlap_weight": 10 }
+    "deep_sky_and_meteor_shower": {
+      "base": 0,
+      "overlap_weight": 35
+    },
+    "satellite": {
+      "base": 12,
+      "overlap_weight": 8
+    },
+    "moon_and_planet": {
+      "base": 18,
+      "overlap_weight": 10
+    }
   },
   "weather": {
     "weight": 35,
@@ -54,5 +63,11 @@
       },
       "non_planetary_nebula": 1
     }
+  },
+  "target_bounds": {
+    "difficulty_min": 0,
+    "difficulty_max": 1,
+    "sensitivity_min": 0,
+    "sensitivity_max": 1.5
   }
 }

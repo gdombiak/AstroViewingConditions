@@ -12,8 +12,8 @@
 # `light_pollution.validity` is not a catalogued capability.
 #
 # Live astronomy accumulates as later phases implement it. LP identity
-# and parked later-slice target-scoring numbers live under contracts/data and
-# are not capabilities. Catalog JSON is the catalog.deep_sky source.
+# lives under contracts/data. Target scoring and equipment matching are
+# deterministic Phase 15 capabilities. Catalog JSON is the catalog.deep_sky source.
 
 engine_semver: "1.0.0"
 
@@ -121,3 +121,19 @@ capabilities:
     since: "0.1.0"
     summary: >
       Curated deep-sky catalog from contracts/data/catalog/deep-sky.json.
+
+  - id: targets.recommend
+    hosts: [ios, cli]
+    equality: targets_recommend
+    since: "1.0.0"
+    summary: >
+      Score and rank generic targets from frozen windows and injected weather/Moon
+      facts. Specialized Moon/planet providers and live astronomy are excluded.
+
+  - id: equipment.match
+    hosts: [ios, cli]
+    equality: equipment_match
+    since: "1.0.0"
+    summary: >
+      Match selected instruments against resolved target requirements. Exact
+      best key, other suitable keys, level, reason and mode; no English copy.

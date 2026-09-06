@@ -1,0 +1,20 @@
+{
+  "preferences": {
+    "none": 0,
+    "unknown": 20,
+    "naked_eye_challenging": 30,
+    "naked_eye_preferred": 60,
+    "binocular_aperture_limited": 30,
+    "binocular_magnification_limited": 40,
+    "binocular_preferred": 90,
+    "binocular_practical": 65,
+    "aperture_limited": 35,
+    "very_wide_visual": 45,
+    "visual_preferred": 85,
+    "visual_practical": 70,
+    "wide_visual_adjustment": -5,
+    "electronic_preferred": 95,
+    "electronic_practical": 80,
+    "electronic_supported": 65
+  }
+}

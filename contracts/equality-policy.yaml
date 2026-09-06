@@ -175,3 +175,19 @@ policies:
     fields:
       code: exact
       message: exact
+
+  targets_recommend:
+    description: Exact integer scores and ordered recommendations; keys identify frozen candidates.
+    fields:
+      recommendations[].key: exact
+      recommendations[].score: exact
+
+  equipment_match:
+    description: Exact selected matching facts; explanation and inventory identities are host-only.
+    fields:
+      match: null_or_object
+      match.key: exact
+      match.level: exact
+      match.reason: exact
+      match.mode: exact
+      match.other_suitable_keys: ordered_ids

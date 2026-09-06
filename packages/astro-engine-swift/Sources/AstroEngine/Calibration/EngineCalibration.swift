@@ -33,6 +33,8 @@ public struct EngineCalibration: Hashable, Sendable {
     public let nightQuality: NightQualityCalibration
     public let fog: FogCalibration
     public let seeing: SeeingCalibration
+    public let equipmentMatching: EquipmentMatchingCalibration
+    public let targetScoring: TargetScoringCalibration
     public let transparency: TransparencyCalibration
 
     /// Production/default snapshot, loaded once.
@@ -71,6 +73,11 @@ public struct EngineCalibration: Hashable, Sendable {
             from: calibrationDir.appendingPathComponent("transparency.json")
         )
 
+        let equipmentMatching = try decode(EquipmentMatchingCalibration.self,
+            from: calibrationDir.appendingPathComponent("equipment-matching.json"))
+        let targetScoring = try decode(TargetScoringCalibration.self,
+            from: calibrationDir.appendingPathComponent("target-scoring.json"))
+        try targetScoring.validate()
         try observingQuality.validate()
         try nightQuality.validate()
         try fog.validate()
@@ -82,6 +89,8 @@ public struct EngineCalibration: Hashable, Sendable {
             nightQuality: nightQuality,
             fog: fog,
             seeing: seeing,
+            equipmentMatching: equipmentMatching,
+            targetScoring: targetScoring,
             transparency: transparency
         )
     }

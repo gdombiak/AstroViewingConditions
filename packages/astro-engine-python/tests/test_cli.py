@@ -51,11 +51,11 @@ REPRESENTATIVE_FIXTURES: tuple[tuple[str, str, str], ...] = (
     ("location.grid", "fixtures/capabilities/location-grid", "nyc-10-5-v1"),
     ("location.compare", "fixtures/capabilities/location-compare", "public-score-wins-v1"),
     ("catalog.deep_sky", "fixtures/capabilities/catalog-deep-sky", "curated-v1"),
+    ("targets.recommend", "fixtures/capabilities/targets-recommend", "basic-v1"),
+    ("equipment.match", "fixtures/capabilities/equipment-match", "selected-ranking-v1"),
 )
 
-ONE_ONE_IDS = (
-    "targets.recommend",
-    "equipment.match",
+UNIMPLEMENTED_IDS = (
     "astronomy.sun_events",
     "agent.conditions",
     "light_pollution.validity",
@@ -114,7 +114,7 @@ def test_engine_version() -> None:
 
 def test_public_allow_list_matches_catalog_order() -> None:
     assert PUBLIC_CAPABILITY_IDS == tuple(item[0] for item in REPRESENTATIVE_FIXTURES)
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 12
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 14
 
 
 def test_every_public_capability_is_accepted() -> None:
@@ -197,7 +197,7 @@ def test_unknown_capability_is_usage() -> None:
 
 
 def test_one_one_capability_ids_remain_unknown_on_cli() -> None:
-    for capability in ONE_ONE_IDS:
+    for capability in UNIMPLEMENTED_IDS:
         code, stdout, stderr = _run([capability, "--input", "-"], stdin=b"{}")
         assert code == EXIT_USAGE, capability
         assert stdout == ""

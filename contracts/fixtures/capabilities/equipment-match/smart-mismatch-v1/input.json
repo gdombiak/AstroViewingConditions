@@ -1,0 +1,14 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {},
+    "capabilities": [
+      {
+        "key": "scope",
+        "type": "smartTelescope",
+        "aperture_mm": 50,
+        "magnification": null
+      }
+    ]
+  }
+}

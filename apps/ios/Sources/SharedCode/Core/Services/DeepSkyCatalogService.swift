@@ -58,11 +58,13 @@ public struct DefaultTargetCatalogProvider: TargetCatalogProvider {
     }
 
     private static func moonInterferenceSensitivity(for entry: DeepSkyCatalogEntry) -> Double {
-        guard entry.objectType == .planetaryNebula else { return 1 }
-        guard let surfaceBrightness = entry.surfaceBrightness else { return 1 }
-        if surfaceBrightness <= 10 { return 0.65 }
-        if surfaceBrightness >= 13 { return 1.2 }
-        return 1
+        let sensitivity = EngineCalibration.current.targetScoring.moon.deep_sky_interference_sensitivity
+        guard entry.objectType == .planetaryNebula else { return sensitivity.non_planetary_nebula }
+        guard let surfaceBrightness = entry.surfaceBrightness else { return sensitivity.default }
+        let nebula = sensitivity.planetary_nebula_by_surface_brightness
+        if surfaceBrightness <= nebula.high_surface_brightness_max { return nebula.high_surface_brightness_sensitivity }
+        if surfaceBrightness >= nebula.low_surface_brightness_min { return nebula.low_surface_brightness_sensitivity }
+        return nebula.mid_sensitivity
     }
 
     // TODO: Consider adding Uranus and Neptune later as challenge planet targets once planet visibility support is verified.
