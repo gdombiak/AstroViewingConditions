@@ -32,17 +32,28 @@ public struct MoonObservationData: Sendable, Hashable {
 }
 
 /// SunCalc-backed moon observation without host recommendation types.
+///
+/// Portable contract: contracts/procedures/moon-observation.md. The default
+/// 1800 s cadence, the explicit interval-end sample, the night-midpoint phase
+/// instant and the `max(span, sampleInterval)` rise/set search limit are the
+/// production quirks and are preserved deliberately.
 public struct SunCalcMoonObservationSampler: Sendable {
+    /// Production cadence of `SunCalcMoonAstronomyProvider`.
+    public static let defaultSampleInterval: TimeInterval = 30 * 60
+
     private let sampleInterval: TimeInterval
     private let moonSampler: SunCalcMoonSampler
     private let moonTimesSampler: SunCalcMoonTimesSampler
 
-    public init(sampleInterval: TimeInterval = 30 * 60) {
+    public init(sampleInterval: TimeInterval = SunCalcMoonObservationSampler.defaultSampleInterval,
+                timeZone: TimeZone? = nil) {
         self.sampleInterval = sampleInterval
-        self.moonSampler = SunCalcMoonSampler()
+        self.moonSampler = SunCalcMoonSampler(timeZone: timeZone)
         self.moonTimesSampler = SunCalcMoonTimesSampler()
     }
 
+    /// Host entry point. A midpoint sampling failure degrades to `fallback`,
+    /// preserving the existing iOS behavior.
     public func observation(
         latitude: Double,
         longitude: Double,
@@ -50,13 +61,62 @@ public struct SunCalcMoonObservationSampler: Sendable {
         nightEnd: Date,
         fallback: MoonInfo
     ) -> MoonObservationData {
-        let midpoint = nightStart.addingTimeInterval(max(nightEnd.timeIntervalSince(nightStart), 0) / 2)
-        let moonInfo = calculateMoonInfo(
+        let midpoint = midpoint(nightStart: nightStart, nightEnd: nightEnd)
+        let moonInfo: MoonInfo
+        do {
+            moonInfo = try calculateMoonInfo(
+                latitude: latitude,
+                longitude: longitude,
+                on: midpoint,
+                emoji: fallback.emoji
+            )
+        } catch {
+            moonInfo = fallback
+        }
+        return assemble(
             latitude: latitude,
             longitude: longitude,
-            on: midpoint,
-            fallback: fallback
+            nightStart: nightStart,
+            nightEnd: nightEnd,
+            moonInfo: moonInfo
         )
+    }
+
+    /// Portable entry point. There is no host fallback DTO in the transport, so
+    /// a midpoint sampling failure is an engine failure rather than silent data.
+    public func observation(
+        latitude: Double,
+        longitude: Double,
+        nightStart: Date,
+        nightEnd: Date
+    ) throws -> MoonObservationData {
+        let moonInfo = try calculateMoonInfo(
+            latitude: latitude,
+            longitude: longitude,
+            on: midpoint(nightStart: nightStart, nightEnd: nightEnd),
+            emoji: ""
+        )
+        return assemble(
+            latitude: latitude,
+            longitude: longitude,
+            nightStart: nightStart,
+            nightEnd: nightEnd,
+            moonInfo: moonInfo
+        )
+    }
+
+    /// `max(span, 0) / 2` past the start: an inverted interval samples the start.
+    private func midpoint(nightStart: Date, nightEnd: Date) -> Date {
+        nightStart.addingTimeInterval(max(nightEnd.timeIntervalSince(nightStart), 0) / 2)
+    }
+
+    private func assemble(
+        latitude: Double,
+        longitude: Double,
+        nightStart: Date,
+        nightEnd: Date,
+        moonInfo: MoonInfo
+    ) -> MoonObservationData {
         let moonTimes = calculateMoonTimes(
             latitude: latitude,
             longitude: longitude,
@@ -86,23 +146,19 @@ public struct SunCalcMoonObservationSampler: Sendable {
         latitude: Double,
         longitude: Double,
         on date: Date,
-        fallback: MoonInfo
-    ) -> MoonInfo {
-        do {
-            let facts = try moonSampler.facts(latitude: latitude, longitude: longitude, at: date)
-            let illumination = facts.illumination
-            let position = facts.position
-            let phase = normalizePhase(illumination.phaseDegrees)
-            return MoonInfo(
-                phase: phase,
-                phaseName: phaseName(for: phase),
-                altitude: position.altitude,
-                illumination: illumination.illuminationPercent,
-                emoji: fallback.emoji
-            )
-        } catch {
-            return fallback
-        }
+        emoji: String
+    ) throws -> MoonInfo {
+        let facts = try moonSampler.facts(latitude: latitude, longitude: longitude, at: date)
+        let illumination = facts.illumination
+        let position = facts.position
+        let phase = normalizePhase(illumination.phaseDegrees)
+        return MoonInfo(
+            phase: phase,
+            phaseName: phaseName(for: phase),
+            altitude: position.altitude,
+            illumination: illumination.illuminationPercent,
+            emoji: emoji
+        )
     }
 
     private func calculateMoonTimes(

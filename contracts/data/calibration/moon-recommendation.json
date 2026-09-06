@@ -1,0 +1,44 @@
+{
+  "comment": "Unreleased 1.0 dedicated lunar recommendation scoring. See contracts/procedures/moon-recommendation.md. These are the production DefaultMoonTargetRecommendationProvider constants; the generic target scorer in target-scoring.json never runs for the Moon.",
+  "score": {
+    "min": 0,
+    "max": 100,
+    "round": "half_away_from_zero"
+  },
+  "weights": {
+    "phase": 45,
+    "visibility": 30,
+    "weather": 25
+  },
+  "near_new_moon": {
+    "illumination_at_or_below_percent": 8,
+    "phase_at_or_below": 0.04,
+    "phase_at_or_above": 0.96,
+    "score_cap": 35,
+    "phase_quality": 0.12
+  },
+  "phase_quality": {
+    "quarter_distance_at_or_below": 0.08,
+    "quarter": 1,
+    "crescent_illumination_at_or_below_percent": 45,
+    "crescent": 0.82,
+    "bright_illumination_at_or_above_percent": 90,
+    "bright": 0.7,
+    "otherwise": 0.68
+  },
+  "visibility": {
+    "above_altitude_degrees": 0,
+    "window_extension_seconds": 1800,
+    "useful_fraction_at_or_above": 0.25
+  },
+  "weather": {
+    "hourly_rating_seconds": 3600,
+    "overlap_score_divisor": 2,
+    "cloud_cover_percent_divisor": 100,
+    "poor_below": 0.45
+  },
+  "moon_sets_early": {
+    "remaining_dark_seconds": 7200,
+    "illumination_at_or_above_percent": 40
+  }
+}

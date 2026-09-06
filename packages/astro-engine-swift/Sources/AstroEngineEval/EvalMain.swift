@@ -35,6 +35,8 @@ Eval allow-list (not the public Python CLI):
   astronomy.sun_events
   astronomy.moon_info
   astronomy.moon_series
+  astronomy.moon_observation
+  targets.moon_recommendation
 """
 
 private let supportedCapabilities: Set<String> = [
@@ -60,6 +62,8 @@ private let supportedCapabilities: Set<String> = [
     "astronomy.sun_events",
     "astronomy.moon_info",
     "astronomy.moon_series",
+    "astronomy.moon_observation",
+    "targets.moon_recommendation",
 ]
 
 @main

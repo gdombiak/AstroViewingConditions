@@ -61,6 +61,16 @@ REPRESENTATIVE_FIXTURES: tuple[tuple[str, str, str], ...] = (
     ("targets.deep_sky_windows", "fixtures/capabilities/deep-sky-windows", "catalog-m13-nyc-v1"),
 )
 
+# Catalogued after the live astronomy rows, so they cannot join the tuple above
+# without breaking its catalog ordering.
+TRAILING_FIXTURES: tuple[tuple[str, str, str], ...] = (
+    (
+        "targets.moon_recommendation",
+        "fixtures/capabilities/moon-recommendation",
+        "best-window-clips-useful-samples-v1",
+    ),
+)
+
 UNIMPLEMENTED_IDS = (
     "astronomy.planet_positions",
     "agent.conditions",
@@ -120,12 +130,14 @@ def test_engine_version() -> None:
 
 def test_public_allow_list_matches_catalog_order() -> None:
     assert PUBLIC_CAPABILITY_IDS == tuple(item[0] for item in REPRESENTATIVE_FIXTURES) + (
-        "astronomy.sun_events", "astronomy.moon_info", "astronomy.moon_series")
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 23
+        "astronomy.sun_events", "astronomy.moon_info", "astronomy.moon_series",
+        "astronomy.moon_observation",
+    ) + tuple(item[0] for item in TRAILING_FIXTURES)
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 25
 
 
 def test_every_public_capability_is_accepted() -> None:
-    for capability, relative, fixture_id in REPRESENTATIVE_FIXTURES:
+    for capability, relative, fixture_id in REPRESENTATIVE_FIXTURES + TRAILING_FIXTURES:
         fixture = _load_named(relative, fixture_id)
         envelope = _assert_cli_success(capability, fixture)
         assert envelope["capability"] == capability

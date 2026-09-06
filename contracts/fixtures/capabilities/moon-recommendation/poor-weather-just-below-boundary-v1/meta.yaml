@@ -1,0 +1,7 @@
+capability: targets.moon_recommendation
+engine_semver: ">=1.0.0 <2.0.0"
+equality: moon_recommendation
+hosts: [swift, python]
+origin: manual
+notes: >
+  A cloud cover score of 55 does not give exactly 0.45: 1 - 55/100 rounds to 0.4499999999999999556 in binary64, which is below the threshold and does trip poorWeather. Both hosts must agree on that bit.

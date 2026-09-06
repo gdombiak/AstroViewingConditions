@@ -54,6 +54,17 @@ public enum DeepSkyObservationContract {
         end: Date,
         sampleInterval: TimeInterval
     ) -> Bool {
+        exceedsSampleCap(start: start, end: end, sampleInterval: sampleInterval, maximum: maxSampleCount)
+    }
+
+    /// Same preflight against a caller-supplied cap. `astronomy.moon_observation`
+    /// reuses it with its own live-sampling maximum.
+    public static func exceedsSampleCap(
+        start: Date,
+        end: Date,
+        sampleInterval: TimeInterval,
+        maximum: Int
+    ) -> Bool {
         let span = end.timeIntervalSince(start)
         guard span >= 0 else { return false }
         let startSeconds = start.timeIntervalSinceReferenceDate
@@ -70,7 +81,7 @@ public enum DeepSkyObservationContract {
         guard effectiveInterval > 0 else { return true }
         let quotient = span / effectiveInterval
         // Iterations are at most floor(quotient) + 1, so that is <= max <=> quotient < max.
-        return !(quotient.isFinite && quotient < Double(maxSampleCount))
+        return !(quotient.isFinite && quotient < Double(maximum))
     }
 
     public static func evaluate(

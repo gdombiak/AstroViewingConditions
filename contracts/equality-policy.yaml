@@ -273,3 +273,44 @@ policies:
       windows[].direction: exact
       code: exact
       message: exact
+
+  astronomy_moon_observation:
+    description: >
+      Live night-scoped lunar facts from the same production SunCalc model in
+      Swift and Python. Public ceilings remain conservative; adversarial port
+      regressions enforce much tighter numerical agreement. Phase and azimuth
+      compare cyclically. Moon events may extend up to one bounded cadence past
+      the final accepted input instant. Null/event presence and always flags are
+      exact. The rejected Skyfield model is retained only as test evidence.
+    fields:
+      night_start: exact
+      night_end: exact
+      phase: cyclic_phase_abs_0_002
+      illumination: integer_abs_1
+      rise: null_or_moon_seconds_60
+      set: null_or_moon_seconds_60
+      always_up: boolean_exact
+      always_down: boolean_exact
+      samples[].time: exact
+      samples[].altitude: abs_0_5
+      samples[].azimuth: cyclic_azimuth_abs_2
+
+  moon_recommendation:
+    description: >
+      Deterministic lunar recommendation. The whole result is null when no sample
+      inside the useful window is above the horizon. Window instants are injected
+      instants plus whole-second offsets and compare exactly; altitude/azimuth are
+      echoed from the injected sample, so 1e-12 bounds transport rounding only.
+      direction is the objective sixteen-point code, not presentation copy.
+    fields:
+      recommendation: null_or_object
+      recommendation.score: exact
+      recommendation.visibility_window.start: exact
+      recommendation.visibility_window.end: exact
+      recommendation.visibility_window.best_time: exact
+      recommendation.visibility_window.max_altitude: null_or_abs_1e12
+      recommendation.visibility_window.direction: exact
+      recommendation.visibility_window.azimuth: null_or_abs_1e12
+      recommendation.reasons: exact
+      code: exact
+      message: exact

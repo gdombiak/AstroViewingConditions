@@ -206,3 +206,31 @@ capabilities:
     equality: astronomy_moon_series
     since: "1.0.0"
     summary: Live Moon facts at explicit ordered caller UTC instants; no interpolation or scoring.
+
+  - id: astronomy.moon_observation
+    hosts: [ios, cli]
+    equality: astronomy_moon_observation
+    since: "1.0.0"
+    summary: >
+      Live lunar observation facts for one bounded UTC interval: continuous phase
+      and integer illuminated percent at the interval midpoint, rise/set and
+      always-up/always-down over max(span, cadence), and geocentric refracted
+      altitude/azimuth samples at the production 1800 s cadence plus an explicit
+      interval-end sample. No scoring, no windows, no presentation phase name.
+
+  - id: targets.moon_recommendation
+    hosts: [ios, cli]
+    equality: moon_recommendation
+    since: "1.0.0"
+    requires_injected: [moon_observation, best_window, hourly_ratings, cloud_cover_score]
+    summary: >
+      Dedicated deterministic lunar recommendation from an injected
+      astronomy.moon_observation bundle, an optional already-selected best
+      conditions window, hourly ratings and a cloud-cover score. Emits the
+      visibility window, integer score and objective reason codes; null when no
+      sample inside the useful window is above the horizon. No live astronomy,
+      no mixed-target composition, no English copy. Exact parity is conditioned
+      on the injected facts, as it is for night_conditions.analyze: the lunar
+      observation is an external provider fact, and two hosts that each derive
+      it from their own ephemeris can land on opposite sides of the strict
+      thresholds below. See contracts/procedures/moon-recommendation.md.

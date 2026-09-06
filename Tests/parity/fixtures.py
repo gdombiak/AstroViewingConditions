@@ -32,6 +32,7 @@ DETERMINISTIC_FIXTURE_DIRS = (
     "fixtures/capabilities/target-metadata",
     "fixtures/capabilities/horizontal-position",
     "fixtures/capabilities/deep-sky-windows",
+    "fixtures/capabilities/moon-recommendation",
 )
 
 

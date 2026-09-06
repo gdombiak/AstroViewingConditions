@@ -41,7 +41,10 @@ final class LiveAstronomyTests: XCTestCase {
     }
 
     func testMoonInfoAndSeriesSemanticCases() throws {
-        for row in try cases() where (row["capability"] as! String).hasPrefix("astronomy.moon_") {
+        // `astronomy.moon_observation` is a different capability with its own
+        // night-scoped shape; MoonObservationTests covers it.
+        let covered: Set<String> = ["astronomy.moon_info", "astronomy.moon_series"]
+        for row in try cases() where covered.contains(row["capability"] as! String) {
             let capability = row["capability"] as! String
             let input = (row["input"] as! [String: Any])["injected"] as! [String: Any]
             let result = try LiveAstronomy.evaluate(capability, input: input)

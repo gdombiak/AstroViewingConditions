@@ -1,0 +1,7 @@
+capability: targets.moon_recommendation
+engine_semver: ">=1.0.0 <2.0.0"
+equality: moon_recommendation
+hosts: [swift, python]
+origin: manual
+notes: >
+  One visible sample in eight is a 0.125 fraction, below the 0.25 useful minimum, so moonBelowUsefulWindow is added alongside the phase reason.

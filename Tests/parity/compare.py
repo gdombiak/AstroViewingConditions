@@ -10,6 +10,14 @@ from typing import Any, Mapping
 
 from astro_engine.contracts import contracts_root
 
+# Wrap-around comparators. Phase wraps at new Moon (period 1); azimuth wraps at
+# north (period 360). A plain absolute difference would report ~1 / ~360 for two
+# values that are neighbours on the circle.
+_CYCLIC = {
+    "cyclic_phase_abs_0_002": (1.0, 0.002),
+    "cyclic_azimuth_abs_2": (360.0, 2.0),
+}
+
 _ABS_TOL = {
     "abs_1e9": 1e-9,
     "abs_1e12": 1e-12,
@@ -77,12 +85,44 @@ def compare_value(
     path: str,
 ) -> None:
     spec = _spec_for(path, fields)
+    if spec == "null_or_moon_seconds_60":
+        if actual is None or expected is None:
+            assert actual is None and expected is None, f"{path}: null/event mismatch"
+        else:
+            # MoonTimes can search one cadence beyond the final accepted input
+            # instant. Keep the existing solar comparator's input range intact.
+            from datetime import datetime
+            import re
+            parsed = []
+            for value in (actual, expected):
+                assert isinstance(value, str) and re.fullmatch(
+                    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", value)
+                assert "2000-01-01T00:00:00Z" <= value < "2050-01-02T01:59:59Z"
+                try:
+                    parsed.append(datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ"))
+                except ValueError as exc:
+                    raise AssertionError(f"{path}: invalid event instant") from exc
+            assert abs((parsed[0] - parsed[1]).total_seconds()) <= 60, f"{path}: events differ by more than 60s"
+        return
     if spec == "null_or_seconds_60":
         if actual is None or expected is None:
             assert actual is None and expected is None, f"{path}: null/event mismatch"
         else:
             from astro_engine.astronomy import instant
             assert abs((instant(actual) - instant(expected)).total_seconds()) <= 60, f"{path}: events differ by more than 60s"
+        return
+    if spec == "boolean_exact":
+        assert type(actual) is bool and type(expected) is bool, f"{path}: expected JSON booleans"
+        assert actual is expected, f"{path}: {actual!r} != {expected!r}"
+        return
+    if spec in _CYCLIC:
+        period, tolerance = _CYCLIC[spec]
+        _assert_number(actual, expected, abs_tol=float("inf"), path=path)
+        assert 0 <= actual <= period and 0 <= expected <= period, f"{path}: outside cyclic range"
+        difference = abs(float(actual) - float(expected)) % period
+        assert min(difference, period - difference) <= tolerance, (
+            f"{path}: {actual!r} not within {tolerance} of {expected!r} on a {period} cycle"
+        )
         return
     if spec == "integer_abs_1":
         assert type(actual) is int and type(expected) is int, f"{path}: expected integer percents"

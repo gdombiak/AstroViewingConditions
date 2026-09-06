@@ -205,8 +205,15 @@ def windows(
     return result
 
 
-def exceeds_sample_cap(start: float, end: float, sample_interval: float) -> bool:
-    """True when a forward interval would need more than `MAX_SAMPLE_COUNT` samples.
+def exceeds_sample_cap(
+    start: float,
+    end: float,
+    sample_interval: float,
+    maximum: int = MAX_SAMPLE_COUNT,
+) -> bool:
+    """True when a forward interval would need more than `maximum` samples.
+
+    `astronomy.moon_observation` reuses this preflight with its own live cap.
 
     Bounded work: one ULP query, one division and a few comparisons. Never runs
     the sampling loop.
@@ -234,7 +241,7 @@ def exceeds_sample_cap(start: float, end: float, sample_interval: float) -> bool
         return True
     quotient = span / effective_interval
     # Iterations are at most floor(quotient) + 1, so that is <= MAX <=> quotient < MAX.
-    return not (math.isfinite(quotient) and quotient < MAX_SAMPLE_COUNT)
+    return not (math.isfinite(quotient) and quotient < maximum)
 
 
 def observe(

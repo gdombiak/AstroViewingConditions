@@ -1,0 +1,7 @@
+{
+  "capability": "targets.moon_recommendation",
+  "result": {
+    "recommendation": null
+  },
+  "ok": true
+}

@@ -81,6 +81,8 @@ def test_public_imports() -> None:
         "astronomy.sun_events",
         "astronomy.moon_info",
         "astronomy.moon_series",
+        "astronomy.moon_observation",
+        "targets.moon_recommendation",
     )
 
 
@@ -102,7 +104,7 @@ def test_catalog_current_release_matches_engine_version() -> None:
     assert since_lines == (
         ['    since: "0.1.0"'] * 10
         + ['    since: "1.0.0"', '    since: "0.1.0"']
-        + ['    since: "1.0.0"'] * 11
+        + ['    since: "1.0.0"'] * 13
     )
 
 

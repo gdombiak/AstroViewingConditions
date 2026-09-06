@@ -318,5 +318,204 @@
       }
     },
     "semantics": "identity"
+  },
+  {
+    "id": "moon-observation-full-above",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "night_start": "2024-03-25T04:00:00Z",
+        "night_end": "2024-03-25T12:00:00Z"
+      }
+    },
+    "semantics": "always_up",
+    "sample_count": 17
+  },
+  {
+    "id": "moon-observation-rises-during-night",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2026-11-01T22:00:00Z",
+        "night_end": "2026-11-02T08:00:00Z"
+      }
+    },
+    "semantics": "rises",
+    "sample_count": 21
+  },
+  {
+    "id": "moon-observation-sets-during-night",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2026-08-29T00:00:00Z",
+        "night_end": "2026-08-29T12:00:00Z"
+      }
+    },
+    "semantics": "sets",
+    "sample_count": 25
+  },
+  {
+    "id": "moon-observation-new-moon",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": 0.0,
+        "longitude": 0.0,
+        "night_start": "2024-04-08T12:00:00Z",
+        "night_end": "2024-04-08T22:00:00Z"
+      }
+    },
+    "semantics": "new_moon",
+    "sample_count": 21
+  },
+  {
+    "id": "moon-observation-southern-hemisphere",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": -33.8688,
+        "longitude": 151.2093,
+        "night_start": "2026-06-22T09:00:00Z",
+        "night_end": "2026-06-22T19:00:00Z"
+      }
+    },
+    "semantics": "sets",
+    "sample_count": 21
+  },
+  {
+    "id": "moon-observation-interval-shorter-than-cadence",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "night_start": "2024-03-25T06:00:00Z",
+        "night_end": "2024-03-25T06:10:00Z"
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 2
+  },
+  {
+    "id": "moon-observation-zero-length-interval",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "night_start": "2024-03-25T06:00:00Z",
+        "night_end": "2024-03-25T06:00:00Z"
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 1
+  },
+  {
+    "id": "moon-observation-inverted-interval",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "night_start": "2024-03-25T06:00:00Z",
+        "night_end": "2024-03-25T05:00:00Z"
+      }
+    },
+    "semantics": "no_samples",
+    "sample_count": 0
+  },
+  {
+    "id": "moon-observation-hourly-cadence",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "night_start": "2024-03-25T04:00:00Z",
+        "night_end": "2024-03-25T12:00:00Z",
+        "sample_interval_seconds": 3600
+      }
+    },
+    "semantics": "always_up",
+    "sample_count": 9
+  },
+  {
+    "id": "moon-observation-interval-end-not-divisible",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": 51.5,
+        "longitude": -0.1276,
+        "night_start": "2026-03-05T20:00:00Z",
+        "night_end": "2026-03-06T02:17:00Z"
+      }
+    },
+    "semantics": "ordinary",
+    "sample_count": 14
+  },
+  {
+    "id": "moon-observation-always-down",
+    "capability": "astronomy.moon_observation",
+    "engine_semver": ">=1.0.0 <2.0.0",
+    "origin": "manual",
+    "equality": "astronomy_moon_observation",
+    "input": {
+      "capability": "astronomy.moon_observation",
+      "injected": {
+        "latitude": 40.7,
+        "longitude": -74.0,
+        "night_start": "2026-11-05T22:00:00Z",
+        "night_end": "2026-11-06T08:00:00Z"
+      }
+    },
+    "semantics": "always_down",
+    "sample_count": 21
   }
 ]

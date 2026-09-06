@@ -8,13 +8,15 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`,
 `weather.decode`, `iss.decode`, `location.grid`, `location.compare`,
 `catalog.deep_sky`, `targets.recommend`, `equipment.match`, `observing_window.select`, `targets.requirements`,
-`catalog.solar_system`, `targets.moon_sensitivity`, `astronomy.sun_events`,
-`astronomy.moon_info`, and `astronomy.moon_series`. Composed agent hosts remain
+`catalog.solar_system`, `targets.moon_sensitivity`, `astronomy.horizontal_position`,
+`targets.deep_sky_windows`, `astronomy.sun_events`, `astronomy.moon_info`,
+`astronomy.moon_series`, `astronomy.moon_observation`, and
+`targets.moon_recommendation`. Composed agent hosts remain
 later integration work. Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those twenty-one IDs. Capability
+The public Python CLI allow-lists exactly those twenty-five IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
 rows keep `since: "0.1.0"`; `location.compare`, `targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
 they are introduced under the unreleased 1.0.0 identity. Do not invent a second
@@ -23,6 +25,11 @@ semantic release.
 [Observing-window decisions](procedures/observing-window.md) consume projected scored
 rows, preserve production endpoints and row-count quirks, and leave the existing
 `night_conditions.analyze` DTO unchanged. This capability also uses `since: "1.0.0"`.
+
+[Lunar observation](procedures/moon-observation.md) is the live Moon fact bundle
+for one night; [lunar recommendation](procedures/moon-recommendation.md) is the
+deterministic scorer that consumes it together with an already-selected best
+conditions window. Both use `since: "1.0.0"`.
 
 ## Versioning
 

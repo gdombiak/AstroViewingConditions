@@ -2,6 +2,52 @@
 
 ## 1.0.0
 
+- Lunar observation and recommendation slice (unreleased): add
+  `astronomy.moon_observation` (live night-scoped lunar facts: continuous phase
+  and integer illuminated percent at the interval midpoint, rise/set and
+  always-up/always-down over `max(span, cadence)`, and geocentric refracted
+  altitude/azimuth samples at the production 1800 s cadence plus an explicit
+  interval-end sample) and `targets.moon_recommendation` (deterministic
+  visibility window, integer score and objective reason codes from an injected
+  observation, an optional already-selected best conditions window, hourly
+  ratings and a cloud-cover score). Production
+  `DefaultMoonTargetRecommendationProvider` now delegates its window/score/reason
+  math to the shared implementation, with a migration-equivalence sweep against
+  the pre-migration code; the English summary, phase names and emoji stay
+  host-side. The Moon model is unchanged: geocentric, SunCalc refraction, no
+  topocentric parallax, `trunc(fraction * 100)` illumination. Rise/set keep the
+  production `asin(R_earth/r) - refraction_at_horizon - asin(R_moon/r)` threshold
+  and hourly quadratic search, which is a different threshold from the `> 0`
+  sample visibility rule. New calibration file
+  `contracts/data/calibration/moon-recommendation.json` holds the 45/30/25
+  weights, the near-new-Moon cap and the phase-quality tiers.
+  `astronomy.moon_observation` bounds its interval and integral cadence at 26 hours
+  and caps sampling at 1440 samples including the explicit endpoint (`sample_cap`),
+  reusing the conservative `targets.deep_sky_windows` preflight with its own maximum; `targets.moon_recommendation` caps each
+  injected array at 1440 rows. Two new equality comparators, `cyclic_phase_abs_0_002`
+  and `cyclic_azimuth_abs_2`, compare quantities that wrap; `boolean_exact`
+  refuses a JSON `1` for a boolean. `targets.moon_recommendation` carries
+  `requires_injected`, like `night_conditions.analyze`: its exact parity is
+  conditioned on the injected facts. The lunar observation is an external
+  provider fact, and each host deriving its own from its own ephemeris is
+  explicitly **not** an exact-parity path — every recommendation decision is a
+  strict cut-point, so two ephemerides that differ at all can land on opposite
+  sides of one, which no tolerance value can prevent. The vulnerable cut-points,
+  the measured evidence and the single-canonical-observation product rule are
+  normative in the procedure; `Tests/parity/test_moon.py` characterizes the
+  rejected Skyfield composition alongside the current same-model composition.
+  Python now ports the pinned production SunCalc lunar model: the inherited
+  Skyfield observation failed near-zenith azimuth and event presence/flag parity.
+  `moon_info` and `moon_series` retain their existing models unchanged.
+  The portable Swift observation uses UTC; the production host keeps its original
+  timezone convention. A Moon-specific event comparator supports bounded forward
+  spill into early 2050 without widening the input timestamp range.
+  25 public IDs; new rows use `since: "1.0.0"`
+  and fixtures `>=1.0.0 <2.0.0`. No version bump, no release, no change to any
+  existing capability's numbers, and `targets.recommend` still does not call
+  astronomy. See [lunar observation](procedures/moon-observation.md) and
+  [lunar recommendation](procedures/moon-recommendation.md).
+
 - Deep-sky observation facts slice (unreleased): add
   `astronomy.horizontal_position` (closed-form geometric equatorial→horizontal at
   one instant, no ephemeris provider and no refraction) and

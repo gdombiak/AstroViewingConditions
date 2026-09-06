@@ -1,0 +1,20 @@
+{
+  "capability": "targets.moon_recommendation",
+  "result": {
+    "recommendation": {
+      "score": 75,
+      "visibility_window": {
+        "start": "2026-08-29T03:00:00Z",
+        "end": "2026-08-29T03:30:00Z",
+        "best_time": "2026-08-29T03:00:00Z",
+        "max_altitude": 1e-09,
+        "direction": "E",
+        "azimuth": 100.0
+      },
+      "reasons": [
+        "excellentMoonCraterDetail"
+      ]
+    }
+  },
+  "ok": true
+}

@@ -1,0 +1,12 @@
+SunCalc lunar observation compatibility port
+
+Sources: https://github.com/nikolajjensen/SunCalc
+Pinned revision: 6d90175bd11cfddbb6a9e53dd317da867eecd51b (1.0.0)
+Original Java source: https://github.com/shred/commons-suncalc
+Copyright © 2021 Nikolaj Banke Jensen
+Copyright (C) 2017 Richard "Shred" Körber
+
+suncalc_moon.py and the MoonTimes/quadratic search in moon_observation.py
+are Python translations of the lunar subset of the Apache-2.0 Swift source.
+Modified in 2026 for portable Astro Engine lunar observation parity.
+The full license is included in LICENSE-SunCalc.

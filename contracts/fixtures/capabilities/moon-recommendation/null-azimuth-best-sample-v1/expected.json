@@ -1,0 +1,20 @@
+{
+  "capability": "targets.moon_recommendation",
+  "result": {
+    "recommendation": {
+      "score": 86,
+      "visibility_window": {
+        "start": "2026-08-29T02:00:00Z",
+        "end": "2026-08-29T03:30:00Z",
+        "best_time": "2026-08-29T02:30:00Z",
+        "max_altitude": 25.0,
+        "direction": null,
+        "azimuth": null
+      },
+      "reasons": [
+        "moonVisibleUsefulWindow"
+      ]
+    }
+  },
+  "ok": true
+}
