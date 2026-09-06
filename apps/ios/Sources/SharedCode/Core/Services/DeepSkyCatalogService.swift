@@ -77,21 +77,37 @@ public struct DeepSkyTargetPositionProvider: TargetPositionProvider {
 
     public init(
         catalog: any DeepSkyCatalogProvider = CuratedDeepSkyCatalogProvider(),
-        minimumAltitude: Double = 15,
-        sampleInterval: TimeInterval = 15 * 60
+        minimumAltitude: Double = DeepSkyObservation.defaultMinimumAltitude,
+        sampleInterval: TimeInterval = DeepSkyObservation.defaultSampleInterval
     ) {
         self.entriesByID = Dictionary(uniqueKeysWithValues: catalog.entries().map { ($0.id, $0) })
         self.minimumAltitude = minimumAltitude
         self.sampleInterval = sampleInterval
     }
 
+    /// Sampling, threshold and window semantics live in the shared engine; see
+    /// contracts/procedures/deep-sky-observation.md. This adapter keeps the host
+    /// catalog/target guard and the host `TargetVisibilityWindow` shape.
     public func visibilityWindows(
         for target: ObservableTarget,
         context: TargetRecommendationContext
     ) -> [TargetVisibilityWindow] {
         guard target.type == .deepSky, let entry = entriesByID[target.id] else { return [] }
-        let samples = sampledPositions(for: entry, context: context)
-        let windows = visibilityWindows(from: samples, context: context)
+        let samples = DeepSkyObservation.samples(
+            rightAscensionHours: entry.rightAscension,
+            declinationDegrees: entry.declination,
+            latitudeDegrees: context.location.latitude,
+            longitudeDegrees: context.location.longitude,
+            start: context.astronomicalNightStart,
+            end: context.astronomicalNightEnd,
+            sampleInterval: sampleInterval
+        )
+        let windows = DeepSkyObservation.windows(
+            from: samples,
+            intervalStart: context.astronomicalNightStart,
+            intervalEnd: context.astronomicalNightEnd,
+            minimumAltitude: minimumAltitude
+        )
         Self.logValidation(
             entry: entry,
             samples: samples,
@@ -99,129 +115,26 @@ public struct DeepSkyTargetPositionProvider: TargetPositionProvider {
             minimumAltitude: minimumAltitude,
             context: context
         )
-        return windows
-    }
-
-    private func visibilityWindows(
-        from samples: [HorizontalPosition],
-        context: TargetRecommendationContext
-    ) -> [TargetVisibilityWindow] {
-        var windows: [TargetVisibilityWindow] = []
-        var runStartIndex: Int?
-
-        for index in samples.indices {
-            let isVisible = samples[index].altitude >= minimumAltitude
-            if isVisible, runStartIndex == nil {
-                runStartIndex = index
-            }
-
-            let runEnded = runStartIndex != nil && (!isVisible || index == samples.index(before: samples.endIndex))
-            guard runEnded, let startIndex = runStartIndex else { continue }
-
-            let endIndex = isVisible ? index : samples.index(before: index)
-            let run = samples[startIndex...endIndex]
-            guard let best = run.max(by: { $0.altitude < $1.altitude }) else { continue }
-
-            let start = startIndex == samples.startIndex
-                ? context.astronomicalNightStart
-                : thresholdCrossing(between: samples[startIndex - 1], and: samples[startIndex])
-            let end = endIndex == samples.index(before: samples.endIndex)
-                ? context.astronomicalNightEnd
-                : thresholdCrossing(between: samples[endIndex], and: samples[endIndex + 1])
-
-            windows.append(TargetVisibilityWindow(
-                start: start,
-                end: end,
-                bestTime: best.date,
-                maxAltitude: best.altitude,
-                direction: Self.compassDirection(for: best.azimuth),
-                azimuth: best.azimuth
-            ))
-            runStartIndex = nil
+        return windows.map { window in
+            TargetVisibilityWindow(
+                start: window.start,
+                end: window.end,
+                bestTime: window.bestTime,
+                maxAltitude: window.maxAltitude,
+                direction: window.direction,
+                azimuth: window.azimuth
+            )
         }
-
-        return windows
-    }
-
-    private func thresholdCrossing(
-        between first: HorizontalPosition,
-        and second: HorizontalPosition
-    ) -> Date {
-        let altitudeChange = second.altitude - first.altitude
-        guard abs(altitudeChange) > 0.0001 else { return first.date }
-        let fraction = min(max((minimumAltitude - first.altitude) / altitudeChange, 0), 1)
-        return first.date.addingTimeInterval(second.date.timeIntervalSince(first.date) * fraction)
-    }
-
-    private func sampledPositions(
-        for entry: DeepSkyCatalogEntry,
-        context: TargetRecommendationContext
-    ) -> [HorizontalPosition] {
-        var positions: [HorizontalPosition] = []
-        var date = context.astronomicalNightStart
-        while date <= context.astronomicalNightEnd {
-            positions.append(Self.horizontalPosition(
-                rightAscensionHours: entry.rightAscension,
-                declinationDegrees: entry.declination,
-                date: date,
-                latitudeDegrees: context.location.latitude,
-                longitudeDegrees: context.location.longitude
-            ))
-            date = date.addingTimeInterval(sampleInterval)
-        }
-        return positions
-    }
-
-    private static func horizontalPosition(
-        rightAscensionHours: Double,
-        declinationDegrees: Double,
-        date: Date,
-        latitudeDegrees: Double,
-        longitudeDegrees: Double
-    ) -> HorizontalPosition {
-        let julianDate = date.timeIntervalSince1970 / 86_400 + 2_440_587.5
-        let daysSinceJ2000 = julianDate - 2_451_545.0
-        let greenwichSiderealDegrees = normalizedDegrees(280.46061837 + 360.98564736629 * daysSinceJ2000)
-        let localSiderealDegrees = normalizedDegrees(greenwichSiderealDegrees + longitudeDegrees)
-        let hourAngle = normalizedSignedDegrees(localSiderealDegrees - rightAscensionHours * 15).radians
-        let declination = declinationDegrees.radians
-        let latitude = latitudeDegrees.radians
-
-        let altitude = asin(
-            sin(declination) * sin(latitude)
-                + cos(declination) * cos(latitude) * cos(hourAngle)
-        )
-        let azimuth = atan2(
-            sin(hourAngle),
-            cos(hourAngle) * sin(latitude) - tan(declination) * cos(latitude)
-        ) + .pi
-
-        return HorizontalPosition(
-            date: date,
-            altitude: altitude.degrees,
-            azimuth: normalizedDegrees(azimuth.degrees)
-        )
     }
 
     private static func compassDirection(for azimuth: Double) -> String {
-        let directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
-        return directions[Int((normalizedDegrees(azimuth) + 22.5) / 45) % directions.count]
-    }
-
-    private static func normalizedDegrees(_ value: Double) -> Double {
-        let result = value.truncatingRemainder(dividingBy: 360)
-        return result >= 0 ? result : result + 360
-    }
-
-    private static func normalizedSignedDegrees(_ value: Double) -> Double {
-        let normalized = normalizedDegrees(value)
-        return normalized > 180 ? normalized - 360 : normalized
+        HorizontalCoordinates.compassDirection(forAzimuth: azimuth)
     }
 
     private static func logValidation(
         entry: DeepSkyCatalogEntry,
-        samples: [HorizontalPosition],
-        windows: [TargetVisibilityWindow],
+        samples: [DeepSkyObservation.Sample],
+        windows: [DeepSkyObservation.Window],
         minimumAltitude: Double,
         context: TargetRecommendationContext
     ) {
@@ -255,7 +168,7 @@ public struct DeepSkyTargetPositionProvider: TargetPositionProvider {
             astronomicalNight: \(formatter.string(from: context.astronomicalNightStart)) - \(formatter.string(from: context.astronomicalNightEnd))
             minimumAltitude: \(String(format: "%.1f°", minimumAltitude))
             sampledAltitudeRange: \(altitudeRange)
-            bestTime: \(best.map { formatter.string(from: $0.date) } ?? "n/a")
+            bestTime: \(best.map { formatter.string(from: $0.time) } ?? "n/a")
             visibilityWindowAboveMinimum: \(windowsText)
             altitudeAtBestTime: \(best.map { String(format: "%.1f°", $0.altitude) } ?? "n/a")
             azimuthAtBestTime: \(best.map { String(format: "%.1f° (%@)", $0.azimuth, compassDirection(for: $0.azimuth)) } ?? "n/a")
@@ -264,15 +177,4 @@ public struct DeepSkyTargetPositionProvider: TargetPositionProvider {
         */
 #endif
     }
-
-    private struct HorizontalPosition {
-        let date: Date
-        let altitude: Double
-        let azimuth: Double
-    }
-}
-
-private extension Double {
-    var radians: Double { self * .pi / 180 }
-    var degrees: Double { self * 180 / .pi }
 }

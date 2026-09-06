@@ -1,0 +1,16 @@
+{
+  "capability": "targets.deep_sky_windows",
+  "result": {
+    "windows": [
+      {
+        "start": "2026-09-06T04:22:11Z",
+        "end": "2026-09-06T12:00:00Z",
+        "best_time": "2026-09-06T09:30:00Z",
+        "max_altitude": 82.71019222862107,
+        "azimuth": 4.108201630845729,
+        "direction": "N"
+      }
+    ]
+  },
+  "ok": true
+}

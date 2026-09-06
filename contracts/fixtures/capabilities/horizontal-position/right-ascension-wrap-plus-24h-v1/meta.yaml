@@ -1,0 +1,7 @@
+capability: astronomy.horizontal_position
+engine_semver: ">=1.0.0 <2.0.0"
+equality: astronomy_horizontal_position
+hosts: [swift, python]
+origin: manual
+notes: >
+  Right ascension wraps on 24 hours; the hour angle is normalized before use.

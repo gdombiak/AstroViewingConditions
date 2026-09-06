@@ -58,6 +58,21 @@ enum CapabilityDispatch {
             } catch let error as AstronomyInputError {
                 throw EvalValidationError(code: "validation", message: error.message)
             }
+        case "astronomy.horizontal_position", "targets.deep_sky_windows":
+            do {
+                let catalog = capability == "targets.deep_sky_windows"
+                    ? try DeepSkyCatalog.loadResolved()
+                    : []
+                return try DeepSkyObservationContract.evaluate(
+                    capability,
+                    input: try injected(document),
+                    catalog: catalog
+                )
+            } catch let error as DeepSkyObservationInputError {
+                throw EvalValidationError(code: error.code, message: error.message)
+            } catch let error as DeepSkyCatalogError {
+                throw EvalValidationError(code: "engine_failure", message: error.message)
+            }
         case "location.compare":
             return try locationCompare(document)
         case "catalog.deep_sky":

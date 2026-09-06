@@ -1,0 +1,11 @@
+{
+  "capability": "targets.deep_sky_windows",
+  "injected": {
+    "target_id": "m13",
+    "latitude": 40.7,
+    "longitude": -74.0,
+    "night_start": "2026-01-01T00:00:00Z",
+    "night_end": "2026-04-15T23:45:00Z",
+    "minimum_altitude": 89.9
+  }
+}

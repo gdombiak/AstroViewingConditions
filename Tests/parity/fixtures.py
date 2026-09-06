@@ -30,6 +30,8 @@ DETERMINISTIC_FIXTURE_DIRS = (
     "fixtures/capabilities/equipment-match",
     "fixtures/capabilities/observing-window",
     "fixtures/capabilities/target-metadata",
+    "fixtures/capabilities/horizontal-position",
+    "fixtures/capabilities/deep-sky-windows",
 )
 
 

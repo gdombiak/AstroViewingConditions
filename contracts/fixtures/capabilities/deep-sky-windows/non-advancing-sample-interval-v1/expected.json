@@ -1,0 +1,8 @@
+{
+  "capability": "targets.deep_sky_windows",
+  "ok": false,
+  "error": {
+    "code": "sample_cap",
+    "message": "targets.deep_sky_windows exceeds the 1.0 sample cap (10080 samples)"
+  }
+}

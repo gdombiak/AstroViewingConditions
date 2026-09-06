@@ -248,3 +248,28 @@ policies:
       sensitivity: exact
       code: exact
       message: exact
+
+  astronomy_horizontal_position:
+    description: >
+      One closed-form geometric instant. Both hosts run the same binary64
+      operations, so 1e-9 deg bounds libm ULP noise only. Not the Phase 16
+      abs_0_5 live-model tolerance.
+    fields:
+      altitude: abs_1e9
+      azimuth: abs_1e9
+      code: exact
+      message: exact
+
+  deep_sky_windows:
+    description: >
+      Ordered deep-sky visible-run windows. Timestamps are floored to whole
+      seconds and compare exactly; direction is an objective 8-point code.
+    fields:
+      windows[].start: exact
+      windows[].end: exact
+      windows[].best_time: exact
+      windows[].max_altitude: abs_1e9
+      windows[].azimuth: abs_1e9
+      windows[].direction: exact
+      code: exact
+      message: exact

@@ -1,0 +1,7 @@
+capability: astronomy.horizontal_position
+engine_semver: ">=1.0.0 <2.0.0"
+equality: astronomy_horizontal_position
+hosts: [swift, python]
+origin: manual
+notes: >
+  Booleans are not JSON numbers.

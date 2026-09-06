@@ -1,0 +1,7 @@
+capability: targets.deep_sky_windows
+engine_semver: ">=1.0.0 <2.0.0"
+equality: deep_sky_windows
+hosts: [swift, python]
+origin: manual
+notes: >
+  Preserved quirk: the last sample is 12:00:00Z but a run reaching it reports the interval end 12:07:17Z.

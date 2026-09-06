@@ -1,0 +1,7 @@
+capability: astronomy.horizontal_position
+engine_semver: ">=1.0.0 <2.0.0"
+equality: astronomy_horizontal_position
+hosts: [swift, python]
+origin: manual
+notes: >
+  Same hour angle as longitude-east-positive-v1 reached by subtracting one hour of right ascension; altitudes agree.

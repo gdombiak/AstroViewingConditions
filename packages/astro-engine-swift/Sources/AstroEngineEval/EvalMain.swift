@@ -30,6 +30,8 @@ Eval allow-list (not the public Python CLI):
   targets.requirements
   catalog.solar_system
   targets.moon_sensitivity
+  astronomy.horizontal_position
+  targets.deep_sky_windows
   astronomy.sun_events
   astronomy.moon_info
   astronomy.moon_series
@@ -53,6 +55,8 @@ private let supportedCapabilities: Set<String> = [
     "targets.requirements",
     "catalog.solar_system",
     "targets.moon_sensitivity",
+    "astronomy.horizontal_position",
+    "targets.deep_sky_windows",
     "astronomy.sun_events",
     "astronomy.moon_info",
     "astronomy.moon_series",

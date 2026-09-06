@@ -11,7 +11,9 @@
 # requirement. The public Python CLI allow-lists every catalogued row below.
 # `light_pollution.validity` is not a catalogued capability.
 #
-# Live astronomy accumulates as later phases implement it. LP identity
+# Live astronomy accumulates as later phases implement it.
+# `astronomy.horizontal_position` is the exception in that namespace: it is a
+# deterministic closed-form conversion with no ephemeris provider. LP identity
 # lives under contracts/data. Target scoring and equipment matching are
 # deterministic Phase 15 capabilities. Catalog JSON is the catalog.deep_sky source.
 
@@ -167,6 +169,25 @@ capabilities:
     equality: target_moon_sensitivity
     since: "1.0.0"
     summary: Derive deep-sky Moon sensitivity from object type and optional surface brightness.
+
+  - id: astronomy.horizontal_position
+    hosts: [ios, cli]
+    equality: astronomy_horizontal_position
+    since: "1.0.0"
+    summary: >
+      Closed-form geometric equatorial-to-horizontal conversion for fixed catalog
+      coordinates at one UTC instant. Deterministic despite the astronomy
+      namespace: no ephemeris provider, no catalog, no refraction.
+
+  - id: targets.deep_sky_windows
+    hosts: [ios, cli]
+    equality: deep_sky_windows
+    since: "1.0.0"
+    summary: >
+      Deep-sky visible-run windows over an explicit UTC interval from canonical
+      catalog coordinates or an explicit RA/Dec pair. Inclusive altitude
+      threshold, interpolated interior crossings, per-run best sample. Moon,
+      planet and mixed-target composition are excluded.
 
   - id: astronomy.sun_events
     hosts: [ios, cli]

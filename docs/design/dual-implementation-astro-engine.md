@@ -388,6 +388,8 @@ flowchart LR
 | `night_conditions.analyze` | `NightQualityAnalyzer.analyzeNight` | Exact DTO given injected `night_window` + **1:1 `moon_series`** + clock/tz. See [Night conditions procedure](#night-conditions-analyzenight). Omit `HourlyRating.id`, English `summary`, `Trend.label`/`icon`, **`best_window`**. The omission remains intentional; the production decision is now separately portable through `observing_window.select`, as reviewed after the [compatibility audit](#production-business-logic-compatibility-audit-2026-09-05). **Bot-facing:** `hourly_ratings` is first-class objective data (time, score, cloud, fog, moon illumination/altitude, wind, optional seeing/transparency), not merely an input to the aggregate `public_score`. |
 | `night_conditions.score` | `BestSpotSearcher.calculateScore` | Integer exact. |
 | `observing_window.select` | `ObservingWindowSelector.select`, used by `NightQualityAnalyzer` | Exact nullable endpoint pair over already-included scored rows; see [procedure](../../contracts/procedures/observing-window.md). |
+| `astronomy.horizontal_position` | `HorizontalCoordinates.position`, previously inline in `DeepSkyTargetPositionProvider` | Closed-form geometric equatorial→horizontal at one instant. Deterministic despite the `astronomy.` namespace: no ephemeris provider, no refraction, no precession/proper motion, UT1 taken as UTC. Altitude/azimuth abs 1e-9 deg; see [procedure](../../contracts/procedures/deep-sky-observation.md). |
+| `targets.deep_sky_windows` | `DeepSkyObservation.observe`, used by `DeepSkyTargetPositionProvider` | Deep-sky visible-run windows over an explicit UTC interval: inclusive `>=` threshold, interpolated interior crossings, per-run earliest-wins best sample, interval-end reporting quirk. Timestamps exact after flooring to whole seconds; the typed API keeps full precision for the iOS caller. |
 | `observing_quality.assess` | `ObservingQualityCalculator.assess` | Integer `score` exact. Anchor penalties abs 1e-12. Interpolated penalties abs 1e-9 (matches `ObservingQualityCalculatorTests` home/stub). |
 | `light_pollution.lookup` | `BinaryLightPollutionProvider.modeledZenithSkyBrightness` | Exact dequantized value for fixture coordinates (existing tiny-bin lookups). |
 | `light_pollution.validity` | `ModeledZenithBrightnessValidity`, `LightPollutionDatasetIdentity` | Exact (1000 m haversine, `[13.0, 22.5]`, identity triple). |
@@ -2042,8 +2044,9 @@ numbered phases:
 2. Target metadata/requirement resolution: shared solar-system candidate metadata,
    Moon-sensitivity derivation, and type/per-target equipment requirements are
    complete in the slice below; downstream Bot composition remains.
-3. Deep-sky observation facts: live position, altitude/azimuth, specialized
-   visibility windows, interpolation, and best time.
+3. Deep-sky observation facts: position, altitude/azimuth, visibility windows,
+   interpolation and best time are complete in the slice below; host night-boundary
+   composition and mixed-target assembly remain.
 4. Lunar observation and recommendation parity: richer facts, rise/set,
    preparation, useful windows, specialized scoring, and reasons.
 5. Planet observation and recommendation parity: the production low-precision
@@ -2066,7 +2069,7 @@ type facts, preserving all 20 overrides and type fallbacks. The ordered five-ent
 derives deep-sky sensitivity from type/brightness with existing calibration.
 Requirements and solar literals now live under `contracts/data/catalog`; Swift
 production delegates to the same shared rules. `catalog.deep_sky` stays unchanged.
-The public count is now **21**, all new IDs use `since: "1.0.0"`, and fixtures use
+That slice took the public count to **21**; all its new IDs use `since: "1.0.0"`, and fixtures use
 `>=1.0.0 <2.0.0`. There is no engine/package version change or public release.
 
 `equipment.match` still consumes resolved requirements; `targets.recommend`
@@ -2074,16 +2077,54 @@ scoring, target windows, ranking and equipment filtering semantics are unchanged
 Deep-sky live facts, specialized Moon/planet scoring and facts, mixed composition,
 Best Nearby and Bot host work remain outstanding as described below.
 
+### Deep-sky observation facts slice (implemented; unreleased 1.0)
+
+Assessment: **Partially Agree** with the audit lead. The audit's list is present in
+`DeepSkyTargetPositionProvider`, but 15°/15-minute are constructor defaults rather
+than constants, the best sample is per visible run with earliest-wins ties, and
+interpolation applies only to interior run edges. See the normative
+[deep-sky observation procedure](../../contracts/procedures/deep-sky-observation.md)
+for the full archaeology, the preserved quirks and the rejected alternatives.
+
+Chosen boundary: **reusable lower-level numeric astronomy plus deep-sky-specific
+window semantics**, not one generic target-window abstraction. `astronomy.horizontal_position`
+is the closed-form geometric conversion at one instant; `targets.deep_sky_windows`
+owns sampling, the inclusive threshold, contiguous visible runs, crossing
+interpolation, best-sample selection and the 8-point compass code. A generic
+`targets.windows` shared with Moon and planets was rejected: production's three
+providers differ in threshold, source model, endpoint rules and eligibility, and
+the planet path re-derives its own horizontal step with different normalization
+order. The public count is now **23**; both IDs use `since: "1.0.0"` and fixtures
+use `>=1.0.0 <2.0.0`. No canonical data changed — RA/Dec already live in
+`contracts/data/catalog/deep-sky.json` and remain authoritative. There is no
+engine/package version change and no public release.
+
+Production Swift `DeepSkyTargetPositionProvider` now delegates to the shared
+`AstroEngine.DeepSkyObservation`, keeping only the host catalog/target guard and
+the `TargetVisibilityWindow` mapping. `DeepSkyPositionProviderMigrationTests`
+compares the shared implementation against a verbatim copy of the pre-migration
+math over 17 248 provider invocations spanning latitudes −89…89, eight longitudes,
+four epochs, seven interval shapes (zero-length, inverted, divisible, indivisible,
+multi-day) and seven threshold/sample-interval settings, asserting every window
+field exactly.
+
+`targets.recommend` remains deterministic over injected/precomputed facts; it does
+not call either new capability, and scoring, ranking, ties and equipment filtering
+are unchanged. Moon and planet observation/recommendation parity, mixed-target
+composition, Best Nearby, multi-night composition and Bot host orchestration
+remain outstanding as described below.
+
 #### Current Bot readiness boundary
 
-With today’s 21 public capabilities plus correct host acquisition/composition,
+With today’s 23 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
 Observing Quality; Sun/twilight events; Moon altitude and integer illumination;
 catalog facts and solar candidate metadata; authoritative requirement resolution
 and Moon-sensitivity derivation; equipment matching; ordering of already
-scored candidates; normalized ISS passes; and production observing-window
-decisions over supplied scored rows. It cannot yet claim live target position/window/
+scored candidates; normalized ISS passes; production observing-window
+decisions over supplied scored rows; and deep-sky horizontal position, visible
+windows and best time. It cannot yet claim lunar or planet position/window/
 best-time facts, full lunar or planet advice, equipment-aware target
 recommendations without later composition, full Best
 Nearby, complete multi-night advice, or precipitation in the normalized weather

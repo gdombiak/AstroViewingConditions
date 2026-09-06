@@ -1,0 +1,7 @@
+capability: targets.deep_sky_windows
+engine_semver: ">=1.0.0 <2.0.0"
+equality: deep_sky_windows
+hosts: [swift, python]
+origin: manual
+notes: >
+  A far southern target from a high northern latitude yields no windows at all.

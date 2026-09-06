@@ -1,0 +1,8 @@
+{
+  "capability": "targets.deep_sky_windows",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid targets.deep_sky_windows input"
+  }
+}

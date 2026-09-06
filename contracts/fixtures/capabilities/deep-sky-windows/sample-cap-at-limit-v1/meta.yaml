@@ -1,0 +1,7 @@
+capability: targets.deep_sky_windows
+engine_semver: ">=1.0.0 <2.0.0"
+equality: deep_sky_windows
+hosts: [swift, python]
+origin: manual
+notes: >
+  Exactly 10080 samples is accepted. The high threshold keeps the golden small while still exercising the full sampling loop at the limit.

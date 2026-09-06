@@ -2,6 +2,32 @@
 
 ## 1.0.0
 
+- Deep-sky observation facts slice (unreleased): add
+  `astronomy.horizontal_position` (closed-form geometric equatorial→horizontal at
+  one instant, no ephemeris provider and no refraction) and
+  `targets.deep_sky_windows` (sampling, inclusive `>=` altitude threshold,
+  contiguous visible runs, interpolated interior crossings, per-run earliest-wins
+  best sample, 8-point compass code). Production
+  `DeepSkyTargetPositionProvider` now delegates to the shared implementation, with
+  a migration-equivalence sweep against the pre-migration math. Canonical RA/Dec
+  in `contracts/data/catalog/deep-sky.json` are unchanged and remain
+  authoritative. Both capabilities accept timestamps only in the fixed modern
+  product range `2000-01-01T00:00:00Z`–`2499-12-31T23:59:59Z` inclusive, which
+  keeps the accepted domain unambiguous across Foundation and Python calendars;
+  no other capability's timestamp contract changes.
+  `targets.deep_sky_windows` transport also caps sampling work at 10 080 samples
+  (`sample_cap`), mirroring `location.grid`'s point cap in shape and placement;
+  the typed sampling APIs stay uncapped. The preflight bounds the smallest step
+  repeated binary64 addition can realize, not the mathematical `span / interval`
+  quotient. It is a conservative one-directional guarantee: every accepted request
+  executes at most 10 080 samples, and near-cap inputs may be rejected even when
+  their actual loop would have fit. Production cadences sit far inside the bound;
+  unbounded and over-cap requests now fail with `sample_cap` instead of hanging.
+  23 public IDs; new rows use `since: "1.0.0"` and fixtures
+  `>=1.0.0 <2.0.0`. No version bump, no release, no scoring change, and
+  `targets.recommend` still does not call astronomy. See
+  [deep-sky observation](procedures/deep-sky-observation.md).
+
 - Target metadata slice (unreleased): add `targets.requirements`,
   `catalog.solar_system`, and `targets.moon_sensitivity`; canonical requirement
   records/solar candidates and shared production resolvers. 21 public IDs;

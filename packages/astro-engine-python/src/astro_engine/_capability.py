@@ -12,6 +12,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from astro_engine.deep_sky_observation import (
+    CAPABILITY_IDS as DEEP_SKY_IDS,
+    evaluate_deep_sky_observation,
+)
 from astro_engine.target_metadata import CAPABILITY_IDS as METADATA_IDS, evaluate_metadata
 from astro_engine.observing_window import CAPABILITY_ID as WINDOW_ID, select_observing_window
 from astro_engine.targets import CAPABILITY_ID as TARGETS_ID, recommend_targets
@@ -54,7 +58,9 @@ SCORING_CAPABILITY_IDS = (
 
 DECODE_CAPABILITY_IDS = (WEATHER_ID, ISS_ID)
 
-DETERMINISTIC_CAPABILITY_IDS = (WINDOW_ID, GRID_ID, COMPARE_ID, CATALOG_ID, TARGETS_ID, EQUIPMENT_ID)
+DETERMINISTIC_CAPABILITY_IDS = (
+    WINDOW_ID, GRID_ID, COMPARE_ID, CATALOG_ID, TARGETS_ID, EQUIPMENT_ID, *DEEP_SKY_IDS,
+)
 
 LOOKUP_CAPABILITY_IDS = (LP_ID,)
 
@@ -202,6 +208,8 @@ def evaluate_capability(
         return compare_locations(_injected(document))
     if capability in METADATA_IDS:
         return evaluate_metadata(capability, _injected(document))
+    if capability in DEEP_SKY_IDS:
+        return evaluate_deep_sky_observation(capability, _injected(document))
     if capability == WINDOW_ID:
         return select_observing_window(_injected(document))
     if capability == TARGETS_ID:

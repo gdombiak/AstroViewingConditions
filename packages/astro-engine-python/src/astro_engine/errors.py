@@ -27,6 +27,12 @@ class GridCapError(ValidationError):
     code = "grid_cap"
 
 
+class SampleCapError(ValidationError):
+    """targets.deep_sky_windows exceeded the 1.0 sampling work cap."""
+
+    code = "sample_cap"
+
+
 class AtlasInvalidError(ValidationError):
     """LPATLAS1 artifact failed header/DFS validation at load."""
 

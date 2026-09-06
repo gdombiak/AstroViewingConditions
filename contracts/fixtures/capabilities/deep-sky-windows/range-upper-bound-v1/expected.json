@@ -1,0 +1,16 @@
+{
+  "capability": "targets.deep_sky_windows",
+  "result": {
+    "windows": [
+      {
+        "start": "2499-12-31T16:00:00Z",
+        "end": "2499-12-31T21:43:23Z",
+        "best_time": "2499-12-31T16:00:00Z",
+        "max_altitude": 76.73610397609298,
+        "azimuth": 256.5620647742311,
+        "direction": "W"
+      }
+    ]
+  },
+  "ok": true
+}

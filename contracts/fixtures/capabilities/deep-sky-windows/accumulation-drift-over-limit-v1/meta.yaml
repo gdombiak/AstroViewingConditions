@@ -1,0 +1,7 @@
+capability: targets.deep_sky_windows
+engine_semver: ">=1.0.0 <2.0.0"
+equality: deep_sky_windows
+hosts: [swift, python]
+origin: manual
+notes: >
+  Whole-second span of 1s with a sub-ULP-scale step: span/interval is only ~10079.1, so a mathematical count formula would accept, but repeated binary64 addition emits ~10083 samples. The preflight bounds the smallest realized step instead.
