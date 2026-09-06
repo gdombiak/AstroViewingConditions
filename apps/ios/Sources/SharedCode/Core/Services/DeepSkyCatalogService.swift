@@ -33,7 +33,7 @@ public struct DefaultTargetCatalogProvider: TargetCatalogProvider {
                     observingIntent: entry.observingIntent,
                     displayTypeNameOverride: entry.displayTypeNameOverride,
                     deepSkyObjectType: entry.objectType,
-                    moonInterferenceSensitivity: Self.moonInterferenceSensitivity(for: entry),
+                    moonInterferenceSensitivity: TargetMetadata.moonSensitivity(objectType: entry.objectType, surfaceBrightness: entry.surfaceBrightness),
                     image: deepSkyCatalog.imageCredit(for: entry.id)
                 )
             )
@@ -57,24 +57,17 @@ public struct DefaultTargetCatalogProvider: TargetCatalogProvider {
         )
     }
 
-    private static func moonInterferenceSensitivity(for entry: DeepSkyCatalogEntry) -> Double {
-        let sensitivity = EngineCalibration.current.targetScoring.moon.deep_sky_interference_sensitivity
-        guard entry.objectType == .planetaryNebula else { return sensitivity.non_planetary_nebula }
-        guard let surfaceBrightness = entry.surfaceBrightness else { return sensitivity.default }
-        let nebula = sensitivity.planetary_nebula_by_surface_brightness
-        if surfaceBrightness <= nebula.high_surface_brightness_max { return nebula.high_surface_brightness_sensitivity }
-        if surfaceBrightness >= nebula.low_surface_brightness_min { return nebula.low_surface_brightness_sensitivity }
-        return nebula.mid_sensitivity
+    // Ordered objective metadata belongs to the engine; names remain host copy.
+    private static let solarSystemNames = [
+        "moon": "Moon", "venus": "Venus", "mars": "Mars", "jupiter": "Jupiter", "saturn": "Saturn"
+    ]
+    private static let solarSystemTargets = TargetMetadata.solarSystemCandidates.map { entry in
+        ObservableTarget(id: entry.id, name: solarSystemNames[entry.id]!,
+            type: ObservableTargetType(rawValue: entry.type.rawValue)!,
+            preferredEquipment: entry.preferredEquipment, difficulty: entry.difficulty,
+            observingIntent: entry.observingIntent)
     }
 
-    // TODO: Consider adding Uranus and Neptune later as challenge planet targets once planet visibility support is verified.
-    private static let solarSystemTargets = [
-        ObservableTarget(id: "moon", name: "Moon", type: .moon, preferredEquipment: .nakedEye, difficulty: 0.1, observingIntent: .easy),
-        ObservableTarget(id: "venus", name: "Venus", type: .planet, preferredEquipment: .nakedEye, difficulty: 0.1, observingIntent: .easy),
-        ObservableTarget(id: "mars", name: "Mars", type: .planet, preferredEquipment: .nakedEye, difficulty: 0.2, observingIntent: .standard),
-        ObservableTarget(id: "jupiter", name: "Jupiter", type: .planet, preferredEquipment: .smallTelescope, difficulty: 0.25, observingIntent: .easy),
-        ObservableTarget(id: "saturn", name: "Saturn", type: .planet, preferredEquipment: .smallTelescope, difficulty: 0.35, observingIntent: .easy)
-    ]
 }
 
 public struct DeepSkyTargetPositionProvider: TargetPositionProvider {

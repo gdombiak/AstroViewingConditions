@@ -1500,6 +1500,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
+				"$(REPO_ROOT)/contracts/data/catalog/solar-system.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1514,6 +1516,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/solar-system.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1536,6 +1540,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
+				"$(REPO_ROOT)/contracts/data/catalog/solar-system.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1550,6 +1556,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/solar-system.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1572,6 +1580,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
+				"$(REPO_ROOT)/contracts/data/catalog/solar-system.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1586,6 +1596,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/solar-system.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1608,6 +1620,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
+				"$(REPO_ROOT)/contracts/data/catalog/solar-system.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1622,6 +1636,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/solar-system.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1644,6 +1660,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
+				"$(REPO_ROOT)/contracts/data/catalog/solar-system.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1658,6 +1676,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/solar-system.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1680,6 +1700,8 @@
 				"$(REPO_ROOT)/contracts/data/calibration/target-scoring.json",
 				"$(REPO_ROOT)/contracts/data/calibration/equipment-matching.json",
 				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/contracts/data/catalog/target-requirements.json",
+				"$(REPO_ROOT)/contracts/data/catalog/solar-system.json",
 				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
@@ -1694,6 +1716,8 @@
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json",
 				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json",
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/solar-system.json",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

@@ -229,3 +229,22 @@ policies:
       best_window.end: exact
       code: exact
       message: exact
+
+  target_requirements:
+    fields:
+      requirement: exact
+      is_planet: exact
+      code: exact
+      message: exact
+
+  solar_system_catalog:
+    fields:
+      entries: exact
+      code: exact
+      message: exact
+
+  target_moon_sensitivity:
+    fields:
+      sensitivity: exact
+      code: exact
+      message: exact

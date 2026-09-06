@@ -29,6 +29,7 @@ DETERMINISTIC_FIXTURE_DIRS = (
     "fixtures/capabilities/targets-recommend",
     "fixtures/capabilities/equipment-match",
     "fixtures/capabilities/observing-window",
+    "fixtures/capabilities/target-metadata",
 )
 
 

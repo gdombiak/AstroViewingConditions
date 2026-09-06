@@ -1,0 +1,7 @@
+{
+  "capability": "targets.moon_sensitivity",
+  "ok": true,
+  "result": {
+    "sensitivity": 0.65
+  }
+}

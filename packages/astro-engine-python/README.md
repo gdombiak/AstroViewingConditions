@@ -1,6 +1,6 @@
 # astro-engine (Python)
 
-Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the eighteen
+Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the twenty-one
 catalogued capabilities.
 
 Calibration and fixtures are loaded from the repo `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). Do not copy scoring constants into this package.
@@ -98,5 +98,13 @@ Sources: [Skyfield local loading](https://rhodesmill.org/skyfield/api.html),
 `{time, score}` rows and an optional threshold. See the
 [procedure](../../contracts/procedures/observing-window.md) for exact endpoint,
 row-count, sorting and tie behavior. It uses no live astronomy and does not change
-`night_conditions.analyze`. The public catalog now contains 18 capabilities;
+`night_conditions.analyze`. The public catalog now contains 21 capabilities;
 engine/package identity remains unreleased 1.0.0.
+
+Target metadata is available through `targets.requirements`,
+`catalog.solar_system`, and `targets.moon_sensitivity`. For example, pass
+`{"capability":"targets.requirements","injected":{"id":"m77"}}` to the CLI;
+combine the returned `requirement` and `is_planet` with selected `capabilities`
+for `equipment.match`. Canonical catalogs remain under `contracts/data` and must
+be available through the existing contracts-root installation mechanism.
+See [the metadata procedure](../../contracts/procedures/target-metadata.md).

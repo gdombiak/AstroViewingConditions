@@ -435,13 +435,11 @@ final class EngineCalibrationTests: XCTestCase {
                 atPath: dest.appendingPathComponent("calibration/obsolete.json").path
             )
         )
-        let catalogExpected = try Data(
-            contentsOf: contracts.appendingPathComponent("data/catalog/deep-sky.json")
-        )
-        let catalogActual = try Data(
-            contentsOf: dest.appendingPathComponent("catalog/deep-sky.json")
-        )
-        XCTAssertEqual(catalogActual, catalogExpected)
+        for name in ["deep-sky.json", "target-requirements.json", "solar-system.json"] {
+            XCTAssertEqual(
+                try Data(contentsOf: contracts.appendingPathComponent("data/catalog/\(name)")),
+                try Data(contentsOf: dest.appendingPathComponent("catalog/\(name)")), name)
+        }
         XCTAssertFalse(
             FileManager.default.fileExists(
                 atPath: dest.appendingPathComponent("catalog/equipment-limits.json").path

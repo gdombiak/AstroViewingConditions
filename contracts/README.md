@@ -7,13 +7,14 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `night_conditions.analyze`, `night_conditions.score`, `fog.score`,
 `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`,
 `weather.decode`, `iss.decode`, `location.grid`, `location.compare`,
-`catalog.deep_sky`, `targets.recommend`, `equipment.match`, `observing_window.select`, `astronomy.sun_events`,
+`catalog.deep_sky`, `targets.recommend`, `equipment.match`, `observing_window.select`, `targets.requirements`,
+`catalog.solar_system`, `targets.moon_sensitivity`, `astronomy.sun_events`,
 `astronomy.moon_info`, and `astronomy.moon_series`. Composed agent hosts remain
 later integration work. Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those eighteen IDs. Capability
+The public Python CLI allow-lists exactly those twenty-one IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
 rows keep `since: "0.1.0"`; `location.compare`, `targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
 they are introduced under the unreleased 1.0.0 identity. Do not invent a second
@@ -49,3 +50,8 @@ Timestamp/altitude/illumination bounds are 60 seconds / 0.5 degrees / 1 integer
 percentage point. Nulls and structure compare exactly. Existing 141 frozen
 capability fixtures continue independently against their expected.json files;
 none consume live astronomy. Live-provider equality remains forbidden.
+
+Target metadata: `targets.requirements`, `catalog.solar_system`, and
+`targets.moon_sensitivity` share production data and minimal procedures. See
+[the normative boundary and precedence](procedures/target-metadata.md). Public
+capability count is 21; version remains unreleased 1.0.0.

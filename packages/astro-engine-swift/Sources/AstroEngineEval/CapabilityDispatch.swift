@@ -29,6 +29,12 @@ enum CapabilityDispatch {
             return try issDecode(document)
         case "location.grid":
             return try locationGrid(document)
+        case "targets.requirements", "catalog.solar_system", "targets.moon_sensitivity":
+            do {
+                return try TargetMetadataContract.evaluate(capability, input: injected(document))
+            } catch let error as TargetMetadataInputError {
+                throw EvalValidationError(code: "validation", message: error.message)
+            }
         case "observing_window.select":
             do {
                 return try ObservingWindowContract.evaluate(injected(document))

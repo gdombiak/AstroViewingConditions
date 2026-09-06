@@ -1,0 +1,8 @@
+{
+  "capability": "targets.moon_sensitivity",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid targets.moon_sensitivity input"
+  }
+}

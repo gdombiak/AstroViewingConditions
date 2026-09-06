@@ -54,6 +54,9 @@ REPRESENTATIVE_FIXTURES: tuple[tuple[str, str, str], ...] = (
     ("targets.recommend", "fixtures/capabilities/targets-recommend", "basic-v1"),
     ("equipment.match", "fixtures/capabilities/equipment-match", "selected-ranking-v1"),
     ("observing_window.select", "fixtures/capabilities/observing-window", "empty-v1"),
+    ("targets.requirements", "fixtures/capabilities/target-metadata", "override-m77"),
+    ("catalog.solar_system", "fixtures/capabilities/target-metadata", "solar-production-order"),
+    ("targets.moon_sensitivity", "fixtures/capabilities/target-metadata", "sensitivity-bright-boundary"),
 )
 
 UNIMPLEMENTED_IDS = (
@@ -116,7 +119,7 @@ def test_engine_version() -> None:
 def test_public_allow_list_matches_catalog_order() -> None:
     assert PUBLIC_CAPABILITY_IDS == tuple(item[0] for item in REPRESENTATIVE_FIXTURES) + (
         "astronomy.sun_events", "astronomy.moon_info", "astronomy.moon_series")
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 18
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 21
 
 
 def test_every_public_capability_is_accepted() -> None:

@@ -1,0 +1,8 @@
+{
+  "capability": "catalog.solar_system",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid catalog.solar_system input"
+  }
+}

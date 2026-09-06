@@ -1,0 +1,7 @@
+{
+  "capability": "targets.moon_sensitivity",
+  "injected": {
+    "object_type": "galaxy",
+    "id": "m31"
+  }
+}

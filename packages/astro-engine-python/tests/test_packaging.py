@@ -73,6 +73,9 @@ def test_public_imports() -> None:
         "targets.recommend",
         "equipment.match",
         "observing_window.select",
+        "targets.requirements",
+        "catalog.solar_system",
+        "targets.moon_sensitivity",
         "astronomy.sun_events",
         "astronomy.moon_info",
         "astronomy.moon_series",
@@ -97,12 +100,12 @@ def test_catalog_current_release_matches_engine_version() -> None:
     assert since_lines == (
         ['    since: "0.1.0"'] * 10
         + ['    since: "1.0.0"', '    since: "0.1.0"']
-        + ['    since: "1.0.0"'] * 6
+        + ['    since: "1.0.0"'] * 9
     )
 
 
 def test_no_package_local_provider_fixture_copies() -> None:
     root = Path(__file__).resolve().parents[1]
-    banned = {"happy-path.json", "two-passes.json", "deep-sky.json"}
+    banned = {"happy-path.json", "two-passes.json", "deep-sky.json", "solar-system.json", "target-requirements.json"}
     found = [path for path in root.rglob("*.json") if path.name in banned]
     assert found == []

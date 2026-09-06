@@ -1,0 +1,8 @@
+{
+  "capability": "targets.requirements",
+  "injected": {
+    "id": "m13",
+    "type": "deepSky",
+    "object_type": null
+  }
+}

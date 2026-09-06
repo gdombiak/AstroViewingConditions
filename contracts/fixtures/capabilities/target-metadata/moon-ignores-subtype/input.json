@@ -1,0 +1,8 @@
+{
+  "capability": "targets.requirements",
+  "injected": {
+    "id": "moon",
+    "type": "moon",
+    "object_type": "galaxy"
+  }
+}

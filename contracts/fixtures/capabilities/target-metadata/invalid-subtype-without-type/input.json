@@ -1,0 +1,7 @@
+{
+  "capability": "targets.requirements",
+  "injected": {
+    "id": "m77",
+    "object_type": "galaxy"
+  }
+}

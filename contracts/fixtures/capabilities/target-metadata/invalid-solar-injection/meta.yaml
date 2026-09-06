@@ -1,0 +1,7 @@
+capability: catalog.solar_system
+engine_semver: ">=1.0.0 <2.0.0"
+equality: solar_system_catalog
+hosts: [swift, python]
+origin: manual
+notes: >
+  invalid-solar-injection

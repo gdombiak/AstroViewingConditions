@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from astro_engine.target_metadata import CAPABILITY_IDS as METADATA_IDS, evaluate_metadata
 from astro_engine.observing_window import CAPABILITY_ID as WINDOW_ID, select_observing_window
 from astro_engine.targets import CAPABILITY_ID as TARGETS_ID, recommend_targets
 from astro_engine.equipment import CAPABILITY_ID as EQUIPMENT_ID, match_equipment
@@ -199,6 +200,8 @@ def evaluate_capability(
         return location_grid(_injected(document))
     if capability == COMPARE_ID:
         return compare_locations(_injected(document))
+    if capability in METADATA_IDS:
+        return evaluate_metadata(capability, _injected(document))
     if capability == WINDOW_ID:
         return select_observing_window(_injected(document))
     if capability == TARGETS_ID:

@@ -147,6 +147,27 @@ capabilities:
       hourly rows and an optional good-rating threshold. Exact endpoints, null
       when empty; no live astronomy or calendar composition.
 
+  - id: targets.requirements
+    hosts: [ios, cli]
+    equality: target_requirements
+    since: "1.0.0"
+    summary: >
+      Resolve production equipment requirements for a canonical target identity
+      or an explicitly typed injected target; resolution does not imply
+      recommendation-catalog support.
+
+  - id: catalog.solar_system
+    hosts: [ios, cli]
+    equality: solar_system_catalog
+    since: "1.0.0"
+    summary: Ordered objective metadata for the five production solar-system candidates; no live astronomy.
+
+  - id: targets.moon_sensitivity
+    hosts: [ios, cli]
+    equality: target_moon_sensitivity
+    since: "1.0.0"
+    summary: Derive deep-sky Moon sensitivity from object type and optional surface brightness.
+
   - id: astronomy.sun_events
     hosts: [ios, cli]
     equality: astronomy_sun_events
