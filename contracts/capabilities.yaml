@@ -6,13 +6,13 @@
 # not the current engine release and not "already implemented on every host".
 # Capabilities that originated in the 0.1.0 slice keep `since: "0.1.0"`.
 # `location.compare` is introduced under the unreleased 1.0.0 identity, so
-# its `since` is `"1.0.0"`. Do not invent 1.1.0. Roadmap "1.1" labels are
-# sequencing, not published engine versions. `hosts` is the target host/parity
+# its `since` is `"1.0.0"`. Do not invent a second semantic release. Roadmap
+# sequencing labels are not published engine versions. `hosts` is the target host/parity
 # requirement. The public Python CLI allow-lists every catalogued row below.
 # `light_pollution.validity` is not a catalogued capability.
 #
 # Live astronomy accumulates as later phases implement it. LP identity
-# and parked 1.1 target-scoring numbers live under contracts/data and
+# and parked later-slice target-scoring numbers live under contracts/data and
 # are not capabilities. Catalog JSON is the catalog.deep_sky source.
 
 engine_semver: "1.0.0"

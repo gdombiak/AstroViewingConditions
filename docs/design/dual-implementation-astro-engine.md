@@ -30,7 +30,7 @@ This is **not** “feature parity of the whole app,” not a second UI, not a 1:
 
 **Feasibility before breadth.** The main uncertainty is not whether Python can reproduce `ObservingQualityCalculator.assess`. It is whether a local CLI on the actual Grok Bot VM is installed, invoked unattended by a skill/routine, and consumed as JSON. A [vertical proof](#feasibility-gate-grok-bot-vm) of one real capability happens **before** SharedCode extraction and the rest of the 1.0 port. If that gate fails, abandon the feature branch.
 
-**1.0 freeze (after the gate):** pure scoring + provider decode. Live astronomy, target-window computation, location.compare, and composed CLI hosts ship as `since: 1.1` once their hedges are gone.
+**Release status (after Phase 14):** Astro Engine 1.0.0 has not been publicly released. The scoring/decode slice and `location.compare` are unreleased work under that first 1.0.0 identity. Targets/equipment, live astronomy, and composed CLI/Bot-host operations are later unreleased slices toward the same first production release; roadmap sequencing does not authorize a second semantic release.
 
 ---
 
@@ -100,7 +100,7 @@ This is **not** “feature parity of the whole app,” not a second UI, not a 1:
 - Treating `tools/light-pollution` as the observing engine (the GDAL-free **decoder** may be extracted; the harness stays a tool).
 - Optical FOV, mounts, cameras, or a full Messier/NGC dump.
 - Implementing air quality; out of 1.0.
-- Shipping live-astronomy or location.compare parity in 1.0.
+- Treating live astronomy or `location.compare` as a later release. `location.compare` is already unreleased 1.0.0 work; live astronomy remains a later unreleased slice toward that first release.
 - Putting English summary strings or a longer-than-3-day forecast horizon into 1.0 parity.
 
 ---
@@ -116,7 +116,7 @@ Two idiomatic implementations behind one language-neutral contract, plus a capab
 | **Pros** | Matches the two real runtimes (Apple app, Linux bot VM). One branch/PR can change fixtures + Swift + Python together. No custom iOS backend. Each language stays idiomatic. Xcode can be isolated. Abandonable as a unit. |
 | **Cons** | Dual maintenance. Drift risk. Golden files can become a shadow spec if generated from one implementation. |
 
-Mitigations: capability matrix with a small 1.0 freeze, frozen inputs (moon **and** sun/night window **and** clock), normative procedures in `contracts/`, independent `expected.json` with `origin` tags, field-level equality, CI gates, engine-semver.
+Mitigations: capability matrix with a small initial 1.0 capability slice, frozen inputs (moon **and** sun/night window **and** clock), normative procedures in `contracts/`, independent `expected.json` with `origin` tags, field-level equality, CI gates, engine-semver.
 
 ### B. Extract a Swift-only engine and run it on Linux
 
@@ -149,7 +149,7 @@ Rejected as premature.
 
 ## Recommended Target Architecture
 
-**Capability-catalog / contract-first dual engine in a restructured monorepo**, with a **small 1.0 freeze**.
+**Capability-catalog / contract-first dual engine in a restructured monorepo**, with a **small initial unreleased-1.0 capability slice**.
 
 ```mermaid
 flowchart TB
@@ -268,12 +268,12 @@ The current tree is an Apple app with a tools folder and a working iOS CI job. P
 │   │   ├── night-conditions.md      # after gate
 │   │   ├── calculate-score.md
 │   │   ├── fog-seeing-transparency.md
-│   │   └── target-scoring.md        # 1.1
+│   │   └── target-scoring.md        # later unreleased 1.0 slice
 │   ├── schemas/
 │   ├── data/
 │   │   ├── calibration/
 │   │   ├── catalog/deep-sky.json
-│   │   ├── orbital/schlyter-planets.json   # 1.1
+│   │   ├── orbital/schlyter-planets.json   # later unreleased 1.0 slice
 │   │   └── identity/light-pollution-dataset.json
 │   └── fixtures/
 │       ├── providers/
@@ -314,7 +314,7 @@ The current tree is an Apple app with a tools folder and a working iOS CI job. P
 - Python, `contracts/`, `tools/`, `.venv`, `__pycache__` never appear as Xcode groups.
 - `open_in_xcode.sh` runs `xcodegen` if needed and `open <path-to>/AstroViewingConditions.xcodeproj`.
 - Keep XcodeGen as the Apple project generator.
-- **Only one SunCalc resolution:** `packages/astro-engine-swift/Package.swift`. SharedCode / the app link AstroEngine; they do **not** redeclare the SunCalc URL and **must not** `import SunCalc` (SPM does not re-export it). 1.0 AstroEngine owns `MoonSampling` + `SunEventsSampling` with SunCalc-backed implementations. Host `AstronomyService` only **wires** those samplers and keeps Foundation-only `approximateSunEvents`. Unused SunCalc in 1.0 (samplers not on the parity allow-list) is acceptable: 1.1 live astronomy lives in the same package.
+- **Only one SunCalc resolution:** `packages/astro-engine-swift/Package.swift`. SharedCode / the app link AstroEngine; they do **not** redeclare the SunCalc URL and **must not** `import SunCalc` (SPM does not re-export it). 1.0 AstroEngine owns `MoonSampling` + `SunEventsSampling` with SunCalc-backed implementations. Host `AstronomyService` only **wires** those samplers and keeps Foundation-only `approximateSunEvents`. Unused SunCalc in the initial capability slice (samplers are not yet on the parity allow-list) is acceptable: later unreleased live astronomy lives in the same package.
 
 watchOS continues to link AstroEngine for scoring only and **must not** embed the 10 MiB atlas (unchanged from `CROSS_SURFACE_ARCHITECTURE.md`).
 
@@ -346,13 +346,13 @@ Do this **in place** before `Package.swift` exists. Engine XCTest must `import A
 | `Services/BinaryLightPollutionProvider.swift`, `LightPollutionProviding.swift`, `ModeledZenithBrightnessValidity.swift` | Entire files | `BundledLightPollutionResource` (CryptoKit SHA-256, app bundle) |
 | `Services/ObservingQualityService.swift` | Pure assess-after-lookup | Bootstrap / session wiring |
 | `Services/DeepSkyCatalogService.swift` | Curated catalog **data** (`DeepSkyCatalogEntry` identity/fields, `CuratedDeepSkyCatalogProvider`). Engine catalog does **not** depend on `TargetImageManifest` and must **not** own `TargetImageCredit` presentation metadata. SharedCode may keep optional `DeepSkyCatalogEntry.image` temporarily so injected providers can supply a credit; Phase 3 must not copy that compatibility field into AstroEngine merely because it exists today. Split this file on extract: curated data moves; host mapping stays | `DefaultTargetCatalogProvider` host mapping (`entry.image ?? TargetImageManifest.image(for: id)`), `TargetImageManifest`, iOS images (`TargetImageRepository` loads pixels by target id) |
-| `Services/TargetRecommendationService.swift` | `DefaultTargetRecommendationScorer` (1.1 fixtures) | Service orchestration, debug logger |
-| `Services/BestSpotSearcher.swift` | `NightConditionsScoring.publicScore` (already the formula owner; `BestSpotSearcher.calculateScore` is a one-line wrapper); `isHigherRanked` total order (1.1); coherent mode selection | `CoreLocationSuitabilityResolver`, search actor, progress, 40-check cap, English `generateSummary`. Phase 2 already deleted unused `import SunCalc`. Remaining Apple coupling is real `CLGeocoder` / `CLLocation`, not SunCalc |
+| `Services/TargetRecommendationService.swift` | `DefaultTargetRecommendationScorer` (later unreleased fixtures) | Service orchestration, debug logger |
+| `Services/BestSpotSearcher.swift` | `NightConditionsScoring.publicScore` (already the formula owner; `BestSpotSearcher.calculateScore` is a one-line wrapper); `isHigherRanked` total order (`location.compare`, delivered in Phase 14); coherent mode selection | `CoreLocationSuitabilityResolver`, search actor, progress, 40-check cap, English `generateSummary`. Phase 2 already deleted unused `import SunCalc`. Remaining Apple coupling is real `CLGeocoder` / `CLLocation`, not SunCalc |
 | `Utilities/LocationTimeZoneResolver.swift` | `calendar(for:)` Gregorian+tz; **not** `resolve` / `approximate` | `CLGeocoder` resolve + longitude fallback (iOS host) |
 | `Utilities/AdaptiveFont.swift`, `BestSpotSettings.swift` | Geometry defaults (radius/spacing numbers) may live in calibration JSON | SwiftUI / AppGroup persistence |
 | `Services/AstronomyService.swift` | **1.0:** `MoonSampling` + `SunEventsSampling` protocols and `SunCalcMoonSampler` / `SunCalcSunEventsSampler` (the only `import SunCalc` in the iOS tree). Polar missing-times stay out of the sampler. | Host actor: injects samplers, maps missing SunCalc times through Foundation-only `approximateSunEvents` (`hosts: [ios]`). **Never `import SunCalc`.** |
-| `Services/PlanetRecommendationService.swift` | `PlanetOrbitalElements` algorithm + coefficients (1.1) | Recommendation copy |
-| `Services/MoonRecommendationService.swift` | SunCalc-backed `MoonAstronomyProviding` implementation **moves into AstroEngine in the package-extract phase** (even though live moon recommend is 1.1) so SharedCode does not keep `import SunCalc` | Host orchestration / copy only |
+| `Services/PlanetRecommendationService.swift` | `PlanetOrbitalElements` algorithm + coefficients (later unreleased slice) | Recommendation copy |
+| `Services/MoonRecommendationService.swift` | SunCalc-backed `MoonAstronomyProviding` implementation **moves into AstroEngine in the package-extract phase** (even though live moon recommend is later unreleased work) so SharedCode does not keep `import SunCalc` | Host orchestration / copy only |
 | Watch / widget / App Group / iCloud / `LocationManager` | — | All stay |
 
 `NightQualityAssessment.calculatedScore` no longer calls `BestSpotSearcher`. It is a convenience wrapping `NightConditionsScoring.publicScore(_ assessment)`. Callers may use either; there is one implementation. Do not delete the property in a later phase unless the Watch/widget/iOS call sites are migrated for a real API reason.
@@ -396,15 +396,15 @@ flowchart LR
 | `location.grid` | `GeographicGridGenerator.generateGrid` | Equality on discrete `(northStep, eastStep)` lattice plus center/boundary bearings. Derived lat/lon abs **1e-4 deg** (~11 m), matching `GeographicGridGeneratorTests`. Not 1e-9 deg. |
 | `catalog.deep_sky` | `CuratedDeepSkyCatalogProvider` | Exact JSON round-trip of the 29 entries (image **id** only). |
 
-#### 1.1 in-contract (hedges removed first)
+#### Later unreleased first-1.0 in-contract slices (hedges removed first)
 
 | Capability ID | Notes |
 |---|---|
 | `geocoding.decode` | Open-Meteo search JSON. Not needed to prove scoring. |
-| `astronomy.sun_events` | **Required Grok Bot product capability** (1.1). Live skyfield/SunCalc; times ±60 s. Sunset, civil/nautical/astronomical twilight, astronomical night start/end, sunrise. **Polar missing-times / `approximateSunEvents`:** `hosts: [ios]`, not in Python 1.1. Live suite **must not** assert product integers. Not implemented in Phase 6. |
-| `astronomy.moon_info` / `astronomy.moon_series` | **Required Grok Bot product capabilities** (1.1). Illumination, altitude, useful phase identity, waxing/waning if the engine already models it, hourly altitude/illumination through the observing period; moonrise/moonset only if the astronomy capability formally supports those events. Altitude ±0.5°; illumination integer ±1. Phase name/emoji omitted. Not fed live into integer fixtures. Not implemented in Phase 6. |
+| `astronomy.sun_events` | **Required Grok Bot product capability** in a later unreleased first-1.0 slice. Live Skyfield/SunCalc; times ±60 s. Sunset, civil/nautical/astronomical twilight, astronomical night start/end, sunrise. **Polar missing-times / `approximateSunEvents`:** `hosts: [ios]`, not in Python. Live suite **must not** assert product integers. Not implemented in Phase 6. |
+| `astronomy.moon_info` / `astronomy.moon_series` | **Required Grok Bot product capabilities** in a later unreleased first-1.0 slice. Illumination, altitude, useful phase identity, waxing/waning if the engine already models it, hourly altitude/illumination through the observing period; moonrise/moonset only if the astronomy capability formally supports those events. Altitude ±0.5°; illumination integer ±1. Phase name/emoji omitted. Not fed live into integer fixtures. Not implemented in Phase 6. |
 | `astronomy.planet_positions` | Exact **after** Schlyter procedure is written in `contracts/procedures/` and coefficients are JSON. Until then, `equality: n/a`. |
-| `targets.windows` | Prefer frozen alt/az samples; live windows are 1.1 astronomy. |
+| `targets.windows` | Prefer frozen alt/az samples; live windows are later unreleased astronomy work. |
 | `targets.recommend` | Integer scores + sort order exact given **precomputed windows**. |
 | `equipment.match` | `level` / `reason` / `mode` exact. `explanation` **never** in equality (host copy). |
 | `location.compare` | Full [total order](#locationcompare-total-order-11). Suitability is an **injected overlay** (default all `unchecked`). Omit `id` and `summary`. |
@@ -430,8 +430,8 @@ Grok should not reimplement astronomical-night calculations, Moon astronomy, wea
 | Normalized hourly weather | `weather.decode` | 1.0 | Implemented in the Python library, Swift eval, and the public Python CLI (Phase 11). Current DTO matches existing `HourlyForecast` and does **not** include precipitation. |
 | Hourly precipitation | `weather.decode` domain extension | after 1.0 parity | **Known Bot-facing gap.** Product requirement (when available) stands. Not in the current `HourlyForecast` model; not in Phase 8 / 1.0 equality. Evaluate as a domain-model extension after the 1.0 parity migration. Not intentionally out of scope forever. |
 | Scored hourly observing conditions | `night_conditions.analyze` `hourly_ratings` | 1.0 | Implemented in the Python library and public CLI (Phase 11). |
-| Astronomical darkness timing | `astronomy.sun_events` | 1.1 | Required Bot product capability. Not implemented. |
-| Moon context | `astronomy.moon_info`, `astronomy.moon_series` | 1.1 | Required Bot product capabilities. Not implemented. |
+| Astronomical darkness timing | `astronomy.sun_events` | Later unreleased 1.0 slice | Required Bot product capability. Not implemented. |
+| Moon context | `astronomy.moon_info`, `astronomy.moon_series` | Later unreleased 1.0 slice | Required Bot product capabilities. Not implemented. |
 
 Do not add English summaries to parity. Do not invent phase emoji or presentation copy. Do not pull precipitation into Phase 8 or the 1.0 `weather.decode` fixtures merely to close this gap.
 
@@ -441,7 +441,7 @@ Field Mode, Dynamic Type, SwiftData, GPS, MapKit, `CoreLocationSuitabilityResolv
 
 #### Python / CLI only (out of contract)
 
-Argparse/typer, env, `--atlas-path` (defaults to the bundled production LPATLAS1 on the bot VM), stdin/stdout framing, `--pretty`, logging, HTTP client, composed `agent.conditions` / `agent.batch_compare` (1.1), `agent.forecast_horizon` (CLI-only longer Open-Meteo fetch; out of contract), `--suitability-json` overlay file.
+Argparse/typer, env, `--atlas-path` (defaults to the bundled production LPATLAS1 on the bot VM), stdin/stdout framing, `--pretty`, logging, HTTP client, composed `agent.conditions` / `agent.batch_compare` (later Bot-host work), `agent.forecast_horizon` (CLI-only longer Open-Meteo fetch; out of contract), `--suitability-json` overlay file.
 
 ---
 
@@ -777,7 +777,7 @@ Times are stored as UTC instants after applying `utc_offset_seconds` (−28800 �
 | `injected.forecasts` | Hourly rows (may extend outside the window; engine clips). |
 | `injected.moon_series` | **One object per included forecast hour**, keyed by exact `time` ISO-8601 `Z` equal to `forecast.time`. Missing timestamp → envelope `ok: false`, `error.code: validation` (not altitude 0, not interpolate). Extra moon samples ignored. |
 
-`NightForecastFilter` is a **separately tested helper** (unit tests in AstroEngine, not a 1.0 capability): inputs = `sun_events_today` / `tomorrow` + `date` = local start-of-day + calendar. It copies twilight **hour/minute** onto that start-of-day / next day (`NightForecastFilter.swift`). Live `astronomy.sun_events` fixtures are 1.1 and **must not** set `public_score`.
+`NightForecastFilter` is a **separately tested helper** (unit tests in AstroEngine, not a 1.0 capability): inputs = `sun_events_today` / `tomorrow` + `date` = local start-of-day + calendar. It copies twilight **hour/minute** onto that start-of-day / next day (`NightForecastFilter.swift`). Later unreleased `astronomy.sun_events` fixtures **must not** set `public_score`.
 
 Worked `origin: manual` fixture `night-conditions/four-clear-hours-v1` (not the empty-`forecasts` sketch; that path is `public_score` **20**):
 
@@ -1075,7 +1075,7 @@ Document Swift `Int(Double)` truncation toward zero, not banker's rounding.
 
 Export the exact switch tables already in Swift (`FogCalculator`, `SeeingCalculator`, `TransparencyCalculator` including 0.50/0.30/0.20 layer weights and 0.75/0.25 combine). These stay data, not “close enough” prose.
 
-#### Target scoring (1.1 procedure; numbers in JSON now so they are not reverse-engineered later)
+#### Target scoring (later unreleased procedure; numbers in JSON now so they are not reverse-engineered later)
 
 ```
 altitudeComponent = clamp(maxAltitude/80, 0, 1) * 30
@@ -1091,7 +1091,7 @@ difficultyPenalty = difficulty * 8
 score = round(clamp(sum − moon − difficulty, 0, 100))
 ```
 
-Until 1.1 fixtures exist, these numbers still belong in `contracts/data/calibration/target-scoring.json` so Python authors do not scrape Swift.
+Until the Phase 15 fixtures exist, these numbers still belong in `contracts/data/calibration/target-scoring.json` so Python authors do not scrape Swift.
 
 ---
 
@@ -1157,10 +1157,10 @@ Local: `make parity` → `scripts/parity` runs `python -m pytest Tests/parity` w
 | Cloud-cover score table, moon buckets, wind buckets | |
 | Seeing / transparency / fog tables | including layer 0.50/0.30/0.20 and fog integer formula |
 | `calculateScore` bases 90/70/45/20 and ±10 map | |
-| Target darkness **per type** and moon **ceilings including planet 6 / meteor 28 / satellite 4 / moon 0** | even though capability is 1.1 |
+| Target darkness **per type** and moon **ceilings including planet 6 / meteor 28 / satellite 4 / moon 0** | even though capability is later unreleased work |
 | Equipment numeric thresholds | catalog JSON |
 | 29 deep-sky entries | |
-| Schlyter coefficients | 1.1 |
+| Schlyter coefficients | later unreleased work |
 | LP identity + `[13.0, 22.5]` + 1000 m | |
 | Grid defaults 30/5 mi, Earth radius 6_371_000, 1609.344 m/mi | |
 
@@ -1182,7 +1182,7 @@ Both hosts report `engine_semver` in the **runtime** JSON envelope. That field i
 - `expected.json` contains `ok` + `result` (and `capability` as a mix-up guard). It does **not** embed `engine_semver`.
 - The parity runner checks `runtime.engine_semver` satisfies `meta.engine_semver`, then compares `result` using `equality-policy.yaml`.
 
-F1 shipped current release `0.1.0` for the OQ-only slice. 1.0.0 is declared when the 1.0 capability rows are green on both evals — **before** live astronomy / location.compare. Phase 12 made that declaration.
+F1 established the `0.1.0` OQ-only identity. Phase 12 set the repository's unreleased 1.0.0 identity after the initial capability rows were green on both evals; it did not publicly release Astro Engine or make later capabilities a separate-release track.
 
 ---
 
@@ -1195,24 +1195,24 @@ capabilities:
   - id: observing_quality.assess
     hosts: [ios, cli]
     equality: observing_quality
-    since: "1.0.0"
+    since: "0.1.0"
   - id: night_conditions.analyze
     hosts: [ios, cli]
     equality: night_conditions
-    since: "1.0.0"
+    since: "0.1.0"
     requires_injected: [night_window, moon_series, clock, time_zone]
   - id: location.grid
     hosts: [ios, cli]
     equality: grid
-    since: "1.0.0"
+    since: "0.1.0"
   - id: location.compare
     hosts: [ios, cli]
     equality: location_compare
-    since: "1.1.0"
+    since: "1.0.0"
   - id: astronomy.sun_events
     hosts: [ios, cli]
     equality: astronomy_times
-    since: "1.1.0"
+    since: "1.0.0"
   - id: astronomy.sun_events.polar_fallback
     hosts: [ios]
     equality: n/a
@@ -1226,17 +1226,17 @@ capabilities:
   - id: agent.conditions
     hosts: [cli]
     equality: n/a
-    since: "1.1.0"
+    since: "1.0.0"
     composed_of: [weather.decode, night_conditions.analyze, observing_quality.assess]
   - id: agent.batch_compare
     hosts: [cli]
     equality: n/a
-    since: "1.1.0"
+    since: "1.0.0"
     composed_of: [location.compare]
   - id: agent.forecast_horizon
     hosts: [cli]
     equality: n/a
-    since: "1.1.0"
+    since: "1.0.0"
     notes: >
       Agent-only Open-Meteo fetch longer than the iOS 3-day product.
       Not a parity target. 1.0 fixtures remain 3-day. iOS is not required to match.
@@ -1246,7 +1246,9 @@ capabilities:
 
 ### 10. Is there a better architecture?
 
-Contract-first dual-engine remains the right product architecture for two runtimes. The better *engineering* cut vs “add Python next to Sources/” is this document: procedures + DTO equality + type split **before** package extract **before** tree move; 1.0 freeze; GDAL-free decoder extract; incumbent CI retargeted.
+The future rows above are illustrative: `since` is assigned when a capability is introduced. If it is introduced before the first public release, it uses the unreleased `1.0.0` identity; existing historical `since` values are not rewritten.
+
+Contract-first dual-engine remains the right product architecture for two runtimes. The better *engineering* cut vs “add Python next to Sources/” is this document: procedures + DTO equality + type split **before** package extract **before** tree move; a small initial capability slice; GDAL-free decoder extract; incumbent CI retargeted.
 
 Residual weaknesses:
 
@@ -1255,7 +1257,7 @@ Residual weaknesses:
 | Dual maintenance | High | Small scoring cores; shared data+procedures |
 | Golden-from-Swift | High | Manual arithmetic fixtures; `origin` + `dual_run`; procedures in contracts |
 | SharedCode mixing | High | File-split map phase first (after the feasibility gate) |
-| CLGeocoder | High if in 1.0 | `location.compare` is 1.1 with injected suitability |
+| CLGeocoder | High if in the deterministic engine | `location.compare` is delivered with injected suitability; CLGeocoder remains host-side |
 | Timezone | High if ignored | IANA tz + clock inputs |
 | Astronomy integers | High if ignored | Inject moon **and** sun/window |
 | Path-filter skip of iOS compile | High | Package changes trigger `xcodebuild build` |
@@ -1328,7 +1330,7 @@ astro-engine <capability-id> --pretty --input -
 ```
 
 - `<capability-id>` is an allow-list from `capabilities.yaml` with `since <=` implemented engine version and `hosts` containing `cli`. Unknown id → exit 3, stderr usage, no stdout JSON.
-- `--input -` reads stdin. `--input` and flags for lat/lon are **mutually exclusive** in 1.0 (no flag form). Composed flag-style commands are 1.1 CLI-only (`agent.conditions`).
+- `--input -` reads stdin. `--input` and flags for lat/lon are **mutually exclusive** in the initial public CLI (no flag form). Composed flag-style commands are later CLI/Bot-host work (`agent.conditions`).
 - **Stdout:** JSON for capability invocations and `--engine-version`. Compact; `--pretty` adds 2-space indent + sorted keys.
 - **Stderr:** diagnostics only. Never mix traces into stdout.
 - **Exit codes / envelopes:**
@@ -1340,11 +1342,13 @@ astro-engine <capability-id> --pretty --input -
 - Production CLI image **includes** the same `light_pollution_global_v1.bin` the iOS app already bundles (~10 MiB). `light_pollution.lookup` resolves that production/default atlas when JSON has no `injected.artifact`. `--atlas-path FILE` is a **capability-specific** operator override (valid only with `light_pollution.lookup`). Tests/parity may instead pass a confined `injected.artifact.$ref` under `contracts/fixtures`. The 1 MiB JSON limit does not apply to the atlas file; the atlas is never inlined in JSON.
 - Atlas **file missing or unreadable** is **not** an error for `observing_quality.assess`: `ok: true`, `light_pollution: null`, score = night score. Distinct from `decode_failure` and from `atlas_invalid` (corrupt file that failed header/DFS validation). For `light_pollution.lookup`: missing production/default atlas → `engine_failure` / exit 1 (packaging/bootstrap); missing `--atlas-path` target → `validation` / exit 2; hostile/truncated/bad-magic atlas → `atlas_invalid` / exit 2.
 - Hostile `--atlas-path` files must fail closed (same header/DFS validation as Swift `BinaryLightPollutionProvider.init`). `--atlas-path` is argv/operator-controlled, not a JSON path field.
-- **1.1 CLI-only:** `agent.forecast_horizon` may request more Open-Meteo days than iOS (3-day). Out of contract; 1.0 fixtures stay 3-day.
+- **Later CLI-only work:** `agent.forecast_horizon` may request more Open-Meteo days than iOS (3-day). Out of contract; first-1.0 fixtures stay 3-day.
 
-**1.0 allow-list (public Python CLI, Phase 11):** `observing_quality.assess`, `night_conditions.analyze`, `night_conditions.score`, `fog.score`, `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`, `weather.decode`, `iss.decode`, `location.grid`, `catalog.deep_sky`. This matches `contracts/capabilities.yaml`. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
+**Phase 11 historical allow-list (public Python CLI):** `observing_quality.assess`, `night_conditions.analyze`, `night_conditions.score`, `fog.score`, `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`, `weather.decode`, `iss.decode`, `location.grid`, `catalog.deep_sky`. This was the eleven-capability set exposed in Phase 11.
 
-**1.1 CLI-only composed** (not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They loop 1.0/1.1 capabilities or fetch extra forecast days and are out of `parity.yml` except as optional golden envelopes tagged `hosts: [python]`.
+**Current public allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. This matches the current `contracts/capabilities.yaml`. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
+
+**Later CLI/Bot-host composition** (not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days and are out of `parity.yml` except as optional golden envelopes tagged `hosts: [python]`.
 
 Capability envelope (success):
 
@@ -1524,7 +1528,7 @@ Work happens on **one feature branch**. Nothing dual-engine lands on `main` befo
 9. Expand CLI 1.0 allow-list.
 10. `astro-engine` 1.0.0.
 11. Relocate `apps/ios/` + `tools/light-pollution` + retarget `ios-tests.yml`. Fix `open_in_xcode.sh` to open the xcodeproj (do this earlier if cheap — it is an existing footgun).
-12. 1.1: compare, targets, live astronomy.
+12. Continue unreleased first-1.0 work: `location.compare`, targets/equipment, live astronomy, then the remaining product integration work below.
 
 Rollback: abandon the branch, or revert individual phase-commits. A bad engine-semver bump reverts `contracts/` only, not the tree move.
 
@@ -1534,15 +1538,15 @@ No UI feature flag. CLI `--engine-semver-min` optional.
 
 ## Astronomy library policy
 
-Do not require Python to use SunCalc. 1.0 scoring fixtures inject `night_window` + 1:1 `moon_series`; live libs are 1.1. Swift SunCalc lives **only** in AstroEngine samplers after the package-extract phase.
+Do not require Python to use SunCalc. Initial-1.0 scoring fixtures inject `night_window` + 1:1 `moon_series`; live libraries are later unreleased work. Swift SunCalc lives **only** in AstroEngine samplers after the package-extract phase.
 
 | Quantity | 1.x | Swift | Python | Parity |
 |---|---|---|---|---|
 | Night integers | 1.0 | Injected samples | Injected samples | Exact |
-| Sun twilight live | 1.1 | `SunCalcSunEventsSampler` in AstroEngine | skyfield | ±60 s; **no** integer assertions |
+| Sun twilight live | Later unreleased 1.0 slice | `SunCalcSunEventsSampler` in AstroEngine | Skyfield | ±60 s; **no** integer assertions |
 | Polar missing times | iOS host | Foundation `approximateSunEvents` (no SunCalc) | not implemented | `hosts: [ios]` |
-| Moon live | 1.1 | `SunCalcMoonSampler` in AstroEngine | skyfield | ±0.5° / illumination ±1; omit emoji/name |
-| Planets | 1.1 | Schlyter in-repo | Same JSON + procedure | Exact once procedure is written |
+| Moon live | Later unreleased 1.0 slice | `SunCalcMoonSampler` in AstroEngine | Skyfield | ±0.5° / illumination ±1; omit emoji/name |
+| Planets | Reality check before Phase 16 | Schlyter in-repo if already intended | Same JSON + procedure | Exact once procedure is written |
 | ISS | 1.0 | Decode | Decode | Exact DTO |
 
 ---
@@ -1560,7 +1564,7 @@ See [Implementation Plan](#implementation-plan). Summary:
 7. Python remainder: scoring, GDAL-free LP extract, decode, grid, catalog.
 8. Expand CLI allow-list; declare engine 1.0.0.
 9. Relocate `apps/ios` + tools; retarget `ios-tests.yml`.
-10. 1.1 capabilities.
+10. Later unreleased first-1.0 capabilities.
 
 Do **not** enable `parity.yml` for `night_conditions.*` until `astro-engine-eval` (not the iOS app) can run those fixtures.
 
@@ -1581,7 +1585,7 @@ All four product questions are **Resolved** (2026-08-30). Do not re-open them in
 3. **English summary strings — Resolved: no.** Parity is integers, enums, rankings, and decoded DTOs. English copy stays host-specific.
 4. **Forecast horizon — Resolved: CLI may request a longer horizon as an agent-only feature.** Out of contract (`agent.forecast_horizon`, `hosts: [cli]`, `equality: n/a`). 1.0 fixtures stay 3-day (iOS Open-Meteo product). iOS is not required to match.
 
-Python live astronomy library remains skyfield for 1.1 sun/moon and Schlyter JSON for planets (not an open question).
+Python live astronomy uses Skyfield for the Phase 16 sun/moon scope. Whether planets and/or live target windows are in Phase 16 is not committed here; verify the production architecture and available procedures/fixtures immediately before implementation rather than expanding that phase by assumption.
 
 ---
 
@@ -1593,7 +1597,7 @@ Python live astronomy library remains skyfield for 1.1 sun/moon and Schlyter JSO
 
 3. **Target layout** is `apps/{ios,cli}`, `packages/astro-engine-{swift,python}`, `contracts/`, `tools/light-pollution`, `Tests/parity`, `.github/workflows`. Path isolation plus the file-split map.
 
-4. **1.0 parity is pure scoring + decode**, not ~20 hedged capabilities. Gate: OQ only. After gate 1.0: night analyze/score with injected **night_window + 1:1 moon_series** + clock/tz, fog/seeing/transparency, catalog, weather/ISS decode, LP lookup+validity on tiny fixture, grid. 1.1: live astronomy, target windows/recommend, equipment structured match, location.compare, geocoding, composed CLI. Polar sun fallback is `hosts: [ios]`. Equipment explanations and English summaries are never equality fields. **SharedCode never `import SunCalc` after package extract:** AstroEngine owns SunCalc-backed `MoonSampling`/`SunEventsSampling`. **Grok Bot product surface:** `weather.decode` hourly weather and `night_conditions.analyze.hourly_ratings` are 1.0 objective facts; `astronomy.sun_events`, `astronomy.moon_info`, and `astronomy.moon_series` are required 1.1 Bot capabilities, not optional parity experiments. Current 1.0 `weather.decode` mirrors `HourlyForecast` and therefore omits precipitation; that is a known Bot-facing gap to evaluate as a domain-model extension **after** 1.0 parity, not a permanent non-goal. Grok reasons over those facts; it does not reimplement them.
+4. **Initial 1.0 parity is pure scoring + decode**, not ~20 hedged capabilities. Gate: OQ only. After the gate: night analyze/score with injected **night_window + 1:1 moon_series** + clock/tz, fog/seeing/transparency, catalog, weather/ISS decode, LP lookup+validity on tiny fixture, and grid. Later unreleased first-1.0 work adds live astronomy, target windows/recommend, equipment structured match, `location.compare`, geocoding, and composed CLI/Bot-host operations. Polar sun fallback is `hosts: [ios]`. Equipment explanations and English summaries are never equality fields. **SharedCode never `import SunCalc` after package extract:** AstroEngine owns SunCalc-backed `MoonSampling`/`SunEventsSampling`. **Grok Bot product surface:** `weather.decode` hourly weather and `night_conditions.analyze.hourly_ratings` are initial-1.0 objective facts; `astronomy.sun_events`, `astronomy.moon_info`, and `astronomy.moon_series` are required later Bot capabilities, not optional parity experiments. Current `weather.decode` mirrors `HourlyForecast` and therefore omits precipitation; that is a known Bot-facing gap to evaluate as a domain-model extension after the parity migration, not a permanent non-goal. Grok reasons over those facts; it does not reimplement them.
 
 5. **Fixtures** are `input.json` + `expected.json` + `meta.yaml` with field-level `equality-policy.yaml`. Parity compares **parsed JSON**, not canonical bytes. `expected.json` is the domain result (`ok`/`result`); runtime `engine_semver` is checked against `meta.yaml`'s range, not pinned in the golden. Required encode rules: ISO-8601 `Z` dates, finite numbers, null-vs-omitted where meaningful. Night analyze: missing moon timestamp is validation; stored `night_start`/`night_end` are first/last included hours; `best_window` omitted. `weather.decode` always emits `timezone` (`string|null`) and `utc_offset_seconds`. Loader: `CONTRACTS_ROOT` + ancestor walk; `$ref` confined to `contracts/fixtures/`. DTO omits UUID `id`, emoji, English copy.
 
@@ -1603,7 +1607,7 @@ Python live astronomy library remains skyfield for 1.1 sun/moon and Schlyter JSO
 
 8. **Independent `astro-engine` semver.** 1.0.0 when the freeze set is green. iOS `2.3.1` can remain while implementing 1.0.0. Fixture applicability is a **range** in `meta.yaml`; goldens do not churn solely because the current engine version was promoted.
 
-9. **Parity = matrix, not screenshots.** Best Nearby land/water stays iOS-only. `location.compare` (1.1) uses the full `isHigherRanked` order with suitability injected or default `unchecked`. Grid tolerance 1e-4 deg + step lattice, not 1e-9 deg. English summaries stay host-specific. Longer-than-3-day forecast fetch is `agent.forecast_horizon` (`hosts: [cli]`, equality n/a).
+9. **Parity = matrix, not screenshots.** Best Nearby land/water stays iOS-only. `location.compare` uses the full `isHigherRanked` order with suitability injected or default `unchecked`. Grid tolerance 1e-4 deg + step lattice, not 1e-9 deg. English summaries stay host-specific. Longer-than-3-day forecast fetch is `agent.forecast_horizon` (`hosts: [cli]`, equality n/a).
 
 10. **One long-lived branch, many commits, one eventual PR to `main`.** No technical need for a stack of GitHub PRs into `main`. Mitigate merge/CI risk by running CI on the branch and rebasing `main` regularly.
 
@@ -1690,7 +1694,7 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 ### Phase 1 — Expand contract for remaining 1.0 scoring
 
 - **Commit intent:** `Add night-conditions, fog/seeing/transparency procedures and calibration data`
-- **Files:** remaining `contracts/procedures/*` (scoring only); four night-weight vectors, cloud floor, `calculateScore` map; catalog JSON; LP identity; `json-profile.md` (slim rules); **numeric** `contracts/data/calibration/target-scoring.json` only (no 1.1 procedure, capability, or fixtures). Night-conditions goldens in the procedure. Still no decode-procedure restatement.
+- **Files:** remaining `contracts/procedures/*` (scoring only); four night-weight vectors, cloud floor, `calculateScore` map; catalog JSON; LP identity; `json-profile.md` (slim rules); **numeric** `contracts/data/calibration/target-scoring.json` only (no target-scoring procedure, capability, or fixtures yet). Night-conditions goldens in the procedure. Still no decode-procedure restatement.
 - **Depends on:** Gate F pass
 - **Notes:** iOS still uses Swift literals. Contract expansion stays `ENGINE_VERSION` `0.1.0`; fixture ranges remain `>=0.1.0 <2.0.0`. `1.0.0` is still Phase 12. Comprehensive Swift-vs-canonical-calibration binding is Phase 4, when production Swift starts loading `contracts/data`.
 
@@ -1736,7 +1740,7 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 - **Depends on:** Phase 1, Phase 3
 - **Notes:** **No committed copies, no symlinks.** Tests never need the copy.
 - **Implementation notes (2026-09-04):**
-  - Production Swift binds `fog.json`, `night-quality.json`, `observing-quality.json`, `seeing.json`, and `transparency.json`. `target-scoring.json` stays unbound (parked 1.1 numbers; procedure/fixtures/ports are Phase 15). Equipment limits and LP identity remain Swift literals until their later phases. Catalog JSON is bound in Phase 9.
+  - Production Swift binds `fog.json`, `night-quality.json`, `observing-quality.json`, `seeing.json`, and `transparency.json`. `target-scoring.json` stays unbound (parked later-slice numbers; procedure/fixtures/ports are Phase 15). Equipment limits and LP identity remain Swift literals until their later phases. Catalog JSON is bound in Phase 9.
   - SwiftPM cannot copy a missing `Resources/data` directory (`swift test` fails). The directory is tracked via `.gitkeep`; generated `Resources/data/calibration/*.json` and `Resources/data/catalog/*.json` are gitignored. Empty `data/` is enough for package evaluation; tests use `CONTRACTS_ROOT`. Phase 9 extended the copy list with `catalog/deep-sky.json`.
   - Scheme pre-actions run `scripts/bundle-engine-data` (package `Resources/data` copy) before SPM compiles AstroEngine. Per-target Xcode Run Scripts use `--host-only` so they copy only into `${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/data`. Declaring the package source files as outputs of every target made Xcode fail with "Multiple commands produce".
   - Runtime lookup: iOS/watchOS use `Bundle.module` then host/framework bundles only, and fail fast if the copy is missing (no repo walk; a simulator checkout would hide a packaging hole). macOS tests and `astro-engine-eval` load canonical `contracts/data` via `CONTRACTS_ROOT` / ancestor walk only; they do not probe `Bundle.module`. `EngineCalibration.current` is one immutable snapshot; scoring APIs do not reopen JSON per call.
@@ -1766,7 +1770,7 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
   - Python library modules `fog.py`, `seeing.py`, `transparency.py`, `night_conditions.py` load canonical `contracts/data/calibration/*.json` through the F2 `contracts_root` / `data_root` path. No copied numbers.
   - `tests/parity` is a Phase 6 scoring layer: Python library (private `_capability` adapter, not the user CLI) and Swift `astro-engine-eval` are each compared to hand-authored `expected.json` via `equality-policy.yaml`. Phase 10 CI/`scripts/parity`/`Makefile` orchestrate that same suite. Git currently records the files as `Tests/parity` because that collides with iOS `Tests/` on case-insensitive volumes. Executable imports (package `conftest.py`) resolve that Git path, not lowercase `tests/parity`. XcodeGen still lists only `Tests/AstroViewingConditionsTests`, so the Python files are not part of the iOS test target. Phase 13 relocates only Apple tests to `apps/ios/Tests/`; the Git-recorded `Tests/parity` path remains unchanged, including its capitalization.
   - New night-condition fixtures cover fog-heavy, wind penalty, transparency-only, improving trend, extra moon ignored, and half-open window clipping. Public-score truncation stays on `night-conditions-score/truncation-8-5-v1`.
-  - Bot-facing product intent for hourly weather / scored hours / sun events / moon context is documented above. Live 1.1 astronomy was not pulled into this phase.
+  - Bot-facing product intent for hourly weather / scored hours / sun events / moon context is documented above. Live astronomy was not pulled into this phase.
 
 ### Phase 7 — Extract GDAL-free LP lookup into the Python engine
 
@@ -1829,23 +1833,23 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 - **Notes:** The CLI binary already exists from F2. This phase only expands it.
 - **Implementation notes (2026-09-05):**
   - **Partially Agree** with the original “only expand the allow-list” wording. The F2 CLI was a hardcoded `observing_quality.assess` wrapper (`_extract_injected` + direct `assess_observing_quality`). Copying that per capability would have duplicated engine logic. Phase 11 turned the public CLI into JSON transport over the existing Python dispatcher.
-  - Public 1.0 allow-list is explicit in `cli.py` (`PUBLIC_CAPABILITY_IDS`, catalog order) and is **not** “every private `_capability` ID forever.” It is the eleven `since: 0.1.0` rows in `contracts/capabilities.yaml`. 1.1 IDs (`location.compare`, `targets.recommend`, `equipment.match`, `astronomy.*`, `agent.conditions`) and uncatalogued `light_pollution.validity` remain usage/exit 3.
+  - Public initial allow-list is explicit in `cli.py` (`PUBLIC_CAPABILITY_IDS`, catalog order) and is **not** “every private `_capability` ID forever.” At the time it contained the eleven `since: 0.1.0` rows in `contracts/capabilities.yaml`. Not-yet-implemented IDs (`targets.recommend`, `equipment.match`, `astronomy.*`, `agent.conditions`) and uncatalogued `light_pollution.validity` remain usage/exit 3; Phase 14 later added `location.compare` to the public allow-list.
   - Dispatch: parse argv → 1 MiB stdin/file limit → JSON decode → public envelope → allow-list → optional `CapabilityHost` → `evaluate_capability` → wrap `{capability, engine_semver, ok, result}`. Capability math stays in the library. CLI and `Tests/parity/python_eval.py` now share that path. `location.grid` goes through `location_grid` (885-point cap), not uncapped `generate_grid`.
   - Public envelope: input must be an object; `injected` is required and must be an object (including `catalog.deep_sky` with `injected: {}`); if `capability` is present it must match argv; extra top-level keys fail. `night_conditions.analyze` additionally allows `clock`, `time_zone`, and `location` so contract fixtures round-trip. The F2 OQ injected-key whitelist was removed; capability-specific injected validation is owned by the engine modules / dispatcher.
   - `$ref`: whole-`injected` JSON `$ref` (weather/ISS fixtures) and `injected.artifact.$ref` (LPATLAS1 bytes) resolve only under `contracts/fixtures` via `resolve_fixture_ref` / `load_fixture_ref`. `ref_escape` / `fixture_missing` surface as those codes, exit 2. JSON `artifact.path` is rejected. Inline raw Open-Meteo / N2YO envelopes are also accepted.
   - `light_pollution.lookup` atlas sources: confined `injected.artifact.$ref` (parity/tests) **or** a host `CapabilityHost.atlas_path` (CLI `--atlas-path` override or host-resolved production default). Combining `$ref` with a host path is `validation`. `--atlas-path` is valid **only** with this capability (usage/exit 3 on any other ID). Default resolution: `ASTRO_ENGINE_ATLAS_PATH` if the named file exists; else gitignored `astro_engine/data/light_pollution_global_v1.bin` (install image); else the existing iOS resource in a repo checkout. The shared dispatcher never reads CLI argv or a JSON path. Parity continues to omit `host` and use `$ref`.
   - Production 10 MiB atlas is **not** copied into `packages/` in this phase. Repo-checkout CLI reuses `Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin`. Grok Bot VM deployment later places those same bytes at the package-data path or `ASTRO_ENGINE_ATLAS_PATH`. Missing default → `engine_failure` / 1. Missing `--atlas-path` target → `validation` / 2. Hostile/truncated/bad-magic → `atlas_invalid` / 2. Atlas reads are not subject to the 1 MiB JSON envelope limit.
   - Error mapping: `PayloadTooLarge` → `payload_too_large` / 2; `JSONCodecError` / `ObservingQualityError` / `ValidationError` → `exc.code` or `validation` / 2 (`grid_cap`, `ref_escape`, `fixture_missing`, `atlas_invalid` preserved); `ContractsRootError`, missing production atlas, and unexpected exceptions → `engine_failure` / 1. Unknown capability: stderr usage only, no stdout JSON, exit 3.
-  - CLI tests: `--engine-version` 0.1.0; one representative success fixture per allow-listed ID; known validation → exit 2 JSON; unknown/1.1 → exit 3; mismatch / missing injected / extra top-level / malformed JSON; 1 MiB stdin and file; `grid_cap` plus tiny-spacing promptness; weather/ISS inline envelopes; LP confined-ref success, host-injected default (tiny bin via env), `--atlas-path` success, `--atlas-path` rejected on non-LP IDs, malformed override `atlas_invalid`, missing override `validation`, missing default `engine_failure`, ref_escape, rejected JSON host path; catalog; `--pretty` semantic equality; in-process socket block across the allow-list; engine/bootstrap failure. `ENGINE_VERSION` remains `0.1.0`. No Phase 12.
+  - CLI tests: `--engine-version` 0.1.0; one representative success fixture per allow-listed ID; known validation → exit 2 JSON; unknown/not-yet-implemented capability → exit 3; mismatch / missing injected / extra top-level / malformed JSON; 1 MiB stdin and file; `grid_cap` plus tiny-spacing promptness; weather/ISS inline envelopes; LP confined-ref success, host-injected default (tiny bin via env), `--atlas-path` success, `--atlas-path` rejected on non-LP IDs, malformed override `atlas_invalid`, missing override `validation`, missing default `engine_failure`, ref_escape, rejected JSON host path; catalog; `--pretty` semantic equality; in-process socket block across the allow-list; engine/bootstrap failure. `ENGINE_VERSION` remains `0.1.0`. No Phase 12.
 
-### Phase 12 — Declare astro-engine 1.0.0
+### Phase 12 — Set the unreleased astro-engine 1.0.0 identity
 
 - **Commit intent:** `Declare astro-engine 1.0.0 for scoring and decode capabilities`
 - **Depends on:** Phase 10, Phase 11
 - **Implementation notes (2026-09-05):**
-  - **Partially Agree** with the original Phase 12 stub. This is a release declaration, not a capability-development phase. The 1.0 public surface was already frozen in Phase 11; this phase only makes the repository report that frozen set as Astro Engine 1.0.0.
+  - **Partially Agree** with the original Phase 12 stub. This is an unreleased repository-identity step, not a capability-development or public-release phase. The initial public surface was already present in Phase 11; this phase only makes the repository report that slice as Astro Engine 1.0.0.
   - Current engine identity is `1.0.0`: `contracts/ENGINE_VERSION`, `capabilities.yaml` top-level `engine_semver`, Python `engine_semver()`, public CLI `--engine-version` and envelopes, Swift eval/package contract version, and Python `pyproject.toml` version. The design lists PEP 621 as independent of iOS `MARKETING_VERSION`; the distribution is named `astro-engine` and previously tracked `0.1.0`, so leaving it would split CLI identity from package metadata. iOS marketing version is unchanged.
-  - Public 1.0 allow-list is unchanged from Phase 11 (eleven IDs). No 1.1 capability became public. No domain algorithm, provider, data, LPATLAS1, or CLI behavior change other than reporting `1.0.0`.
+  - Public allow-list was unchanged from Phase 11 (eleven IDs). No additional capability became public. No domain algorithm, provider, data, LPATLAS1, or CLI behavior change other than reporting `1.0.0`.
   - Capability `since: "0.1.0"` was preserved (specification introduction, not current release). Fixture applicability ranges remain `>=0.1.0 <2.0.0` (74 capability fixtures; 73 registered in `Tests/parity`; LP lookup stays `$ref`/host-tested and is not in the Swift parity runner).
   - Tests: focused version/CLI/package; full Python package; Swift package; `scripts/parity`. iOS product tests were not rerun (no Apple/product source changes).
 
@@ -1862,31 +1866,41 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
   - Apple CI remains unfiltered, with generation and testing in `apps/ios`. Root build/open helpers point to the relocated project. `open_in_xcode.sh` already opened the project before this phase; it does not auto-generate it.
   - Light-pollution CI, ignores, fixture byte-identity/isolation checks, and documentation follow `tools/light-pollution`. The full tooling directory moved together via a temporary directory to avoid a case-only rename on case-insensitive filesystems. `binary_format.py` still reaches the repository at `parents[3]`; no bootstrap logic change is needed.
   - Apple source-text tests still resolve `Sources/` relative to the Apple project. Only attribution-file tests need two additional ancestors to reach root `THIRD_PARTY_NOTICES.md`; all behavioral assertions are preserved.
-  - CLI production-atlas discovery already supports both the legacy and relocated iOS paths, so its implementation is unchanged. No second committed atlas, engine semantics, public API, calibration, catalog, version, or 1.1 work is part of this phase.
+  - CLI production-atlas discovery already supports both the legacy and relocated iOS paths, so its implementation is unchanged. No second committed atlas, engine semantics, public API, calibration, catalog, version, or later capability work is part of this phase.
 
-### Phase 14 — location.compare 1.1 (injected suitability)
+### Phase 14 — location.compare (injected suitability)
 
 - **Depends on:** Phase 12, Phase 9
 - **Implementation notes (2026-09-05):**
   - **Partially Agree.** Production `BestSpotSearcher.isHigherRanked` matches the designed eight-key order. Suitability is injected, default `unchecked`, and CLGeocoder stays host-side.
-  - Roadmap `since: 1.1.0` / engine 1.1.0 is sequencing, not a release. Engine identity stays `1.0.0`. `location.compare` uses `since: "1.0.0"` because it is introduced now; existing 0.1.0-slice rows are not backdated. No 1.1.0 declaration.
+  - The former roadmap sequencing label was not a release. Engine identity stays `1.0.0`. `location.compare` uses `since: "1.0.0"` because it is introduced now; existing 0.1.0-slice rows are not backdated. No new release was declared.
   - Candidate identity is an explicit caller-supplied `key` (UTF-8 byte order as the contract-only final tie-break), not `{north_step,east_step}`, not a runtime UUID, and not a saved-location database ID the engine owns. Suitability overlay is an array of `{key, suitability}` because `[String: Any]` JSON object keys collapse canonically equivalent identities.
 
   - After longitude, production sort is not a portable total order (`sorted(by:)` is unstable; `LocationScore.id` is a host UUID). The contract adds `key` ascending **only** on the compare DTO. `LocationScore` / Best Nearby ranking is unchanged.
   - `scoring_mode` is a search-level Best Nearby property already reflected in `public_score`. It is not a compare input/output. `night_conditions_score` is required, echoed, and is **not** a ranking key; it is not inferred from `public_score`.
   - Astronomer Bot saved locations, selected/default location, persistence, geocoding, and aliases stay host-side. See [Astronomer Bot host location model](#astronomer-bot-host-location-model). No Bot store in this phase.
-  - Public CLI allow-list expands to include `location.compare` because `hosts` includes `cli`, there is no later 1.1 public-exposure gate, and catalog vs CLI would otherwise diverge. Remaining unimplemented IDs stay usage/exit 3.
+  - Public CLI allow-list expands to include `location.compare` because `hosts` includes `cli`; catalog and CLI must not diverge. Remaining unimplemented IDs stay usage/exit 3.
   - No `--suitability-json` flag: the overlay lives in the JSON envelope, like other injected inputs.
 
-### Phase 15 — targets.recommend + equipment.match 1.1
+### Phase 15 — targets.recommend + equipment.match (later unreleased first-1.0 work)
 
 - **Depends on:** Phase 12
-- **Notes:** Equality omits `explanation`. No live alt/az. Numeric calibration is already parked in `contracts/data/calibration/target-scoring.json` from Phase 1; this phase owns the procedure, fixtures, and ports.
+- **Notes:** Deterministic only: no live alt/az; target windows are precomputed/frozen. Target scores and order are exact integers; equipment `level`, `reason`, and `mode` are exact. Equality omits host `explanation` copy. Numeric calibration is already parked in `contracts/data/calibration/target-scoring.json` from Phase 1; this phase owns the calibration procedure, fixtures, and both ports. This remains unreleased work toward the first real 1.0.0 release.
 
-### Phase 16 — Live astronomy 1.1 with tolerances
+### Phase 16 — Live astronomy (later unreleased first-1.0 work, with tolerances)
 
 - **Depends on:** Phase 3, Phase 12
-- **Notes:** Polar fallback remains `hosts: [ios]`. Optional composed `agent.conditions` after this phase.
+- **Notes:** Implement `astronomy.sun_events`, `astronomy.moon_info`, and `astronomy.moon_series` using Swift SunCalc and Python Skyfield. Sun events compare at about ±60 seconds, moon altitude at about ±0.5°, and illumination at integer ±1. Live astronomy must never feed product-integer parity assertions. Polar approximate fallback remains `hosts: [ios]`. Planets and live target windows are deliberately not committed by this phase label: before implementation, perform a reality check against the intended production architecture, procedures, and fixtures; add neither by assumption. Optional composed `agent.conditions` remains subsequent Bot-host work, not engine math.
+
+### Remaining product integration work
+
+Numbered engine phases are not the whole product. After Phase 16, complete the following before the first actual Astro Engine 1.0.0 release and the single PR to `main`:
+
+- CLI/Bot-host composition: `agent.conditions`, `agent.batch_compare`, and the longer `agent.forecast_horizon` where needed;
+- Bot saved-location persistence, onboarding, selected/default-location handling, aliases, confirmation, geocoding, and one-off overrides at the host boundary;
+- production Grok Bot VM installation/deployment and real end-to-end Astronomer Bot integration;
+- final release-readiness validation; and
+- the first public Astro Engine 1.0.0 release, followed by the eventual single PR to `main`.
 
 ---
 
