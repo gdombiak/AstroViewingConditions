@@ -165,9 +165,11 @@ isolated wheel construction succeeded. No unresolved test/build failures remain.
 
 ## Repository state
 
-Branch remains `feature/astro-engine-cli`; HEAD remains
-`c8f994e8a7e471b5fd3973905b2e1564ad08989b`. The inherited slice and these corrections
-remain **uncommitted and unpushed**. No PR, commit, push, release or version bump
-was made. The temporary untracked wheel build directory was removed. New files
+The validated lunar slice was committed as
+`edc2b430588e0f4535ea29e8737e58085dd1ca4f` on
+`feature/astro-engine-cli`.
+
+No PR, release, or version bump was made as part of this slice. The temporary
+untracked wheel build directory used during validation was removed. New files
 outside the inherited list are the Python SunCalc port and license notices,
 test-only Skyfield reference/adversarial tests, and this review report.
