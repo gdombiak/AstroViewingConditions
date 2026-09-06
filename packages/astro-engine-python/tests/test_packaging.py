@@ -11,6 +11,7 @@ from astro_engine import (
     decode_iss,
     decode_weather,
     engine_semver,
+    compare_locations,
     generate_grid,
     load_deep_sky_catalog,
     public_night_score,
@@ -21,6 +22,7 @@ from astro_engine import (
 from astro_engine.contracts import contracts_root
 from astro_engine.catalog import CAPABILITY_ID as CATALOG_CAPABILITY_ID
 from astro_engine.grid import CAPABILITY_ID as GRID_CAPABILITY_ID
+from astro_engine.location_compare import CAPABILITY_ID as COMPARE_CAPABILITY_ID
 from astro_engine.iss import CAPABILITY_ID as ISS_CAPABILITY_ID
 from astro_engine.light_pollution import CAPABILITY_ID as LP_CAPABILITY_ID
 from astro_engine.observing_quality import CAPABILITY_ID
@@ -37,6 +39,7 @@ def test_public_imports() -> None:
     assert callable(decode_weather)
     assert callable(decode_iss)
     assert callable(generate_grid)
+    assert callable(compare_locations)
     assert callable(load_deep_sky_catalog)
     assert LightPollutionArtifact.from_bytes is not None
     assert engine_semver() == "1.0.0"
@@ -45,6 +48,7 @@ def test_public_imports() -> None:
     assert WEATHER_CAPABILITY_ID == "weather.decode"
     assert ISS_CAPABILITY_ID == "iss.decode"
     assert GRID_CAPABILITY_ID == "location.grid"
+    assert COMPARE_CAPABILITY_ID == "location.compare"
     assert CATALOG_CAPABILITY_ID == "catalog.deep_sky"
     module = importlib.import_module("astro_engine.cli")
     assert callable(module.main)
@@ -64,6 +68,7 @@ def test_public_imports() -> None:
         "weather.decode",
         "iss.decode",
         "location.grid",
+        "location.compare",
         "catalog.deep_sky",
     )
 
@@ -83,8 +88,10 @@ def test_catalog_current_release_matches_engine_version() -> None:
     since_lines = [
         line for line in catalog.splitlines() if line.startswith("    since: ")
     ]
-    assert since_lines == ['    since: "0.1.0"'] * 11
-    assert 'since: "1.0.0"' not in catalog
+    assert since_lines == (
+        ['    since: "0.1.0"'] * 10
+        + ['    since: "1.0.0"', '    since: "0.1.0"']
+    )
 
 
 def test_no_package_local_provider_fixture_copies() -> None:

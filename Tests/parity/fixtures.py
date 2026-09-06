@@ -24,6 +24,7 @@ DECODE_FIXTURE_DIRS = (
 
 DETERMINISTIC_FIXTURE_DIRS = (
     "fixtures/capabilities/location-grid",
+    "fixtures/capabilities/location-compare",
     "fixtures/capabilities/catalog-deep-sky",
 )
 

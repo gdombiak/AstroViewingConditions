@@ -1,0 +1,8 @@
+capability: location.compare
+engine_semver: ">=1.0.0 <2.0.0"
+equality: location_compare
+hosts: [swift, python]
+origin: manual
+notes: >
+  Higher public_score wins even when night_conditions_score would rank the
+  other way. Input order is the reverse of the expected ranking.

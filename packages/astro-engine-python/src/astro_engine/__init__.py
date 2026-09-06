@@ -2,14 +2,15 @@
 
 Public CLI 1.0 allow-list is the catalogued contract set in cli.py.
 Library surface includes scoring, LPATLAS1 lookup, weather/ISS decode,
-grid, and the curated catalog. Capability execution is shared with the
-CLI through `_capability.evaluate_capability`.
+grid, location comparison, and the curated catalog. Capability execution
+is shared with the CLI through `_capability.evaluate_capability`.
 """
 
 from astro_engine.catalog import load_deep_sky_catalog
 from astro_engine.contracts import engine_semver
 from astro_engine.fog import score_fog
 from astro_engine.grid import generate_grid
+from astro_engine.location_compare import compare_locations
 from astro_engine.iss import decode_iss
 from astro_engine.light_pollution import LightPollutionArtifact
 from astro_engine.night_conditions import analyze_night_conditions, public_night_score
@@ -24,6 +25,7 @@ __all__ = [
     "assess_observing_quality",
     "decode_iss",
     "decode_weather",
+    "compare_locations",
     "engine_semver",
     "generate_grid",
     "load_deep_sky_catalog",

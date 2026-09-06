@@ -97,6 +97,15 @@ def compare_value(
     if spec in _ABS_TOL:
         _assert_number(actual, expected, abs_tol=_ABS_TOL[spec], path=path)
         return
+    if spec == "ordered_ids":
+        assert isinstance(actual, list), f"{path}: expected ordered id array, got {type(actual)}"
+        assert isinstance(expected, list), f"{path}: expected ordered id array golden"
+        assert len(actual) == len(expected), (
+            f"{path}: array length {len(actual)} != {len(expected)}"
+        )
+        for index, (act_item, exp_item) in enumerate(zip(actual, expected, strict=True)):
+            assert act_item == exp_item, f"{path}.{index}: {act_item!r} != {exp_item!r}"
+        return
     if spec == "exact":
         if isinstance(expected, dict):
             assert isinstance(actual, dict), f"{path}: expected object"

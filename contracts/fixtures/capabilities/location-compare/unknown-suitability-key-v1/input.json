@@ -1,0 +1,21 @@
+{
+  "capability": "location.compare",
+  "injected": {
+    "candidates": [
+      {
+        "key": "here",
+        "public_score": 80,
+        "night_conditions_score": 80,
+        "avg_cloud_cover": 1,
+        "fog_score": 1,
+        "avg_wind_speed": 1,
+        "distance_miles": 1,
+        "latitude": 1,
+        "longitude": 1
+      }
+    ],
+    "suitability": [
+      {"key": "there", "suitability": "suitable"}
+    ]
+  }
+}

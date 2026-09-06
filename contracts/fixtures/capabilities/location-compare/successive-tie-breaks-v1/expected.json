@@ -1,0 +1,127 @@
+{
+  "capability": "location.compare",
+  "ok": true,
+  "result": {
+    "ranking": [
+      "score-high",
+      "cloud-low",
+      "fog-low",
+      "wind-low",
+      "land",
+      "near",
+      "south",
+      "west",
+      "east"
+    ],
+    "locations": [
+      {
+        "key": "score-high",
+        "public_score": 80,
+        "night_conditions_score": 80,
+        "avg_cloud_cover": 20,
+        "fog_score": 20,
+        "avg_wind_speed": 20,
+        "suitability": "unchecked",
+        "distance_miles": 20,
+        "latitude": 20,
+        "longitude": 20
+      },
+      {
+        "key": "cloud-low",
+        "public_score": 50,
+        "night_conditions_score": 50,
+        "avg_cloud_cover": 10,
+        "fog_score": 20,
+        "avg_wind_speed": 20,
+        "suitability": "unchecked",
+        "distance_miles": 20,
+        "latitude": 20,
+        "longitude": 20
+      },
+      {
+        "key": "fog-low",
+        "public_score": 50,
+        "night_conditions_score": 50,
+        "avg_cloud_cover": 20,
+        "fog_score": 10,
+        "avg_wind_speed": 20,
+        "suitability": "unchecked",
+        "distance_miles": 20,
+        "latitude": 20,
+        "longitude": 20
+      },
+      {
+        "key": "wind-low",
+        "public_score": 50,
+        "night_conditions_score": 50,
+        "avg_cloud_cover": 20,
+        "fog_score": 20,
+        "avg_wind_speed": 10,
+        "suitability": "unchecked",
+        "distance_miles": 20,
+        "latitude": 20,
+        "longitude": 20
+      },
+      {
+        "key": "land",
+        "public_score": 50,
+        "night_conditions_score": 50,
+        "avg_cloud_cover": 20,
+        "fog_score": 20,
+        "avg_wind_speed": 20,
+        "suitability": "suitable",
+        "distance_miles": 20,
+        "latitude": 20,
+        "longitude": 20
+      },
+      {
+        "key": "near",
+        "public_score": 50,
+        "night_conditions_score": 50,
+        "avg_cloud_cover": 20,
+        "fog_score": 20,
+        "avg_wind_speed": 20,
+        "suitability": "unchecked",
+        "distance_miles": 10,
+        "latitude": 20,
+        "longitude": 20
+      },
+      {
+        "key": "south",
+        "public_score": 50,
+        "night_conditions_score": 50,
+        "avg_cloud_cover": 20,
+        "fog_score": 20,
+        "avg_wind_speed": 20,
+        "suitability": "unchecked",
+        "distance_miles": 20,
+        "latitude": 10,
+        "longitude": 20
+      },
+      {
+        "key": "west",
+        "public_score": 50,
+        "night_conditions_score": 50,
+        "avg_cloud_cover": 20,
+        "fog_score": 20,
+        "avg_wind_speed": 20,
+        "suitability": "unchecked",
+        "distance_miles": 20,
+        "latitude": 20,
+        "longitude": 10
+      },
+      {
+        "key": "east",
+        "public_score": 50,
+        "night_conditions_score": 50,
+        "avg_cloud_cover": 20,
+        "fog_score": 20,
+        "avg_wind_speed": 20,
+        "suitability": "unchecked",
+        "distance_miles": 20,
+        "latitude": 20,
+        "longitude": 30
+      }
+    ]
+  }
+}

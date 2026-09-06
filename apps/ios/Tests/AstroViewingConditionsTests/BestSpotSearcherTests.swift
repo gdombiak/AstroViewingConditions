@@ -1,4 +1,5 @@
 import SharedCode
+import AstroEngine
 import XCTest
 import Foundation
 @testable import AstroViewingConditions
@@ -1033,6 +1034,14 @@ final class BestSpotSearcherTests: XCTestCase {
         let suitable = unknown.with(suitability: .suitable)
 
         XCTAssertTrue(BestSpotSearcher.isHigherRanked(suitable, than: unknown))
+        XCTAssertEqual(
+            BestSpotSearcher.isHigherRanked(suitable, than: unknown),
+            LocationCompare.isHigherRanked(suitable, than: unknown)
+        )
+        XCTAssertEqual(
+            BestSpotSearcher.isHigherRanked(unknown, than: suitable),
+            LocationCompare.isHigherRanked(unknown, than: suitable)
+        )
     }
 
     func testRecommendationsRemainDeterministicWhenBatchResultsReturnOutOfOrder() async throws {

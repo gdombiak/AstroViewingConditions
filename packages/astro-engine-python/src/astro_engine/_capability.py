@@ -17,6 +17,10 @@ from astro_engine.contracts import load_fixture_ref, resolve_fixture_ref
 from astro_engine.errors import AtlasInvalidError, ValidationError
 from astro_engine.fog import CAPABILITY_ID as FOG_ID, score_fog
 from astro_engine.grid import CAPABILITY_ID as GRID_ID, location_grid
+from astro_engine.location_compare import (
+    CAPABILITY_ID as COMPARE_ID,
+    compare_locations,
+)
 from astro_engine.iss import CAPABILITY_ID as ISS_ID, decode_iss
 from astro_engine.light_pollution import (
     CAPABILITY_ID as LP_ID,
@@ -46,7 +50,7 @@ SCORING_CAPABILITY_IDS = (
 
 DECODE_CAPABILITY_IDS = (WEATHER_ID, ISS_ID)
 
-DETERMINISTIC_CAPABILITY_IDS = (GRID_ID, CATALOG_ID)
+DETERMINISTIC_CAPABILITY_IDS = (GRID_ID, COMPARE_ID, CATALOG_ID)
 
 LOOKUP_CAPABILITY_IDS = (LP_ID,)
 
@@ -181,6 +185,8 @@ def evaluate_capability(
         return decode_iss(_injected(document))
     if capability == GRID_ID:
         return location_grid(_injected(document))
+    if capability == COMPARE_ID:
+        return compare_locations(_injected(document))
     if capability == CATALOG_ID:
         return catalog_deep_sky(_injected(document))
     if capability == LP_ID:

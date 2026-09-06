@@ -1,0 +1,11 @@
+capability: location.compare
+engine_semver: ">=1.0.0 <2.0.0"
+equality: location_compare
+hosts: [swift, python]
+origin: manual
+notes: >
+  All eight production ranking keys tie. Final order is lexicographic UTF-8
+  bytes of caller-supplied key, not locale collation and not Unicode canonical
+  equivalence. A-ring combining form (41 CC 8A) precedes ASCII ss and z;
+  precomposed Å (C3 85), ß (C3 9F), and ä (C3 A4) follow. Input array is not
+  that order.

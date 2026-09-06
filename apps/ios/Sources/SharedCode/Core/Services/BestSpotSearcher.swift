@@ -684,21 +684,9 @@ public final class BestSpotSearcher: BestSpotSearching {
         return max(2, dayOffset + 2)
     }
     
-    /// Converts NightQualityAssessment to a 0-100 score
-    /// Higher score = better viewing conditions
+    /// Production Best Nearby total order; implemented by AstroEngine.
     nonisolated public static func isHigherRanked(_ lhs: LocationScore, than rhs: LocationScore) -> Bool {
-        if lhs.score != rhs.score { return lhs.score > rhs.score }
-        if lhs.avgCloudCover != rhs.avgCloudCover { return lhs.avgCloudCover < rhs.avgCloudCover }
-        if lhs.fogScore.score != rhs.fogScore.score { return lhs.fogScore.score < rhs.fogScore.score }
-        if lhs.avgWindSpeed != rhs.avgWindSpeed { return lhs.avgWindSpeed < rhs.avgWindSpeed }
-        if lhs.suitability.verificationRank != rhs.suitability.verificationRank {
-            return lhs.suitability.verificationRank < rhs.suitability.verificationRank
-        }
-        if lhs.point.distanceMiles != rhs.point.distanceMiles { return lhs.point.distanceMiles < rhs.point.distanceMiles }
-        if lhs.point.coordinate.latitude != rhs.point.coordinate.latitude {
-            return lhs.point.coordinate.latitude < rhs.point.coordinate.latitude
-        }
-        return lhs.point.coordinate.longitude < rhs.point.coordinate.longitude
+        LocationCompare.isHigherRanked(lhs, than: rhs)
     }
 
     nonisolated public static func suitabilityCandidateCount(topN: Int) -> Int {

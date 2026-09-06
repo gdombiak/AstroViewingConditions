@@ -1,0 +1,8 @@
+capability: location.compare
+engine_semver: ">=1.0.0 <2.0.0"
+equality: engine_error
+hosts: [swift, python]
+origin: manual
+notes: >
+  night_conditions_score is required and is not inferred from public_score.
+  Those values are not equivalent when public_score is Observing Quality.

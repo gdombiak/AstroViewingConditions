@@ -13,6 +13,8 @@ On-disk fixtures are pretty-printed (2-space indent, trailing newline) for revie
 | Dates as ISO-8601 UTC `YYYY-MM-DDTHH:MM:SSZ` (integer seconds, always `Z`) | Swift `JSONEncoder` default is not ISO-8601 |
 | `null` vs omitted is distinct | OQ `light_pollution: null`; empty-night half-scores; omitted seeing/transparency |
 | Extra keys fail | Drift detection |
+| `location.compare` keys: lexicographic UTF-8 bytes | Cross-language total order; not locale collation and not Swift canonical equivalence |
+| `location.compare` suitability overlay is an array of `{key, suitability}` | JSON object keys are not portable: `[String: Any]` collapses canonically equivalent identities |
 
 Do **not** treat RFC 8785, UTF-16 key order, or “integers must encode without `.0`” as pass/fail rules.
 

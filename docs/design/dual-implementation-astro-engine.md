@@ -574,19 +574,20 @@ policies:
       points[].latitude: abs_1e4
       points[].longitude: abs_1e4
 
-  location_compare:   # 1.1
+  location_compare:
     fields:
-      scoring_mode: exact
       ranking: ordered_ids        # candidate keys, not UUID
+      locations[].key: exact
       locations[].public_score: exact
       locations[].night_conditions_score: exact
       locations[].avg_cloud_cover: abs_1e9
       locations[].fog_score: exact
       locations[].avg_wind_speed: abs_1e9
       locations[].suitability: exact
-      locations[].north_step: exact
-      locations[].east_step: exact
-      # omitted: id, summary
+      locations[].distance_miles: abs_1e9
+      locations[].latitude: abs_1e9
+      locations[].longitude: abs_1e9
+      # omitted: id, summary, scoring_mode, north_step, east_step
 ```
 
 Comparators: `exact` (JSON equal; numbers compared numerically so `72` equals `72.0`), `abs_1e12` / `abs_1e9` / `abs_1e4` (absolute), `null_or_object`, `null_or_abs_1e9` (`null` matches `null`; number uses abs 1e-9), `optional_abs_1e9` (both omit → pass; both numbers → abs 1e-9; omit vs number → fail; do not encode JSON `null` for these), `ordered_ids`. No relative/ULP in 1.0 unless a fixture overrides in `meta.yaml`.
@@ -1368,7 +1369,7 @@ Capability envelope (success):
 
 ---
 
-### location.compare total order (1.1)
+### location.compare total order
 
 Publish `BestSpotSearcher.isHigherRanked` as the in-contract order. Candidate A ranks higher than B if the first differing key wins:
 
@@ -1380,10 +1381,41 @@ Publish `BestSpotSearcher.isHigherRanked` as the in-contract order. Candidate A 
 6. `distance_miles` ascending  
 7. `latitude` ascending  
 8. `longitude` ascending  
+9. `key` ascending as **lexicographic UTF-8 bytes** (contract-only; production `LocationScore` has no stable portable identity after longitude). Not locale collation, not Unicode canonical equivalence, not a saved-location database ID.
 
-Suitability is an **optional injected overlay** in the fixture (`injected.suitability[{north_step,east_step}]`). If omitted, every candidate is `unchecked` (rank 2), so it does not change relative order. iOS production still uses CLGeocoder **outside** this capability. CLI `--suitability-json` is the same overlay. Equality omits `LocationScore.id` (`UUID()`) and English `summary`.
+`key` is a caller-supplied comparison identity used to associate injected suitability, name candidates in the ranking, and break remaining ties. It may identify an iOS saved location, a Bot saved location, a one-off place, a generated grid candidate, or any other temporary candidate. Astro Engine does not own saved-location persistence.
 
-Coherent mode unchanged: OQ for all iff every scorable candidate has valid brightness; else all Night Conditions.
+Suitability is an **optional injected overlay** as an array of `{key, suitability}` objects. JSON object maps are not used: Foundation `JSONSerialization` keeps byte-distinct keys in `NSDictionary`, but bridging to `[String: Any]` collapses Swift-canonically equivalent keys (`A\u{030A}` vs `\u{00C5}`) to one entry. String *values* in an array survive. If omitted, every candidate is `unchecked` (rank 2), so it does not change relative order. iOS production still uses CLGeocoder **outside** this capability. The JSON envelope carries the overlay; there is no separate CLI `--suitability-json` flag. Equality omits `LocationScore.id` (`UUID()`), English `summary`, and search-level `scoring_mode` (already baked into `public_score`). `night_conditions_score` is required on each candidate, echoed, and is **not** a ranking key; it must not be inferred from `public_score`.
+
+Coherent mode is a Best Nearby *search* property, not a compare input: OQ for all iff every scorable candidate has valid brightness; else all Night Conditions. `location.compare` ranks already-assigned public scores.
+
+### Astronomer Bot host location model
+
+Astro Engine does **not** own saved-location persistence. The Astronomer Bot **host** owns saved observing locations, the selected/default location, durable storage, geocoding/place lookup, user confirmation before saving a resolved place, interpreting aliases such as “Home”, and changing or temporarily overriding the selected location.
+
+Astro Engine owns calculations on supplied location facts: deterministic comparison/ranking, grid generation, provider decoding, and astronomy/scoring capabilities. `location.compare.key` is request identity, not a database primary key the engine assigns.
+
+**First use / onboarding (host):**
+
+1. Check the host persistent location store.
+2. If none exist, ask which observing locations the user normally uses.
+3. Resolve those places online to coordinates and timezone.
+4. Show the matched place/coordinates and ask for confirmation before saving.
+5. If exactly one saved location exists and none is selected, the host may select it automatically.
+6. If several exist and none is selected, ask which should be the default.
+
+**Later requests:** use the selected location unless the user names another. A one-off (“How is Bend tonight?”) uses that place for the request only. An explicit switch (“Use Bend from now on”) persists the selected location. The Bot cannot assume phone GPS; there is no implicit Bot-side “Current Location” unless the host later gains that capability.
+
+Persistence is expected to be a small host-owned durable file on the Bot VM (for example under `/workspace`). Do **not** implement that store, CRUD capabilities, onboarding, or geocoding in the engine.
+
+**UX examples:**
+
+| User | Host |
+|---|---|
+| “Save Stub Stewart.” | Resolve place → show matched place/coordinates → confirm → persist. |
+| “How is tonight?” | Use the selected location. |
+| “How is Bend tonight?” | Use Bend for this request only. |
+| “Use Bend from now on.” | Persist Bend as the selected/default location. |
 
 ---
 
@@ -1835,6 +1867,16 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 ### Phase 14 — location.compare 1.1 (injected suitability)
 
 - **Depends on:** Phase 12, Phase 9
+- **Implementation notes (2026-09-05):**
+  - **Partially Agree.** Production `BestSpotSearcher.isHigherRanked` matches the designed eight-key order. Suitability is injected, default `unchecked`, and CLGeocoder stays host-side.
+  - Roadmap `since: 1.1.0` / engine 1.1.0 is sequencing, not a release. Engine identity stays `1.0.0`. `location.compare` uses `since: "1.0.0"` because it is introduced now; existing 0.1.0-slice rows are not backdated. No 1.1.0 declaration.
+  - Candidate identity is an explicit caller-supplied `key` (UTF-8 byte order as the contract-only final tie-break), not `{north_step,east_step}`, not a runtime UUID, and not a saved-location database ID the engine owns. Suitability overlay is an array of `{key, suitability}` because `[String: Any]` JSON object keys collapse canonically equivalent identities.
+
+  - After longitude, production sort is not a portable total order (`sorted(by:)` is unstable; `LocationScore.id` is a host UUID). The contract adds `key` ascending **only** on the compare DTO. `LocationScore` / Best Nearby ranking is unchanged.
+  - `scoring_mode` is a search-level Best Nearby property already reflected in `public_score`. It is not a compare input/output. `night_conditions_score` is required, echoed, and is **not** a ranking key; it is not inferred from `public_score`.
+  - Astronomer Bot saved locations, selected/default location, persistence, geocoding, and aliases stay host-side. See [Astronomer Bot host location model](#astronomer-bot-host-location-model). No Bot store in this phase.
+  - Public CLI allow-list expands to include `location.compare` because `hosts` includes `cli`, there is no later 1.1 public-exposure gate, and catalog vs CLI would otherwise diverge. Remaining unimplemented IDs stay usage/exit 3.
+  - No `--suitability-json` flag: the overlay lives in the JSON envelope, like other injected inputs.
 
 ### Phase 15 — targets.recommend + equipment.match 1.1
 

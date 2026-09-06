@@ -22,6 +22,7 @@ Eval allow-list (not the public Python CLI):
   weather.decode
   iss.decode
   location.grid
+  location.compare
   catalog.deep_sky
 """
 
@@ -35,6 +36,7 @@ private let supportedCapabilities: Set<String> = [
     "weather.decode",
     "iss.decode",
     "location.grid",
+    "location.compare",
     "catalog.deep_sky",
 ]
 

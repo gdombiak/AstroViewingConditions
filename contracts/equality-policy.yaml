@@ -132,6 +132,25 @@ policies:
       points[].latitude: abs_1e4
       points[].longitude: abs_1e4
 
+  location_compare:
+    description: >
+      Ranked candidates using the production Best Nearby total order.
+      ranking is stable candidate keys, not UUIDs. Suitability is the four
+      ranking states. Distance/lat/lon are ordering inputs echoed from
+      the request. Omitted: LocationScore.id, English summary, scoring_mode.
+    fields:
+      ranking: ordered_ids
+      locations[].key: exact
+      locations[].public_score: exact
+      locations[].night_conditions_score: exact
+      locations[].avg_cloud_cover: abs_1e9
+      locations[].fog_score: exact
+      locations[].avg_wind_speed: abs_1e9
+      locations[].suitability: exact
+      locations[].distance_miles: abs_1e9
+      locations[].latitude: abs_1e9
+      locations[].longitude: abs_1e9
+
   catalog_deep_sky:
     description: Exact curated catalog entries in canonical file order
     fields:

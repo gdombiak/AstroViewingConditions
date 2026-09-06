@@ -29,6 +29,7 @@ from astro_engine.contracts import ContractsRootError, engine_semver
 from astro_engine.errors import ValidationError
 from astro_engine.fog import CAPABILITY_ID as FOG_ID
 from astro_engine.grid import CAPABILITY_ID as GRID_ID
+from astro_engine.location_compare import CAPABILITY_ID as COMPARE_ID
 from astro_engine.iss import CAPABILITY_ID as ISS_ID
 from astro_engine.jsonio import JSONCodecError, STDIN_LIMIT_BYTES, dump_json, load_json_bytes
 from astro_engine.light_pollution import CAPABILITY_ID as LP_ID
@@ -56,6 +57,7 @@ PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     WEATHER_ID,
     ISS_ID,
     GRID_ID,
+    COMPARE_ID,
     CATALOG_ID,
 )
 

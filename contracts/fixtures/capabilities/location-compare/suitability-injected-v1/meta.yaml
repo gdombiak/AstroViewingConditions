@@ -1,0 +1,11 @@
+capability: location.compare
+engine_semver: ">=1.0.0 <2.0.0"
+equality: location_compare
+hosts: [swift, python]
+origin: manual
+notes: >
+  Same candidates and input order as default-unchecked-v1. Overlay is keyed
+  by candidate key, not array index: water=suitable, maybe=unknown,
+  land=unsuitable; pending is omitted and stays unchecked. Ranking becomes
+  water, maybe, pending, land — the reverse of default key order for the
+  two extremes.

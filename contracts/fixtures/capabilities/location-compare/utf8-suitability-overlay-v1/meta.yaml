@@ -1,0 +1,11 @@
+capability: location.compare
+engine_semver: ">=1.0.0 <2.0.0"
+equality: location_compare
+hosts: [swift, python]
+origin: manual
+notes: >
+  Two candidates whose keys are UTF-8-distinct but Swift-canonically equivalent
+  (A + combining ring vs precomposed Angstrom). Overlay is an array of
+  {key, suitability} so JSON object-key bridging cannot collapse them.
+  Combining form is unsuitable, precomposed is suitable; ranking follows
+  suitability, not key order.

@@ -1,0 +1,10 @@
+capability: location.compare
+engine_semver: ">=1.0.0 <2.0.0"
+equality: location_compare
+hosts: [swift, python]
+origin: manual
+notes: >
+  Nine candidates, each successive pair tied on every earlier ranking key.
+  Order is public_score, cloud, fog, wind, injected suitability, distance,
+  latitude, longitude. Input array is reverse rank order so position cannot
+  explain the result. Overlay marks only "land" as suitable.

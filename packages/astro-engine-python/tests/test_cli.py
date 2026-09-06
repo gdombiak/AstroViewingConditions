@@ -49,11 +49,11 @@ REPRESENTATIVE_FIXTURES: tuple[tuple[str, str, str], ...] = (
     ("weather.decode", "fixtures/capabilities/weather-decode", "happy-path"),
     ("iss.decode", "fixtures/capabilities/iss-decode", "two-passes"),
     ("location.grid", "fixtures/capabilities/location-grid", "nyc-10-5-v1"),
+    ("location.compare", "fixtures/capabilities/location-compare", "public-score-wins-v1"),
     ("catalog.deep_sky", "fixtures/capabilities/catalog-deep-sky", "curated-v1"),
 )
 
 ONE_ONE_IDS = (
-    "location.compare",
     "targets.recommend",
     "equipment.match",
     "astronomy.sun_events",
@@ -114,7 +114,7 @@ def test_engine_version() -> None:
 
 def test_public_allow_list_matches_catalog_order() -> None:
     assert PUBLIC_CAPABILITY_IDS == tuple(item[0] for item in REPRESENTATIVE_FIXTURES)
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 11
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 12
 
 
 def test_every_public_capability_is_accepted() -> None:

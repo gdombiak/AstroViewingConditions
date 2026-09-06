@@ -1,0 +1,6 @@
+capability: location.compare
+engine_semver: ">=1.0.0 <2.0.0"
+equality: engine_error
+hosts: [swift, python]
+origin: manual
+notes: Overlay keys that do not match a candidate key fail rather than attaching by position.

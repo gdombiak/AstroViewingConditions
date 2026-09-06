@@ -1,0 +1,57 @@
+{
+  "capability": "location.compare",
+  "ok": true,
+  "result": {
+    "ranking": ["water", "maybe", "pending", "land"],
+    "locations": [
+      {
+        "key": "water",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "suitable",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      },
+      {
+        "key": "maybe",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "unknown",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      },
+      {
+        "key": "pending",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "unchecked",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      },
+      {
+        "key": "land",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "unsuitable",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      }
+    ]
+  }
+}

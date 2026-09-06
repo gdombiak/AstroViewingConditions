@@ -1,7 +1,7 @@
 # astro-engine (Python)
 
-Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the eleven
-catalogued 1.0 capabilities.
+Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the twelve
+catalogued capabilities.
 
 Calibration and fixtures are loaded from the repo `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). Do not copy scoring constants into this package.
 

@@ -29,6 +29,8 @@ enum CapabilityDispatch {
             return try issDecode(document)
         case "location.grid":
             return try locationGrid(document)
+        case "location.compare":
+            return try locationCompare(document)
         case "catalog.deep_sky":
             return try catalogDeepSky(document)
         default:
@@ -138,6 +140,14 @@ enum CapabilityDispatch {
                 ]
             }
         ]
+    }
+
+    private static func locationCompare(_ document: [String: Any]) throws -> [String: Any] {
+        do {
+            return try LocationCompare.evaluate(injected: try injected(document))
+        } catch let error as LocationCompareError {
+            throw EvalValidationError(code: "validation", message: error.message)
+        }
     }
 
     private static func catalogDeepSky(_ document: [String: Any]) throws -> [String: Any] {

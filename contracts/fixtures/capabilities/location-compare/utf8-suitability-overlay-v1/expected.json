@@ -1,0 +1,33 @@
+{
+  "capability": "location.compare",
+  "ok": true,
+  "result": {
+    "ranking": ["\u00c5", "A\u030a"],
+    "locations": [
+      {
+        "key": "\u00c5",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "suitable",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      },
+      {
+        "key": "A\u030a",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "unsuitable",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      }
+    ]
+  }
+}
