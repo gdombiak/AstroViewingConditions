@@ -137,6 +137,8 @@ final class TargetImageManifestTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
+            .deletingLastPathComponent() // apps
+            .deletingLastPathComponent() // repository root
         let notices = try String(contentsOf: repositoryRoot.appendingPathComponent("THIRD_PARTY_NOTICES.md"), encoding: .utf8)
 
         for id in ["m36", "m38", "ngc7293", "m51", "m64", "m77", "m81", "m82", "m16", "m20"] {
@@ -172,6 +174,8 @@ final class TargetImageManifestTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
+            .deletingLastPathComponent() // apps
+            .deletingLastPathComponent() // repository root
         let notices = try String(contentsOf: repositoryRoot.appendingPathComponent("THIRD_PARTY_NOTICES.md"), encoding: .utf8)
         XCTAssertTrue(notices.contains("`m30`"))
         XCTAssertTrue(notices.contains("NASA/ESA"))

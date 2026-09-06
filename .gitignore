@@ -77,24 +77,24 @@ playground.xcworkspace
 # Kilo
 .kilo/
 
-# Light-pollution validation harness (Tools/LightPollution)
-Tools/LightPollution/cache/
-Tools/LightPollution/output/
-Tools/LightPollution/.venv/
-Tools/LightPollution/**/__pycache__/
-Tools/LightPollution/**/*.pyc
-Tools/LightPollution/**/.pytest_cache/
-Tools/LightPollution/**/*.tiff
-Tools/LightPollution/**/*.tif
-Tools/LightPollution/**/*.npy
-Tools/LightPollution/**/*.npz
-Tools/LightPollution/**/*.f32
+# Light-pollution validation harness (tools/light-pollution)
+tools/light-pollution/cache/
+tools/light-pollution/output/
+tools/light-pollution/.venv/
+tools/light-pollution/**/__pycache__/
+tools/light-pollution/**/*.pyc
+tools/light-pollution/**/.pytest_cache/
+tools/light-pollution/**/*.tiff
+tools/light-pollution/**/*.tif
+tools/light-pollution/**/*.npy
+tools/light-pollution/**/*.npz
+tools/light-pollution/**/*.f32
 
 # Light-pollution generated binaries and local fixtures (large)
-Tools/LightPollution/output/artifacts/
-Tools/LightPollution/**/*.bin
+tools/light-pollution/output/artifacts/
+tools/light-pollution/**/*.bin
 # Tiny checked-in LPATLAS1 fixtures for cross-language tests
-!Tools/LightPollution/fixtures/
-!Tools/LightPollution/fixtures/**
-Tools/LightPollution/**/hierarchical_census_checkpoint/
-Tools/LightPollution/**/hierarchical_bench_ckpt/
+!tools/light-pollution/fixtures/
+!tools/light-pollution/fixtures/**
+tools/light-pollution/**/hierarchical_census_checkpoint/
+tools/light-pollution/**/hierarchical_bench_ckpt/

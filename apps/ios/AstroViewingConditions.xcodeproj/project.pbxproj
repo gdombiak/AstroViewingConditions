@@ -648,7 +648,7 @@
 		B28EFC4C0C327C246584AEE4 /* CuratedDeepSkyCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CuratedDeepSkyCatalogTests.swift; sourceTree = "<group>"; };
 		B3707FB5F528861A275D7EBE /* AsyncTimeout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncTimeout.swift; sourceTree = "<group>"; };
 		B38DE6F3A3448691E01F9871 /* ThreeNightOutlookPersistencePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeNightOutlookPersistencePolicy.swift; sourceTree = "<group>"; };
-		B51BBE8C6BAE30D60315E2F9 /* astro-engine-swift */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "astro-engine-swift"; path = "packages/astro-engine-swift"; sourceTree = SOURCE_ROOT; };
+		B51BBE8C6BAE30D60315E2F9 /* astro-engine-swift */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "astro-engine-swift"; path = "../../packages/astro-engine-swift"; sourceTree = SOURCE_ROOT; };
 		B581B80777CE9587A7AFA72D /* CornerComplicationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CornerComplicationView.swift; sourceTree = "<group>"; };
 		B5F2BD5B57D058A103B653FE /* WatchBackgroundRefreshScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBackgroundRefreshScheduler.swift; sourceTree = "<group>"; };
 		B6E84794DE7A6022BAE13C12 /* AstroEngineExports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstroEngineExports.swift; sourceTree = "<group>"; };
@@ -1248,7 +1248,7 @@
 			children = (
 				B51BBE8C6BAE30D60315E2F9 /* astro-engine-swift */,
 			);
-			path = Packages;
+			name = Packages;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1444,7 +1444,7 @@
 			mainGroup = B25B46BB9A13BE9670FCF19D;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				7FDBB0F9262B96BB6F6409EE /* XCLocalSwiftPackageReference "packages/astro-engine-swift" */,
+				6946260B2686D34C80D71D56 /* XCLocalSwiftPackageReference "../../packages/astro-engine-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9443180C2B6E5E1820B00E64 /* Products */;
@@ -1492,13 +1492,13 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/contracts/data/calibration/fog.json",
-				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/seeing.json",
-				"$(SRCROOT)/contracts/data/calibration/transparency.json",
-				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
-				"$(SRCROOT)/scripts/bundle-engine-data",
+				"$(REPO_ROOT)/contracts/data/calibration/fog.json",
+				"$(REPO_ROOT)/contracts/data/calibration/night-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
+				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
 			outputFileListPaths = (
@@ -1513,7 +1513,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			shellScript = "\"${REPO_ROOT}/scripts/bundle-engine-data\" --repo-root \"${REPO_ROOT}\" --host-only";
 			showEnvVarsInLog = 0;
 		};
 		3D85D62C214B3538FF138A9E /* Bundle Engine Calibration */ = {
@@ -1524,13 +1524,13 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/contracts/data/calibration/fog.json",
-				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/seeing.json",
-				"$(SRCROOT)/contracts/data/calibration/transparency.json",
-				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
-				"$(SRCROOT)/scripts/bundle-engine-data",
+				"$(REPO_ROOT)/contracts/data/calibration/fog.json",
+				"$(REPO_ROOT)/contracts/data/calibration/night-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
+				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
 			outputFileListPaths = (
@@ -1545,7 +1545,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			shellScript = "\"${REPO_ROOT}/scripts/bundle-engine-data\" --repo-root \"${REPO_ROOT}\" --host-only";
 			showEnvVarsInLog = 0;
 		};
 		442E2DF68CCFCA5BA7BB75F7 /* Bundle Engine Calibration */ = {
@@ -1556,13 +1556,13 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/contracts/data/calibration/fog.json",
-				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/seeing.json",
-				"$(SRCROOT)/contracts/data/calibration/transparency.json",
-				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
-				"$(SRCROOT)/scripts/bundle-engine-data",
+				"$(REPO_ROOT)/contracts/data/calibration/fog.json",
+				"$(REPO_ROOT)/contracts/data/calibration/night-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
+				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
 			outputFileListPaths = (
@@ -1577,7 +1577,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			shellScript = "\"${REPO_ROOT}/scripts/bundle-engine-data\" --repo-root \"${REPO_ROOT}\" --host-only";
 			showEnvVarsInLog = 0;
 		};
 		D433E4B44B4D90A901D87A03 /* Bundle Engine Calibration */ = {
@@ -1588,13 +1588,13 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/contracts/data/calibration/fog.json",
-				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/seeing.json",
-				"$(SRCROOT)/contracts/data/calibration/transparency.json",
-				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
-				"$(SRCROOT)/scripts/bundle-engine-data",
+				"$(REPO_ROOT)/contracts/data/calibration/fog.json",
+				"$(REPO_ROOT)/contracts/data/calibration/night-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
+				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
 			outputFileListPaths = (
@@ -1609,7 +1609,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			shellScript = "\"${REPO_ROOT}/scripts/bundle-engine-data\" --repo-root \"${REPO_ROOT}\" --host-only";
 			showEnvVarsInLog = 0;
 		};
 		D8874EB6F28199FB42247C97 /* Bundle Engine Calibration */ = {
@@ -1620,13 +1620,13 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/contracts/data/calibration/fog.json",
-				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/seeing.json",
-				"$(SRCROOT)/contracts/data/calibration/transparency.json",
-				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
-				"$(SRCROOT)/scripts/bundle-engine-data",
+				"$(REPO_ROOT)/contracts/data/calibration/fog.json",
+				"$(REPO_ROOT)/contracts/data/calibration/night-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
+				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
 			outputFileListPaths = (
@@ -1641,7 +1641,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			shellScript = "\"${REPO_ROOT}/scripts/bundle-engine-data\" --repo-root \"${REPO_ROOT}\" --host-only";
 			showEnvVarsInLog = 0;
 		};
 		EE56FF53B583EBB18DDDBD81 /* Bundle Engine Calibration */ = {
@@ -1652,13 +1652,13 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/contracts/data/calibration/fog.json",
-				"$(SRCROOT)/contracts/data/calibration/night-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/observing-quality.json",
-				"$(SRCROOT)/contracts/data/calibration/seeing.json",
-				"$(SRCROOT)/contracts/data/calibration/transparency.json",
-				"$(SRCROOT)/contracts/data/catalog/deep-sky.json",
-				"$(SRCROOT)/scripts/bundle-engine-data",
+				"$(REPO_ROOT)/contracts/data/calibration/fog.json",
+				"$(REPO_ROOT)/contracts/data/calibration/night-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/observing-quality.json",
+				"$(REPO_ROOT)/contracts/data/calibration/seeing.json",
+				"$(REPO_ROOT)/contracts/data/calibration/transparency.json",
+				"$(REPO_ROOT)/contracts/data/catalog/deep-sky.json",
+				"$(REPO_ROOT)/scripts/bundle-engine-data",
 			);
 			name = "Bundle Engine Calibration";
 			outputFileListPaths = (
@@ -1673,7 +1673,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/scripts/bundle-engine-data\" --host-only";
+			shellScript = "\"${REPO_ROOT}/scripts/bundle-engine-data\" --repo-root \"${REPO_ROOT}\" --host-only";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -2219,6 +2219,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REPO_ROOT = "$(SRCROOT)/../..";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -2488,6 +2489,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				REPO_ROOT = "$(SRCROOT)/../..";
 				SUPPORTS_MACCATALYST = NO;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -2615,9 +2617,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		7FDBB0F9262B96BB6F6409EE /* XCLocalSwiftPackageReference "packages/astro-engine-swift" */ = {
+		6946260B2686D34C80D71D56 /* XCLocalSwiftPackageReference "../../packages/astro-engine-swift" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "packages/astro-engine-swift";
+			relativePath = "../../packages/astro-engine-swift";
 		};
 /* End XCLocalSwiftPackageReference section */
 

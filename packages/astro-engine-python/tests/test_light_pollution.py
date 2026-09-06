@@ -44,7 +44,7 @@ def test_tiny_fixture_is_contract_owned() -> None:
 def test_phase5_tools_fixture_copies_remain_byte_identical() -> None:
     contract_bin = contract_tiny_bin().read_bytes()
     contract_json = contract_tiny_lookups().read_bytes()
-    tools = Path(__file__).resolve().parents[3] / "Tools" / "LightPollution" / "fixtures"
+    tools = Path(__file__).resolve().parents[3] / "tools" / "light-pollution" / "fixtures"
     assert contract_bin == (tools / "lpatlas1_tiny_constant.bin").read_bytes()
     assert contract_json == (tools / "lpatlas1_tiny_constant.lookups.json").read_bytes()
 

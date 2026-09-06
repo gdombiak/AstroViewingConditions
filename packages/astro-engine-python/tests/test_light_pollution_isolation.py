@@ -57,5 +57,5 @@ def test_runtime_import_subprocess_has_no_tooling_dependencies(tmp_path: Path) -
     assert payload["leaks"] == []
     assert payload["module"] == "astro_engine.light_pollution"
     assert payload["has_from_bytes"] is True
-    assert "Tools/LightPollution" not in payload["path"].replace("\\", "/")
+    assert "tools/light-pollution" not in payload["path"].replace("\\", "/")
     assert "astro_engine" in payload["path"]

@@ -11,7 +11,7 @@
             ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent
                title = "Bundle Engine Calibration"
-               scriptText = "&quot;${SRCROOT}/scripts/bundle-engine-data&quot;">
+               scriptText = "&quot;${REPO_ROOT}/scripts/bundle-engine-data&quot; --repo-root &quot;${REPO_ROOT}&quot;">
                <EnvironmentBuildable>
                   <BuildableReference
                      BuildableIdentifier = "primary"

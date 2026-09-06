@@ -136,7 +136,7 @@ Errors concentrate on **high/extreme local gradients** (3×3 source range), not 
 
 | Item | Value |
 |------|--------|
-| Bundled path | `Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin` |
+| Bundled path | `apps/ios/Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin` |
 | Target | Main iOS app only (not widget/watch) |
 | Bytes / SHA-256 | 10,328,230 / `b9c60e83…dce4` |
 | Runtime | `LightPollutionProviderBootstrap` (async once) → `ObservingQualityService` for app scoring and companion-state publication |
@@ -208,7 +208,7 @@ After the validation above is accepted and permission to bundle that specific at
    urban validation as applicable. Confirm the manifest identity independently with
    `wc -c` and `shasum -a 256`; reconcile any difference before adoption.
 3. **Replace the committed app resource** at
-   `Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin`.
+   `apps/ios/Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin`.
    A content-only atlas refresh that still uses LPATLAS1 v1 keeps the existing resource name and
    format version. An incompatible binary-layout change requires an explicit format/version,
    parser, filename, project, and compatibility review rather than silent replacement.
@@ -225,7 +225,7 @@ After the validation above is accepted and permission to bundle that specific at
      the new release's actual credit or permission terms require it. Preserve the permission and
      redistribution caveats; do not infer new rights from an earlier release.
 5. **Regenerate and audit the Xcode project** from the repository root with
-   `xcodegen generate --spec project.yml`. Replacing the same file under the existing
+   `(cd apps/ios && xcodegen generate)`. Replacing the same file under the existing
    main-app-only resource folder should require no membership expansion. Run the command
    twice to confirm stability, inspect the project diff, and verify the atlas has exactly one
    main iOS resources-phase membership and none in widget, watch, watch-widget/complication, or

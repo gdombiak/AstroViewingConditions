@@ -34,7 +34,7 @@ If `osgeo` fails on another interpreter (e.g. `/usr/bin/python3`), use Homebrew 
 ### Python environment
 
 ```bash
-cd Tools/LightPollution
+cd tools/light-pollution
 /opt/homebrew/bin/python3 -m venv --system-site-packages .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -55,7 +55,7 @@ Do **not** commit this file (~2.9 GB).
 ### Inspect
 
 ```bash
-cd Tools/LightPollution
+cd tools/light-pollution
 .venv/bin/python -m light_pollution inspect --source ~/Downloads/zenith_brightness_v22_2025.tiff
 # faster (skip SHA-256):
 .venv/bin/python -m light_pollution inspect --skip-sha256
@@ -212,7 +212,7 @@ The validated production artifact is **copied into the iOS app target** (not gen
 | Item | Value |
 |------|--------|
 | Source of truth (tooling) | `output/artifacts/light_pollution_global_v1.bin` (gitignored) |
-| Bundled app resource | `Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin` (**committed**) |
+| Bundled app resource | `apps/ios/Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin` (**committed**) |
 | Bytes | 10,328,230 |
 | SHA-256 | `b9c60e83d866f28e781dcc89a4ad302597012cdb9df6c94743efdd44be86dce4` |
 | Targets | Main iOS app only (not widget/watch in this phase) |
@@ -276,7 +276,7 @@ L = 10^{-0.4 m},\quad m = -2.5 \log_{10} L
 Synthetic only — **does not** need the 2.9 GB source:
 
 ```bash
-cd Tools/LightPollution
+cd tools/light-pollution
 .venv/bin/python -m pytest -q
 ```
 

@@ -263,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "serve-viewer":
-        # Serve Tools/LightPollution so viewer/ and output/ are both reachable
+        # Serve tools/light-pollution so viewer/ and output/ are both reachable
         root = str(ROOT)
         handler = http.server.SimpleHTTPRequestHandler
         # Python 3.7+ directory parameter

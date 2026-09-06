@@ -37,7 +37,7 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Open-Meteo API**: Weather forecasts and geocoding (free, no API key required)
 - **SunCalc Swift Package**: Astronomical calculations (sun/moon positions and phases)
 - **N2YO API**: Optional ISS pass predictions (free API key required)
-- **David Lorenz Light Pollution Atlas**: Offline modeled zenith sky brightness from the 2025 `zenith_brightness_v22_2025` product; see [Light Pollution tooling and attribution](Tools/LightPollution/README.md)
+- **David Lorenz Light Pollution Atlas**: Offline modeled zenith sky brightness from the 2025 `zenith_brightness_v22_2025` product; see [Light Pollution tooling and attribution](tools/light-pollution/README.md)
 
 Best Targets uses a curated local target catalog and verified local image assets with source and license metadata. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for bundled-image attribution.
 
@@ -64,7 +64,7 @@ Forecast dates and times are shown in the selected observing location's local ti
 
 2. Open in Xcode:
    ```bash
-   open AstroViewingConditions.xcodeproj
+   open apps/ios/AstroViewingConditions.xcodeproj
    ```
 
    Or use the provided script:
@@ -80,13 +80,13 @@ Forecast dates and times are shown in the selected observing location's local ti
 
 The app follows a SwiftUI + MVVM architecture with shared domain code:
 
-- **Sources/AstroViewingConditions/**: iOS app UI, dashboard, locations, settings, and iPhone-side WatchConnectivity
-- **Sources/SharedCode/**: Cross-platform models, services, storage, caching, formatters, unit conversion, and night-quality logic
-- **Sources/Widgets/**: iOS home screen widgets
-- **Sources/WatchApp/**: watchOS app UI and watch-side managers
-- **Sources/WatchWidget/**: watchOS complications
-- **Tests/AstroViewingConditionsTests/**: Unit tests for core behavior
-- **project.yml**: XcodeGen project configuration used to define app, widget, watch, shared framework, and test targets
+- **apps/ios/Sources/AstroViewingConditions/**: iOS app UI, dashboard, locations, settings, and iPhone-side WatchConnectivity
+- **apps/ios/Sources/SharedCode/**: Cross-platform models, services, storage, caching, formatters, unit conversion, and night-quality logic
+- **apps/ios/Sources/Widgets/**: iOS home screen widgets
+- **apps/ios/Sources/WatchApp/**: watchOS app UI and watch-side managers
+- **apps/ios/Sources/WatchWidget/**: watchOS complications
+- **apps/ios/Tests/AstroViewingConditionsTests/**: Unit tests for core behavior
+- **apps/ios/project.yml**: XcodeGen project configuration used to define app, widget, watch, shared framework, and test targets
 
 Persistent user data is stored with SwiftData and shared storage helpers. App group storage, cache storage, iCloud key-value storage, and WatchConnectivity support widget timelines and iPhone/Apple Watch sync.
 

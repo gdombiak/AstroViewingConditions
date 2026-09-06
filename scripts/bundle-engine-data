@@ -10,7 +10,7 @@
 # Default destination:
 #   <repo>/packages/astro-engine-swift/Sources/AstroEngine/Resources/data
 #
-# When invoked from an Xcode Run Script phase, SRCROOT is the repo root and
+# Xcode callers pass --repo-root explicitly (SRCROOT is apps/ios).
 # TARGET_BUILD_DIR / UNLOCALIZED_RESOURCES_FOLDER_PATH add a host-bundle copy.
 # --host-only skips the package default so per-target Xcode phases do not all
 # claim the same source-tree outputs.

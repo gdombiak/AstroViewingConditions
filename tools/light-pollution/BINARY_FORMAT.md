@@ -185,7 +185,7 @@ Legitimate geographic NoData / out-of-coverage remains a lookup-time `nil` / `No
 
 The production iOS app bundles a single copy of this artifact:
 
-- Path: `Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin`
+- Path: `apps/ios/Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin`
 - Loaded once per process via `LightPollutionProviderBootstrap` / `BundledLightPollutionResource`
 - Dashboard headline score uses `ObservingQualityService` + `ObservingQualityCalculator`
 - On load failure or out-of-coverage lookup: preserve the exact Night Conditions score; `lightPollution` is nil (never pristine)

@@ -8,6 +8,7 @@ options:
 
 settings:
   base:
+    REPO_ROOT: "$(SRCROOT)/../.."
     SWIFT_VERSION: "6.0"
     TARGETED_DEVICE_FAMILY: "1,2"
     SUPPORTS_MACCATALYST: NO
@@ -16,23 +17,23 @@ settings:
 
 packages:
   AstroEngine:
-    path: packages/astro-engine-swift
+    path: ../../packages/astro-engine-swift
 
 targetTemplates:
   BundleEngineCalibration:
     preBuildScripts:
       - name: Bundle Engine Calibration
-        script: '"${SRCROOT}/scripts/bundle-engine-data" --host-only'
+        script: '"${REPO_ROOT}/scripts/bundle-engine-data" --repo-root "${REPO_ROOT}" --host-only'
         basedOnDependencyAnalysis: true
         showEnvVars: false
         inputFiles:
-          - $(SRCROOT)/contracts/data/calibration/fog.json
-          - $(SRCROOT)/contracts/data/calibration/night-quality.json
-          - $(SRCROOT)/contracts/data/calibration/observing-quality.json
-          - $(SRCROOT)/contracts/data/calibration/seeing.json
-          - $(SRCROOT)/contracts/data/calibration/transparency.json
-          - $(SRCROOT)/contracts/data/catalog/deep-sky.json
-          - $(SRCROOT)/scripts/bundle-engine-data
+          - $(REPO_ROOT)/contracts/data/calibration/fog.json
+          - $(REPO_ROOT)/contracts/data/calibration/night-quality.json
+          - $(REPO_ROOT)/contracts/data/calibration/observing-quality.json
+          - $(REPO_ROOT)/contracts/data/calibration/seeing.json
+          - $(REPO_ROOT)/contracts/data/calibration/transparency.json
+          - $(REPO_ROOT)/contracts/data/catalog/deep-sky.json
+          - $(REPO_ROOT)/scripts/bundle-engine-data
         outputFiles:
           - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/fog.json
           - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/night-quality.json
@@ -194,7 +195,7 @@ schemes:
         AstroViewingConditions: all
       preActions:
         - name: Bundle Engine Calibration
-          script: '"${SRCROOT}/scripts/bundle-engine-data"'
+          script: '"${REPO_ROOT}/scripts/bundle-engine-data" --repo-root "${REPO_ROOT}"'
           settingsTarget: AstroViewingConditions
     run:
       config: Debug
@@ -204,7 +205,7 @@ schemes:
         - AstroViewingConditionsTests
       preActions:
         - name: Bundle Engine Calibration
-          script: '"${SRCROOT}/scripts/bundle-engine-data"'
+          script: '"${REPO_ROOT}/scripts/bundle-engine-data" --repo-root "${REPO_ROOT}"'
           settingsTarget: AstroViewingConditions
     profile:
       config: Release
@@ -218,7 +219,7 @@ schemes:
         AstroViewingConditionsWatch: all
       preActions:
         - name: Bundle Engine Calibration
-          script: '"${SRCROOT}/scripts/bundle-engine-data"'
+          script: '"${REPO_ROOT}/scripts/bundle-engine-data" --repo-root "${REPO_ROOT}"'
           settingsTarget: AstroViewingConditionsWatch
     run:
       config: Debug

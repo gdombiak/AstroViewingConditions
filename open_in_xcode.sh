@@ -3,11 +3,11 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")" && pwd)"
-project="$root/AstroViewingConditions.xcodeproj"
+project="$root/apps/ios/AstroViewingConditions.xcodeproj"
 
 if [[ ! -d "$project" ]]; then
   echo "error: Xcode project not found at $project" >&2
-  echo "Generate it with: xcodegen generate" >&2
+  echo "Generate it with: (cd \"$root/apps/ios\" && xcodegen generate)" >&2
   exit 1
 fi
 

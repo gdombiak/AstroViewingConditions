@@ -1,6 +1,6 @@
 # Light Pollution Tooling — Agent Rules
 
-Durable constraints for work under `Tools/LightPollution/`.
+Durable constraints for work under `tools/light-pollution/`.
 
 ## Never
 

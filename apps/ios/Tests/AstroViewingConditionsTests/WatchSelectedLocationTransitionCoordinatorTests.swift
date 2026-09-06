@@ -1245,7 +1245,7 @@ final class WatchSelectedLocationTransitionApplicationOrderTests: XCTestCase {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent() // Tests/...
             .deletingLastPathComponent() // Tests
-            .deletingLastPathComponent() // repo root
+            .deletingLastPathComponent() // Apple project root (apps/ios)
         let managerPath = root
             .appendingPathComponent("Sources/WatchApp/Services/WatchLocationManager.swift")
         let source = try! String(contentsOf: managerPath, encoding: .utf8)

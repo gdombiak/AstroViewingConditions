@@ -4,7 +4,7 @@ import Foundation
 
 /// Cross-checks against the contract-owned LPATLAS1 tiny fixture and enforces
 /// decoder safety on malformed artifacts. The preprocessing harness still owns
-/// copies under Tools/LightPollution/fixtures/.
+/// copies under tools/light-pollution/fixtures/.
 final class BinaryLightPollutionProviderTests: XCTestCase {
 
     private var fixtureURL: URL!
@@ -17,7 +17,7 @@ final class BinaryLightPollutionProviderTests: XCTestCase {
         globalArtifactURL = try ContractsRoot.resolve()
             .deletingLastPathComponent()
             .appendingPathComponent(
-                "Tools/LightPollution/output/artifacts/light_pollution_global_v1.bin"
+                "tools/light-pollution/output/artifacts/light_pollution_global_v1.bin"
             )
     }
 
@@ -92,7 +92,7 @@ final class BinaryLightPollutionProviderTests: XCTestCase {
     func testContractTinyAtlasBytesMatchToolsHarnessCopies() throws {
         let toolsFixtures = try ContractsRoot.resolve()
             .deletingLastPathComponent()
-            .appendingPathComponent("Tools/LightPollution/fixtures", isDirectory: true)
+            .appendingPathComponent("tools/light-pollution/fixtures", isDirectory: true)
         let toolsBin = toolsFixtures.appendingPathComponent("lpatlas1_tiny_constant.bin")
         let toolsLookups = toolsFixtures.appendingPathComponent("lpatlas1_tiny_constant.lookups.json")
 

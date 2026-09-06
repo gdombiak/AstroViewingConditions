@@ -10,7 +10,7 @@ on:
       - "contracts/**"
       - "Tests/parity/**"
       - "apps/cli/**"
-      - "Tools/LightPollution/fixtures/**"
+      - "tools/light-pollution/fixtures/**"
       - ".github/workflows/python.yml"
   pull_request:
     branches:
@@ -20,7 +20,7 @@ on:
       - "contracts/**"
       - "Tests/parity/**"
       - "apps/cli/**"
-      - "Tools/LightPollution/fixtures/**"
+      - "tools/light-pollution/fixtures/**"
       - ".github/workflows/python.yml"
   workflow_dispatch:
 

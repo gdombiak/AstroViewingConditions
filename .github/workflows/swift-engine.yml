@@ -9,7 +9,7 @@ on:
       - "packages/astro-engine-swift/**"
       - "contracts/**"
       - "scripts/bundle-engine-data"
-      - "Tools/LightPollution/fixtures/**"
+      - "tools/light-pollution/fixtures/**"
       - ".gitignore"
       - ".github/workflows/swift-engine.yml"
   pull_request:
@@ -19,7 +19,7 @@ on:
       - "packages/astro-engine-swift/**"
       - "contracts/**"
       - "scripts/bundle-engine-data"
-      - "Tools/LightPollution/fixtures/**"
+      - "tools/light-pollution/fixtures/**"
       - ".gitignore"
       - ".github/workflows/swift-engine.yml"
   workflow_dispatch:
