@@ -12,6 +12,19 @@ public enum WidgetThreeNightOutlookNightStatus: String, Codable, Sendable, Hasha
     case unavailable
 }
 
+public extension WidgetThreeNightOutlookNightStatus {
+    /// The engine status this cached row means. The widget model and the engine
+    /// keep separate types on purpose — one is a Codable cache DTO — but the
+    /// three semantic cases are the same three.
+    var composedStatus: NightOutlookNightStatus {
+        switch self {
+        case .available: return .available
+        case .noAstronomicalNight: return .noAstronomicalNight
+        case .unavailable: return .unavailable
+        }
+    }
+}
+
 public struct WidgetThreeNightOutlookNight: Identifiable, Codable, Sendable, Hashable {
     public let id: String
     public let displayLabel: String

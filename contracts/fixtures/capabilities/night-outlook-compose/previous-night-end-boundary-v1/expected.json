@@ -1,0 +1,40 @@
+{
+  "capability": "observing_night.compose_outlook",
+  "ok": true,
+  "result": {
+    "state": "resolved",
+    "time_zone": "America/Los_Angeles",
+    "nights": [
+      {
+        "slot_index": 0,
+        "day_offset": -1,
+        "day_index": 0,
+        "observing_date": "2026-07-25",
+        "observing_day_start": "2026-07-25T07:00:00Z",
+        "astronomical_night_start": "2026-07-26T05:18:00Z",
+        "astronomical_night_end": "2026-07-26T11:37:00Z",
+        "status": "available"
+      },
+      {
+        "slot_index": 1,
+        "day_offset": 0,
+        "day_index": 1,
+        "observing_date": "2026-07-26",
+        "observing_day_start": "2026-07-26T07:00:00Z",
+        "astronomical_night_start": "2026-07-27T05:18:00Z",
+        "astronomical_night_end": "2026-07-27T11:37:00Z",
+        "status": "available"
+      },
+      {
+        "slot_index": 2,
+        "day_offset": 1,
+        "day_index": 2,
+        "observing_date": "2026-07-27",
+        "observing_day_start": "2026-07-27T07:00:00Z",
+        "astronomical_night_start": "2026-07-28T05:18:00Z",
+        "astronomical_night_end": "2026-07-28T11:37:00Z",
+        "status": "available"
+      }
+    ]
+  }
+}

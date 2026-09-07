@@ -1,0 +1,11 @@
+{
+  "capability": "observing_night.select_best",
+  "injected": {
+    "nights": [
+      {
+        "status": "great",
+        "score": 50
+      }
+    ]
+  }
+}

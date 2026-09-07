@@ -1,0 +1,31 @@
+{
+  "capability": "observing_night.compose_outlook",
+  "injected": {
+    "reference_time": "2026-07-27T03:00:00Z",
+    "time_zone": "America/Los_Angeles",
+    "forecast_start_time": "2026-07-25T07:00:00Z",
+    "daily_sun_events": [
+      {
+        "astronomical_twilight_end": "2026-07-26T05:18:00Z",
+        "astronomical_twilight_begin": "2026-07-25T11:37:00Z"
+      },
+      {
+        "astronomical_twilight_end": "2026-07-27T05:18:00Z",
+        "astronomical_twilight_begin": "2026-07-26T11:37:00Z"
+      },
+      {
+        "astronomical_twilight_end": "2026-07-28T05:18:00Z",
+        "astronomical_twilight_begin": "2026-07-27T11:37:00Z"
+      },
+      {
+        "astronomical_twilight_end": "2026-07-29T05:18:00Z",
+        "astronomical_twilight_begin": "2026-07-28T11:37:00Z"
+      },
+      {
+        "astronomical_twilight_end": "2026-07-30T05:18:00Z",
+        "astronomical_twilight_begin": "2026-07-29T11:37:00Z"
+      }
+    ],
+    "daily_moon_count": 5
+  }
+}

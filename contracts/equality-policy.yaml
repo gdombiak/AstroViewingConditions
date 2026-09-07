@@ -424,3 +424,34 @@ policies:
       cloud_timing: exact
       code: exact
       message: exact
+
+  night_outlook:
+    description: >
+      Exact composed day identity, boundaries and discrete per-night status.
+      Every value is a discrete state, an integer index or a Foundation-derived
+      instant, so no tolerance applies anywhere. Labels, verdicts, tone, best
+      windows and scores are host presentation and are deliberately outside this
+      policy.
+    fields:
+      state: exact
+      time_zone: exact
+      nights: exact
+      nights[].slot_index: exact
+      nights[].day_offset: exact
+      nights[].day_index: exact
+      nights[].observing_date: exact
+      nights[].observing_day_start: exact
+      nights[].astronomical_night_start: exact
+      nights[].astronomical_night_end: exact
+      nights[].status: exact
+      code: exact
+      message: exact
+
+  night_outlook_best:
+    description: >
+      One index or null. The tie rule and the eligibility rule must never be
+      collapsed, and nothing here is a float, so no tolerance applies.
+    fields:
+      best_index: exact
+      code: exact
+      message: exact

@@ -66,17 +66,33 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         brightness: CrossSurfaceBrightnessInput = .loadFromAppGroup,
         baseURL: URL? = AppGroupStorage.containerURL
     ) -> WidgetThreeNightOutlookSummary? {
-        let calendar = LocationTimeZoneResolver.calendar(for: firstResolution.timeZone)
-        let referenceDay = calendar.startOfDay(for: referenceDate)
-        let firstOffset = calendar.dateComponents(
-            [.day], from: referenceDay, to: firstResolution.observingDate
-        ).day ?? 0
-        let resolutions = (0..<3).compactMap {
+        // Day composition and per-night availability are the engine's
+        // (`observing_night.compose_outlook`); this builder only assembles the
+        // display payload over them. The composer re-runs the active-night
+        // decision internally, which is exactly the one `firstResolution`
+        // already carries.
+        let outlook = NightOutlookComposer.compose(
+            referenceDate: referenceDate,
+            timeZone: firstResolution.timeZone,
+            forecastStartTime: conditions.hourlyForecasts.first?.time,
+            dailySunEvents: conditions.dailySunEvents.map(
+                ObservingNightSelector.DailySunEvents.init
+            ),
+            dailyMoonCount: conditions.dailyMoonInfo.count,
+            hourlyTimes: conditions.hourlyForecasts.map(\.time)
+        )
+        guard outlook.state == .resolved, outlook.nights.count == labels.count else {
+            return nil
+        }
+        let resolutions = outlook.nights.compactMap { night in
             TargetRecommendationContextBuilder.resolve(
-                conditions: conditions, dayOffset: firstOffset + $0,
+                conditions: conditions, dayOffset: night.dayOffset,
                 referenceDate: referenceDate, timeZone: firstResolution.timeZone
             )
         }
+        // The engine applies exactly the guards the builder applies to the same
+        // arrays, so a composed slot cannot fail to build. The defensive branch
+        // keeps the pre-migration "no context, no outlook" outcome.
         guard resolutions.count == labels.count else { return nil }
 
         // Authoritative context only — nil ⇒ night-only (exact night scores, no brightness).
@@ -94,6 +110,7 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         var nights = resolutions.enumerated().map { index, resolution in
             makeNight(
                 resolution,
+                composed: outlook.nights[index],
                 conditions: conditions,
                 label: labels[index],
                 isBest: false,
@@ -104,6 +121,7 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         if let bestIndex = bestNightIndex(in: nights) {
             nights[bestIndex] = makeNight(
                 resolutions[bestIndex],
+                composed: outlook.nights[bestIndex],
                 conditions: conditions,
                 label: labels[bestIndex],
                 isBest: true,
@@ -119,52 +137,46 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         )
     }
 
+    /// Delegates to ``AstroEngine/NightOutlookComposer/selectBestNight(_:)``
+    /// (`observing_night.select_best`): only an available row with a score is
+    /// eligible, the highest score wins, and a tie keeps the earliest row.
     public static func bestNightIndex(in nights: [WidgetThreeNightOutlookNight]) -> Int? {
-        let validIndices = nights.indices.filter {
-            nights[$0].status == .available && nights[$0].score != nil
-        }
-        guard let first = validIndices.first else { return nil }
-        return validIndices.dropFirst().reduce(first) { best, candidate in
-            guard let bestScore = nights[best].score,
-                  let candidateScore = nights[candidate].score else { return best }
-            return candidateScore > bestScore ? candidate : best
-        }
+        NightOutlookComposer.selectBestNight(nights.map {
+            NightOutlookComposer.BestNightCandidate(
+                status: $0.status.composedStatus, score: $0.score
+            )
+        })
     }
 
     /// Verifies that the raw hourly forecast stream continuously covers the
     /// full astronomical night. Hourly timestamps represent the start of their
     /// interval, so an interval may contain a non-hour-aligned boundary.
+    ///
+    /// The rule itself is the engine's
+    /// (`observing_night.compose_outlook`, contracts/procedures/night-outlook.md);
+    /// this entry point survives for callers that already hold a resolution.
     public static func hasCompleteHourlyCoverage(
         for resolution: TargetRecommendationContextResolution,
         conditions: ViewingConditions
     ) -> Bool {
-        let start = resolution.context.astronomicalNightStart
-        let end = resolution.context.astronomicalNightEnd
-        guard start < end else { return false }
-
-        let forecasts = conditions.hourlyForecasts.sorted { $0.time < $1.time }
-        guard let cadence = nominalHourlyCadence(in: forecasts) else { return false }
-        let relevant = forecasts.filter {
-            $0.time <= end && $0.time.addingTimeInterval(cadence) >= start
-        }
-        guard let first = relevant.first, let last = relevant.last,
-              first.time <= start,
-              last.time.addingTimeInterval(cadence) >= end else { return false }
-
-        return zip(relevant, relevant.dropFirst()).allSatisfy {
-            abs($1.time.timeIntervalSince($0.time) - cadence) <= cadenceTolerance
-        }
+        NightOutlookComposer.hasCompleteHourlyCoverage(
+            astronomicalNightStart: resolution.context.astronomicalNightStart,
+            astronomicalNightEnd: resolution.context.astronomicalNightEnd,
+            hourlyTimes: conditions.hourlyForecasts.map(\.time)
+        )
     }
 
     public static func makeUnavailableSummary(
         generatedAt: Date, location: CachedLocation, timeZone: TimeZone, referenceDate: Date
     ) -> WidgetThreeNightOutlookSummary {
-        let calendar = LocationTimeZoneResolver.calendar(for: timeZone)
-        let start = calendar.startOfDay(for: referenceDate)
-        let nights = labels.enumerated().compactMap { index, label -> WidgetThreeNightOutlookNight? in
-            guard let observingDate = calendar.date(byAdding: .day, value: index, to: start) else { return nil }
-            return WidgetThreeNightOutlookNight(
-                id: "\(index)", displayLabel: label, observingDate: observingDate,
+        // The fallback observing dates are the engine's day rule; the zone this
+        // branch resolved is the host's own precedence and stays here.
+        let nights = NightOutlookComposer.fallbackNights(
+            referenceDate: referenceDate, timeZone: timeZone
+        ).map { night in
+            WidgetThreeNightOutlookNight(
+                id: "\(night.slotIndex)", displayLabel: labels[night.slotIndex],
+                observingDate: night.observingDayStart,
                 score: nil, verdict: "Unavailable", scoreTone: nil,
                 astronomicalNightStart: nil, astronomicalNightEnd: nil, bestWindow: nil,
                 statusText: "Forecast unavailable", status: .unavailable, isBestNight: false
@@ -180,6 +192,7 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
 
     private static func makeNight(
         _ resolution: TargetRecommendationContextResolution,
+        composed: NightOutlookNight,
         conditions: ViewingConditions,
         label: String,
         isBest: Bool,
@@ -187,9 +200,9 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
         sample: ModeledZenithBrightnessSample?
     ) -> WidgetThreeNightOutlookNight {
         let assessment = resolution.context.nightQuality
-        let start = resolution.context.astronomicalNightStart
-        let end = resolution.context.astronomicalNightEnd
-        guard start < end else {
+        let start = composed.astronomicalNightStart ?? resolution.context.astronomicalNightStart
+        let end = composed.astronomicalNightEnd ?? resolution.context.astronomicalNightEnd
+        guard composed.status != .noAstronomicalNight else {
             return WidgetThreeNightOutlookNight(
                 id: String(resolution.observingDate.timeIntervalSinceReferenceDate),
                 displayLabel: label, observingDate: resolution.observingDate,
@@ -198,7 +211,7 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
                 statusText: "No astronomical night", status: .noAstronomicalNight, isBestNight: false
             )
         }
-        guard hasCompleteHourlyCoverage(for: resolution, conditions: conditions) else {
+        guard composed.status == .available else {
             return WidgetThreeNightOutlookNight(
                 id: String(resolution.observingDate.timeIntervalSinceReferenceDate),
                 displayLabel: label, observingDate: resolution.observingDate,
@@ -230,28 +243,14 @@ public enum ThreeNightOutlookWidgetPayloadBuilder {
             id: String(resolution.observingDate.timeIntervalSinceReferenceDate),
             displayLabel: label, observingDate: resolution.observingDate, score: oqScore,
             verdict: headlineVerdict, scoreTone: headlineTone,
-            astronomicalNightStart: resolution.context.astronomicalNightStart,
-            astronomicalNightEnd: resolution.context.astronomicalNightEnd,
+            astronomicalNightStart: start,
+            astronomicalNightEnd: end,
             bestWindow: assessment.bestWindow,
             statusText: assessment.bestWindow == nil ? "No best window available" : "Best window",
             status: .available, isBestNight: isBest,
             nightConditionsScore: nightScore,
             observingQualityScore: oqScore
         )
-    }
-
-    private static let expectedHourlyCadence: TimeInterval = 60 * 60
-    private static let cadenceTolerance: TimeInterval = 60
-
-    private static func nominalHourlyCadence(in forecasts: [HourlyForecast]) -> TimeInterval? {
-        let intervals = zip(forecasts, forecasts.dropFirst()).compactMap { first, second -> TimeInterval? in
-            let interval = second.time.timeIntervalSince(first.time)
-            return interval > 0 ? interval : nil
-        }.sorted()
-        guard !intervals.isEmpty else { return nil }
-        let cadence = intervals[intervals.count / 2]
-        guard abs(cadence - expectedHourlyCadence) <= cadenceTolerance else { return nil }
-        return cadence
     }
 
     private static func isValidActivePreviousPayload(

@@ -167,6 +167,20 @@ public enum ObservingNightContract {
         forecastStartTime: Date?,
         timeZone: TimeZone
     ) throws {
+        guard !hasSkippedCivilDate(
+            referenceDate: referenceDate,
+            forecastStartTime: forecastStartTime,
+            timeZone: timeZone
+        ) else { throw ObservingNightInputError() }
+    }
+
+    /// The same exclusion as a predicate, so a capability that composes over
+    /// this decision can reject the zone under its own error identity.
+    static func hasSkippedCivilDate(
+        referenceDate: Date,
+        forecastStartTime: Date?,
+        timeZone: TimeZone
+    ) -> Bool {
         let calendar = ObservingCalendar.gregorian(for: timeZone)
         var first = calendar.dateComponents(
             [.year, .month, .day], from: referenceDate
@@ -181,9 +195,10 @@ public enum ObservingNightContract {
         for offset in (-1)...dayWindowBound {
             guard let day = shift(first, byDays: offset),
                   civilDateExists(day, calendar: calendar) else {
-                throw ObservingNightInputError()
+                return true
             }
         }
+        return false
     }
 
     /// One past the day cap: the widest usable separation between the forecast

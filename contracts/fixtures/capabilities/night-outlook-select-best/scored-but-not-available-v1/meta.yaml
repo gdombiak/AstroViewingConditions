@@ -1,0 +1,6 @@
+capability: observing_night.select_best
+engine_semver: ">=1.0.0 <2.0.0"
+equality: night_outlook_best
+origin: manual
+hosts: [swift, python]
+notes: A score on a non-available row never participates.

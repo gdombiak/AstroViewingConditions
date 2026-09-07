@@ -213,6 +213,7 @@
 		90193B8E3F09E4A7492914D6 /* LocationScore+Color.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0543BE2D42118C5859C1CBD3 /* LocationScore+Color.swift */; };
 		915C2C58EA718CF3768A5058 /* TargetRecommendationContextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE294F3806AF2A57E0A71853 /* TargetRecommendationContextBuilder.swift */; };
 		92C96141CBAED0F9BA00DF8A /* WatchConditionsRefreshUIAtomicityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 002AD24D2BD4D70700CB6376 /* WatchConditionsRefreshUIAtomicityTests.swift */; };
+		93566BCAB41A640FEF891888 /* ThreeNightOutlookCompositionMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 610670F24E64F8163EF4BD54 /* ThreeNightOutlookCompositionMigrationTests.swift */; };
 		939005FFFC1C2ADC4EEB6E11 /* AstronomyServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F302F40B584E071A2408D6CC /* AstronomyServiceTests.swift */; };
 		93C478BAEB1DFD50E92D1F7F /* ObservingQualityServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF2424891C34525456FF94F /* ObservingQualityServiceTests.swift */; };
 		94759D9827B6D588C2B65BAC /* SavedLocationModeledBrightnessStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01CD3B22B3BC4F81F7E9826A /* SavedLocationModeledBrightnessStoreTests.swift */; };
@@ -584,6 +585,7 @@
 		5F5B209E8762DE5E3E9E08BE /* BundledLightPollutionResource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundledLightPollutionResource.swift; sourceTree = "<group>"; };
 		5F7284B9D6802BC2EF961977 /* WidgetTonightPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTonightPresentationTests.swift; sourceTree = "<group>"; };
 		5FF2424891C34525456FF94F /* ObservingQualityServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservingQualityServiceTests.swift; sourceTree = "<group>"; };
+		610670F24E64F8163EF4BD54 /* ThreeNightOutlookCompositionMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeNightOutlookCompositionMigrationTests.swift; sourceTree = "<group>"; };
 		642D48F4B17F6BF03C1D53C5 /* TargetIntentBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetIntentBadge.swift; sourceTree = "<group>"; };
 		64DA0E8491618A25A7692648 /* ThreeNightOutlookWidgetPayloadBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreeNightOutlookWidgetPayloadBuilder.swift; sourceTree = "<group>"; };
 		64F803294A626A887D3DAD9C /* DeepSkyCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepSkyCatalogService.swift; sourceTree = "<group>"; };
@@ -829,6 +831,7 @@
 				0C98DFCCD5F5A8AD064DF759 /* TargetIntentPresentationTests.swift */,
 				C9146F6A64DCAFC97F55675F /* TargetRecommendationScorerTests.swift */,
 				C392F180FD7F88294D080E3C /* TargetScoreColorProviderTests.swift */,
+				610670F24E64F8163EF4BD54 /* ThreeNightOutlookCompositionMigrationTests.swift */,
 				F31C5B412CF6A4B7681A599A /* UnitSystemTests.swift */,
 				E1B9C8B5B17ED18A6A87CE28 /* ViewingConditionsModelTests.swift */,
 				E579ACDDF9CAE46ADD2C368A /* WatchBackgroundRefreshPolicyTests.swift */,
@@ -1990,6 +1993,7 @@
 				09E7B294F1C8142946B793B6 /* TargetIntentPresentationTests.swift in Sources */,
 				F642A5696B5FB983D3222CC2 /* TargetRecommendationScorerTests.swift in Sources */,
 				48A4ACC2151FC683ECC3C4B6 /* TargetScoreColorProviderTests.swift in Sources */,
+				93566BCAB41A640FEF891888 /* ThreeNightOutlookCompositionMigrationTests.swift in Sources */,
 				30C8CC1D8A9F9F1328568774 /* ThreeNightOutlookEntry.swift in Sources */,
 				456B8E83D7C51D9650092E98 /* ThreeNightOutlookEntryResolver.swift in Sources */,
 				403E99C54DBB4B9DB1A0F47A /* TonightTargetsEntry.swift in Sources */,

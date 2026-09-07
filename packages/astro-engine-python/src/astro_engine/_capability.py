@@ -41,6 +41,12 @@ from astro_engine.cloud_timing import (
     CAPABILITY_ID as CLOUD_TIMING_ID,
     classify_cloud_timing,
 )
+from astro_engine.night_outlook import (
+    BEST_NIGHT_CAPABILITY_ID,
+    CAPABILITY_ID as NIGHT_OUTLOOK_ID,
+    compose_night_outlook,
+    select_best_outlook_night,
+)
 from astro_engine.planet_observation import CAPABILITY_ID as PLANET_OBSERVATION_ID
 from astro_engine.planet_recommendation import (
     CAPABILITY_ID as PLANET_RECOMMENDATION_ID,
@@ -235,6 +241,10 @@ def evaluate_capability(
         return derive_night_forecast_window(_injected(document))
     if capability == CLOUD_TIMING_ID:
         return classify_cloud_timing(_injected(document))
+    if capability == NIGHT_OUTLOOK_ID:
+        return compose_night_outlook(_injected(document))
+    if capability == BEST_NIGHT_CAPABILITY_ID:
+        return select_best_outlook_night(_injected(document))
     if capability == OQ_ID:
         injected = _injected(document)
         if "night_conditions_score" not in injected:

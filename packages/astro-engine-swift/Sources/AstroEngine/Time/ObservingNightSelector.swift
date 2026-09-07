@@ -139,6 +139,28 @@ public enum ObservingNightSelector {
 
     // MARK: - Day resolution
 
+    /// Resolves one observing night at an explicit day offset, under exactly
+    /// the guards ``select(referenceDate:timeZone:forecastStartTime:dailySunEvents:dailyMoonCount:)``
+    /// applies. Composition capabilities that need consecutive nights reuse this
+    /// rather than re-deriving day indexing or the twilight pairing.
+    public static func night(
+        dayOffset: Int,
+        referenceDate: Date,
+        timeZone: TimeZone,
+        forecastStartTime: Date?,
+        dailySunEvents: [DailySunEvents],
+        dailyMoonCount: Int
+    ) -> ObservingNight? {
+        night(
+            dayOffset: dayOffset,
+            calendar: ObservingCalendar.gregorian(for: timeZone),
+            referenceDate: referenceDate,
+            forecastStartTime: forecastStartTime,
+            dailySunEvents: dailySunEvents,
+            dailyMoonCount: dailyMoonCount
+        )
+    }
+
     private static func night(
         dayOffset: Int,
         calendar: Calendar,
@@ -186,7 +208,7 @@ public enum ObservingNightSelector {
         )
     }
 
-    private static func localDate(_ date: Date, calendar: Calendar) -> String {
+    static func localDate(_ date: Date, calendar: Calendar) -> String {
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
         return String(
             format: "%04d-%02d-%02d",

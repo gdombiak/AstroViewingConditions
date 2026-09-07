@@ -356,3 +356,36 @@ capabilities:
       advice production builds from the verdict, the rest of the night
       assessment, trend, rating and forecast acquisition are all excluded. See
       contracts/procedures/cloud-timing.md.
+
+  - id: observing_night.compose_outlook
+    hosts: [ios, cli]
+    equality: night_outlook
+    since: "1.0.0"
+    requires_injected: [reference_time, time_zone, forecast_start_time, daily_sun_events, daily_moon_count, hourly_times]
+    summary: >
+      Compose the three consecutive observing nights an outlook shows and
+      classify each one's semantic availability. Slot 0 is the active observing
+      night from observing_night.resolve_active, reused rather than
+      reimplemented, and slots 1 and 2 are the next two local civil days. A
+      night is no_astronomical_night when its window is empty or inverted,
+      unavailable when the hourly stream does not continuously cover that
+      window, and otherwise available. Composition is all-or-nothing: when the
+      active night cannot resolve or any slot falls outside the daily arrays,
+      the state is unavailable (or requires_active_previous_payload) and the
+      three rows carry only the local reference day and the two days after it.
+      Only hourly timestamps are transported. No scores, no best window, no
+      labels, verdicts or tone, and no cache, persistence or timeline policy.
+      See contracts/procedures/night-outlook.md.
+
+  - id: observing_night.select_best
+    hosts: [ios, cli]
+    equality: night_outlook_best
+    since: "1.0.0"
+    requires_injected: [nights]
+    summary: >
+      Choose an outlook's best night from already-composed statuses and the
+      host's headline score for each row. Only an available row that carries a
+      score is eligible; the highest score wins and a tie keeps the earliest
+      eligible row. No eligible row means no best night. Caller order is
+      semantics and is never sorted; scoring, statuses and presentation are the
+      caller's. See contracts/procedures/night-outlook.md.

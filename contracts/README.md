@@ -14,12 +14,13 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `targets.moon_recommendation`, `astronomy.planet_observation`,
 `targets.planet_recommendation`, `targets.compose_recommendations`,
 `targets.filter_recommendations_by_equipment`, and
-`observing_night.resolve_active`, `night_forecast.derive_window`, and `night_conditions.classify_cloud_timing`. Composed agent hosts remain
+`observing_night.resolve_active`, `night_forecast.derive_window`, `night_conditions.classify_cloud_timing`,
+`observing_night.compose_outlook`, and `observing_night.select_best`. Composed agent hosts remain
 later integration work. Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those thirty-two IDs. Capability
+The public Python CLI allow-lists exactly those thirty-four IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
 rows keep `since: "0.1.0"`; `location.compare`, `targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
 they are introduced under the unreleased 1.0.0 identity. Do not invent a second
@@ -120,5 +121,21 @@ then earliest. The verdict is `none`, `early_heavy`, `late_heavy` or
 `intermittent_heavy`. Caller order is semantics and rows are never sorted. The
 English advice production builds from the verdict stays host presentation and is
 deliberately outside the equality policy. See the
-[cloud-timing procedure](procedures/cloud-timing.md). Public capability count is
-32; version remains unreleased 1.0.0.
+[cloud-timing procedure](procedures/cloud-timing.md). That slice took the public
+capability count to 32; version remained unreleased 1.0.0.
+
+Three-night outlook composition: `observing_night.compose_outlook` composes the
+three consecutive observing nights an outlook shows — the active observing night
+from `observing_night.resolve_active`, reused rather than reimplemented, plus the
+next two local civil days — and classifies each as `available`,
+`no_astronomical_night` (an empty or inverted window) or `unavailable` (a valid
+window the hourly stream does not continuously cover). Composition is
+all-or-nothing: when the active night cannot resolve or any slot leaves the daily
+arrays, the three rows degrade to the local reference day and the two days after
+it. `observing_night.select_best` then picks the best night from already-composed
+statuses and the host's headline score: only an available row with a score is
+eligible, the highest score wins, and a tie keeps the earliest eligible row.
+Labels, verdicts, status text, tone, best windows, the scores themselves and
+every cache, persistence, freshness and timeline concern stay host-owned. See the
+[night-outlook procedure](procedures/night-outlook.md). Public capability count is
+34; version remains unreleased 1.0.0.

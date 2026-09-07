@@ -226,6 +226,25 @@ def _night(
     )
 
 
+def night(
+    day_offset: int,
+    reference_time: datetime,
+    zone: ZoneInfo,
+    forecast_start_time: datetime | None,
+    daily_sun_events: Sequence[DailySunEvents],
+    daily_moon_count: int,
+) -> ObservingNight | None:
+    """One observing night at an explicit day offset, under the same guards.
+
+    Composition capabilities that need consecutive nights reuse this rather than
+    re-deriving day indexing or the twilight pairing.
+    """
+    return _night(
+        day_offset, reference_time, zone, forecast_start_time,
+        daily_sun_events, daily_moon_count,
+    )
+
+
 def select(
     reference_time: datetime,
     zone: ZoneInfo,
@@ -304,7 +323,16 @@ def _require_no_skipped_civil_date(
     forecast_start_time: datetime | None,
     zone: ZoneInfo,
 ) -> None:
-    """Reject zones that dropped an entire civil date inside the usable window.
+    if has_skipped_civil_date(reference_time, forecast_start_time, zone):
+        raise _invalid()
+
+
+def has_skipped_civil_date(
+    reference_time: datetime,
+    forecast_start_time: datetime | None,
+    zone: ZoneInfo,
+) -> bool:
+    """Whether a zone dropped an entire civil date inside the usable window.
 
     A line crossing (`Pacific/Apia` and `Pacific/Fakaofo` dropped 2011-12-30) is
     the one case where Foundation's day arithmetic is not reproducible here, so
@@ -323,7 +351,8 @@ def _require_no_skipped_civil_date(
     # One day back covers the dayOffset -1 probe, then the bounded window.
     for offset in range(-1, DAY_DIFFERENCE_BOUND + 1):
         if not _date_exists(first + timedelta(days=offset), zone):
-            raise _invalid()
+            return True
+    return False
 
 
 def _day_rows(value: Any) -> list[DailySunEvents]:

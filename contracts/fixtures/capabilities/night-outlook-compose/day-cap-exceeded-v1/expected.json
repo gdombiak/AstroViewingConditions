@@ -1,0 +1,8 @@
+{
+  "capability": "observing_night.compose_outlook",
+  "ok": false,
+  "error": {
+    "code": "sample_cap",
+    "message": "observing_night.compose_outlook exceeds the 1.0 day cap (16 days)"
+  }
+}

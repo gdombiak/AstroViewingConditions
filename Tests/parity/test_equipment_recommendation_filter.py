@@ -45,7 +45,7 @@ def test_catalog_fixture_and_equality_contract():
         if line.startswith("  - id: ")
     ]
     assert tuple(catalog_ids) == PUBLIC_CAPABILITY_IDS
-    assert catalog_ids[-4] == CAPABILITY
+    assert catalog_ids[-6] == CAPABILITY
     block = catalog.split(f"  - id: {CAPABILITY}\n", 1)[1]
     assert 'since: "1.0.0"' in block
     assert "hosts: [ios, cli]" in block

@@ -2,6 +2,31 @@
 
 ## 1.0.0
 
+- Three-night outlook slice (unreleased): add `observing_night.compose_outlook`
+  and `observing_night.select_best`, the deterministic core of the production
+  Three-Night Outlook. `compose_outlook` composes the active observing night
+  (reusing `observing_night.resolve_active`) plus the next two local civil days,
+  reports each slot's day offset/index, local date, observing-day start and both
+  astronomical-night boundaries, and classifies each night `available`,
+  `no_astronomical_night` (empty or inverted window) or `unavailable` (the hourly
+  stream does not continuously cover the window — median hourly cadence within
+  60 s, covering rows straddling both boundaries, no broken step). Composition is
+  all-or-nothing and degrades to the local reference day and the two days after
+  it; `requires_active_previous_payload` stays a distinct state.
+  `select_best` reduces already-composed statuses plus the host's headline score
+  to one index or null: available-with-a-score only, highest wins, ties keep the
+  earliest. Two capabilities rather than one because composition must precede
+  scoring and selection must follow it. Production Swift now delegates both under
+  an independent migration-equivalence oracle — 3 780 composed payloads across
+  three zones, 3 375 exhaustive best-night combinations and 72 coverage shapes —
+  with widget output unchanged. **Labels, verdict and status prose, score tone,
+  best windows, the scores themselves, the widget cache DTO, persistence,
+  freshness and timeline scheduling are explicitly not parity-governed**, and
+  authoritative IANA timezone acquisition remains host-shaped. Strict transport,
+  44 manual fixtures and exact Swift/Python equality take the public catalog to
+  34 IDs. The version remains unreleased `1.0.0`; no existing capability or
+  user-visible behavior changes. See [night outlook](procedures/night-outlook.md).
+
 - Semantic cloud-timing slice (unreleased): add
   `night_conditions.classify_cloud_timing`, the exact production classification
   of *when* sustained heavy cloud interrupts an observing night. A run is two or
@@ -17,7 +42,7 @@
   migration-equivalence oracle over 203 974 nights; `CloudTiming.summaryText`
   stays a Swift presentation mapping and every existing iOS summary string is
   unchanged. **English advice is explicitly not parity-governed.** Strict
-  transport, 35 manual fixtures and exact Swift/Python equality take the public
+  transport, 35 manual fixtures and exact Swift/Python equality took the public
   catalog to 32 IDs. The version remains unreleased `1.0.0`; no existing
   capability or user-visible behavior changes. See
   [cloud timing](procedures/cloud-timing.md).

@@ -417,6 +417,8 @@ flowchart LR
 | `observing_window.select` | `ObservingWindowSelector.select`, used by `NightQualityAnalyzer` | Exact nullable endpoint pair over already-included scored rows; see [procedure](../../contracts/procedures/observing-window.md). |
 | `observing_night.resolve_active` | `ObservingNightSelector.select`, used by `ActiveObservingNightResolver` | Exact discrete state, day offset/index, local observing date, observing-day start and both astronomical-night boundaries. Preceding civil date first; all three comparisons inclusive; day indexing, empty-hourly and missing-following-row quirks frozen. Host keeps timezone acquisition; see [procedure](../../contracts/procedures/observing-night.md). |
 | `night_forecast.derive_window` | `NightForecastWindowDeriver.derive`, used by `NightQualityAnalyzer` and the source-compatible `NightForecastFilter` adapter | Exact timezone identity and projected `[start,end)` forecast-window boundaries. Twilight date/seconds are discarded; Foundation DST ambiguity/gap behavior and missing-tomorrow fallback are frozen. Host keeps timezone/Sun acquisition and forecast composition; see [procedure](../../contracts/procedures/night-forecast-window.md). |
+| `observing_night.compose_outlook` | `NightOutlookComposer.compose`, used by `ThreeNightOutlookWidgetPayloadBuilder` | Exact three-slot day composition over `observing_night.resolve_active`: slot/day offset and index, local observing date, observing-day start, both astronomical-night boundaries and the per-night `available` / `no_astronomical_night` / `unavailable` status. All-or-nothing composition and the fallback reference-day rows are frozen. Hourly rows are transported as timestamps only. Labels, verdicts, tone, best windows, scores and every cache/persistence concern stay host-owned; see [procedure](../../contracts/procedures/night-outlook.md). |
+| `observing_night.select_best` | `NightOutlookComposer.selectBestNight`, used by `ThreeNightOutlookWidgetPayloadBuilder.bestNightIndex` | Exact best-night index or null over already-composed statuses and the host's headline score. Only an available row with a score is eligible; highest score wins and a tie keeps the earliest eligible row; caller order is never sorted. |
 | `astronomy.horizontal_position` | `HorizontalCoordinates.position`, previously inline in `DeepSkyTargetPositionProvider` | Closed-form geometric equatorial→horizontal at one instant. Deterministic despite the `astronomy.` namespace: no ephemeris provider, no refraction, no precession/proper motion, UT1 taken as UTC. Altitude/azimuth abs 1e-9 deg; see [procedure](../../contracts/procedures/deep-sky-observation.md). |
 | `targets.deep_sky_windows` | `DeepSkyObservation.observe`, used by `DeepSkyTargetPositionProvider` | Deep-sky visible-run windows over an explicit UTC interval: inclusive `>=` threshold, interpolated interior crossings, per-run earliest-wins best sample, interval-end reporting quirk. Timestamps exact after flooring to whole seconds; the typed API keeps full precision for the iOS caller. |
 | `observing_quality.assess` | `ObservingQualityCalculator.assess` | Integer `score` exact. Anchor penalties abs 1e-12. Interpolated penalties abs 1e-9 (matches `ObservingQualityCalculatorTests` home/stub). |
@@ -471,6 +473,7 @@ Grok should not reimplement astronomical-night calculations, active-night/date s
 | Planet recommendation | `targets.planet_recommendation` | Unreleased 1.0 | Implemented in the planet slice: visibility window, best time, integer score and objective reasons, including Venus twilight. |
 | Which night is "tonight" | `observing_night.resolve_active` | Unreleased 1.0 | Implemented in the observing-night slice: active-night state, day identity and astronomical-night boundaries across local midnight. The host still supplies the authoritative IANA timezone. |
 | Nighttime forecast window | `night_forecast.derive_window` | Unreleased 1.0 | Implemented in the forecast-window slice: projects twilight clock components onto the observing local day and following calendar day with production Foundation DST semantics. The host supplies the zone, observing day and Sun facts. |
+| Three-night outlook day composition | `observing_night.compose_outlook`, `observing_night.select_best` | Unreleased 1.0 | Implemented in the outlook slice: the three observing dates, their boundaries, per-night semantic availability and deterministic best-night selection. Widget labels, verdicts, tone, persistence, freshness and timeline scheduling are not portable and remain host work. |
 
 Do not add English summaries to parity. Do not invent phase emoji or presentation copy. Do not pull precipitation into Phase 8 or the 1.0 `weather.decode` fixtures merely to close this gap.
 
@@ -490,7 +493,7 @@ operations are **host** concerns: they belong in `packages/astro-host-python` an
 must **not** be added to `PUBLIC_CAPABILITY_IDS`.
 
 **Current catalog state (verified 2026-09-07).** `contracts/capabilities.yaml`
-contains **no** `agent.*` rows and **no** `equality: n/a` rows. All 32 catalogued
+contains **no** `agent.*` rows and **no** `equality: n/a` rows. All 34 catalogued
 capabilities are `hosts: [ios, cli]` with a real equality class. The `agent.*`,
 `ui.field_mode` and `hosts: [ios]` rows shown in
 [§ 9](#9-feature-parity-without-forcing-ui-or-agent-features) are part of that
@@ -1266,7 +1269,7 @@ F1 established the `0.1.0` OQ-only identity. Phase 12 set the repository's unrel
 Parity is `contracts/capabilities.yaml`.
 
 **The YAML below is an illustrative / proposed shape, not the current file.**
-Verified 2026-09-07: the real catalog holds **32** rows, **all** `hosts: [ios, cli]`,
+Verified 2026-09-07: the real catalog holds **34** rows, **all** `hosts: [ios, cli]`,
 **all** with a real equality class — no `agent.*` rows, no `equality: n/a` rows,
 no `hosts: [ios]`-only or `hosts: [cli]`-only rows. The single-host and `agent.*`
 rows here illustrate how such rows *would* be expressed if they were ever
@@ -1397,7 +1400,7 @@ the host half.
 |---|---|
 | `packages/` holds `astro-engine-swift` and `astro-engine-python` | `packages/` means "importable library", not "delivery surface" |
 | `apps/` holds `ios` and `cli`; `apps/cli/astro-engine` is a small launcher that resolves an import path and calls `astro_engine.cli:main` | `apps/` means "delivery surface"; the CLI is already thin |
-| `contracts/capabilities.yaml` — 32 rows, **every one** `hosts: [ios, cli]` with a real equality class | The catalog is today exclusively the dual-host parity surface. Its `hosts:` key models the host axis, but nothing host-only has ever been catalogued, so host operations have no place in it as it stands |
+| `contracts/capabilities.yaml` — 34 rows, **every one** `hosts: [ios, cli]` with a real equality class | The catalog is today exclusively the dual-host parity surface. Its `hosts:` key models the host axis, but nothing host-only has ever been catalogued, so host operations have no place in it as it stands |
 | `CODEOWNERS` guards only `/contracts/` | Governance follows the contract, not the directory |
 | `.github/workflows/python.yml` path-filters `packages/astro-engine-python/**`, `contracts/**`, `Tests/parity/**`, `apps/cli/**` | Path filters already encode which trees are parity-relevant |
 | The design's own "Swift/iOS only" and "Python/CLI only" lists | The responsibility split exists in prose without a filesystem home |
@@ -1714,7 +1717,7 @@ astro-engine <capability-id> --pretty --input -
 
 **Phase 11 historical allow-list (public Python CLI):** `observing_quality.assess`, `night_conditions.analyze`, `night_conditions.score`, `fog.score`, `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`, `weather.decode`, `iss.decode`, `location.grid`, `catalog.deep_sky`. This was the eleven-capability set exposed in Phase 11.
 
-**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 32 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
+**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 34 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
 
 **Later Bot-host composition** (proposed names; not catalogued and not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days, live in `packages/astro-host-python`, and stay out of `parity.yml`. If host-side golden envelopes are ever wanted they would need a non-parity marker of their own; no such marker (`hosts: [python]` or otherwise) exists in the catalog today.
 
@@ -2354,7 +2357,7 @@ the current public engine capabilities. It is not iOS UI parity.
 | Target metadata and equipment requirements | `TargetEquipmentRequirements` resolves type fallbacks and individual overrides (including M77), aperture, magnification, observing-mode and framing needs. `DefaultTargetCatalogProvider` also supplies solar-system candidates and derives deep-sky Moon sensitivity. `equipment.match` only evaluates already-resolved requirements. | Implemented by `targets.requirements`, `catalog.solar_system`, and `targets.moon_sensitivity`; see the target metadata boundary below. The Bot must consume these authoritative facts rather than ask Grok to invent requirements. Equipment selection filters recommendations; it does not rescore or reorder retained target scores. |
 | Target-type-specific live policies | Deep sky uses catalog RA/Dec, 15-minute samples, a 15-degree threshold, contiguous runs, interpolated crossings, and highest sampled altitude. Moon uses its own 30-minute, useful-window and visible-sample policy. Planets use an extended interval, 15-minute samples, an 8-degree threshold, interpolation, specialized best-time scoring, and Venus twilight treatment. | Required. A shared result vocabulary may be useful, but do not promise one generic `targets.windows` algorithm. Prefer shared lower-level numeric astronomy facts with target-type-specific observation and recommendation policies. |
 | Specialized recommendation and composition | Production has dedicated deep-sky, Moon, and planet providers. Lunar observation facts include continuous phase, illumination, altitude/azimuth, rise/set, always-up/down state, and position samples where applicable; eligibility requires visible samples in the useful window. Numeric lunar scoring uses phase/illumination, visible fraction, and weather quality, while semantic reasons may use facts such as set time and `alwaysDown`. Planet recommendations use the low-precision model rather than generic Skyfield output. | Required. Preserve specialized scores, stable order/ties, reasons, equipment filtering after the existing host-owned 100-row ranked candidate-pool bound but before downstream/user-facing result truncation, and no generic re-score of Moon or planet results. Candidates beyond that production pool are intentionally not considered. The 100-row bound is host production composition behavior, not an engine transport cap. The LLM may explain authoritative facts but must not recreate them. |
-| Location and forecast-horizon composition | `BestSpotSearcher` has search-wide scoring-mode selection and suitability policy. `ActiveObservingNightResolver` retains the preceding civil date after midnight when its astronomical night is active; the three-night outlook requires complete hourly coverage and retains the first best-score tie. | Required. The active-night decision itself is now implemented by `observing_night.resolve_active`; see the observing-night boundary below. Still preserve candidate forecast eligibility; center/candidate cloud, wind and fog composition; fog-factor union where surfaced; all-or-nothing light-pollution ranking; suitability states; center improvement and missing-center behavior; complete-night and deterministic best-night rules; multi-night provider/data-state distinctions. Host geocoding, timezone acquisition, search expansion, batching and cache lifecycle may remain host-owned. |
+| Location and forecast-horizon composition | `BestSpotSearcher` has search-wide scoring-mode selection and suitability policy. `ActiveObservingNightResolver` retains the preceding civil date after midnight when its astronomical night is active; the three-night outlook requires complete hourly coverage and retains the first best-score tie. | Required. The active-night decision itself is now implemented by `observing_night.resolve_active`; see the observing-night boundary below. Still preserve candidate forecast eligibility; center/candidate cloud, wind and fog composition; fog-factor union where surfaced; all-or-nothing light-pollution ranking; suitability states; center improvement and missing-center behavior; multi-night provider/data-state distinctions. The three-night outlook's own complete-night and best-night rules are now `observing_night.compose_outlook` and `observing_night.select_best`; Best Nearby must reuse them rather than re-derive them. Host geocoding, timezone acquisition, search expansion, batching and cache lifecycle may remain host-owned. |
 
 The following boundaries are deliberate:
 
@@ -2470,6 +2473,14 @@ still has host composition listed under "still outstanding".
    Host composition — acquiring forecasts, deciding when to surface the advice and
    wording it — remains outstanding.
 
+11. Three-night outlook day composition and deterministic best-night
+   selection — `observing_night.compose_outlook` and
+   `observing_night.select_best`, the outlook slice below.
+   `ThreeNightOutlookWidgetPayloadBuilder` delegates the day slots, the
+   per-night availability classification and the best-night reduction. Widget
+   labels, verdict and tone copy, scores, best windows, AppGroup persistence,
+   last-known-good retention and timeline scheduling stay host-owned.
+
 **Still outstanding.** Each item below carries a **provisional** engine/host
 reading. Provisional is load-bearing: with the
 [Python host boundary](#11-python-host-boundary-packagesastro-host-python) now
@@ -2494,11 +2505,11 @@ not determinism alone.
 
 | # | Outstanding item | Provisional home | Archaeology status |
 |---|---|---|---|
-| 9 | Three-night outlook day composition | **Mixed** | Required. Complete-hourly-coverage eligibility and first-best-score-tie retention read as deterministic rules; day iteration and payload persistence read as host. Separate them explicitly. |
+| 9 | Three-night outlook **host/presentation** composition | **Host presentation over engine facts** | Deterministic core **complete**: `observing_night.compose_outlook` and `observing_night.select_best` (item 11 above, and the slice below) own the three observing dates, the per-night `available` / `no_astronomical_night` / `unavailable` classification and the best-night tie rule. What remains is host-shaped — `Tonight`/`Tomorrow`/`Day After`, verdict and status prose, score tone, the widget cache DTO, AppGroup persistence, last-known-good retention, maximum age, stale-cache acceptance, widget reloads and timeline scheduling. A Bot must consume the capabilities, never re-derive the composition. |
 | 9 | Authoritative IANA timezone **acquisition** | **Host** | Settled by design. Geocoding and the longitude approximation are host-owned; the engine consumes an authoritative zone. Note the current production fallback yields no IANA identity — the host must resolve that, not the engine. |
 | 10 | Semantic advisory prose built on cloud timing | **Host presentation over an engine fact** | Classification **complete**: `night_conditions.classify_cloud_timing` (item 10 above, and the slice below). What remains is host-shaped — deciding when to surface the advice and wording it — over the engine's verdict. A Bot must consume the capability, never re-derive the classification. |
 | 11 | Best Nearby / location-set composition | **Mixed** | Required. `BestSpotSearcher` mixes deterministic decisions (`resolveScoringMode`, `averageFogScore` and any fog-factor union, `isHigherRanked`, `suitabilityCandidateCount`, `forecastDaysNeeded`, `calculateScore`, candidate eligibility, center improvement, missing-center behavior) with genuinely host-owned orchestration (async provider fan-out, `defaultMaxConcurrentLookups`, the 40-check suitability cap, CLGeocoder sessions, caches). Do not classify the whole service from its file location. |
-| 12 | Multi-night forecast eligibility and composition | **Mixed** | Required. Same shape as the three-night outlook row; complete-night and deterministic best-night rules are candidates, acquisition and payload lifecycle are not. |
+| 12 | Multi-night forecast eligibility and composition | **Mixed** | Required, and still open. The three-night outlook's complete-night and best-night rules are now `observing_night.compose_outlook` and `observing_night.select_best`; a multi-night composition must reuse them rather than re-derive them. Acquisition and payload lifecycle are not engine work. |
 | 13 | Provider availability, failure and staleness semantics | **Host-shaped; verify the edges** | Required. Fetch, retry, cache lifecycle, error surfaces and freshness/lifecycle policy are host-shaped by the [placement criterion](#placement-criterion-portable-semantics-vs-operational-policy) — deterministic TTLs and bounds do not become engine logic. Swift has its own freshness and failure policies; the Python host simply carries no parity obligation to match them. Verify only the edge case: a state distinction that changes an **Astro-domain answer** (for example what counts as a complete night) is engine-shaped and must not be re-derived per host. |
 | 14 | Bot host persistence: saved locations, selected equipment, user state, observation history | **Host** | Settled by design. The engine is stateless with respect to user history and does not own saved-location persistence. Grok may personalize over host state but must not fold it into deterministic scoring. |
 | 15 | Full pre-1.0 business-logic compatibility / release gate | **Both** | Not a work location. It is the gate that closes only when every row above has an explicit, tested owner. |
@@ -3097,11 +3108,117 @@ engine/package version change and no release.
 
 Still outstanding: host composition of the verdict into advice — deciding when to
 surface it and wording it — plus three-night outlook, Best Nearby, multi-night
-composition, provider availability semantics and Bot readiness.
+composition, provider availability semantics and Bot readiness. The
+deterministic core of the three-night outlook landed in the slice below.
+
+### Three-night outlook composition slice (implemented; unreleased 1.0)
+
+Assessment: **Agree** that the roadmap item is mixed, and **disagree** that it is
+one rule. Chosen boundary is **two** public capabilities —
+`observing_night.compose_outlook` (day-slot composition plus per-night semantic
+availability) and `observing_night.select_best` (the best-night reduction) —
+because the two run at different times: composition must finish before a host
+knows which nights exist and are worth scoring, and the selection can only run
+after those scores exist. Folding them together would force a host to score
+nights it has not been told exist. See the normative
+[night-outlook procedure](../../contracts/procedures/night-outlook.md) for the
+archaeology, the preserved quirks and the rejected alternatives.
+
+**Exact production behaviour, frozen.** `ThreeNightOutlookWidgetPayloadBuilder`
+resolves the active observing night, then derives the first slot's day offset by
+differencing `startOfDay(referenceDate)` against that night's observing date —
+the exact inverse of the day shift that produced it — and resolves offsets
+`first + 0/1/2` under the same guards. Composition is **all-or-nothing**: if the
+active night cannot resolve, or any of the three slots leaves either daily array,
+the outlook is not published and the rows degrade to the local reference day and
+the two days after it, with no boundaries and no score. Per night: an empty or
+inverted window (`start >= end`) is `no_astronomical_night`; a valid window the
+hourly stream does not continuously cover is `unavailable`; anything else is
+`available`. Both boundaries are still reported for a `no_astronomical_night` or
+`unavailable` slot, which the widget relies on. Best night: only an `available`
+row **with a score** is eligible, the incumbent is replaced only on a strictly
+greater score — so a tie keeps the **earliest** eligible row — and no eligible
+row means no best night at all. The compared score is the headline
+(Observing Quality) score; the separate Night Conditions score never
+participates.
+
+**The hourly-coverage rule is engine-shaped, despite its copy.** Production words
+it "Needs fresh data", which reads like freshness policy. It is not: it is a
+structural test of whether the supplied stream continuously covers the night —
+median positive step must be an hour within 60 s, the covering rows must start at
+or before the night start and reach past its end, and every consecutive step must
+be that cadence within 60 s, so a duplicate or missing hour breaks it. Nothing
+about acquisition, age or cache participates. It is not a separate capability
+because its only production consumer is the classification inside
+`compose_outlook`.
+
+**What did not cross the boundary.** `Tonight`, `Tomorrow` and `Day After`;
+verdict prose (`Good`, `No night`, `N/A`, `Unavailable`); status prose
+(`Best window`, `No best window available`, `No astronomical night`,
+`Needs fresh data`, `Forecast unavailable`); score tone; `bestWindow`, which
+belongs to `night_conditions.analyze`; the scores themselves, which the host
+composes from `night_conditions.analyze` and `observing_quality.assess`; and the
+whole `WidgetThreeNightOutlookSummary` cache DTO with its AppGroup persistence,
+last-known-good retention, maximum age, stale-cache acceptance, widget reloads,
+timeline scheduling and location cache identity. `requires_active_previous_payload`
+is reported as a **state** because it is an engine business fact; the decision to
+*preserve* an already-published payload in that state stays in the builder.
+Timezone acquisition is verified host-shaped and unchanged: production's
+`LocationTimeZoneResolver.authoritative` precedence still runs before the engine
+is asked, and the unavailable branch's own narrower `timeZone ?? approximate(longitude:)`
+expression is preserved exactly rather than unified.
+
+**Score mode.** Production resolves the brightness sample and effective location
+context **once** per outlook, so all three nights always share one score mode and
+a mixed-mode outlook is not producible. That is host composition; neither
+capability can observe the mode, and `select_best` simply compares whatever
+headline scores it is handed.
+
+**Reuse, not cloning.** `NightOutlookComposer` calls `ObservingNightSelector`
+for the active-night decision and for each slot's day resolution, so no day
+indexing, twilight pairing or Foundation calendar emulation is duplicated. The
+transport inherits observing-night's zone catalogue, instant grammar and range,
+16-day cap and skipped-civil-date exclusion; it adds only a 1440-row cap on
+`hourly_times` and refuses a reference day whose two following days would leave
+the instant range.
+
+`ThreeNightOutlookCompositionMigrationTests` compares the post-migration
+production entry point against a self-contained pre-migration copy that calls
+none of the migrated path. The composition sweep is 3,780 payloads — three zones
+whose local-midnight arithmetic differs (`America/Los_Angeles`,
+`America/Santiago`'s midnight transition, `America/Havana`'s repeated midnight)
+× seven reference hours spanning local midnight and both twilight boundaries ×
+five daily-array lengths × four hourly-stream lengths × three night shapes
+(normal, inverted and exactly empty windows) × three hourly perturbations
+(intact, missing hour, duplicate hour), with a per-shape cloud profile so the
+three nights score distinctly — and compares observing dates, both boundaries,
+per-night status, the published/unavailable outcome and the best-night index.
+Best-night selection is compared **exhaustively**: all 3,375 combinations of
+three rows over three statuses and five scores (including a repeated score so
+every tie position is reachable, and both clamp endpoints). Hourly coverage is
+compared over 72 additional stream shapes including a half-hourly cadence.
+
+Forty-four manual fixtures cover both capabilities: three composition states,
+all three per-night statuses, day offsets −1 through 2, the inclusive
+previous-night end boundary, truncated/missing/duplicated/unsorted/empty/
+half-hourly streams, empty and inverted windows, the last-represented-day
+fallback, short Moon arrays, both DST zones, and the strict-transport, cap and
+skipped-civil-date failures. `select_best` fixtures pin every tie position, both
+eligibility rules, the empty list, both clamp endpoints and each transport
+failure. This slice takes the public capability count to **34**; both new IDs use
+`since: "1.0.0"` and fixtures use `>=1.0.0 <2.0.0`. There is no engine/package
+version change and no release.
+
+**This does not make the Three-Night Outlook product portable.** Only its
+deterministic core is. Remaining, and explicitly not started here: the
+host/presentation composition listed above; authoritative IANA timezone
+acquisition; provider availability, failure and staleness semantics; and host
+persistence. Best Nearby and multi-night composition remain separate outstanding
+items that must **reuse** these two capabilities rather than re-derive them.
 
 #### Current Bot readiness boundary
 
-With today’s 32 public capabilities plus correct host acquisition/composition,
+With today’s 34 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
 Observing Quality; Sun/twilight events; catalog facts and solar candidate
@@ -3129,7 +3246,12 @@ identity and its astronomical-night start and end, and can distinguish
 "cannot determine from this payload" from "the current civil date is the
 observing night". Given the observing day, authoritative zone and current/next
 twilight facts, it can also derive the exact calendar/DST forecast window used
-by production Night Conditions filtering.
+by production Night Conditions filtering. From the same payload facts it can now
+also compose the three observing nights an outlook shows — their local dates,
+observing-day starts and astronomical-night boundaries — classify each night as
+`available`, `no_astronomical_night` or `unavailable`, and, once the host has
+scored the available nights, select the best one under production's
+highest-score/earliest-tie rule.
 
 **An engine capability existing is not the same as the Bot host composing it into
 a complete product answer.** Each fact above still depends on the host supplying
@@ -3144,7 +3266,9 @@ the new `night_forecast.derive_window` fact with forecast rows, and host
 composition of the new `night_conditions.classify_cloud_timing` verdict into
 advice the Bot actually words;
 full Best Nearby or location-set composition; complete multi-night
-advice; provider availability, failure and staleness semantics; durable host
+advice; the three-night outlook's own host/presentation composition — labels,
+verdict and status prose, score tone, the widget cache, persistence, freshness
+and timeline scheduling; provider availability, failure and staleness semantics; durable host
 persistence; or precipitation in the normalized weather domain. Full host orchestration therefore remains incomplete.
 The overall Astronomer Bot compatibility gate is **not** complete. Missing objective facts are an explicit limitation, never an
 invitation for Grok to calculate or guess them.
@@ -3164,7 +3288,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 **Pre-1.0 business-logic compatibility/release gate.** Before the first public
 Astro Engine / Astronomer Bot 1.0, the Bot must expose the objective/business-logic
 capabilities used by production Astro Conditions for astronomy advice, with the
-LLM layered on top. Availability of the current 32 engine capabilities alone
+LLM layered on top. Availability of the current 34 engine capabilities alone
 does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
 
 - **Audit closure:** reconcile every behavior named in the [production

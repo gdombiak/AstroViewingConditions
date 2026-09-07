@@ -127,6 +127,18 @@ enum CapabilityDispatch {
             } catch let error as NightForecastWindowInputError {
                 throw EvalValidationError(code: error.code, message: error.message)
             }
+        case "observing_night.compose_outlook":
+            do {
+                return try NightOutlookContract.evaluate(injected(document))
+            } catch let error as NightOutlookInputError {
+                throw EvalValidationError(code: error.code, message: error.message)
+            }
+        case "observing_night.select_best":
+            do {
+                return try BestNightContract.evaluate(injected(document))
+            } catch let error as NightOutlookInputError {
+                throw EvalValidationError(code: error.code, message: error.message)
+            }
         case "night_conditions.classify_cloud_timing":
             do {
                 return try CloudTimingContract.evaluate(injected(document))

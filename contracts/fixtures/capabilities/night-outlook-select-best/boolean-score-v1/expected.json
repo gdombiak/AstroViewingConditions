@@ -1,0 +1,8 @@
+{
+  "capability": "observing_night.select_best",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid observing_night.select_best input"
+  }
+}

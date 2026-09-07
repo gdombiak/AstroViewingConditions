@@ -1,0 +1,8 @@
+{
+  "capability": "observing_night.compose_outlook",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid observing_night.compose_outlook input"
+  }
+}
