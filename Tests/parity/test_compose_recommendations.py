@@ -36,7 +36,7 @@ def test_compose_catalog_and_fixture_contract():
     catalog_ids = [line.split(": ", 1)[1] for line in catalog.splitlines()
                    if line.startswith("  - id: ")]
     assert tuple(catalog_ids) == PUBLIC_CAPABILITY_IDS
-    assert catalog_ids[-3] == CAPABILITY
+    assert catalog_ids[-4] == CAPABILITY
     block = catalog.split(f"  - id: {CAPABILITY}\n", 1)[1].split("  - id:", 1)[0]
     assert 'since: "1.0.0"' in block
     assert "hosts: [ios, cli]" in block

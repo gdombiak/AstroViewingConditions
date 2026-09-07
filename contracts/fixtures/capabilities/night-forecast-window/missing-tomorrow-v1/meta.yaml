@@ -1,0 +1,6 @@
+capability: night_forecast.derive_window
+engine_semver: ">=1.0.0 <2.0.0"
+equality: night_forecast_window
+origin: manual
+hosts: [swift, python]
+notes: Null tomorrow falls back to today's morning-twilight clock components, still projected on the following local day.

@@ -1,0 +1,6 @@
+capability: night_forecast.derive_window
+engine_semver: ">=1.0.0 <2.0.0"
+equality: night_forecast_window
+origin: manual
+hosts: [swift, python]
+notes: A projected clock in Bahia Banderas's two-hour gap advances to the following civil day's exact clock.

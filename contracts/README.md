@@ -14,12 +14,12 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `targets.moon_recommendation`, `astronomy.planet_observation`,
 `targets.planet_recommendation`, `targets.compose_recommendations`,
 `targets.filter_recommendations_by_equipment`, and
-`observing_night.resolve_active`. Composed agent hosts remain
+`observing_night.resolve_active`, and `night_forecast.derive_window`. Composed agent hosts remain
 later integration work. Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those thirty IDs. Capability
+The public Python CLI allow-lists exactly those thirty-one IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
 rows keep `since: "0.1.0"`; `location.compare`, `targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
 they are introduced under the unreleased 1.0.0 identity. Do not invent a second
@@ -101,4 +101,12 @@ slash-form names present in both Foundation `TimeZone.knownTimeZoneIdentifiers`
 and Python `zoneinfo.available_timezones()` — so neither runtime's own parser
 defines the public set. That catalogue is symmetric across hosts, not
 canonical-IANA-only: historical aliases both runtimes publish are included. See the [observing-night procedure](procedures/observing-night.md).
-Public capability count is 30; version remains unreleased 1.0.0.
+That slice took the public capability count to 30; version remained unreleased 1.0.0.
+
+Nighttime forecast-window derivation:
+`night_forecast.derive_window` projects current dusk and following dawn clock
+components onto the observing local day and its next calendar day. The host
+supplies the authoritative timezone and Sun-event facts; filtering forecasts is
+ordinary half-open composition. See the
+[night forecast-window procedure](procedures/night-forecast-window.md). Public
+capability count is 31; version remains unreleased 1.0.0.

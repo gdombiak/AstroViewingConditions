@@ -173,12 +173,14 @@ public struct NightQualityAnalyzer {
         calendar: Calendar,
         moonCalculationCache: MoonCalculationCache
     ) -> NightQualityAssessment {
-        let (nightStart, nightEnd) = NightForecastFilter.calculateNightRange(
+        let nightWindow = NightForecastWindowDeriver.derive(
             sunEventsToday: sunEventsToday,
             sunEventsTomorrow: sunEventsTomorrow,
             for: date,
             calendar: calendar
         )
+        let nightStart = nightWindow.start
+        let nightEnd = nightWindow.end
 
         let nightForecasts = forecasts
             .filter { forecast in

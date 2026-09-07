@@ -401,3 +401,15 @@ policies:
       astronomical_night_end: exact
       code: exact
       message: exact
+
+  night_forecast_window:
+    description: >
+      Exact location-zone identity and Foundation-compatible projected window.
+      Source seconds are discarded and every calendar/DST quirk is part of the
+      result, so no timestamp tolerance is permitted.
+    fields:
+      time_zone: exact
+      start: exact
+      end: exact
+      code: exact
+      message: exact

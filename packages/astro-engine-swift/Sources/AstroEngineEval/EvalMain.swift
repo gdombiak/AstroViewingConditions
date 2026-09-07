@@ -42,6 +42,7 @@ Eval allow-list (not the public Python CLI):
   targets.compose_recommendations
   targets.filter_recommendations_by_equipment
   observing_night.resolve_active
+  night_forecast.derive_window
 """
 
 private let supportedCapabilities: Set<String> = [
@@ -74,6 +75,7 @@ private let supportedCapabilities: Set<String> = [
     "targets.compose_recommendations",
     "targets.filter_recommendations_by_equipment",
     "observing_night.resolve_active",
+    "night_forecast.derive_window",
 ]
 
 @main

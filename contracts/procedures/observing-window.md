@@ -74,16 +74,16 @@ and returns nil if none remain. The selected window subsequently affects best
 sample, visible fraction, weather quality, score and reasons. This slice exposes
 exactly the endpoint pair needed later; lunar parity is still outstanding.
 
-`NightForecastFilter` now lives in the engine package's Scoring directory. Its
-production adapter composes dusk's local hour/minute onto the observing date and
-dawn's hour/minute onto the next calendar day (seconds zero); missing tomorrow
-uses today's event's clock components, with existing Calendar fallback behavior.
-`NightQualityAnalyzer` filters `[start,end)` and sorts; `BestSpotSearcher` also uses
-`filterToNighttime`. `TargetRecommendationContextBuilder` resolves observing dates,
-timezone and forecasts, and separately supplies SunEvents-derived Moon bounds.
-Leave those adapters unchanged. Bot active-night/timezone/DST/fallback composition
-needs deterministic host code and separate validation before full product parity;
-explicit injected bounds remain the clean analysis interface.
+`NightForecastFilter` lives in the engine package's Scoring directory. Its
+calendar/DST projection is now separately portable through
+`night_forecast.derive_window`; see the
+[forecast-window procedure](night-forecast-window.md). `NightQualityAnalyzer`
+filters `[start,end)` and sorts; `BestSpotSearcher` also uses the typed
+`filterToNighttime` convenience. `TargetRecommendationContextBuilder` resolves
+observing dates, timezone and forecasts, and separately supplies
+SunEvents-derived Moon bounds. Bot host composition still needs to acquire those
+inputs and call the capability; explicit injected bounds remain the clean
+analysis interface.
 
 `NightQualityAnalysisRules.cloudTiming` is consumed only by `generateSummary`
 (and presentation tests), not window selection or recommendation eligibility or
@@ -91,8 +91,8 @@ scoring. Heavy cloud runs require >=2 rows exactly 3600 seconds apart, at the
 configured cloud floor; eligible runs have usable-score rows before or after.
 Preference is longest, then highest average cloud, then earliest start. The before/
 after flags select late/early/intermittent-heavy, otherwise none; summary use also
-depends on average cloud, rating and trend. This independent classification stays
-host-owned here. Bot hosts may describe authoritative hourly facts, but must not
-invent this classification: if they surface production cloud-timing advice, they
-must implement/test this policy or obtain a separately reviewed shared semantic
-result. This responsibility remains open in the compatibility audit.
+depends on average cloud, rating and trend. This independent classification is
+engine-shaped but outside both window capabilities. Bot hosts may describe
+authoritative hourly facts, but must not invent the classification; it remains
+open for a separately reviewed capability slice. English advice stays host
+presentation.

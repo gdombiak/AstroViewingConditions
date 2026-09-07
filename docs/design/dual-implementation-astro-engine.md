@@ -416,6 +416,7 @@ flowchart LR
 | `night_conditions.score` | `BestSpotSearcher.calculateScore` | Integer exact. |
 | `observing_window.select` | `ObservingWindowSelector.select`, used by `NightQualityAnalyzer` | Exact nullable endpoint pair over already-included scored rows; see [procedure](../../contracts/procedures/observing-window.md). |
 | `observing_night.resolve_active` | `ObservingNightSelector.select`, used by `ActiveObservingNightResolver` | Exact discrete state, day offset/index, local observing date, observing-day start and both astronomical-night boundaries. Preceding civil date first; all three comparisons inclusive; day indexing, empty-hourly and missing-following-row quirks frozen. Host keeps timezone acquisition; see [procedure](../../contracts/procedures/observing-night.md). |
+| `night_forecast.derive_window` | `NightForecastWindowDeriver.derive`, used by `NightQualityAnalyzer` and the source-compatible `NightForecastFilter` adapter | Exact timezone identity and projected `[start,end)` forecast-window boundaries. Twilight date/seconds are discarded; Foundation DST ambiguity/gap behavior and missing-tomorrow fallback are frozen. Host keeps timezone/Sun acquisition and forecast composition; see [procedure](../../contracts/procedures/night-forecast-window.md). |
 | `astronomy.horizontal_position` | `HorizontalCoordinates.position`, previously inline in `DeepSkyTargetPositionProvider` | Closed-form geometric equatorial→horizontal at one instant. Deterministic despite the `astronomy.` namespace: no ephemeris provider, no refraction, no precession/proper motion, UT1 taken as UTC. Altitude/azimuth abs 1e-9 deg; see [procedure](../../contracts/procedures/deep-sky-observation.md). |
 | `targets.deep_sky_windows` | `DeepSkyObservation.observe`, used by `DeepSkyTargetPositionProvider` | Deep-sky visible-run windows over an explicit UTC interval: inclusive `>=` threshold, interpolated interior crossings, per-run earliest-wins best sample, interval-end reporting quirk. Timestamps exact after flooring to whole seconds; the typed API keeps full precision for the iOS caller. |
 | `observing_quality.assess` | `ObservingQualityCalculator.assess` | Integer `score` exact. Anchor penalties abs 1e-12. Interpolated penalties abs 1e-9 (matches `ObservingQualityCalculatorTests` home/stub). |
@@ -449,6 +450,7 @@ Intended composition:
 ```text
 weather.decode
 + astronomy.sun_events
++ night_forecast.derive_window
 + astronomy.moon_info / astronomy.moon_series
 + night_conditions.analyze
 → Grok reasoning/planning
@@ -468,6 +470,7 @@ Grok should not reimplement astronomical-night calculations, active-night/date s
 | Planet facts | `astronomy.planet_observation` | Unreleased 1.0 | Implemented in the planet slice: altitude, azimuth and solar elongation samples for Venus, Mars, Jupiter and Saturn. |
 | Planet recommendation | `targets.planet_recommendation` | Unreleased 1.0 | Implemented in the planet slice: visibility window, best time, integer score and objective reasons, including Venus twilight. |
 | Which night is "tonight" | `observing_night.resolve_active` | Unreleased 1.0 | Implemented in the observing-night slice: active-night state, day identity and astronomical-night boundaries across local midnight. The host still supplies the authoritative IANA timezone. |
+| Nighttime forecast window | `night_forecast.derive_window` | Unreleased 1.0 | Implemented in the forecast-window slice: projects twilight clock components onto the observing local day and following calendar day with production Foundation DST semantics. The host supplies the zone, observing day and Sun facts. |
 
 Do not add English summaries to parity. Do not invent phase emoji or presentation copy. Do not pull precipitation into Phase 8 or the 1.0 `weather.decode` fixtures merely to close this gap.
 
@@ -486,8 +489,8 @@ Argparse/typer, env, `--atlas-path` (defaults to the bundled production LPATLAS1
 operations are **host** concerns: they belong in `packages/astro-host-python` and
 must **not** be added to `PUBLIC_CAPABILITY_IDS`.
 
-**Current catalog state (verified 2026-09-06).** `contracts/capabilities.yaml`
-contains **no** `agent.*` rows and **no** `equality: n/a` rows. All 30 catalogued
+**Current catalog state (verified 2026-09-07).** `contracts/capabilities.yaml`
+contains **no** `agent.*` rows and **no** `equality: n/a` rows. All 31 catalogued
 capabilities are `hosts: [ios, cli]` with a real equality class. The `agent.*`,
 `ui.field_mode` and `hosts: [ios]` rows shown in
 [§ 9](#9-feature-parity-without-forcing-ui-or-agent-features) are part of that
@@ -837,7 +840,13 @@ Times are stored as UTC instants after applying `utc_offset_seconds` (−28800 �
 | `injected.forecasts` | Hourly rows (may extend outside the window; engine clips). |
 | `injected.moon_series` | **One object per included forecast hour**, keyed by exact `time` ISO-8601 `Z` equal to `forecast.time`. Missing timestamp → envelope `ok: false`, `error.code: validation` (not altitude 0, not interpolate). Extra moon samples ignored. |
 
-`NightForecastFilter` is a **separately tested helper** (unit tests in AstroEngine, not a 1.0 capability): inputs = `sun_events_today` / `tomorrow` + `date` = local start-of-day + calendar. It copies twilight **hour/minute** onto that start-of-day / next day (`NightForecastFilter.swift`). Later unreleased `astronomy.sun_events` fixtures **must not** set `public_score`.
+`NightForecastFilter` is a **separately tested helper** whose projection later
+became public `night_forecast.derive_window`: inputs = `sun_events_today` /
+`tomorrow` + observing day + location calendar. It copies twilight
+**hour/minute** onto that local day / next day. `night_conditions.analyze` still
+consumes only an injected window and never invokes this capability or live Sun
+events. Unreleased `astronomy.sun_events` fixtures **must not** set
+`public_score`.
 
 Worked `origin: manual` fixture `night-conditions/four-clear-hours-v1` (not the empty-`forecasts` sketch; that path is `public_score` **20**):
 
@@ -1045,7 +1054,13 @@ Anchor: `NightQualityAnalyzer.analyzeNight`, `NightForecastFilter.calculateNight
 
 **Clock / date:** `date` in production `analyzeNight(for:)` is the observing site’s **local start-of-day**, i.e. `calendar.startOfDay(for: clock)` with Gregorian calendar in `time_zone`. 1.0 analyze uses this only if a host calls `NightForecastFilter`; the capability itself clips with `night_window`.
 
-**Filter helper (not 1.0 capability):** `NightForecastFilter.calculateNightRange` copies `hour`/`minute` of `sunEventsToday.astronomicalTwilightEnd` onto `startOfDay(date)`, and tomorrow’s `astronomicalTwilightBegin` onto the next local day. Unit-test this helper separately with frozen `SunEvents`. Do not feed live sun into integer fixtures.
+**Forecast-window capability (separate from analysis):**
+`night_forecast.derive_window`, exposed through
+`NightForecastWindowDeriver` and the source-compatible
+`NightForecastFilter.calculateNightRange`, copies `hour`/`minute` of
+`sunEventsToday.astronomicalTwilightEnd` onto `startOfDay(date)`, and tomorrow’s
+`astronomicalTwilightBegin` onto the next local day. It is tested separately
+with frozen `SunEvents`; do not feed live sun into integer fixtures.
 
 **Clip then score:**
 
@@ -1251,7 +1266,7 @@ F1 established the `0.1.0` OQ-only identity. Phase 12 set the repository's unrel
 Parity is `contracts/capabilities.yaml`.
 
 **The YAML below is an illustrative / proposed shape, not the current file.**
-Verified 2026-09-06: the real catalog holds **30** rows, **all** `hosts: [ios, cli]`,
+Verified 2026-09-07: the real catalog holds **31** rows, **all** `hosts: [ios, cli]`,
 **all** with a real equality class — no `agent.*` rows, no `equality: n/a` rows,
 no `hosts: [ios]`-only or `hosts: [cli]`-only rows. The single-host and `agent.*`
 rows here illustrate how such rows *would* be expressed if they were ever
@@ -1358,11 +1373,10 @@ it" — iOS has its own freshness, caching and failure handling, and those polic
 are simply owned per runtime and never compared field-by-field. That work has no
 home in the current tree.
 
-It does **not** follow that everything still outstanding is host work. Several
-outstanding areas still contain deterministic rules that production Swift already
-implements — `NightForecastFilter`'s window derivation and cloud-timing
-classification are the confirmed cases — and those may require additional
-engine/parity slices rather than host code. The roadmap table under
+It does **not** follow that everything still outstanding is host work. Production
+Swift already contained deterministic rules requiring engine/parity treatment:
+the `NightForecastFilter` window derivation is now a completed example, while
+cloud-timing classification remains outstanding engine-shaped work. The roadmap table under
 [Required implementation order after the audit](#required-implementation-order-after-the-audit)
 carries that item-by-item reading and the archaeology requirement behind it.
 
@@ -1383,7 +1397,7 @@ the host half.
 |---|---|
 | `packages/` holds `astro-engine-swift` and `astro-engine-python` | `packages/` means "importable library", not "delivery surface" |
 | `apps/` holds `ios` and `cli`; `apps/cli/astro-engine` is a small launcher that resolves an import path and calls `astro_engine.cli:main` | `apps/` means "delivery surface"; the CLI is already thin |
-| `contracts/capabilities.yaml` — 30 rows, **every one** `hosts: [ios, cli]` with a real equality class | The catalog is today exclusively the dual-host parity surface. Its `hosts:` key models the host axis, but nothing host-only has ever been catalogued, so host operations have no place in it as it stands |
+| `contracts/capabilities.yaml` — 31 rows, **every one** `hosts: [ios, cli]` with a real equality class | The catalog is today exclusively the dual-host parity surface. Its `hosts:` key models the host axis, but nothing host-only has ever been catalogued, so host operations have no place in it as it stands |
 | `CODEOWNERS` guards only `/contracts/` | Governance follows the contract, not the directory |
 | `.github/workflows/python.yml` path-filters `packages/astro-engine-python/**`, `contracts/**`, `Tests/parity/**`, `apps/cli/**` | Path filters already encode which trees are parity-relevant |
 | The design's own "Swift/iOS only" and "Python/CLI only" lists | The responsibility split exists in prose without a filesystem home |
@@ -1700,7 +1714,7 @@ astro-engine <capability-id> --pretty --input -
 
 **Phase 11 historical allow-list (public Python CLI):** `observing_quality.assess`, `night_conditions.analyze`, `night_conditions.score`, `fog.score`, `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`, `weather.decode`, `iss.decode`, `location.grid`, `catalog.deep_sky`. This was the eleven-capability set exposed in Phase 11.
 
-**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 30 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
+**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 31 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
 
 **Later Bot-host composition** (proposed names; not catalogued and not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days, live in `packages/astro-host-python`, and stay out of `parity.yml`. If host-side golden envelopes are ever wanted they would need a non-parity marker of their own; no such marker (`hosts: [python]` or otherwise) exists in the catalog today.
 
@@ -2394,14 +2408,15 @@ English summary text remains host presentation. No Bot may improvise
 sustained-heavy/early/late semantic classifications, and no host may
 re-implement them. `NightForecastFilter`'s calendar/DST window derivation is
 likewise **engine-shaped** — it is already Foundation-only code inside
-`packages/astro-engine-swift` — while the date/forecast **composition** around it
+`packages/astro-engine-swift` — and is now public
+`night_forecast.derive_window`, while the date/forecast **composition** around it
 remains host-owned and needs separate Bot-host validation.
 Moon consumes the result with inclusive sample endpoints and falls back to
 astronomical bounds only for nil. This slice does not complete lunar parity,
 cloud-timing Bot advice, active-night composition or later audit areas.
 Active-night composition landed separately in the observing-night slice below;
-`NightForecastFilter`'s own calendar/DST window derivation is **not** part of that
-slice and remains outstanding engine-shaped work.
+the subsequent forecast-window slice now owns `NightForecastFilter`'s own
+calendar/DST projection without merging the two capability inputs or decisions.
 
 #### Required implementation order after the audit
 
@@ -2442,6 +2457,11 @@ still has host composition listed under "still outstanding".
    Timezone **acquisition** (geocoding and the longitude approximation) remains
    host-owned by design; the engine consumes an authoritative IANA zone and
    applies its calendar/DST rules.
+9. Nighttime forecast-window projection across local calendar days and DST —
+   `night_forecast.derive_window`. Production's analyzer and compatibility
+   filter route through `NightForecastWindowDeriver`; filtering remains ordinary
+   half-open composition. Timezone, observing-day and Sun-event acquisition stay
+   host-owned.
 
 **Still outstanding.** Each item below carries a **provisional** engine/host
 reading. Provisional is load-bearing: with the
@@ -2467,7 +2487,6 @@ not determinism alone.
 
 | # | Outstanding item | Provisional home | Archaeology status |
 |---|---|---|---|
-| 9 | `NightForecastFilter` calendar/DST forecast-window derivation | **Engine-shaped** | Already audited. `NightForecastFilter.calculateNightRange` / `filterToNighttime` are pure Foundation given `SunEvents` + date + `Calendar`, and already live in `packages/astro-engine-swift`. Python has no counterpart and there is no contract row. Decide the capability shape (injected zone + sun events, as `observing_night.resolve_active` does) before host code re-derives a window. |
 | 9 | Three-night outlook day composition | **Mixed** | Required. Complete-hourly-coverage eligibility and first-best-score-tie retention read as deterministic rules; day iteration and payload persistence read as host. Separate them explicitly. |
 | 9 | Authoritative IANA timezone **acquisition** | **Host** | Settled by design. Geocoding and the longitude approximation are host-owned; the engine consumes an authoritative zone. Note the current production fallback yields no IANA identity — the host must resolve that, not the engine. |
 | 10 | Semantic advisory / cloud-timing classification | **Engine-shaped; NOT host-only** | Already audited — see the correction below. Deterministic and calibration-driven today. Requires a contract-slice decision before any Bot surfaces cloud-timing advice. |
@@ -2950,8 +2969,7 @@ This slice takes the public capability count to **30**; the new ID uses
 change and no release.
 
 Still outstanding downstream, with engine-shaped and host-shaped work named
-separately: `NightForecastFilter`'s calendar/DST forecast-window derivation
-(engine-shaped) and host acquisition of an authoritative IANA zone (host-shaped);
+separately: host acquisition of an authoritative IANA zone (host-shaped);
 cloud-timing classification (engine-shaped) and the advisory prose built from it
 (host presentation); Best Nearby / location-set composition, whose ranking and
 eligibility rules are engine-shaped while its orchestration is host-shaped;
@@ -2960,9 +2978,57 @@ and staleness semantics (host-shaped); Bot host persistence and state
 (host-shaped); and the full compatibility / release gate. See the
 [roadmap classification](#required-implementation-order-after-the-audit).
 
+#### Night forecast-window slice (2026-09-07; unreleased first-1.0 work)
+
+Source archaeology selected the smallest portable fact, public
+`night_forecast.derive_window`, rather than transporting hourly forecasts. The
+production `calculateNightRange` rule copies only local hour/minute from current
+evening astronomical twilight to the observing local day and from following
+morning twilight to the next local day, forces seconds to zero, and uses today's
+morning clock when tomorrow is missing. `filterToNighttime` adds only the ordinary
+half-open predicate `[start,end)`, so it remains typed composition rather than a
+second public capability surface.
+
+The Swift authority is `NightForecastWindowDeriver`; the existing
+`NightForecastFilter.calculateNightRange` API remains source-compatible and
+delegates to it, while production `NightQualityAnalyzer` calls the authority
+directly. Python reuses the observing-night emulation for Foundation
+`startOfDay` and calendar-day addition and explicitly reproduces this operation's
+hierarchical forward `nextTime` field search. Repeats select the first
+occurrence, but gaps do not share one universal result: a conventional skipped
+hour maps to its transition boundary, while partial-hour, multi-hour and
+late-day jumps can find the requested clock on the next civil day or adjust to
+an enclosing calendar hour boundary. The search also begins half a second before
+the day's first instant, so the clock hour ending the previous civil date can
+resolve onto that previous date. These distinctions are frozen by Lord Howe,
+Chatham, Bahia Banderas, Godthab, Caracas, Casey, St. John's and Pyongyang
+counterexamples. An independent test-only copy of the pre-migration Swift
+operations proves those classes plus ordinary, spring-forward, fall-back,
+Santiago-midnight, Kathmandu, missing-tomorrow and Apia dropped-date equivalence
+without routing the oracle through the new code. An exhaustive Foundation
+differential scan over all 442 accepted zones for 2000–2499 — 708,852
+`startOfDay`, 708,852 day-add and 204,149,376 `date(bySettingHour:)` comparisons,
+plus a full 1,440-clock sweep of each of the 2,830 distinct day shapes — agrees
+on every operation.
+
+Transport uses the same catalogued location-zone set as observing-night and the
+same 2000–2499 whole-second input range; projected outputs must remain in range.
+Seventeen manual fixtures cover those calendar edges plus strict-shape, timezone
+and range failures. Zone, start and end compare exactly. Unlike observing-night's
+multi-day differencing contract, this one can reproduce Foundation's single-day
+fallback across a dropped civil date, so Apia 2011-12-30 remains accepted and is
+pinned rather than excluded. See the [normative procedure](../../contracts/procedures/night-forecast-window.md).
+
+This slice takes the public capability count to **31**. The new ID uses
+`since: "1.0.0"`; version remains unreleased 1.0.0. Timezone and Sun-event
+acquisition, forecast/day selection and scoring composition remain host work.
+Cloud-timing classification remains outstanding engine-shaped work; its English
+advice remains presentation. This slice does not complete three-night outlook,
+Best Nearby, multi-night composition or Bot readiness.
+
 #### Current Bot readiness boundary
 
-With today’s 30 public capabilities plus correct host acquisition/composition,
+With today’s 31 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
 Observing Quality; Sun/twilight events; catalog facts and solar candidate
@@ -2988,7 +3054,9 @@ authoritatively resolve which local observing night is active — including the
 after-midnight case where the preceding civil date is retained — its day
 identity and its astronomical-night start and end, and can distinguish
 "cannot determine from this payload" from "the current civil date is the
-observing night".
+observing night". Given the observing day, authoritative zone and current/next
+twilight facts, it can also derive the exact calendar/DST forecast window used
+by production Night Conditions filtering.
 
 **An engine capability existing is not the same as the Bot host composing it into
 a complete product answer.** Each fact above still depends on the host supplying
@@ -2998,9 +3066,9 @@ what it is given and acquires nothing. The Bot can reproduce the deterministic
 equipment-aware subset once its host supplies authoritative saved/session
 equipment facts, and it can now resolve the active observing night once its host
 supplies an authoritative IANA timezone and the daily twilight rows. Still
-missing are that timezone acquisition itself (host-shaped),
-`NightForecastFilter`'s calendar/DST forecast-window derivation and cloud-timing
-classification (both engine-shaped, each still needing its own capability slice);
+missing are that timezone acquisition itself (host-shaped), host composition of
+the new `night_forecast.derive_window` fact with forecast rows, and cloud-timing
+classification (engine-shaped and still needing its own capability slice);
 full Best Nearby or location-set composition; complete multi-night
 advice; provider availability, failure and staleness semantics; durable host
 persistence; or precipitation in the normalized weather domain. Full host orchestration therefore remains incomplete.
@@ -3022,7 +3090,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 **Pre-1.0 business-logic compatibility/release gate.** Before the first public
 Astro Engine / Astronomer Bot 1.0, the Bot must expose the objective/business-logic
 capabilities used by production Astro Conditions for astronomy advice, with the
-LLM layered on top. Availability of the current 30 engine capabilities alone
+LLM layered on top. Availability of the current 31 engine capabilities alone
 does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
 
 - **Audit closure:** reconcile every behavior named in the [production
@@ -3090,8 +3158,8 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   with semantic reason facts; a request such as "What should I
   observe tonight with my S30 Pro?" must use both conditions and selected
   equipment without letting the LLM invent either decision.
-- **Observing night and time: engine side complete for the active-night
-  decision; timezone acquisition and the forecast-window adapter outstanding.**
+- **Observing night and time: engine side complete for the active-night and
+  forecast-window decisions; timezone acquisition and host composition remain.**
   `observing_night.resolve_active` owns which local observing night a reference
   instant belongs to, its day identity and its astronomical-night boundaries,
   including the after-midnight retention of the preceding civil date, the
@@ -3099,11 +3167,11 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   quirks; production delegates to it under migration-equivalence tests. What
   this gate still needs is the host acquiring an authoritative IANA timezone
   (production geocodes and falls back to a longitude approximation with no IANA
-  identity) — host-shaped acquisition — and `NightForecastFilter`'s own
-  calendar/DST forecast-window derivation, which is not part of this decision and
-  is **engine-shaped** portable Astro-domain logic awaiting its own slice, not
-  host work. Grok must never re-derive "tonight" from a bare civil date, and no
-  host may re-implement the window derivation instead of calling it.
+  identity) — host-shaped acquisition — then composing the authoritative zone,
+  observing day and Sun-event facts through `night_forecast.derive_window` before
+  applying the returned half-open interval to forecast rows. Grok must never
+  re-derive "tonight" from a bare civil date, and no host may re-implement the
+  window derivation instead of calling it.
 - **Best Nearby and location composition:** preserve candidate nighttime-forecast
   eligibility; center/candidate composition; cloud/wind/fog aggregation and any
   surfaced fog-factor union; Observing Quality only when every scorable candidate

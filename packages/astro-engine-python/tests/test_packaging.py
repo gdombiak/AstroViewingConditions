@@ -10,6 +10,7 @@ from astro_engine import (
     assess_observing_quality,
     decode_iss,
     decode_weather,
+    derive_night_forecast_window,
     engine_semver,
     compare_locations,
     generate_grid,
@@ -37,6 +38,7 @@ def test_public_imports() -> None:
     assert callable(analyze_night_conditions)
     assert callable(public_night_score)
     assert callable(decode_weather)
+    assert callable(derive_night_forecast_window)
     assert callable(decode_iss)
     assert callable(generate_grid)
     assert callable(compare_locations)
@@ -88,6 +90,7 @@ def test_public_imports() -> None:
         "targets.compose_recommendations",
         "targets.filter_recommendations_by_equipment",
         "observing_night.resolve_active",
+        "night_forecast.derive_window",
     )
 
 
@@ -109,7 +112,7 @@ def test_catalog_current_release_matches_engine_version() -> None:
     assert since_lines == (
         ['    since: "0.1.0"'] * 10
         + ['    since: "1.0.0"', '    since: "0.1.0"']
-        + ['    since: "1.0.0"'] * 18
+        + ['    since: "1.0.0"'] * 19
     )
 
 

@@ -14,6 +14,7 @@ from astro_engine.location_compare import compare_locations
 from astro_engine.iss import decode_iss
 from astro_engine.light_pollution import LightPollutionArtifact
 from astro_engine.night_conditions import analyze_night_conditions, public_night_score
+from astro_engine.night_forecast import derive_window as derive_night_forecast_window
 from astro_engine.observing_quality import assess_observing_quality
 from astro_engine.seeing import seeing_penalty
 from astro_engine.transparency import transparency_penalty
@@ -25,6 +26,7 @@ __all__ = [
     "assess_observing_quality",
     "decode_iss",
     "decode_weather",
+    "derive_night_forecast_window",
     "compare_locations",
     "engine_semver",
     "generate_grid",

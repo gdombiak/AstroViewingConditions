@@ -105,9 +105,10 @@ SunCalc's existing unbounded sun sampler searches up to 365 days; the portable
 path explicitly sets the interval limit. The old Apple API retains its search
 behavior and Foundation missing-event approximation (`hosts: [ios]`, equality
 n/a). Its nonoptional SunEvents cannot represent this portable result directly.
-NightForecastFilter's host calendar projection remains unchanged. Portable
-SunCalc calls select UTC explicitly; existing Apple calls retain their current
-zone. SunCalc internally uses its low-precision distance approximation and a
+NightForecastFilter's calendar projection semantics remain unchanged and are now
+shared as `night_forecast.derive_window`; this astronomy capability does not
+invoke it. Portable SunCalc calls select UTC explicitly; existing Apple calls
+retain their current zone. SunCalc internally uses its low-precision distance approximation and a
 Foundation day-of-year calculation (validated here with a Gregorian system
 calendar); it is not an independent precision ephemeris.
 

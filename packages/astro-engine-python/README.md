@@ -1,7 +1,7 @@
 # astro-engine (Python)
 
 Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the
-twenty-nine catalogued capabilities.
+thirty-one catalogued capabilities.
 
 Calibration and fixtures are loaded from the repo `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). Do not copy scoring constants into this package.
 
@@ -113,7 +113,13 @@ existing equipment matcher and returns a stable subset of original indices/keys;
 it does not transport or change scores, windows, reasons or summaries. See the
 [equipment-filter procedure](../../contracts/procedures/filter-recommendations-by-equipment.md).
 
-The public catalog now contains 29 capabilities; engine/package identity remains
+`night_forecast.derive_window` projects supplied twilight clock components onto
+the supplied observing local day and following calendar day. It uses the same
+shared timezone catalogue as `observing_night.resolve_active`; acquisition and
+forecast filtering stay outside the capability. See the
+[forecast-window procedure](../../contracts/procedures/night-forecast-window.md).
+
+The public catalog now contains 31 capabilities; engine/package identity remains
 unreleased 1.0.0.
 
 Target metadata is available through `targets.requirements`,

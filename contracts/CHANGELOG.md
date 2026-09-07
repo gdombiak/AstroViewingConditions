@@ -2,6 +2,21 @@
 
 ## 1.0.0
 
+- Night forecast-window slice (unreleased): add
+  `night_forecast.derive_window`, the exact Foundation-compatible projection of
+  current astronomical dusk and following astronomical dawn wall-clock
+  hour/minute onto the observing local day and its next calendar day. The host
+  injects the authoritative timezone and Sun-event facts; ordinary forecast
+  filtering remains half-open host composition, and cloud-timing classification
+  remains deferred. Swift production now delegates its existing range derivation
+  to the shared implementation under an independent migration-equivalence oracle.
+  Strict transport, manual calendar/DST fixtures (including partial-hour,
+  multi-hour, late-day and post-transition field-search counterexamples) and
+  exact Swift/Python equality take the public catalog to 31 IDs. The version
+  remains unreleased `1.0.0`; no
+  existing capability or user-visible behavior changes. See
+  [night forecast window](procedures/night-forecast-window.md).
+
 - Planet observation and recommendation slice (unreleased): add
   `astronomy.planet_observation` (live night-scoped planet facts: geometric
   altitude, azimuth and geocentric solar elongation for Venus, Mars, Jupiter or

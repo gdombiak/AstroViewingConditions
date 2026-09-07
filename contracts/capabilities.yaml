@@ -329,3 +329,13 @@ capabilities:
       transported only as a row count because the decision only bounds-checks
       it. No Moon facts, no forecasts, no scoring, no English copy. See
       contracts/procedures/observing-night.md.
+
+  - id: night_forecast.derive_window
+    hosts: [ios, cli]
+    equality: night_forecast_window
+    since: "1.0.0"
+    requires_injected: [observing_time, time_zone, astronomical_twilight_end, astronomical_twilight_begin, tomorrow_astronomical_twilight_begin]
+    summary: >
+      Project astronomical-twilight wall-clock hour/minute onto an observing
+      local day and its following calendar day using the authoritative injected
+      timezone. Sun-event acquisition and forecast filtering remain composition.

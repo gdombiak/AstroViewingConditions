@@ -89,6 +89,11 @@ TRAILING_FIXTURES: tuple[tuple[str, str, str], ...] = (
         "fixtures/capabilities/observing-night-resolve-active",
         "after-midnight-previous-active-v1",
     ),
+    (
+        "night_forecast.derive_window",
+        "fixtures/capabilities/night-forecast-window",
+        "ordinary-night-v1",
+    ),
 )
 
 UNIMPLEMENTED_IDS = (
@@ -154,8 +159,8 @@ def test_public_allow_list_matches_catalog_order() -> None:
         "astronomy.moon_observation",
     ) + (TRAILING_FIXTURES[0][0], "astronomy.planet_observation",
          TRAILING_FIXTURES[1][0], TRAILING_FIXTURES[2][0], TRAILING_FIXTURES[3][0],
-         TRAILING_FIXTURES[4][0])
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 30
+         TRAILING_FIXTURES[4][0], TRAILING_FIXTURES[5][0])
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 31
 
 
 def test_every_public_capability_is_accepted() -> None:

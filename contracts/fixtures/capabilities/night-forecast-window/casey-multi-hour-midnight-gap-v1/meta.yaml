@@ -1,0 +1,6 @@
+capability: night_forecast.derive_window
+engine_semver: ">=1.0.0 <2.0.0"
+equality: night_forecast_window
+origin: manual
+hosts: [swift, python]
+notes: Casey's three-hour midnight jump is not Foundation's special 23-to-1 skipped-hour case, so missing 00:30 advances to the next civil day.
