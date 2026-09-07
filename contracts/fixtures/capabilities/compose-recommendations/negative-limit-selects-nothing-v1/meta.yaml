@@ -1,0 +1,8 @@
+capability: targets.compose_recommendations
+engine_semver: ">=1.0.0 <2.0.0"
+equality: compose_recommendations
+hosts: [swift, python]
+origin: manual
+notes: >
+  Production truncates with prefix(max(0, limit)), so a negative limit is
+  accepted and behaves exactly as zero.

@@ -74,6 +74,11 @@ TRAILING_FIXTURES: tuple[tuple[str, str, str], ...] = (
         "fixtures/capabilities/planet-recommendation",
         "jupiter-ordinary-night-v1",
     ),
+    (
+        "targets.compose_recommendations",
+        "fixtures/capabilities/compose-recommendations",
+        "score-descending-mixed-night-v1",
+    ),
 )
 
 UNIMPLEMENTED_IDS = (
@@ -137,8 +142,9 @@ def test_public_allow_list_matches_catalog_order() -> None:
     assert PUBLIC_CAPABILITY_IDS == tuple(item[0] for item in REPRESENTATIVE_FIXTURES) + (
         "astronomy.sun_events", "astronomy.moon_info", "astronomy.moon_series",
         "astronomy.moon_observation",
-    ) + (TRAILING_FIXTURES[0][0], "astronomy.planet_observation", TRAILING_FIXTURES[1][0])
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 27
+    ) + (TRAILING_FIXTURES[0][0], "astronomy.planet_observation",
+         TRAILING_FIXTURES[1][0], TRAILING_FIXTURES[2][0])
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 28
 
 
 def test_every_public_capability_is_accepted() -> None:

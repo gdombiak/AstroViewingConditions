@@ -211,10 +211,20 @@ public final class DefaultTargetRecommendationService: TargetRecommendationProvi
                     .visibilityWindows(for: target, context: context)
                     .map { scorer.recommendation(for: target, window: $0, context: context) }
             }
-        let recommendations = TargetScoring.rankedIndices(
-            scores: candidates.map(\.score),
-            bestTimes: candidates.map { $0.visibilityWindow.bestTime }, limit: limit
-        ).map { candidates[$0] }
+        // Only the final ordering/truncation decision is delegated. The candidate
+        // objects above — specialized Moon and planet results included — are
+        // reused verbatim; the engine sees three ranking facts per row and
+        // returns the selected rows in production order.
+        let recommendations = RecommendationComposition.selected(
+            candidates: candidates.map {
+                RecommendationComposition.Candidate(
+                    key: $0.id,
+                    score: $0.score,
+                    bestTime: $0.visibilityWindow.bestTime
+                )
+            },
+            limit: limit
+        ).map { candidates[$0.index] }
         TargetRecommendationDebugLogger.logFinalSortedRecommendations(
             recommendations,
             context: context,

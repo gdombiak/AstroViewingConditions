@@ -77,6 +77,7 @@ PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     "targets.moon_recommendation",
     "astronomy.planet_observation",
     "targets.planet_recommendation",
+    "targets.compose_recommendations",
 )
 
 _PUBLIC_ALLOW_LIST = frozenset(PUBLIC_CAPABILITY_IDS)

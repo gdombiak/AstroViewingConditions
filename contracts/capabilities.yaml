@@ -272,3 +272,26 @@ capabilities:
       observation is a provider fact, and two hosts that each derive it
       independently can land on opposite sides of the strict thresholds below.
       See contracts/procedures/planet-recommendation.md.
+
+  - id: targets.compose_recommendations
+    hosts: [ios, cli]
+    equality: compose_recommendations
+    since: "1.0.0"
+    requires_injected: [candidates, limit]
+    summary: >
+      Compose already-scored recommendation candidates into the production
+      global ranking: score descending, best time ascending, original caller
+      index ascending, truncated to max(0, limit). The only mixed-target
+      capability, and the only decision it makes is ordering and count. It never
+      scores, rescores, renormalizes or reweights: each row arrives already
+      scored by whichever path the host applied to it, specialized
+      (targets.moon_recommendation, targets.planet_recommendation) or generic
+      (targets.recommend, including the production fall-through when a
+      specialized provider returns nothing). An existing specialized Moon or
+      planet score is never rescored, and no target type has priority
+      independent of its score and best time. Candidate rows carry only
+      key, score and best_time; the selection echoes the caller index and key so
+      the host reuses its own recommendation objects. Duplicate keys are
+      accepted and never deduplicated. No astronomy, no weather, no catalog, no
+      equipment filtering, no English copy. See
+      contracts/procedures/compose-recommendations.md.

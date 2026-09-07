@@ -21,6 +21,10 @@ from astro_engine.moon_recommendation import (
     CAPABILITY_ID as MOON_RECOMMENDATION_ID,
     recommend_moon,
 )
+from astro_engine.compose_recommendations import (
+    CAPABILITY_ID as COMPOSE_RECOMMENDATIONS_ID,
+    compose_recommendations,
+)
 from astro_engine.planet_observation import CAPABILITY_ID as PLANET_OBSERVATION_ID
 from astro_engine.planet_recommendation import (
     CAPABILITY_ID as PLANET_RECOMMENDATION_ID,
@@ -70,7 +74,7 @@ DECODE_CAPABILITY_IDS = (WEATHER_ID, ISS_ID)
 
 DETERMINISTIC_CAPABILITY_IDS = (
     WINDOW_ID, GRID_ID, COMPARE_ID, CATALOG_ID, TARGETS_ID, EQUIPMENT_ID, *DEEP_SKY_IDS,
-    MOON_RECOMMENDATION_ID, PLANET_RECOMMENDATION_ID,
+    MOON_RECOMMENDATION_ID, PLANET_RECOMMENDATION_ID, COMPOSE_RECOMMENDATIONS_ID,
 )
 
 LOOKUP_CAPABILITY_IDS = (LP_ID,)
@@ -204,6 +208,8 @@ def evaluate_capability(
         return evaluate_planet_observation(_injected(document))
     if capability == PLANET_RECOMMENDATION_ID:
         return recommend_planet(_injected(document))
+    if capability == COMPOSE_RECOMMENDATIONS_ID:
+        return compose_recommendations(_injected(document))
     if capability == OQ_ID:
         injected = _injected(document)
         if "night_conditions_score" not in injected:

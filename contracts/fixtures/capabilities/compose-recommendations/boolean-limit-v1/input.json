@@ -1,0 +1,7 @@
+{
+  "capability": "targets.compose_recommendations",
+  "injected": {
+    "candidates": [],
+    "limit": true
+  }
+}

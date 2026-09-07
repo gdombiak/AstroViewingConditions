@@ -1,0 +1,8 @@
+{
+  "capability": "targets.compose_recommendations",
+  "error": {
+    "code": "sample_cap",
+    "message": "targets.compose_recommendations exceeds the 1.0 row cap (1440 rows)"
+  },
+  "ok": false
+}

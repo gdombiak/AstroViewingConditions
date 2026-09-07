@@ -1,0 +1,7 @@
+{
+  "capability": "targets.compose_recommendations",
+  "ok": true,
+  "result": {
+    "selected": []
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "capability": "targets.compose_recommendations",
+  "injected": {
+    "candidates": [
+      {
+        "key": "m31-w1",
+        "score": 40,
+        "best_time": "2026-03-01T19:00:00Z"
+      },
+      {
+        "key": "mars",
+        "score": 41,
+        "best_time": "2026-03-01T23:59:00Z"
+      }
+    ],
+    "limit": 5
+  }
+}

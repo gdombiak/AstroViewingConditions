@@ -1355,7 +1355,7 @@ astro-engine <capability-id> --pretty --input -
 
 **Phase 11 historical allow-list (public Python CLI):** `observing_quality.assess`, `night_conditions.analyze`, `night_conditions.score`, `fog.score`, `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`, `weather.decode`, `iss.decode`, `location.grid`, `catalog.deep_sky`. This was the eleven-capability set exposed in Phase 11.
 
-**Current public allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. This matches the current `contracts/capabilities.yaml`. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
+**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 28 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
 
 **Later CLI/Bot-host composition** (not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days and are out of `parity.yml` except as optional golden envelopes tagged `hosts: [python]`.
 
@@ -2069,16 +2069,18 @@ still has host composition listed under "still outstanding".
    Schlyter model, position/elongation, windows, best-time selection, Venus
    behavior, scoring and reasons — the planet slice below. The model was preserved
    rather than replaced with Skyfield.
+6. Mixed-target composition across deep-sky, Moon and planet results, preserving
+   specialized scores, ordering and ties with no generic re-score —
+   `targets.compose_recommendations`, the mixed-target slice below. Production
+   delegates only the final ordering/truncation decision.
 
 **Still outstanding:**
 
-6. Host night/time composition where it is not yet portable: astronomical-night
+7. Host night/time composition where it is not yet portable: astronomical-night
    and calendar boundaries, active-night date semantics across midnight, and
    timezone/DST authority.
-7. Semantic advisory facts that remain intentionally host-owned or composed,
+8. Semantic advisory facts that remain intentionally host-owned or composed,
    including cloud-timing classification.
-8. Mixed-target composition across deep-sky, Moon and planet results, preserving
-   specialized scores, ordering and ties with no generic re-score.
 9. Equipment-aware target composition and filtering before result-count truncation.
 10. Best Nearby / location-set composition, and its candidate-generation and
     orchestration behavior.
@@ -2143,9 +2145,9 @@ field exactly.
 `targets.recommend` remains deterministic over injected/precomputed facts; it does
 not call either new capability, and scoring, ranking, ties and equipment filtering
 are unchanged. After that slice, Moon and planet observation/recommendation parity
-were still outstanding; both landed in the two slices below. Mixed-target
-composition, Best Nearby, multi-night composition and Bot host orchestration
-remain outstanding.
+were still outstanding; both landed in the two slices below, and mixed-target
+composition landed in the slice after them. Best Nearby, multi-night composition
+and Bot host orchestration remain outstanding.
 
 ### Lunar observation and recommendation slice (implemented; unreleased 1.0)
 
@@ -2271,17 +2273,81 @@ date boundaries; one second outside any bound still fails closed.
 
 That slice takes the public count to **27**; both new IDs use `since: "1.0.0"` and
 fixtures use `>=1.0.0 <2.0.0`. No engine/package version change and no release.
-This slice is complete in the working tree but **not yet committed**.
+This slice is committed and pushed on the feature branch as
+`6eba4c7b6f659ebb9eba10cb5f5db540aacb415c` ("Add planet observation and
+recommendation parity").
 
-Still outstanding downstream: mixed-target composition, equipment-aware
-composition and filtering, Best Nearby / location-set composition and its
-orchestration, multi-night forecast eligibility, active-night date semantics,
-provider availability/failure/staleness semantics, Bot host persistence, and the
-full compatibility gate.
+Still outstanding downstream at that point: mixed-target composition — landed in
+the slice below — equipment-aware composition and filtering, Best Nearby /
+location-set composition and its orchestration, multi-night forecast eligibility,
+active-night date semantics, provider availability/failure/staleness semantics,
+Bot host persistence, and the full compatibility gate.
+
+### Mixed-target composition slice (implemented; unreleased 1.0)
+
+Assessment: **Agree.** The chosen boundary is deliberately the smallest one that
+exists: the production `DefaultTargetRecommendationService` does catalog
+dispatch, three-way provider routing, global ranking and truncation, and only the
+last two are portable. `targets.compose_recommendations` owns exactly that final
+decision. See the normative
+[composition procedure](../../contracts/procedures/compose-recommendations.md)
+for the archaeology, the duplicate-key policy and the rejected alternatives —
+including the rejected `targets.recommend_night` mega-capability that would have
+dragged catalog dispatch, live astronomy and three scoring models behind one
+identity.
+
+The capability takes a minimum frozen row — `key`, `score`, `best_time` — plus a
+`limit`, and returns the selected rows as `{index, key}` in production order:
+**score descending, best time ascending, original caller index ascending**, then
+`max(0, limit)`. A complete tie preserves candidate order. No target type has
+priority independent of its score and best time; there is no type term, no
+alphabetical or id ordering, no score normalization and no specialized tie
+breaker. Target metadata, window endpoints, reasons, summaries, astronomy facts,
+weather facts and equipment facts are deliberately not inputs: none can change the
+order, and returning identifiers rather than composed DTOs is what lets the host
+reuse its exact pre-existing `TargetRecommendation` objects, reasons and localized
+summaries.
+
+**An existing specialized score is never re-scored.** Each row keeps the score
+of whichever path the host applied to it — `targets.moon_recommendation` or
+`targets.planet_recommendation` where a specialized result exists, the generic
+`targets.recommend` score otherwise — and all of them enter one global ranking. A missing
+specialized result behaves exactly as production already does: the service falls
+through to the position provider plus the generic scorer, which is not a re-score
+of a specialized result because none exists in that branch. One target can
+contribute several rows (a deep-sky target with several visibility windows), so
+duplicate caller keys are **accepted and never deduplicated** — the one place this
+transport deliberately differs from `targets.recommend`, whose `key` is its only
+output handle. Hosts map a selection back through `index`.
+
+Production now delegates only that decision. `DefaultTargetRecommendationService`
+keeps its catalog provider, its specialized Moon and planet providers, its
+deep-sky window generation and generic scoring, every generated
+`TargetRecommendation` object, every reason array, every English summary and its
+observational debug logging. Equipment-aware filtering is not part of this slice
+and still happens outside the service.
+
+Migration equivalence is demonstrated at production level:
+`MixedTargetCompositionMigrationTests` carries a verbatim copy of the
+pre-migration sort/truncate as an oracle that calls neither
+`RecommendationComposition` nor `TargetScoring.rankedIndices`, and compares whole
+recommendation objects across mixed deep-sky/Moon/planet sets at every limit,
+including complete ties, multiple windows for one target, missing specialized
+results and empty candidate sets. A generic re-score of the Moon or a planet is
+made observable rather than merely asserted absent.
+
+That slice takes the public count to **28**; the new ID uses `since: "1.0.0"` and
+fixtures use `>=1.0.0 <2.0.0`. No engine/package version change and no release.
+
+Still outstanding downstream: host night/time composition; semantic advisory
+facts and cloud timing; equipment-aware composition and filtering; Best Nearby /
+location-set composition and its orchestration; multi-night forecast eligibility
+and composition; provider availability, failure and staleness semantics; Bot host
+persistence and state; and the full compatibility / release gate.
 
 #### Current Bot readiness boundary
 
-With today’s 27 public capabilities plus correct host acquisition/composition,
+With today’s 28 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
 Observing Quality; Sun/twilight events; catalog facts and solar candidate
@@ -2294,17 +2360,23 @@ samples, plus lunar useful-window and visibility recommendation facts with
 objective lunar reasons; and planet altitude, azimuth and solar-elongation
 samples for Venus, Mars, Jupiter and Saturn, with planet visibility windows,
 best times, specialized planet scores and objective reasons including Venus
-twilight behavior.
+twilight behavior. Astro Engine can now also authoritatively compose
+already-scored deep-sky, Moon and planet recommendation candidates into the
+production global ranking — score descending, best time ascending, caller order
+last — and truncate it, preserving every specialized score with no generic
+re-score.
 
 **An engine capability existing is not the same as the Bot host composing it into
 a complete product answer.** Each fact above still depends on the host supplying
-correct night boundaries, dates and provider data. The Bot cannot yet claim
-mixed-target composition across deep-sky, Moon and planet results; equipment-aware
-target recommendations; full Best Nearby or location-set composition; complete
-multi-night advice; active-night date semantics; provider availability, failure
-and staleness semantics; durable host persistence; or precipitation in the
-normalized weather domain. The overall Astronomer Bot compatibility gate is
-**not** complete. Missing objective facts are an explicit limitation, never an
+correct night boundaries, dates and provider data, and on the host having built
+the candidate rows in the first place: `targets.compose_recommendations` ranks
+what it is given and acquires nothing. The Bot cannot yet claim equipment-aware
+target recommendations; host night/time composition, including active-night date
+semantics; semantic advisory facts and cloud timing; full Best Nearby or
+location-set composition; complete multi-night advice; provider availability,
+failure and staleness semantics; durable host persistence; or precipitation in the
+normalized weather domain. Full host orchestration therefore remains incomplete.
+The overall Astronomer Bot compatibility gate is **not** complete. Missing objective facts are an explicit limitation, never an
 invitation for Grok to calculate or guess them.
 
 ### Remaining product integration work
@@ -2374,11 +2446,15 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   window behavior, best-time, convenience, penalties, score rules, Venus twilight
   and reasons. What this gate still needs is the Bot host supplying the night
   interval and weather facts and consuming the result without recreating it.
-- **Mixed-target composition:** preserve specialized deep-sky, Moon, and planet
-  score paths, stable ordering/ties, missing-specialized-result behavior,
-  semantic reason facts, and no generic re-score of specialized Moon/planet
-  results. A request such as "What should I observe tonight with my S30 Pro?"
-  must use both conditions and selected equipment.
+- **Mixed-target composition:** the ordering decision is shared as
+  `targets.compose_recommendations` and production delegates to it — specialized
+  deep-sky, Moon and planet score paths, stable ordering/ties,
+  missing-specialized-result behavior and no generic re-score of specialized
+  Moon/planet results are preserved and covered by migration-equivalence tests.
+  What this gate still needs is semantic reason facts and equipment-aware
+  composition: a request such as "What should I observe tonight with my S30 Pro?"
+  must use both conditions and selected equipment, and equipment filtering is
+  still outside the shared engine.
 - **Best Nearby and location composition:** preserve candidate nighttime-forecast
   eligibility; center/candidate composition; cloud/wind/fog aggregation and any
   surfaced fog-factor union; Observing Quality only when every scorable candidate

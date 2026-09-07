@@ -358,3 +358,16 @@ policies:
       recommendation.reasons: exact
       code: exact
       message: exact
+
+  compose_recommendations:
+    description: >
+      Deterministic final composition. `selected` is the ordered production
+      result: every element is exact, and the array order is the ranking, so
+      `arrays: ordered` is the whole comparison. Nothing here is a float, so no
+      tolerance applies. An empty selection is a valid result, not an error.
+    fields:
+      selected: exact
+      selected[].index: exact
+      selected[].key: exact
+      code: exact
+      message: exact

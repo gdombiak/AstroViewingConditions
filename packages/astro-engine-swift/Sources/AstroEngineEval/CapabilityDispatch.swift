@@ -103,6 +103,12 @@ enum CapabilityDispatch {
             } catch let error as PlanetRecommendationInputError {
                 throw EvalValidationError(code: error.code, message: error.message)
             }
+        case "targets.compose_recommendations":
+            do {
+                return try RecommendationCompositionContract.evaluate(injected(document))
+            } catch let error as RecommendationCompositionInputError {
+                throw EvalValidationError(code: error.code, message: error.message)
+            }
         case "location.compare":
             return try locationCompare(document)
         case "catalog.deep_sky":

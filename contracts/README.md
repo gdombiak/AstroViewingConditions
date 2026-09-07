@@ -69,5 +69,10 @@ none consume live astronomy. Live-provider equality remains forbidden.
 
 Target metadata: `targets.requirements`, `catalog.solar_system`, and
 `targets.moon_sensitivity` share production data and minimal procedures. See
-[the normative boundary and precedence](procedures/target-metadata.md). Public
-capability count is 27; version remains unreleased 1.0.0.
+[the normative boundary and precedence](procedures/target-metadata.md).
+
+Mixed-target composition: `targets.compose_recommendations` turns already-scored
+deep-sky, Moon and planet candidates into the production global ranking and
+truncates it. It is the only mixed-target capability and makes no scoring
+decision. See [the composition procedure](procedures/compose-recommendations.md).
+Public capability count is 28; version remains unreleased 1.0.0.

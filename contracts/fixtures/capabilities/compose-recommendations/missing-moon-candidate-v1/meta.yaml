@@ -1,0 +1,9 @@
+capability: targets.compose_recommendations
+engine_semver: ">=1.0.0 <2.0.0"
+equality: compose_recommendations
+hosts: [swift, python]
+origin: manual
+notes: >
+  No Moon row at all: the remaining candidates compose unchanged. This is
+  the shape production produces when the specialized Moon provider yields
+  nil and the Moon is not in the catalog result.

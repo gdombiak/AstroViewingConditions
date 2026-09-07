@@ -1,0 +1,8 @@
+{
+  "capability": "targets.compose_recommendations",
+  "error": {
+    "code": "validation",
+    "message": "invalid targets.compose_recommendations input"
+  },
+  "ok": false
+}

@@ -1,0 +1,16 @@
+{
+  "capability": "targets.compose_recommendations",
+  "ok": true,
+  "result": {
+    "selected": [
+      {
+        "index": 1,
+        "key": "moon"
+      },
+      {
+        "index": 0,
+        "key": "m31-w1"
+      }
+    ]
+  }
+}

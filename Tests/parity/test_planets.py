@@ -37,7 +37,10 @@ def test_planet_catalog_and_fixture_contract():
     catalog = (contracts_root() / "capabilities.yaml").read_text()
     catalog_ids = [line.split(": ", 1)[1] for line in catalog.splitlines() if line.startswith("  - id: ")]
     assert tuple(catalog_ids) == PUBLIC_CAPABILITY_IDS
-    assert catalog_ids[-2:] == ["astronomy.planet_observation", "targets.planet_recommendation"]
+    # The planet pair stays adjacent and ordered; later slices append after it.
+    planet_index = catalog_ids.index("astronomy.planet_observation")
+    assert catalog_ids[planet_index:planet_index + 2] == [
+        "astronomy.planet_observation", "targets.planet_recommendation"]
     for capability, equality in (("astronomy.planet_observation", "astronomy_planet_observation"),
                                  ("targets.planet_recommendation", "planet_recommendation")):
         block = catalog.split(f"  - id: {capability}\n", 1)[1].split("  - id:", 1)[0]
