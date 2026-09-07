@@ -38,6 +38,7 @@ DETERMINISTIC_FIXTURE_DIRS = (
     "fixtures/capabilities/filter-recommendations-by-equipment",
     "fixtures/capabilities/observing-night-resolve-active",
     "fixtures/capabilities/night-forecast-window",
+    "fixtures/capabilities/cloud-timing",
 )
 
 

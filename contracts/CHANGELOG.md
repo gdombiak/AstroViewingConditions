@@ -2,6 +2,26 @@
 
 ## 1.0.0
 
+- Semantic cloud-timing slice (unreleased): add
+  `night_conditions.classify_cloud_timing`, the exact production classification
+  of *when* sustained heavy cloud interrupts an observing night. A run is two or
+  more rows at or above the calibrated `cloud_floor.cloud_cover_min`, exactly
+  3600 s apart in caller order; a run with no row strictly below
+  `rating_thresholds.fair_max` anywhere before or after it is dropped before
+  ranking; the preferred run is longest, then greatest average cloud, then
+  earliest start index; the verdict is `none`, `early_heavy`, `late_heavy` or
+  `intermittent_heavy`. Caller order is semantics and rows are never sorted, so a
+  duplicate, backwards or non-hourly step breaks a run. The transport carries
+  only the three hourly facts the rule reads. Production Swift now delegates to
+  the shared `CloudTimingClassifier` under an independent
+  migration-equivalence oracle over 203 974 nights; `CloudTiming.summaryText`
+  stays a Swift presentation mapping and every existing iOS summary string is
+  unchanged. **English advice is explicitly not parity-governed.** Strict
+  transport, 35 manual fixtures and exact Swift/Python equality take the public
+  catalog to 32 IDs. The version remains unreleased `1.0.0`; no existing
+  capability or user-visible behavior changes. See
+  [cloud timing](procedures/cloud-timing.md).
+
 - Night forecast-window slice (unreleased): add
   `night_forecast.derive_window`, the exact Foundation-compatible projection of
   current astronomical dusk and following astronomical dawn wall-clock

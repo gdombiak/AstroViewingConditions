@@ -1,0 +1,6 @@
+capability: night_conditions.classify_cloud_timing
+engine_semver: ">=1.0.0 <2.0.0"
+equality: cloud_timing
+origin: manual
+hosts: [swift, python]
+notes: The usable hour is four rows before the run, not adjacent to it; the prefix scan still finds it.

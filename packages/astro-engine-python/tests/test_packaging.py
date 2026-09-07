@@ -91,6 +91,7 @@ def test_public_imports() -> None:
         "targets.filter_recommendations_by_equipment",
         "observing_night.resolve_active",
         "night_forecast.derive_window",
+        "night_conditions.classify_cloud_timing",
     )
 
 
@@ -112,7 +113,7 @@ def test_catalog_current_release_matches_engine_version() -> None:
     assert since_lines == (
         ['    since: "0.1.0"'] * 10
         + ['    since: "1.0.0"', '    since: "0.1.0"']
-        + ['    since: "1.0.0"'] * 19
+        + ['    since: "1.0.0"'] * 20
     )
 
 

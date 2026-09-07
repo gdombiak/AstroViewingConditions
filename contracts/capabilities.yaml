@@ -339,3 +339,20 @@ capabilities:
       Project astronomical-twilight wall-clock hour/minute onto an observing
       local day and its following calendar day using the authoritative injected
       timezone. Sun-event acquisition and forecast filtering remain composition.
+
+  - id: night_conditions.classify_cloud_timing
+    hosts: [ios, cli]
+    equality: cloud_timing
+    since: "1.0.0"
+    requires_injected: [hourly_ratings]
+    summary: >
+      Classify when sustained heavy cloud interrupts an observing night from
+      ordered hourly rows of time, score and cloud cover. A run is two or more
+      calibrated-heavy rows exactly 3600 s apart in caller order; a run with no
+      usable-score row anywhere before or after it is ineligible; the preferred
+      run is longest, then greatest average cloud, then earliest start index.
+      The verdict is one of none / early_heavy / late_heavy / intermittent_heavy.
+      Caller order is semantics and is never sorted. Semantics only: the English
+      advice production builds from the verdict, the rest of the night
+      assessment, trend, rating and forecast acquisition are all excluded. See
+      contracts/procedures/cloud-timing.md.

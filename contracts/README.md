@@ -14,12 +14,12 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `targets.moon_recommendation`, `astronomy.planet_observation`,
 `targets.planet_recommendation`, `targets.compose_recommendations`,
 `targets.filter_recommendations_by_equipment`, and
-`observing_night.resolve_active`, and `night_forecast.derive_window`. Composed agent hosts remain
+`observing_night.resolve_active`, `night_forecast.derive_window`, and `night_conditions.classify_cloud_timing`. Composed agent hosts remain
 later integration work. Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those thirty-one IDs. Capability
+The public Python CLI allow-lists exactly those thirty-two IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
 rows keep `since: "0.1.0"`; `location.compare`, `targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
 they are introduced under the unreleased 1.0.0 identity. Do not invent a second
@@ -108,5 +108,17 @@ Nighttime forecast-window derivation:
 components onto the observing local day and its next calendar day. The host
 supplies the authoritative timezone and Sun-event facts; filtering forecasts is
 ordinary half-open composition. See the
-[night forecast-window procedure](procedures/night-forecast-window.md). Public
-capability count is 31; version remains unreleased 1.0.0.
+[night forecast-window procedure](procedures/night-forecast-window.md). That
+slice took the public capability count to 31; version remained unreleased 1.0.0.
+
+Semantic cloud timing: `night_conditions.classify_cloud_timing` classifies when
+sustained heavy cloud interrupts an observing night, from ordered hourly rows of
+time, score and cloud cover. A run is two or more calibrated-heavy rows exactly
+3600 s apart in caller order; a run with no usable-score row anywhere before or
+after it is dropped before ranking; the preferred run is longest, then cloudiest,
+then earliest. The verdict is `none`, `early_heavy`, `late_heavy` or
+`intermittent_heavy`. Caller order is semantics and rows are never sorted. The
+English advice production builds from the verdict stays host presentation and is
+deliberately outside the equality policy. See the
+[cloud-timing procedure](procedures/cloud-timing.md). Public capability count is
+32; version remains unreleased 1.0.0.

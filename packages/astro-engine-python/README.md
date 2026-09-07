@@ -1,7 +1,7 @@
 # astro-engine (Python)
 
 Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the
-thirty-one catalogued capabilities.
+thirty-two catalogued capabilities.
 
 Calibration and fixtures are loaded from the repo `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). Do not copy scoring constants into this package.
 
@@ -119,7 +119,14 @@ shared timezone catalogue as `observing_night.resolve_active`; acquisition and
 forecast filtering stay outside the capability. See the
 [forecast-window procedure](../../contracts/procedures/night-forecast-window.md).
 
-The public catalog now contains 31 capabilities; engine/package identity remains
+`night_conditions.classify_cloud_timing` returns one semantic verdict — `none`,
+`early_heavy`, `late_heavy` or `intermittent_heavy` — from ordered hourly rows of
+time, score and cloud cover. Caller order is part of the rule and rows are never
+sorted. It emits no English copy: the summary sentences production builds from
+the verdict are host presentation. See the
+[cloud-timing procedure](../../contracts/procedures/cloud-timing.md).
+
+The public catalog now contains 32 capabilities; engine/package identity remains
 unreleased 1.0.0.
 
 Target metadata is available through `targets.requirements`,

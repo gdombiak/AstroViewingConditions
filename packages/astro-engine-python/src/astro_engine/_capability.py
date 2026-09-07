@@ -37,6 +37,10 @@ from astro_engine.night_forecast import (
     CAPABILITY_ID as NIGHT_FORECAST_ID,
     derive_night_forecast_window,
 )
+from astro_engine.cloud_timing import (
+    CAPABILITY_ID as CLOUD_TIMING_ID,
+    classify_cloud_timing,
+)
 from astro_engine.planet_observation import CAPABILITY_ID as PLANET_OBSERVATION_ID
 from astro_engine.planet_recommendation import (
     CAPABILITY_ID as PLANET_RECOMMENDATION_ID,
@@ -87,7 +91,7 @@ DECODE_CAPABILITY_IDS = (WEATHER_ID, ISS_ID)
 DETERMINISTIC_CAPABILITY_IDS = (
     WINDOW_ID, GRID_ID, COMPARE_ID, CATALOG_ID, TARGETS_ID, EQUIPMENT_ID, *DEEP_SKY_IDS,
     MOON_RECOMMENDATION_ID, PLANET_RECOMMENDATION_ID, COMPOSE_RECOMMENDATIONS_ID,
-    FILTER_RECOMMENDATIONS_BY_EQUIPMENT_ID, NIGHT_FORECAST_ID,
+    FILTER_RECOMMENDATIONS_BY_EQUIPMENT_ID, NIGHT_FORECAST_ID, CLOUD_TIMING_ID,
 )
 
 LOOKUP_CAPABILITY_IDS = (LP_ID,)
@@ -229,6 +233,8 @@ def evaluate_capability(
         return resolve_active_observing_night(_injected(document))
     if capability == NIGHT_FORECAST_ID:
         return derive_night_forecast_window(_injected(document))
+    if capability == CLOUD_TIMING_ID:
+        return classify_cloud_timing(_injected(document))
     if capability == OQ_ID:
         injected = _injected(document)
         if "night_conditions_score" not in injected:

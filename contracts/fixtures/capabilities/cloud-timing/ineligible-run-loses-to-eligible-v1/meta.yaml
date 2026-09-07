@@ -1,0 +1,6 @@
+capability: night_conditions.classify_cloud_timing
+engine_semver: ">=1.0.0 <2.0.0"
+equality: cloud_timing
+origin: manual
+hosts: [swift, python]
+notes: Eligibility is applied before ranking. The three-hour run has no usable score outside it and is dropped; the shorter two-hour run survives because the dropped run's own rows are usable. Ranking the runs first would have returned none.

@@ -413,3 +413,14 @@ policies:
       end: exact
       code: exact
       message: exact
+
+  cloud_timing:
+    description: >
+      One discrete semantic verdict. The four classes must never be collapsed
+      into one another, and nothing here is a float, so no tolerance applies.
+      The English summary production builds from the verdict is host
+      presentation and is deliberately outside this policy.
+    fields:
+      cloud_timing: exact
+      code: exact
+      message: exact

@@ -1375,8 +1375,8 @@ home in the current tree.
 
 It does **not** follow that everything still outstanding is host work. Production
 Swift already contained deterministic rules requiring engine/parity treatment:
-the `NightForecastFilter` window derivation is now a completed example, while
-cloud-timing classification remains outstanding engine-shaped work. The roadmap table under
+the `NightForecastFilter` window derivation and the cloud-timing classification
+are both completed examples. The roadmap table under
 [Required implementation order after the audit](#required-implementation-order-after-the-audit)
 carries that item-by-item reading and the archaeology requirement behind it.
 
@@ -1714,7 +1714,7 @@ astro-engine <capability-id> --pretty --input -
 
 **Phase 11 historical allow-list (public Python CLI):** `observing_quality.assess`, `night_conditions.analyze`, `night_conditions.score`, `fog.score`, `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`, `weather.decode`, `iss.decode`, `location.grid`, `catalog.deep_sky`. This was the eleven-capability set exposed in Phase 11.
 
-**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 31 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
+**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 32 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
 
 **Later Bot-host composition** (proposed names; not catalogued and not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days, live in `packages/astro-host-python`, and stay out of `parity.yml`. If host-side golden envelopes are ever wanted they would need a non-parity marker of their own; no such marker (`hosts: [python]` or otherwise) exists in the catalog today.
 
@@ -2401,11 +2401,11 @@ scored rows; upstream analysis retains explicit injected bounds and Moon facts.
 
 Source review finds cloud timing used by summary generation only. That is a
 statement about its consumer, not about its home: the classification itself is a
-portable Astro-domain rule and is therefore **engine-shaped**, pending its own
-capability/parity slice (see the
-[cloud-timing correction](#required-implementation-order-after-the-audit)). Its
-English summary text remains host presentation. No Bot may improvise
-sustained-heavy/early/late semantic classifications, and no host may
+portable Astro-domain rule and is therefore **engine-shaped** (see the
+[cloud-timing correction](#required-implementation-order-after-the-audit)). It is
+now public `night_conditions.classify_cloud_timing`. Its English summary text
+remains host presentation and is deliberately not parity-governed. No Bot may
+improvise sustained-heavy/early/late semantic classifications, and no host may
 re-implement them. `NightForecastFilter`'s calendar/DST window derivation is
 likewise **engine-shaped** — it is already Foundation-only code inside
 `packages/astro-engine-swift` — and is now public
@@ -2462,6 +2462,13 @@ still has host composition listed under "still outstanding".
    filter route through `NightForecastWindowDeriver`; filtering remains ordinary
    half-open composition. Timezone, observing-day and Sun-event acquisition stay
    host-owned.
+10. Semantic cloud-timing classification — `night_conditions.classify_cloud_timing`,
+   the cloud-timing slice below. Production `NightQualityAnalysisRules.cloudTiming`
+   delegates to the shared `CloudTimingClassifier`. Only the **classification** is
+   engine-shaped; the English advice `NightQualityAnalyzer.generateSummary` builds
+   from it stays host presentation and is explicitly outside the equality policy.
+   Host composition — acquiring forecasts, deciding when to surface the advice and
+   wording it — remains outstanding.
 
 **Still outstanding.** Each item below carries a **provisional** engine/host
 reading. Provisional is load-bearing: with the
@@ -2489,7 +2496,7 @@ not determinism alone.
 |---|---|---|---|
 | 9 | Three-night outlook day composition | **Mixed** | Required. Complete-hourly-coverage eligibility and first-best-score-tie retention read as deterministic rules; day iteration and payload persistence read as host. Separate them explicitly. |
 | 9 | Authoritative IANA timezone **acquisition** | **Host** | Settled by design. Geocoding and the longitude approximation are host-owned; the engine consumes an authoritative zone. Note the current production fallback yields no IANA identity — the host must resolve that, not the engine. |
-| 10 | Semantic advisory / cloud-timing classification | **Engine-shaped; NOT host-only** | Already audited — see the correction below. Deterministic and calibration-driven today. Requires a contract-slice decision before any Bot surfaces cloud-timing advice. |
+| 10 | Semantic advisory prose built on cloud timing | **Host presentation over an engine fact** | Classification **complete**: `night_conditions.classify_cloud_timing` (item 10 above, and the slice below). What remains is host-shaped — deciding when to surface the advice and wording it — over the engine's verdict. A Bot must consume the capability, never re-derive the classification. |
 | 11 | Best Nearby / location-set composition | **Mixed** | Required. `BestSpotSearcher` mixes deterministic decisions (`resolveScoringMode`, `averageFogScore` and any fog-factor union, `isHigherRanked`, `suitabilityCandidateCount`, `forecastDaysNeeded`, `calculateScore`, candidate eligibility, center improvement, missing-center behavior) with genuinely host-owned orchestration (async provider fan-out, `defaultMaxConcurrentLookups`, the 40-check suitability cap, CLGeocoder sessions, caches). Do not classify the whole service from its file location. |
 | 12 | Multi-night forecast eligibility and composition | **Mixed** | Required. Same shape as the three-night outlook row; complete-night and deterministic best-night rules are candidates, acquisition and payload lifecycle are not. |
 | 13 | Provider availability, failure and staleness semantics | **Host-shaped; verify the edges** | Required. Fetch, retry, cache lifecycle, error surfaces and freshness/lifecycle policy are host-shaped by the [placement criterion](#placement-criterion-portable-semantics-vs-operational-policy) — deterministic TTLs and bounds do not become engine logic. Swift has its own freshness and failure policies; the Python host simply carries no parity obligation to match them. Verify only the edge case: a state distinction that changes an **Astro-domain answer** (for example what counts as a complete night) is engine-shaped and must not be re-derived per host. |
@@ -2519,7 +2526,9 @@ takes an engine capability/parity slice — classification enum only, never pros
 emoji or copy. An independent host re-implementation is **not** an authorized
 alternative, and it is never prompt or LLM territory. The English summary text
 built from the classification stays host presentation, as does the acquisition
-and composition around it.
+and composition around it. **That slice has since landed** as
+`night_conditions.classify_cloud_timing`; see the
+[cloud-timing slice](#semantic-cloud-timing-slice-implemented-unreleased-10).
 
 ### Target metadata / requirements slice (implemented; unreleased 1.0)
 
@@ -2970,8 +2979,8 @@ change and no release.
 
 Still outstanding downstream, with engine-shaped and host-shaped work named
 separately: host acquisition of an authoritative IANA zone (host-shaped);
-cloud-timing classification (engine-shaped) and the advisory prose built from it
-(host presentation); Best Nearby / location-set composition, whose ranking and
+the advisory prose built on cloud timing (host presentation — the classification
+itself is now `night_conditions.classify_cloud_timing`); Best Nearby / location-set composition, whose ranking and
 eligibility rules are engine-shaped while its orchestration is host-shaped;
 multi-night forecast eligibility and composition; provider availability, failure
 and staleness semantics (host-shaped); Bot host persistence and state
@@ -3022,13 +3031,77 @@ pinned rather than excluded. See the [normative procedure](../../contracts/proce
 This slice takes the public capability count to **31**. The new ID uses
 `since: "1.0.0"`; version remains unreleased 1.0.0. Timezone and Sun-event
 acquisition, forecast/day selection and scoring composition remain host work.
-Cloud-timing classification remains outstanding engine-shaped work; its English
+Cloud-timing classification landed separately in the slice below; its English
 advice remains presentation. This slice does not complete three-night outlook,
 Best Nearby, multi-night composition or Bot readiness.
 
+### Semantic cloud-timing slice (implemented; unreleased 1.0)
+
+Assessment: **Agree** with the 2026-09-06 correction. Chosen boundary is the
+**discrete classification alone**, public
+`night_conditions.classify_cloud_timing`, over the three hourly facts the rule
+actually reads. See the normative
+[cloud-timing procedure](../../contracts/procedures/cloud-timing.md) for the
+archaeology, preserved quirks and rejected alternatives.
+
+Archaeology confirmed every element of the earlier reading and settled the open
+questions. The rule reads only `time`, `score` and `cloudCover` from
+`NightQualityAssessment.HourlyRating`, so the other seven fields are not
+transported. It **does not sort**: production hands it rows the analyzer already
+sorted, but the classification itself walks the array it is given, so caller
+order is contract — a duplicate, backwards or non-hourly step breaks a run, and
+three heavy hours supplied out of order yield no run at all. This is the
+deliberate opposite of `observing_window.select`, which sorts on entry. Adjacency
+is the exact `time[i] - time[i-1] == 3600` comparison, so 3599 and 3601 break a
+run just as 0 and -3600 do. A run needs at least two rows
+(`end_index - start_index >= 1`); a lone heavy hour never qualifies. The
+usable-hour tests scan the **whole** prefix and suffix around a run, not the
+adjacent rows, so a usable hour far from the run still makes it eligible.
+Eligibility is applied **before** ranking, which is observable: a longer
+ineligible run does not suppress a shorter eligible one. Ranking is longest, then
+greatest average cloud (`Double(sum)/Double(count)`, compared with `!=`), then
+earliest start index — a total order, because start indices are distinct. Heavy
+is inclusive at the threshold, usable is strict below it. Neither threshold is
+new: both already live in `contracts/data/calibration/night-quality.json` as
+`cloud_floor.cloud_cover_min` and `rating_thresholds.fair_max`, and both hosts
+read them rather than duplicating a constant. The rule compares absolute
+timestamp deltas only, so no timezone or calendar emulation was needed and the
+capability takes no IANA zone.
+
+**English is not a parity target.** The Swift authority is
+`CloudTimingClassifier`; `NightQualityAnalysisRules.cloudTiming` maps its rows and
+delegates, and `NightQualityAnalysisRules.CloudTiming` survives purely as the
+production presentation alias that carries `summaryText`, so
+`NightQualityAnalyzer.generateSummary` and every existing iOS summary string are
+byte-for-byte unchanged. The Python engine implements the classification only and
+reproduces no copy. The equality policy covers `cloud_timing`, `code` and
+`message` and nothing else. A Bot host may word cloud-timing advice however it
+likes; it may not re-derive the verdict.
+
+`CloudTimingMigrationTests` compares the post-migration production entry point
+against a verbatim test-only copy of the pre-migration implementation over
+203,974 nights: an exhaustive sweep of every 0–4 row night over three scores
+(`0.5`, `1.0`, `1.5`), three cloud levels (`79`, `80`, `100`) and three inter-row
+steps (`3600`, `0`, `3599`) — 183,961 nights — plus a deterministic 20,000-case
+sweep of 5–8 row nights with wider score, cloud and step alphabets (including
+`3601`, `-3600`, `1800`, `7200`), plus 13 named production shapes. The oracle
+never calls the new classifier.
+
+Thirty-five manual fixtures cover all four verdicts, both threshold boundaries,
+1-row versus 2-row runs, exact 3600 versus 3599/3601/0/7200 spacing, duplicate
+and backwards timestamps, multiple eligible runs, each tie-break level, usable
+rows far from the run, whole-night heavy cloud and the strict-transport and
+row-cap failures. This slice takes the public capability count to **32**; the new
+ID uses `since: "1.0.0"` and fixtures use `>=1.0.0 <2.0.0`. There is no
+engine/package version change and no release.
+
+Still outstanding: host composition of the verdict into advice — deciding when to
+surface it and wording it — plus three-night outlook, Best Nearby, multi-night
+composition, provider availability semantics and Bot readiness.
+
 #### Current Bot readiness boundary
 
-With today’s 31 public capabilities plus correct host acquisition/composition,
+With today’s 32 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
 Observing Quality; Sun/twilight events; catalog facts and solar candidate
@@ -3067,8 +3140,9 @@ equipment-aware subset once its host supplies authoritative saved/session
 equipment facts, and it can now resolve the active observing night once its host
 supplies an authoritative IANA timezone and the daily twilight rows. Still
 missing are that timezone acquisition itself (host-shaped), host composition of
-the new `night_forecast.derive_window` fact with forecast rows, and cloud-timing
-classification (engine-shaped and still needing its own capability slice);
+the new `night_forecast.derive_window` fact with forecast rows, and host
+composition of the new `night_conditions.classify_cloud_timing` verdict into
+advice the Bot actually words;
 full Best Nearby or location-set composition; complete multi-night
 advice; provider availability, failure and staleness semantics; durable host
 persistence; or precipitation in the normalized weather domain. Full host orchestration therefore remains incomplete.

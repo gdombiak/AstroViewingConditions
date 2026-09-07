@@ -38,6 +38,7 @@ from astro_engine.filter_recommendations_by_equipment import (
 from astro_engine.location_compare import CAPABILITY_ID as COMPARE_ID
 from astro_engine.observing_night import CAPABILITY_ID as OBSERVING_NIGHT_ID
 from astro_engine.night_forecast import CAPABILITY_ID as NIGHT_FORECAST_ID
+from astro_engine.cloud_timing import CAPABILITY_ID as CLOUD_TIMING_ID
 from astro_engine.iss import CAPABILITY_ID as ISS_ID
 from astro_engine.jsonio import JSONCodecError, STDIN_LIMIT_BYTES, dump_json, load_json_bytes
 from astro_engine.light_pollution import CAPABILITY_ID as LP_ID
@@ -86,6 +87,7 @@ PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     FILTER_RECOMMENDATIONS_BY_EQUIPMENT_ID,
     OBSERVING_NIGHT_ID,
     NIGHT_FORECAST_ID,
+    CLOUD_TIMING_ID,
 )
 
 _PUBLIC_ALLOW_LIST = frozenset(PUBLIC_CAPABILITY_IDS)

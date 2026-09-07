@@ -91,8 +91,9 @@ scoring. Heavy cloud runs require >=2 rows exactly 3600 seconds apart, at the
 configured cloud floor; eligible runs have usable-score rows before or after.
 Preference is longest, then highest average cloud, then earliest start. The before/
 after flags select late/early/intermittent-heavy, otherwise none; summary use also
-depends on average cloud, rating and trend. This independent classification is
-engine-shaped but outside both window capabilities. Bot hosts may describe
-authoritative hourly facts, but must not invent the classification; it remains
-open for a separately reviewed capability slice. English advice stays host
-presentation.
+depends on average cloud, rating and trend. That classification is engine-shaped
+but outside both window capabilities: it is now its own slice,
+`night_conditions.classify_cloud_timing` — see the
+[cloud-timing procedure](cloud-timing.md). Bot hosts may describe authoritative
+hourly facts and may word the advice themselves, but must not re-derive the
+classification. English advice stays host presentation and is not parity-governed.

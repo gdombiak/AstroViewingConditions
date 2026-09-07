@@ -1,0 +1,8 @@
+{
+  "capability": "night_conditions.classify_cloud_timing",
+  "ok": false,
+  "error": {
+    "code": "sample_cap",
+    "message": "night_conditions.classify_cloud_timing exceeds the 1.0 row cap (1440 rows)"
+  }
+}

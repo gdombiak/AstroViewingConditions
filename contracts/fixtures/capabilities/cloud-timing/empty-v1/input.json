@@ -1,0 +1,6 @@
+{
+  "capability": "night_conditions.classify_cloud_timing",
+  "injected": {
+    "hourly_ratings": []
+  }
+}
