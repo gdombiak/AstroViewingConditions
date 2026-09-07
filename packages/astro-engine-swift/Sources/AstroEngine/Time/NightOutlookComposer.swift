@@ -211,7 +211,8 @@ public enum NightOutlookComposer {
     /// median positive step across the whole stream and must itself be an hour
     /// within the tolerance; the covering rows must start at or before the night
     /// start, reach past the night end, and step by that cadence throughout. A
-    /// duplicate, backwards or missing row therefore breaks coverage.
+    /// duplicate timestamp or missing interval therefore breaks coverage. Caller
+    /// ordering does not matter because timestamps are sorted first.
     public static func hasCompleteHourlyCoverage(
         astronomicalNightStart start: Date,
         astronomicalNightEnd end: Date,
@@ -259,8 +260,8 @@ public enum NightOutlookComposer {
     }
 
     /// The median strictly positive step, accepted only when it is an hour
-    /// within the tolerance. Zero and negative steps are excluded from the
-    /// estimate but still break the continuity check above.
+    /// within the tolerance. Zero steps from duplicate timestamps are excluded
+    /// from the estimate but still break the continuity check above.
     private static func nominalHourlyCadence(in sortedHourlyTimes: [Date]) -> TimeInterval? {
         let intervals = zip(sortedHourlyTimes, sortedHourlyTimes.dropFirst())
             .compactMap { first, second -> TimeInterval? in

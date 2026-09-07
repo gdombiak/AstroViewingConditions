@@ -223,8 +223,9 @@ def has_complete_hourly_coverage(
     contain a non-hour-aligned boundary. The nominal cadence is the median
     positive step across the whole stream and must itself be an hour within the
     tolerance; the covering rows must start at or before the night start, reach
-    past the night end, and step by that cadence throughout. A duplicate,
-    backwards or missing row therefore breaks coverage.
+    past the night end, and step by that cadence throughout. A duplicate
+    timestamp or missing interval therefore breaks coverage. Caller ordering does
+    not matter because timestamps are sorted first.
     """
     return _has_complete_hourly_coverage(
         astronomical_night_start, astronomical_night_end, sorted(hourly_times)
@@ -256,8 +257,8 @@ def _has_complete_hourly_coverage(
 def _nominal_hourly_cadence(ordered_hourly: Sequence[datetime]) -> float | None:
     """The median strictly positive step, accepted only when it is an hour.
 
-    Zero and negative steps are excluded from the estimate but still break the
-    continuity check above.
+    Zero steps from duplicate timestamps are excluded from the estimate but
+    still break the continuity check above.
     """
     intervals = sorted(
         interval
