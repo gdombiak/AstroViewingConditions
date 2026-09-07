@@ -490,7 +490,7 @@ operations are **host** concerns: they belong in `packages/astro-host-python` an
 must **not** be added to `PUBLIC_CAPABILITY_IDS`.
 
 **Current catalog state (verified 2026-09-07).** `contracts/capabilities.yaml`
-contains **no** `agent.*` rows and **no** `equality: n/a` rows. All 31 catalogued
+contains **no** `agent.*` rows and **no** `equality: n/a` rows. All 32 catalogued
 capabilities are `hosts: [ios, cli]` with a real equality class. The `agent.*`,
 `ui.field_mode` and `hosts: [ios]` rows shown in
 [§ 9](#9-feature-parity-without-forcing-ui-or-agent-features) are part of that
@@ -1266,7 +1266,7 @@ F1 established the `0.1.0` OQ-only identity. Phase 12 set the repository's unrel
 Parity is `contracts/capabilities.yaml`.
 
 **The YAML below is an illustrative / proposed shape, not the current file.**
-Verified 2026-09-07: the real catalog holds **31** rows, **all** `hosts: [ios, cli]`,
+Verified 2026-09-07: the real catalog holds **32** rows, **all** `hosts: [ios, cli]`,
 **all** with a real equality class — no `agent.*` rows, no `equality: n/a` rows,
 no `hosts: [ios]`-only or `hosts: [cli]`-only rows. The single-host and `agent.*`
 rows here illustrate how such rows *would* be expressed if they were ever
@@ -1397,7 +1397,7 @@ the host half.
 |---|---|
 | `packages/` holds `astro-engine-swift` and `astro-engine-python` | `packages/` means "importable library", not "delivery surface" |
 | `apps/` holds `ios` and `cli`; `apps/cli/astro-engine` is a small launcher that resolves an import path and calls `astro_engine.cli:main` | `apps/` means "delivery surface"; the CLI is already thin |
-| `contracts/capabilities.yaml` — 31 rows, **every one** `hosts: [ios, cli]` with a real equality class | The catalog is today exclusively the dual-host parity surface. Its `hosts:` key models the host axis, but nothing host-only has ever been catalogued, so host operations have no place in it as it stands |
+| `contracts/capabilities.yaml` — 32 rows, **every one** `hosts: [ios, cli]` with a real equality class | The catalog is today exclusively the dual-host parity surface. Its `hosts:` key models the host axis, but nothing host-only has ever been catalogued, so host operations have no place in it as it stands |
 | `CODEOWNERS` guards only `/contracts/` | Governance follows the contract, not the directory |
 | `.github/workflows/python.yml` path-filters `packages/astro-engine-python/**`, `contracts/**`, `Tests/parity/**`, `apps/cli/**` | Path filters already encode which trees are parity-relevant |
 | The design's own "Swift/iOS only" and "Python/CLI only" lists | The responsibility split exists in prose without a filesystem home |
@@ -3164,7 +3164,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 **Pre-1.0 business-logic compatibility/release gate.** Before the first public
 Astro Engine / Astronomer Bot 1.0, the Bot must expose the objective/business-logic
 capabilities used by production Astro Conditions for astronomy advice, with the
-LLM layered on top. Availability of the current 31 engine capabilities alone
+LLM layered on top. Availability of the current 32 engine capabilities alone
 does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
 
 - **Audit closure:** reconcile every behavior named in the [production
@@ -3282,6 +3282,23 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   narrower Swift-compatible grammar; do **not** special-case one capability or
   fix it capability-by-capability, which would leave the same trap in every
   parser that is not the one being reviewed.
+- **Shared public numeric domain (tracking; not a migration blocker).** The two
+  hosts also disagree on how large a finite JSON number may be. Python's `json`
+  decoder accepts arbitrary-precision integer literals, and public capability
+  parsers then narrow them with `float(...)`, so a syntactically valid integer
+  too large for binary64 raises `OverflowError` and surfaces as `engine_failure`
+  rather than as validation. Swift/Foundation has an effectively bounded
+  `NSNumber`/binary64-compatible numeric domain and rejects the corresponding
+  numeric input while decoding, so today the two runtimes can classify the same
+  very large finite JSON integer differently. This is a shared transport-domain
+  asymmetry, not a defect of any one capability — cloud timing included — and it
+  is not a reason to touch parser behavior, tests, contracts, or that slice now.
+  Before 1.0, decide the shared public numeric transport policy **globally** —
+  the accepted finite range and the failure class an out-of-range literal must
+  produce — and enforce it **centrally** in shared validation on both hosts; do
+  **not** special-case individual capabilities or fix it parser-by-parser, which
+  would leave the same trap in every capability that is not the one being
+  reviewed.
 - **End-to-end release scenarios:** verify objective Astro facts, Bot composition,
   and LLM explanation together, with online research constrained as above:
   "How is tonight?"; "What are my best targets tonight?"; "What should I observe
