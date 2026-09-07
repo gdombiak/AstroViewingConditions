@@ -1,0 +1,1 @@
+{"capability":"observing_night.resolve_active","ok":true,"result":{"state":"resolved","time_zone":"Australia/Lord_Howe","day_offset":-1,"day_index":0,"observing_date":"2026-10-03","observing_day_start":"2026-10-02T13:30:00Z","astronomical_night_start":"2026-10-03T09:40:00Z","astronomical_night_end":"2026-10-03T17:18:00Z"}}

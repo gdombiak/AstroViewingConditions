@@ -1,0 +1,1 @@
+{"capability":"observing_night.resolve_active","ok":true,"result":{"state":"resolved","time_zone":"Europe/Madrid","day_offset":-1,"day_index":1,"observing_date":"2026-06-20","observing_day_start":"2026-06-19T22:00:00Z","astronomical_night_start":"2026-06-20T22:15:00Z","astronomical_night_end":"2026-06-21T01:45:00Z"}}

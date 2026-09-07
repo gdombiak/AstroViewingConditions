@@ -1,0 +1,1 @@
+{"capability":"observing_night.resolve_active","ok":true,"result":{"state":"resolved","time_zone":"America/Los_Angeles","day_offset":-1,"day_index":0,"observing_date":"2026-03-07","observing_day_start":"2026-03-07T08:00:00Z","astronomical_night_start":"2026-03-08T03:33:00Z","astronomical_night_end":"2026-03-08T13:09:00Z"}}

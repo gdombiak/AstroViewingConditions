@@ -1,0 +1,6 @@
+capability: observing_night.resolve_active
+engine_semver: ">=1.0.0 <2.0.0"
+equality: observing_night
+origin: manual
+hosts: [swift, python]
+notes: Santiago skips local midnight on 2026-09-06, so the first moment of that observing day is 01:00 local.

@@ -1,0 +1,6 @@
+capability: observing_night.resolve_active
+engine_semver: ">=1.0.0 <2.0.0"
+equality: observing_night
+origin: manual
+hosts: [swift, python]
+notes: Local midnight repeats on 2026-11-01. Subtracting a day keeps the source instant's offset, so the observing day starts at the SECOND occurrence (05:00Z), one hour after startOfDay of the same date.

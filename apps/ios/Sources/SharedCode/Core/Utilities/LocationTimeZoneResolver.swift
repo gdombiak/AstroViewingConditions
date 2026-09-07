@@ -61,6 +61,24 @@ public struct LocationTimeZoneResolver {
         return TimeZone(secondsFromGMT: offsetSeconds) ?? TimeZone(secondsFromGMT: 0) ?? TimeZone.current
     }
     
+    /// The host precedence for the zone that night/date decisions run in:
+    /// an explicitly supplied zone, then the payload's IANA identifier, then the
+    /// longitude approximation.
+    ///
+    /// Acquisition stays host-owned. Astro Engine's
+    /// ``AstroEngine/ObservingNightSelector`` consumes the resolved zone and
+    /// never approximates one itself; the approximation below has no IANA
+    /// identity and therefore cannot cross the portable transport.
+    public static func authoritative(
+        preferred: TimeZone?,
+        timeZoneIdentifier: String?,
+        longitude: Double
+    ) -> TimeZone {
+        preferred
+            ?? timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
+            ?? approximate(longitude: longitude)
+    }
+
     /// Creates a calendar configured for the given timezone.
     public static func calendar(for timeZone: TimeZone) -> Calendar {
         ObservingCalendar.gregorian(for: timeZone)

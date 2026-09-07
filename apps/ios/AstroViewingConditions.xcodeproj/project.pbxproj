@@ -112,6 +112,7 @@
 		431F4F4A480122C74DB5FB7B /* CrossSurfaceLocationContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9CC15D9186E2BB3BC0EB9A5 /* CrossSurfaceLocationContext.swift */; };
 		44399C601DB2F61A3B716F9A /* WidgetThreeNightOutlookPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 805CA950E64D22820061D607 /* WidgetThreeNightOutlookPresentation.swift */; };
 		44AFC997C3FEC0685D85A408 /* ThreeNightOutlookWidgetMediumEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD404DA5532B369B52AA884C /* ThreeNightOutlookWidgetMediumEntryView.swift */; };
+		44C3333901A8709C6132C767 /* ActiveObservingNightMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B89A28951A5519A958F4F554 /* ActiveObservingNightMigrationTests.swift */; };
 		4523B6DA7D5729A92C3E4152 /* WidgetReloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D01B96156B6D29A0594559A /* WidgetReloadService.swift */; };
 		456B8E83D7C51D9650092E98 /* ThreeNightOutlookEntryResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E072E4D7883BB484E9A13E4 /* ThreeNightOutlookEntryResolver.swift */; };
 		45ABE0B72C64F4A2F52D4D32 /* TargetImageViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1CDC2DE8DC8A9DB44BD3212 /* TargetImageViewer.swift */; };
@@ -659,6 +660,7 @@
 		B6E84794DE7A6022BAE13C12 /* AstroEngineExports.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstroEngineExports.swift; sourceTree = "<group>"; };
 		B79F92092DD7564966592843 /* WatchLocationsBrightnessPriming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLocationsBrightnessPriming.swift; sourceTree = "<group>"; };
 		B864D70EE1BB6EE975190E49 /* BestSpotResultCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotResultCard.swift; sourceTree = "<group>"; };
+		B89A28951A5519A958F4F554 /* ActiveObservingNightMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveObservingNightMigrationTests.swift; sourceTree = "<group>"; };
 		B8BED9D25015AEB31A937E84 /* LocationStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationStorageService.swift; sourceTree = "<group>"; };
 		B925138937E99A2B6964DED1 /* WatchObservingQualityPayloadBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchObservingQualityPayloadBuilder.swift; sourceTree = "<group>"; };
 		BA80B59D38724F03C89587A0 /* CrossSurfaceObservingQualityPhase4ATests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrossSurfaceObservingQualityPhase4ATests.swift; sourceTree = "<group>"; };
@@ -786,6 +788,7 @@
 		00E85CE01035AF1A65B4204C /* AstroViewingConditionsTests */ = {
 			isa = PBXGroup;
 			children = (
+				B89A28951A5519A958F4F554 /* ActiveObservingNightMigrationTests.swift */,
 				F302F40B584E071A2408D6CC /* AstronomyServiceTests.swift */,
 				8CBDCF16F4D14350927A1B9D /* AstroViewingConditionsTests.entitlements */,
 				92226DE8BA3A8071EEDCB453 /* BestSpotObservingQualityTests.swift */,
@@ -1946,6 +1949,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				44C3333901A8709C6132C767 /* ActiveObservingNightMigrationTests.swift in Sources */,
 				939005FFFC1C2ADC4EEB6E11 /* AstronomyServiceTests.swift in Sources */,
 				C2D4D2900BED156FC28AFD59 /* BestSpotObservingQualityTests.swift in Sources */,
 				59EDAA60817AE9AA217A688C /* BestSpotSearcherTests.swift in Sources */,

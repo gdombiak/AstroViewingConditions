@@ -311,3 +311,21 @@ capabilities:
       keys are accepted; scores, windows, reasons, summaries, UI session state,
       English copy and result-count truncation are absent. See
       contracts/procedures/filter-recommendations-by-equipment.md.
+
+  - id: observing_night.resolve_active
+    hosts: [ios, cli]
+    equality: observing_night
+    since: "1.0.0"
+    requires_injected: [reference_time, time_zone, forecast_start_time, daily_sun_events, daily_moon_count]
+    summary: >
+      Choose which local observing night is active for a reference instant and
+      report its identity and authoritative boundaries. The preceding civil date
+      wins while its astronomical night is still running; both of those
+      comparisons and the morning twilight-begin comparison are inclusive.
+      Three states stay distinct: resolved, requires_active_previous_payload
+      (an earlier night may be running but this payload cannot resolve it) and
+      unavailable. The IANA zone is supplied by the host; this capability never
+      geocodes and never approximates a zone from longitude. Daily Moon data is
+      transported only as a row count because the decision only bounds-checks
+      it. No Moon facts, no forecasts, no scoring, no English copy. See
+      contracts/procedures/observing-night.md.

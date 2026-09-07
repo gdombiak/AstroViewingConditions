@@ -1,0 +1,1 @@
+{"capability":"observing_night.resolve_active","ok":true,"result":{"state":"resolved","time_zone":"America/Havana","day_offset":-1,"day_index":1,"observing_date":"2026-11-01","observing_day_start":"2026-11-01T05:00:00Z","astronomical_night_start":"2026-11-02T00:11:00Z","astronomical_night_end":"2026-11-02T11:32:00Z"}}

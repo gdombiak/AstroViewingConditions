@@ -30,9 +30,11 @@ public enum TargetRecommendationContextBuilder {
         referenceDate: Date = Date(),
         timeZone preferredTimeZone: TimeZone? = nil
     ) -> TargetRecommendationContextResolution? {
-        let timeZone = preferredTimeZone
-            ?? conditions.timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
-            ?? LocationTimeZoneResolver.approximate(longitude: conditions.location.longitude)
+        let timeZone = LocationTimeZoneResolver.authoritative(
+            preferred: preferredTimeZone,
+            timeZoneIdentifier: conditions.timeZoneIdentifier,
+            longitude: conditions.location.longitude
+        )
         let calendar = LocationTimeZoneResolver.calendar(for: timeZone)
         let referenceDay = calendar.startOfDay(for: referenceDate)
         let dayIndex: Int

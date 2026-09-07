@@ -29,6 +29,10 @@ from astro_engine.filter_recommendations_by_equipment import (
     CAPABILITY_ID as FILTER_RECOMMENDATIONS_BY_EQUIPMENT_ID,
     filter_recommendations_by_equipment,
 )
+from astro_engine.observing_night import (
+    CAPABILITY_ID as OBSERVING_NIGHT_ID,
+    resolve_active_observing_night,
+)
 from astro_engine.planet_observation import CAPABILITY_ID as PLANET_OBSERVATION_ID
 from astro_engine.planet_recommendation import (
     CAPABILITY_ID as PLANET_RECOMMENDATION_ID,
@@ -217,6 +221,8 @@ def evaluate_capability(
         return compose_recommendations(_injected(document))
     if capability == FILTER_RECOMMENDATIONS_BY_EQUIPMENT_ID:
         return filter_recommendations_by_equipment(_injected(document))
+    if capability == OBSERVING_NIGHT_ID:
+        return resolve_active_observing_night(_injected(document))
     if capability == OQ_ID:
         injected = _injected(document)
         if "night_conditions_score" not in injected:

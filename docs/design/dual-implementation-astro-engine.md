@@ -23,6 +23,7 @@ This document proposes a **contract-first dual-engine** architecture:
 1. A language-neutral **Astro Engine contract** is the source of truth. It is **not** a third runtime. It contains: capability matrix, engine semver, calibration/catalog **data**, golden fixtures, a field-level equality policy, input/output schemas for capabilities the CLI actually speaks, and **normative procedures only for product scoring algorithms** where prose is what stops Swift from becoming the oracle.
 2. An idiomatic **Swift engine** (Foundation + SunCalc only) powers the existing iOS/watch/widget app.
 3. An idiomatic **Python engine + headless JSON CLI** runs on a Linux VM (Grok Bot) as a deterministic capability API for an AI astronomer assistant.
+4. A **Python host package** composes those deterministic facts into product answers (provider acquisition, timezone acquisition, persistence, runtime prompts/templates, and LLM integration). It is Python-only by intent and carries no Swift-parity obligation. See [Python host boundary](#11-python-host-boundary-packagesastro-host-python).
 
 The two implementations must reach **semantic parity** on in-contract capabilities given the same normalized inputs, including frozen provider envelopes (Open-Meteo, N2YO, LPATLAS1). Exact equality is required for integer scores, rankings, enums, and decoded provider DTOs (UUIDs, emoji, and English copy stripped). Astronomy-library floats live in a later capability slice, use explicit per-field tolerances, and must not feed live into integer product-score fixtures. **Swift must not silently become the source of truth**; fixtures and procedures are authored from the product rules, not dumped from whichever implementation is written first.
 
@@ -169,9 +170,14 @@ flowchart TB
   end
 
   subgraph PythonSide["Python — agent runtime"]
-    PyEngine["packages/astro-engine-python"]
-    CLI["apps/cli  JSON-first"]
-    PyEngine --> CLI
+    PyEngine["packages/astro-engine-python\nportable Astro-domain; parity-governed"]
+    PyHost["packages/astro-host-python\nhost operational policy\nno Swift-parity obligation"]
+    CLI["apps/cli\nthin launchers"]
+    Bot["Astronomer Bot skill\ndelivery artifact"]
+    CLI -->|"imports"| PyHost
+    Bot -->|"invokes"| PyHost
+    PyHost -->|"imports in-process"| PyEngine
+    PyEngine -.->|"engine JSON CLI: parity / eval / external"| CLI
   end
 
   subgraph Tools["tools/light-pollution"]
@@ -192,6 +198,14 @@ flowchart TB
   Atlas -.->|"production light_pollution_global_v1.bin\n(iOS app + CLI image; not widgets/watch)"| PyEngine
 ```
 
+**Reading the arrows.** In `PythonSide`, solid arrows are **dependency** edges
+(dependent → dependency) and match the normative direction in
+[§ 11](#dependency-direction-normative); the dotted engine→CLI edge is the JSON
+CLI *interface*, not a dependency. Elsewhere the diagram shows contract data
+flowing into implementations, and `SwiftEngine → AppleAdapters → iOSApp` is that
+same flow reading — the Apple dependency direction is the reverse of the arrow
+and is independent of the Python chain.
+
 ### Architectural rules
 
 1. **The contract is the oracle**, not whichever implementation is written first. New **scoring** semantics: procedure + data + fixture + equality policy, then both implementations. At least one OQ fixture (and later one night-conditions fixture) must be arithmetic from the procedure with **no implementation in the loop**. Decode/catalog/grid do **not** get a parallel prose restatement of the code; fixtures + equality are enough.
@@ -204,6 +218,7 @@ flowchart TB
 8. **Extract the Swift package in the current root layout before moving `apps/ios/`**, and only **after** the feasibility gate. Prove `swift test` + XcodeGen local-package linking before path churn. Retarget the incumbent `ios-tests.yml`; do not invent a greenfield iOS workflow.
 9. **This document is the roadmap.** When a phase disproves an assumption, edit this file in the same commit series. Do not accumulate silent drift between code and design.
 10. **[iOS migration invariant](#ios-migration-invariant)** — no intentional iOS/watch/widget behavior change; existing tests are not weakened to land a refactor.
+11. **Portable Astro-domain semantics and host operational policy are separate packages.** Portable Astro-domain calculation expected to stay authoritative across products lives in `packages/astro-engine-*` under contract governance. Host operational policy — provider and timezone acquisition, retries, concurrency and cost control, persistence, freshness/lifecycle, agent orchestration, prompts and answer templates, LLM integration — lives in `packages/astro-host-python`. Python dependencies point **one way**: `Python delivery adapter (Bot skill, CLI launcher) → astro_host → astro_engine`, with `astro_host` integrating the engine **in-process** (`import astro_engine`). Apple surfaces are independent and unaffected: `iOS/watch/widget adapters → AstroEngine (Swift)`; nothing under `apps/ios` depends on `astro_host`. Host code, prompts and templates may explain, orchestrate and compose authoritative engine facts; they must never duplicate, override or independently re-implement an authoritative Astro-domain rule. "Deterministic" alone is not the placement test — see [placement criterion](#placement-criterion-portable-semantics-vs-operational-policy) and [Python host boundary](#11-python-host-boundary-packagesastro-host-python).
 
 #### iOS migration invariant
 
@@ -287,10 +302,19 @@ The current tree is an Apple app with a tools folder and a working iOS CI job. P
 │   │   ├── Sources/AstroEngine/
 │   │   ├── Sources/AstroEngineEval/ # astro-engine-eval
 │   │   └── Tests/AstroEngineTests/
-│   └── astro-engine-python/
-│       ├── pyproject.toml
-│       ├── src/astro_engine/
-│       └── tests/
+│   ├── astro-engine-python/         # deterministic; parity-governed
+│   │   ├── pyproject.toml
+│   │   ├── src/astro_engine/
+│   │   └── tests/
+│   └── astro-host-python/           # host operational policy; no Swift-parity obligation
+│       ├── pyproject.toml           # astro-engine version range; engine never depends back
+│       ├── src/astro_host/          # acquisition, composition, persistence, LLM adapters
+│       │   ├── cli/                 # reusable arg parsing + runtime entry logic
+│       │   ├── prompts/             # runtime resource: LLM instruction text
+│       │   └── templates/           # runtime resource: answer shaping
+│       └── tests/                   # host tests (not parity fixtures)
+│       # platform Grok/OpenAI skill bundles are delivery artifacts, not package
+│       # data; their location is intentionally unfrozen (see section 11)
 │
 ├── apps/
 │   ├── ios/                         # after the relocation phase
@@ -298,7 +322,8 @@ The current tree is an Apple app with a tools folder and a working iOS CI job. P
 │   │   ├── AstroViewingConditions.xcodeproj/
 │   │   ├── Sources/…
 │   │   └── Tests/AstroViewingConditionsTests/   # UI, watch, widgets, adapters only
-│   └── cli/
+│   └── cli/                         # thin executables only; no reusable host logic
+│       └── astro-engine             # parity-governed engine JSON CLI launcher
 │
 ├── Tests/parity/
 │   ├── parity_runner.py
@@ -390,6 +415,7 @@ flowchart LR
 | `night_conditions.analyze` | `NightQualityAnalyzer.analyzeNight` | Exact DTO given injected `night_window` + **1:1 `moon_series`** + clock/tz. See [Night conditions procedure](#night-conditions-analyzenight). Omit `HourlyRating.id`, English `summary`, `Trend.label`/`icon`, **`best_window`**. The omission remains intentional; the production decision is now separately portable through `observing_window.select`, as reviewed after the [compatibility audit](#production-business-logic-compatibility-audit-2026-09-05). **Bot-facing:** `hourly_ratings` is first-class objective data (time, score, cloud, fog, moon illumination/altitude, wind, optional seeing/transparency), not merely an input to the aggregate `public_score`. |
 | `night_conditions.score` | `BestSpotSearcher.calculateScore` | Integer exact. |
 | `observing_window.select` | `ObservingWindowSelector.select`, used by `NightQualityAnalyzer` | Exact nullable endpoint pair over already-included scored rows; see [procedure](../../contracts/procedures/observing-window.md). |
+| `observing_night.resolve_active` | `ObservingNightSelector.select`, used by `ActiveObservingNightResolver` | Exact discrete state, day offset/index, local observing date, observing-day start and both astronomical-night boundaries. Preceding civil date first; all three comparisons inclusive; day indexing, empty-hourly and missing-following-row quirks frozen. Host keeps timezone acquisition; see [procedure](../../contracts/procedures/observing-night.md). |
 | `astronomy.horizontal_position` | `HorizontalCoordinates.position`, previously inline in `DeepSkyTargetPositionProvider` | Closed-form geometric equatorial→horizontal at one instant. Deterministic despite the `astronomy.` namespace: no ephemeris provider, no refraction, no precession/proper motion, UT1 taken as UTC. Altitude/azimuth abs 1e-9 deg; see [procedure](../../contracts/procedures/deep-sky-observation.md). |
 | `targets.deep_sky_windows` | `DeepSkyObservation.observe`, used by `DeepSkyTargetPositionProvider` | Deep-sky visible-run windows over an explicit UTC interval: inclusive `>=` threshold, interpolated interior crossings, per-run earliest-wins best sample, interval-end reporting quirk. Timestamps exact after flooring to whole seconds; the typed API keeps full precision for the iOS caller. |
 | `observing_quality.assess` | `ObservingQualityCalculator.assess` | Integer `score` exact. Anchor penalties abs 1e-12. Interpolated penalties abs 1e-9 (matches `ObservingQualityCalculatorTests` home/stub). |
@@ -428,7 +454,7 @@ weather.decode
 → Grok reasoning/planning
 ```
 
-Grok should not reimplement astronomical-night calculations, Moon astronomy, weather normalization, or scoring logic.
+Grok should not reimplement astronomical-night calculations, active-night/date selection across local midnight, Moon astronomy, weather normalization, or scoring logic.
 
 | Surface | Capability | Version | Status |
 |---|---|---|---|
@@ -441,6 +467,7 @@ Grok should not reimplement astronomical-night calculations, Moon astronomy, wea
 | Lunar recommendation | `targets.moon_recommendation` | Unreleased 1.0 | Implemented in the lunar slice: useful window, integer score and objective reason codes from injected facts. |
 | Planet facts | `astronomy.planet_observation` | Unreleased 1.0 | Implemented in the planet slice: altitude, azimuth and solar elongation samples for Venus, Mars, Jupiter and Saturn. |
 | Planet recommendation | `targets.planet_recommendation` | Unreleased 1.0 | Implemented in the planet slice: visibility window, best time, integer score and objective reasons, including Venus twilight. |
+| Which night is "tonight" | `observing_night.resolve_active` | Unreleased 1.0 | Implemented in the observing-night slice: active-night state, day identity and astronomical-night boundaries across local midnight. The host still supplies the authoritative IANA timezone. |
 
 Do not add English summaries to parity. Do not invent phase emoji or presentation copy. Do not pull precipitation into Phase 8 or the 1.0 `weather.decode` fixtures merely to close this gap.
 
@@ -451,6 +478,30 @@ Field Mode, Dynamic Type, SwiftData, GPS, MapKit, `CoreLocationSuitabilityResolv
 #### Python / CLI only (out of contract)
 
 Argparse/typer, env, `--atlas-path` (defaults to the bundled production LPATLAS1 on the bot VM), stdin/stdout framing, `--pretty`, logging, HTTP client, composed `agent.conditions` / `agent.batch_compare` (later Bot-host work), `agent.forecast_horizon` (CLI-only longer Open-Meteo fetch; out of contract), `--suitability-json` overlay file.
+
+"Out of contract" is not one location. Argv parsing, stdio framing, `--pretty`,
+`--atlas-path` and exit-code mapping belong to the **engine's own** JSON CLI
+(`astro_engine.cli`), which stays parity-adjacent and keeps its explicit public
+1.0 allow-list. The HTTP client, provider acquisition, and the composed `agent.*`
+operations are **host** concerns: they belong in `packages/astro-host-python` and
+must **not** be added to `PUBLIC_CAPABILITY_IDS`.
+
+**Current catalog state (verified 2026-09-06).** `contracts/capabilities.yaml`
+contains **no** `agent.*` rows and **no** `equality: n/a` rows. All 30 catalogued
+capabilities are `hosts: [ios, cli]` with a real equality class. The `agent.*`,
+`ui.field_mode` and `hosts: [ios]` rows shown in
+[§ 9](#9-feature-parity-without-forcing-ui-or-agent-features) are part of that
+section's **illustrative** example, which already says so; they are not the
+current file.
+
+**Intended rule for host operations.** Whether host operations are catalogued at
+all is deliberately left open here, and this task adds no rows. If they are, a
+catalogued host row records that the operation *exists* and is non-parity — not
+where it is implemented — and carries an explicit non-parity marker rather than
+being mistaken for an engine capability. Either way the constraint is the same:
+host operations live in `packages/astro-host-python` and never enter the engine
+CLI's public 1.0 allow-list. See
+[Python host boundary](#11-python-host-boundary-packagesastro-host-python).
 
 ---
 
@@ -1197,9 +1248,18 @@ F1 established the `0.1.0` OQ-only identity. Phase 12 set the repository's unrel
 
 ### 9. Feature parity without forcing UI or agent features
 
-Parity is `contracts/capabilities.yaml`. Example:
+Parity is `contracts/capabilities.yaml`.
+
+**The YAML below is an illustrative / proposed shape, not the current file.**
+Verified 2026-09-06: the real catalog holds **30** rows, **all** `hosts: [ios, cli]`,
+**all** with a real equality class — no `agent.*` rows, no `equality: n/a` rows,
+no `hosts: [ios]`-only or `hosts: [cli]`-only rows. The single-host and `agent.*`
+rows here illustrate how such rows *would* be expressed if they were ever
+catalogued; that decision is open (see
+[Python host boundary](#11-python-host-boundary-packagesastro-host-python)).
 
 ```yaml
+# ILLUSTRATIVE / PROPOSED — not the current contracts/capabilities.yaml
 capabilities:
   - id: observing_quality.assess
     hosts: [ios, cli]
@@ -1273,6 +1333,291 @@ Residual weaknesses:
 | Atlas redistribution residual | Medium legal | Production CLI **does** ship `light_pollution_global_v1.bin` (user decision: existing in-app permission covers the CLI image). Widgets/watch still must not embed it. Fail-closed lookup + tiny-fixture tests unchanged. Residual atlas-license risk remains; do not relitigate. |
 | AGPL §13 | Low given deployment | CLI is a **local tool** on the VM, never a network service. Do not wrap it as HTTP. |
 | Grok Bot invocation | **Highest product risk** | Vertical proof of one capability on the real VM **before** SharedCode extraction. See [feasibility gate](#feasibility-gate-grok-bot-vm). |
+
+---
+
+### 11. Python host boundary (`packages/astro-host-python`)
+
+**Decision (2026-09-06).** Introduce `packages/astro-host-python`, a Python-only
+host/application package that composes deterministic Astro Engine facts into
+product answers. `packages/astro-engine-python` remains the portable
+deterministic engine governed by the Swift/Python parity contracts.
+`apps/cli` stays a thin delivery surface. This is a boundary decision only; it
+adds no capability, no version, no contract row, and no runtime behavior.
+
+#### Why now
+
+Much of the remaining integration work is Python-host operational policy
+carrying **no Swift-parity obligation**: agent composition, timezone acquisition,
+durable persistence, provider failure and staleness handling, runtime prompts and
+answer templates loaded by `astro_host`, LLM integration, and Bot VM
+installation. Platform Grok/OpenAI skill definitions sit alongside that work as
+delivery/deployment artifacts of a surface rather than as host package
+resources. No Swift-parity obligation is not the same as "Swift has nothing like
+it" — iOS has its own freshness, caching and failure handling, and those policies
+are simply owned per runtime and never compared field-by-field. That work has no
+home in the current tree.
+
+It does **not** follow that everything still outstanding is host work. Several
+outstanding areas still contain deterministic rules that production Swift already
+implements — `NightForecastFilter`'s window derivation and cloud-timing
+classification are the confirmed cases — and those may require additional
+engine/parity slices rather than host code. The roadmap table under
+[Required implementation order after the audit](#required-implementation-order-after-the-audit)
+carries that item-by-item reading and the archaeology requirement behind it.
+
+Both facts argue for the same boundary. Without a named host home, Python-only
+work lands in one of two wrong places: inside `astro_engine`, where parity
+governance and the public allow-list would have to absorb non-portable code, or
+inside `apps/cli`, where the Astronomer Bot would later need a second copy of the
+same composition. And without the boundary, "engine or host?" gets answered by
+whichever directory the author happened to be editing, instead of being asked per
+item. Naming it before the first host commit is cheaper than unwinding it.
+
+#### Fit with the current repository
+
+The repository already separates these concerns; it just has no Python home for
+the host half.
+
+| Existing evidence | What it already says |
+|---|---|
+| `packages/` holds `astro-engine-swift` and `astro-engine-python` | `packages/` means "importable library", not "delivery surface" |
+| `apps/` holds `ios` and `cli`; `apps/cli/astro-engine` is a small launcher that resolves an import path and calls `astro_engine.cli:main` | `apps/` means "delivery surface"; the CLI is already thin |
+| `contracts/capabilities.yaml` — 30 rows, **every one** `hosts: [ios, cli]` with a real equality class | The catalog is today exclusively the dual-host parity surface. Its `hosts:` key models the host axis, but nothing host-only has ever been catalogued, so host operations have no place in it as it stands |
+| `CODEOWNERS` guards only `/contracts/` | Governance follows the contract, not the directory |
+| `.github/workflows/python.yml` path-filters `packages/astro-engine-python/**`, `contracts/**`, `Tests/parity/**`, `apps/cli/**` | Path filters already encode which trees are parity-relevant |
+| The design's own "Swift/iOS only" and "Python/CLI only" lists | The responsibility split exists in prose without a filesystem home |
+
+So the proposal fits: it adds a second **kind** of package under an existing
+directory rather than a new top-level concept. The engine/host distinction is
+carried by the package name (`astro-engine-*` = contract-governed and mirrored in
+Swift; `astro-host-*` = Python-only, never mirrored) and enforced by the
+dependency rule below, not by inventing a `hosts/` tree for a single package.
+
+#### Placement criterion: portable semantics vs operational policy
+
+Determinism is **not** the placement test. A cache TTL, a bounded fan-out, a
+retry schedule and a truncation limit are all deterministic and all host work.
+Classify by what the rule *is*, not by whether it is reproducible:
+
+| Classification | Test | Examples |
+|---|---|---|
+| **Engine-shaped** | Portable Astro-domain semantics expected to stay authoritative **across products** — the answer must not differ between the iOS app and the Bot | scoring and penalties, thresholds and calibration lookups, window/interval derivation, interpolation and tie-break rules, ordering, classification enums over astronomy or weather facts |
+| **Host-shaped** | Operational policy owned by one runtime: acquisition, retries, cost/concurrency control, persistence, deployment, platform-specific freshness and lifecycle, provider/session orchestration | HTTP clients, geocoding, caches and TTLs, concurrency caps, candidate-pool bounds, saved state, prompts and answer templates, installation |
+| **Split after archaeology** | A service that contains both | `BestSpotSearcher`: ranking and eligibility rules are engine-shaped; async fan-out, the suitability check cap, CLGeocoder sessions and caches are host-shaped |
+
+Presentation — prose, emoji, labels, colors, English summaries — is host-owned in
+every case, and is not the same thing as the rule that produced the fact.
+
+#### Dependency direction (normative)
+
+```text
+Bot skill / CLI launcher  ──►  astro_host  ──►  astro_engine
+   (Python delivery adapters)     (host)          (engine)
+
+iOS / watchOS / widget adapters  ──►  AstroEngine (Swift)      [independent chain]
+```
+
+- The Python chain is `Python delivery surface → astro_host → astro_engine`.
+  The Apple chain is `iOS/watch/widget adapters → AstroEngine`. They are
+  independent: nothing under `apps/ios` depends on `astro_host`, and the
+  boundary in this section governs the Python side only. Avoid writing the rule
+  as `apps/* → …`, which wrongly sweeps in iOS.
+- **Normative integration is in-process.** `astro_host` declares `astro-engine`
+  as a distribution dependency and calls it with `import astro_engine`. The
+  engine JSON CLI is a **parity, evaluation and external-consumer interface**,
+  not an interchangeable backend: a host must not shell out to it as its normal
+  path to a fact. Subprocess invocation stays available for external callers,
+  the F4-style skill evidence rule, and debugging.
+- `astro_engine` **must not** import or depend on `astro_host`. There is no back
+  edge, no plugin hook, and no host-supplied callback into engine calculation. A
+  change that appears to need one means an Astro-domain rule is being pushed into
+  the host — take that to a contract slice instead.
+- `apps/cli` depends on `astro_host`. It contains **no** reusable business
+  composition; see [thin CLI](#how-appscli-relates-to-the-host-package).
+- Nothing in `apps/` is imported by either package.
+- The engine keeps its current parity governance unchanged. `astro-host-python`
+  is **not** parity-governed: it carries **no Swift-parity obligation**,
+  contributes no `contracts/fixtures/capabilities/**` rows, and is not compared
+  in `Tests/parity`. That is a statement about the parity contract, not a claim
+  that Apple surfaces lack comparable policies — iOS has its own caches,
+  freshness and failure handling; those simply are not the same artifact and are
+  not compared field-by-field. Host tests are ordinary tests under
+  `packages/astro-host-python/tests/`.
+
+#### Package identity and layout
+
+Distribution `astro-host`, import package `astro_host`, mirroring
+`astro-engine` / `astro_engine`.
+
+```text
+packages/astro-host-python/
+├── pyproject.toml        # dependencies = ["astro-engine>=X,<Y"]
+├── src/astro_host/       # acquisition, composition, persistence, LLM adapters
+│   ├── cli/              # reusable argument parsing + runtime entry logic
+│   ├── prompts/          # runtime resource: LLM instruction text
+│   └── templates/        # runtime resource: answer shaping
+└── tests/                # host tests; not parity fixtures
+```
+
+Exact subdirectories under `src/astro_host/` are deliberately **not** frozen
+here; the categories are. Prompts and templates are shown **inside** the import
+package because they are runtime resources the host loads (see
+[packaging](#packaging-version-and-resource-loading)); keeping them there is what
+makes package-safe loading and the installed-wheel test meaningful.
+
+Platform skill bundles are deliberately absent from this tree — see below.
+
+#### Resource ownership: host runtime resources vs platform delivery artifacts
+
+Two different things are often lumped together as "text assets". They have
+different owners.
+
+| Artifact | Owner | Why |
+|---|---|---|
+| **Prompts, answer templates** | The host package, loaded at runtime from inside `astro_host` | `astro_host` reads them to do its job. They ship and version with the code that consumes them. |
+| **Platform skill/agent definitions** (a Grok skill, an OpenAI assistant config, any vendor agent manifest) | Delivery/deployment artifact for one platform; **not** ordinary `astro_host` package data | It does not get imported by host code — it *invokes or configures* the host surface from outside, and its schema is owned by the vendor, not by this repository. Bundling it into the library would make the library's contents depend on which agent platform is in use. |
+
+Being text is not what makes something package data; **being loaded by the host
+at runtime** is. A skill definition is closer to a systemd unit or a Dockerfile
+than to a prompt.
+
+Where platform skill bundles live on disk is deliberately **not frozen** here.
+The repository gives no strong evidence for a location yet: the F4 record shows
+the skill was created in Grok's own account-level shared library, not installed
+from a repo path, and only one platform has ever been exercised. Choose the path
+when a second platform or a reproducible install actually forces the question.
+The ownership rule is what matters now: skill bundles are deployment artifacts of
+a delivery surface; prompts and templates are host runtime resources.
+
+Nothing here belongs in `contracts/`. That tree is the language-neutral parity
+source of truth for two engine implementations; a prompt carries no Swift-parity
+obligation and must never acquire contract-review weight or a `CODEOWNERS` entry.
+
+**Invariant (single policy).** Host code, prompts and templates may consume,
+explain, orchestrate and compose authoritative Astro Engine facts. They must not
+contain an independent implementation of an authoritative Astro-domain rule —
+no threshold, calibration value, coefficient, bucket table, tie-break, ordering
+or classification implementation of their own.
+
+Consistent with the F4 skill's authoritative-source rule ("invoke the local CLI;
+do not silently recompute scores"), such a rule appearing in a prompt, template,
+skill definition, or host module is a **defect**, and the fix is one of exactly
+two things:
+
+1. call the existing engine capability; or
+2. if no capability exposes the fact, take it to an engine capability/parity
+   slice.
+
+Convenience is not a third option. If source archaeology finds a portable
+Astro-domain rule that must stay authoritative across products, it is
+engine-shaped, and re-implementing it in the host — even carefully, even with
+tests — is not authorized: two copies of an authoritative rule is precisely the
+drift this document exists to prevent. Host-shaped operational policy
+(see the [placement criterion](#placement-criterion-portable-semantics-vs-operational-policy))
+is unaffected; implementing a cache TTL or a retry schedule in the host is not
+duplication.
+
+#### How `apps/cli` relates to the host package
+
+**"Thin" means launcher/adapter, not "small file".** `apps/cli` holds
+checkout-and-deployment launchers: resolve the interpreter and import path,
+call an entry point, propagate the exit code. Today `apps/cli/astro-engine` does
+exactly that for the engine's parity-governed JSON CLI; that stays.
+
+If the host needs its own command surface, the **reusable** part of it — argument
+parsing, option validation, envelope/exit-code mapping, runtime wiring — belongs
+to the host package (conceptually `astro_host.cli`), where it can be imported and
+unit-tested like any other module. The app-level script stays a thin launcher
+over that entry point (name not frozen; `apps/cli/astro-host` is the obvious
+default). The test is simple: if a second delivery surface would want the logic,
+it is host-package code, not launcher code.
+
+Two entry points over one host package is deliberate: it keeps the engine's
+public 1.0 allow-list and exit-code discipline unpolluted by composed host
+operations.
+
+The CLI and the future Astronomer Bot skill are **two delivery surfaces over the
+same host package**, not two implementations. **Host-shaped** composition that a
+second delivery surface would otherwise duplicate belongs in
+`astro-host-python` — that is the test for host-package work, and only for host
+work. It does not reclassify anything: if what a Bot would have to re-implement
+is a portable Astro-domain rule, it stays engine work and needs a capability
+slice, not a host copy (see the
+[placement criterion](#placement-criterion-portable-semantics-vs-operational-policy)).
+
+Unchanged by this decision: the CLI remains a **local** AGPL tool on the Bot VM.
+Do not wrap `astro_host` as a network service, and do not add deployment
+surfaces beyond installing the package and its entry points.
+
+#### Packaging, version and resource loading
+
+Requirements to satisfy when the host package is created. They exist to prevent
+exactly two failure modes — **version skew** between host and engine, and
+**missing resources** in an installed artifact — and are deliberately not
+extended past that.
+
+- **Compatible version range.** `astro-host` declares a range on `astro-engine`
+  (for example `>=1.0,<2.0`), not a bare dependency and not an exact pin in the
+  library metadata. The engine's independent semver is what the range is read
+  against.
+- **Exact pair pinned at deployment.** The Bot VM install resolves through a
+  lock file or wheelhouse that pins the exact tested `astro-host` /
+  `astro-engine` pair. The range says what is *permitted*; the lock says what was
+  *tested*. Do not rely on the range alone for a deployed image.
+- **Package-safe resource loading.** Host runtime resources (prompts, templates)
+  load through `importlib.resources` against the `astro_host` package — never a
+  path computed from `__file__`, a repo-relative path, or a CWD assumption. The
+  checkout and the installed wheel must resolve them identically.
+- **Installed-wheel test in host CI.** Build the wheel, install it into a clean
+  environment, and run a smoke test **from a working directory outside the
+  checkout**. It must import `astro_host`, load each required resource, and reach
+  an engine capability. This is the only check that actually proves resources
+  were included in the distribution; a checkout-only pytest run cannot fail the
+  way a real install fails.
+- **Host CI trigger scope.** The host job runs when host code changes, when the
+  engine code it depends on changes, and when shared contract/data dependencies
+  it consumes change — a host-only path filter would let an engine change break
+  the host silently.
+- **No back edge, enforced.** `astro_engine` must never import or depend on
+  `astro_host`. Worth an explicit CI assertion, since this is the one rule whose
+  violation is cheap to introduce and expensive to unwind.
+
+#### CI and governance consequences
+
+Deliberately small, to be applied when the first host code lands rather than
+pre-built now:
+
+- `packages/astro-host-python/**` needs a test job carrying the installed-wheel
+  test and trigger scope above. Reusing `python.yml` with an added path filter
+  and a second working directory is sufficient; a dedicated workflow is not
+  required until the host has its own toolchain needs.
+- Do **not** add `packages/astro-host-python/**` to `parity.yml`'s path filter.
+  Host changes must never be able to move a parity result.
+- `CODEOWNERS` stays scoped to `/contracts/`.
+- The `apps/cli` launcher's checkout `sys.path` bootstrap will need a second src
+  path once host code exists. That is an implementation detail of the launcher,
+  not a change to this boundary.
+
+#### Alternatives considered
+
+| Alternative | Verdict |
+|---|---|
+| Host logic inside `astro_engine` (new modules or CLI allow-list rows) | **Rejected.** Puts non-portable acquisition, persistence and LLM code under parity governance, and forces Swift to either mirror it or carry permanent exceptions. |
+| Host logic inside `apps/cli` | **Rejected.** The Astronomer Bot is a second delivery surface; it would need the same composition and would copy it. `apps/` is where surfaces live, not libraries. |
+| New top-level `hosts/astro-host-python` | **Rejected.** A third top-level concept for one package. `packages/` already means "importable library", and the engine/host distinction is carried by the package name and the dependency rule. Revisit only if a second non-Python host package appears. |
+| Separate repository for the host | **Rejected** for the same reason as the monorepo decision: the host is the thing most likely to discover a missing deterministic capability, and that discovery must be able to land in one commit series with the contract. |
+
+The proposed structure is adopted as stated. No deviation was warranted.
+
+#### What this decision does not settle
+
+It does not classify the remaining roadmap work. "Python-only" is a property of
+acquisition, orchestration, persistence and presentation — not something that can
+be inferred from an item appearing on the outstanding list. See
+[Required implementation order after the audit](#required-implementation-order-after-the-audit),
+where each outstanding item now carries an explicit engine/host/mixed reading and
+an archaeology requirement.
 
 ---
 
@@ -1351,13 +1696,13 @@ astro-engine <capability-id> --pretty --input -
 - Production CLI image **includes** the same `light_pollution_global_v1.bin` the iOS app already bundles (~10 MiB). `light_pollution.lookup` resolves that production/default atlas when JSON has no `injected.artifact`. `--atlas-path FILE` is a **capability-specific** operator override (valid only with `light_pollution.lookup`). Tests/parity may instead pass a confined `injected.artifact.$ref` under `contracts/fixtures`. The 1 MiB JSON limit does not apply to the atlas file; the atlas is never inlined in JSON.
 - Atlas **file missing or unreadable** is **not** an error for `observing_quality.assess`: `ok: true`, `light_pollution: null`, score = night score. Distinct from `decode_failure` and from `atlas_invalid` (corrupt file that failed header/DFS validation). For `light_pollution.lookup`: missing production/default atlas → `engine_failure` / exit 1 (packaging/bootstrap); missing `--atlas-path` target → `validation` / exit 2; hostile/truncated/bad-magic atlas → `atlas_invalid` / exit 2.
 - Hostile `--atlas-path` files must fail closed (same header/DFS validation as Swift `BinaryLightPollutionProvider.init`). `--atlas-path` is argv/operator-controlled, not a JSON path field.
-- **Later CLI-only work:** `agent.forecast_horizon` may request more Open-Meteo days than iOS (3-day). Out of contract; first-1.0 fixtures stay 3-day.
+- **Later host work (proposed, not catalogued):** a longer-horizon agent fetch — provisionally named `agent.forecast_horizon` — may request more Open-Meteo days than iOS (3-day). Out of contract; first-1.0 fixtures stay 3-day. No such row exists in `contracts/capabilities.yaml` today, and the operation would live in `packages/astro-host-python`.
 
 **Phase 11 historical allow-list (public Python CLI):** `observing_quality.assess`, `night_conditions.analyze`, `night_conditions.score`, `fog.score`, `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`, `weather.decode`, `iss.decode`, `location.grid`, `catalog.deep_sky`. This was the eleven-capability set exposed in Phase 11.
 
-**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 29 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
+**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 30 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
 
-**Later CLI/Bot-host composition** (not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days and are out of `parity.yml` except as optional golden envelopes tagged `hosts: [python]`.
+**Later Bot-host composition** (proposed names; not catalogued and not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days, live in `packages/astro-host-python`, and stay out of `parity.yml`. If host-side golden envelopes are ever wanted they would need a non-parity marker of their own; no such marker (`hosts: [python]` or otherwise) exists in the catalog today.
 
 Capability envelope (success):
 
@@ -1593,7 +1938,7 @@ All four product questions are **Resolved** (2026-08-30). Do not re-open them in
 1. **AGPL-3.0 and the Grok Bot VM — Resolved: local tool only.** The CLI is a local process on the bot VM and is never wrapped as a network service. AGPL §13 network source-offer does not trigger. Matches the no-custom-backend iOS product.
 2. **LPATLAS1 global binary on the VM — Resolved: bundle it.** The production CLI image includes `light_pollution_global_v1.bin`, the same production artifact the iOS app already bundles. Existing in-app permission is treated as covering the CLI image. Widgets/watch still do not embed the atlas. Fail-closed lookup and tiny-fixture tests stay. Residual license risk is recorded under Risks, not as an open question.
 3. **English summary strings — Resolved: no.** Parity is integers, enums, rankings, and decoded DTOs. English copy stays host-specific.
-4. **Forecast horizon — Resolved: CLI may request a longer horizon as an agent-only feature.** Out of contract (`agent.forecast_horizon`, `hosts: [cli]`, `equality: n/a`). 1.0 fixtures stay 3-day (iOS Open-Meteo product). iOS is not required to match.
+4. **Forecast horizon — Resolved: a Python host surface may request a longer horizon as an agent-only feature.** Out of contract; provisionally named `agent.forecast_horizon`, and if it were ever catalogued it would carry a non-parity marker (illustrated in [§ 9](#9-feature-parity-without-forcing-ui-or-agent-features) as `hosts: [cli]` / `equality: n/a`). No such row exists in the catalog today. 1.0 fixtures stay 3-day (iOS Open-Meteo product). iOS is not required to match.
 
 Python live astronomy uses Skyfield for the Phase 16 sun/moon scope. Whether planets and/or live target windows are in Phase 16 is not committed here; verify the production architecture and available procedures/fixtures immediately before implementation rather than expanding that phase by assumption. *Subsequently implemented outside Phase 16:* the lunar and planet slices below added night-scoped observation and recommendation capabilities. Neither uses Skyfield — Python ports the production SunCalc lunar model and the production Schlyter planet model.
 
@@ -1617,7 +1962,7 @@ Python live astronomy uses Skyfield for the Phase 16 sun/moon scope. Whether pla
 
 8. **Independent `astro-engine` semver.** 1.0.0 when the freeze set is green. iOS `2.3.1` can remain while implementing 1.0.0. Fixture applicability is a **range** in `meta.yaml`; goldens do not churn solely because the current engine version was promoted.
 
-9. **Parity = matrix, not screenshots.** Best Nearby land/water stays iOS-only. `location.compare` uses the full `isHigherRanked` order with suitability injected or default `unchecked`. Grid tolerance 1e-4 deg + step lattice, not 1e-9 deg. English summaries stay host-specific. Longer-than-3-day forecast fetch is `agent.forecast_horizon` (`hosts: [cli]`, equality n/a).
+9. **Parity = matrix, not screenshots.** Best Nearby land/water stays iOS-only. `location.compare` uses the full `isHigherRanked` order with suitability injected or default `unchecked`. Grid tolerance 1e-4 deg + step lattice, not 1e-9 deg. English summaries stay host-specific. Longer-than-3-day forecast fetch is the proposed host-side `agent.forecast_horizon` — out of contract and not catalogued today; the `hosts: [cli]` / `equality: n/a` spelling is illustrative.
 
 10. **One long-lived branch, many commits, one eventual PR to `main`.** No technical need for a stack of GitHub PRs into `main`. Mitigate merge/CI risk by running CI on the branch and rebasing `main` regularly.
 
@@ -1626,6 +1971,8 @@ Python live astronomy uses Skyfield for the Phase 16 sun/moon scope. Whether pla
 12. **Rejected product alternatives stand:** bot language is Python; Linux Swift is an optional post-macOS-`swift test` experiment. Also rejected: iOS-as-client of Python, separate repos, 1:1 mirrors, Python under `Tools/` or `Sources/`, treating the LP **harness** as the CLI (the GDAL-free **decoder** is extracted after the gate). Type extraction remains independently valuable **after** feasibility.
 
 13. **CLI deployment (resolved):** local AGPL tool on the Grok Bot VM, not a network service. Production CLI **ships** `light_pollution_global_v1.bin` (same binary as the iOS app). Residual atlas-license risk is accepted and listed under Risks.
+
+14. **Portable Astro-domain semantics and Python host operational policy are separate packages (2026-09-06).** `packages/astro-engine-python` stays the portable, parity-governed engine. New `packages/astro-host-python` (dist `astro-host`, import `astro_host`) owns Python host operational policy: agent/Bot orchestration, provider and timezone acquisition, retries and concurrency, persistence, freshness/lifecycle, LLM integration, and the prompts/templates it loads at runtime. **Dependency model:** `Python delivery adapter (Bot skill, CLI launcher) → astro_host → astro_engine`, with `astro_host` integrating the engine in-process (`import astro_engine`); the engine JSON CLI stays a parity/evaluation/external interface, not an interchangeable backend. Apple surfaces are an independent chain, `iOS/watch/widget adapters → AstroEngine (Swift)` — the rule is not `apps/* → …`. The engine never imports the host. `apps/cli` holds launchers/adapters only; reusable command logic belongs to `astro_host.cli`. The CLI and the future Astronomer Bot are two delivery surfaces over one host package, not two copies. The host carries no Swift-parity obligation and is excluded from `parity.yml`; `CODEOWNERS` stays on `/contracts/`. Composed host operations are never added to the engine CLI's public 1.0 allow-list, and none of them is catalogued today. **Placement criterion:** portable Astro-domain semantics expected to stay authoritative across products are engine-shaped; acquisition, retries, cost/concurrency, persistence, deployment and platform freshness/lifecycle are host-shaped; mixed services split after archaeology. Determinism alone is not the test — a cache TTL is deterministic and is host work. **Single duplication policy:** host code, prompts and templates may consume, explain, orchestrate and compose authoritative engine facts, but must never contain an independent implementation of an authoritative Astro-domain rule; the fix is to call the capability or to open an engine capability/parity slice, never a second host copy. Remaining roadmap items are **not** host-only by default: each requires production source archaeology, and `NightForecastFilter` window derivation and cloud-timing classification are the confirmed engine-shaped counterexamples. See [Python host boundary](#11-python-host-boundary-packagesastro-host-python).
 
 ---
 
@@ -1938,7 +2285,7 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
   adopts the process timezone. `MoonPosition` is geocentric plus refraction,
   without lunar parallax. `.visual` uses upper-limb refraction/parallax/distance,
   while twilight uses geometric geocentric center angles -6/-12/-18 degrees.
-  Apple `SunEvents` morning fields are independent rise events; host
+  Apple `SunEvents` morning fields are independent rise events;
   `NightForecastFilter` projects them to the following local day. Host phase
   naming bins also differ between AstronomyService and MoonObservation. These
   are reported existing behaviors, not silent app fixes.
@@ -1993,7 +2340,7 @@ the current public engine capabilities. It is not iOS UI parity.
 | Target metadata and equipment requirements | `TargetEquipmentRequirements` resolves type fallbacks and individual overrides (including M77), aperture, magnification, observing-mode and framing needs. `DefaultTargetCatalogProvider` also supplies solar-system candidates and derives deep-sky Moon sensitivity. `equipment.match` only evaluates already-resolved requirements. | Implemented by `targets.requirements`, `catalog.solar_system`, and `targets.moon_sensitivity`; see the target metadata boundary below. The Bot must consume these authoritative facts rather than ask Grok to invent requirements. Equipment selection filters recommendations; it does not rescore or reorder retained target scores. |
 | Target-type-specific live policies | Deep sky uses catalog RA/Dec, 15-minute samples, a 15-degree threshold, contiguous runs, interpolated crossings, and highest sampled altitude. Moon uses its own 30-minute, useful-window and visible-sample policy. Planets use an extended interval, 15-minute samples, an 8-degree threshold, interpolation, specialized best-time scoring, and Venus twilight treatment. | Required. A shared result vocabulary may be useful, but do not promise one generic `targets.windows` algorithm. Prefer shared lower-level numeric astronomy facts with target-type-specific observation and recommendation policies. |
 | Specialized recommendation and composition | Production has dedicated deep-sky, Moon, and planet providers. Lunar observation facts include continuous phase, illumination, altitude/azimuth, rise/set, always-up/down state, and position samples where applicable; eligibility requires visible samples in the useful window. Numeric lunar scoring uses phase/illumination, visible fraction, and weather quality, while semantic reasons may use facts such as set time and `alwaysDown`. Planet recommendations use the low-precision model rather than generic Skyfield output. | Required. Preserve specialized scores, stable order/ties, reasons, equipment filtering after the existing host-owned 100-row ranked candidate-pool bound but before downstream/user-facing result truncation, and no generic re-score of Moon or planet results. Candidates beyond that production pool are intentionally not considered. The 100-row bound is host production composition behavior, not an engine transport cap. The LLM may explain authoritative facts but must not recreate them. |
-| Location and forecast-horizon composition | `BestSpotSearcher` has search-wide scoring-mode selection and suitability policy. `ActiveObservingNightResolver` retains the preceding civil date after midnight when its astronomical night is active; the three-night outlook requires complete hourly coverage and retains the first best-score tie. | Required. Preserve candidate forecast eligibility; center/candidate cloud, wind and fog composition; fog-factor union where surfaced; all-or-nothing light-pollution ranking; suitability states; center improvement and missing-center behavior; complete-night and deterministic best-night rules; timezone/DST and provider/data-state distinctions. Host geocoding, search expansion, batching and cache lifecycle may remain host-owned. |
+| Location and forecast-horizon composition | `BestSpotSearcher` has search-wide scoring-mode selection and suitability policy. `ActiveObservingNightResolver` retains the preceding civil date after midnight when its astronomical night is active; the three-night outlook requires complete hourly coverage and retains the first best-score tie. | Required. The active-night decision itself is now implemented by `observing_night.resolve_active`; see the observing-night boundary below. Still preserve candidate forecast eligibility; center/candidate cloud, wind and fog composition; fog-factor union where surfaced; all-or-nothing light-pollution ranking; suitability states; center improvement and missing-center behavior; complete-night and deterministic best-night rules; multi-night provider/data-state distinctions. Host geocoding, timezone acquisition, search expansion, batching and cache lifecycle may remain host-owned. |
 
 The following boundaries are deliberate:
 
@@ -2038,13 +2385,23 @@ longest-run and first-tie semantics are preserved, including zero duration and
 3600 seconds per qualifying row across gaps or duplicates. Inputs are minimal
 scored rows; upstream analysis retains explicit injected bounds and Moon facts.
 
-Source review finds cloud timing used by summary generation only. It remains an
-independent host policy: no Bot may improvise sustained-heavy/early/late semantic
-classifications. `NightForecastFilter` calendar/DST/date composition also remains
-an upstream deterministic adapter, requiring Bot-host validation separately.
+Source review finds cloud timing used by summary generation only. That is a
+statement about its consumer, not about its home: the classification itself is a
+portable Astro-domain rule and is therefore **engine-shaped**, pending its own
+capability/parity slice (see the
+[cloud-timing correction](#required-implementation-order-after-the-audit)). Its
+English summary text remains host presentation. No Bot may improvise
+sustained-heavy/early/late semantic classifications, and no host may
+re-implement them. `NightForecastFilter`'s calendar/DST window derivation is
+likewise **engine-shaped** — it is already Foundation-only code inside
+`packages/astro-engine-swift` — while the date/forecast **composition** around it
+remains host-owned and needs separate Bot-host validation.
 Moon consumes the result with inclusive sample endpoints and falls back to
 astronomical bounds only for nil. This slice does not complete lunar parity,
 cloud-timing Bot advice, active-night composition or later audit areas.
+Active-night composition landed separately in the observing-night slice below;
+`NightForecastFilter`'s own calendar/DST window derivation is **not** part of that
+slice and remains outstanding engine-shaped work.
 
 #### Required implementation order after the audit
 
@@ -2078,20 +2435,72 @@ still has host composition listed under "still outstanding".
    `targets.filter_recommendations_by_equipment`. Production delegates the
    stable subset decision and reuses existing `EquipmentMatchingRules`; selected
    rows retain their scores, objects and relative order.
+8. Observing-night identity and astronomical-night boundaries across local
+   midnight, including the day-indexing and DST semantics production depends on
+   — `observing_night.resolve_active`, the observing-night slice below.
+   Production's single cross-midnight authority delegates the decision.
+   Timezone **acquisition** (geocoding and the longitude approximation) remains
+   host-owned by design; the engine consumes an authoritative IANA zone and
+   applies its calendar/DST rules.
 
-**Still outstanding:**
+**Still outstanding.** Each item below carries a **provisional** engine/host
+reading. Provisional is load-bearing: with the
+[Python host boundary](#11-python-host-boundary-packagesastro-host-python) now
+defined, the cheap mistake is declaring an item "host-only" because it is
+Python-only work, and thereby licensing a Bot to improvise a rule production
+already computes deterministically.
 
-8. Host night/time composition where it is not yet portable: astronomical-night
-   and calendar boundaries, active-night date semantics across midnight, and
-   timezone/DST authority.
-9. Semantic advisory facts that remain intentionally host-owned or composed,
-   including cloud-timing classification.
-10. Best Nearby / location-set composition, and its candidate-generation and
-    orchestration behavior.
-11. Multi-night forecast eligibility and composition.
-12. Provider availability, failure and staleness semantics.
-13. Bot host persistence: saved locations, selected equipment and user state.
-14. The full pre-1.0 business-logic compatibility / release gate below.
+**Archaeology rule.** Before an outstanding item is implemented in
+`packages/astro-host-python`, audit the production Swift source for a portable
+Astro-domain rule — a threshold, calibration lookup, run/interval detection, tie
+break, ordering, or classification enum over astronomy or weather facts. If one
+exists and must stay authoritative across products, it is **engine-shaped**: it
+needs an engine capability/parity slice **before** host code composes around it.
+Re-implementing it in the host is not an alternative (see the
+[single duplication policy](#resource-ownership-host-runtime-resources-vs-platform-delivery-artifacts)).
+"It is only consumed by presentation today" is not evidence that a rule is
+presentation. Acquisition, orchestration, storage, caching, retry, concurrency
+bounds, freshness policy and prose are genuinely host-owned; the Astro-domain
+decision inside them usually is not. Apply the
+[placement criterion](#placement-criterion-portable-semantics-vs-operational-policy),
+not determinism alone.
+
+| # | Outstanding item | Provisional home | Archaeology status |
+|---|---|---|---|
+| 9 | `NightForecastFilter` calendar/DST forecast-window derivation | **Engine-shaped** | Already audited. `NightForecastFilter.calculateNightRange` / `filterToNighttime` are pure Foundation given `SunEvents` + date + `Calendar`, and already live in `packages/astro-engine-swift`. Python has no counterpart and there is no contract row. Decide the capability shape (injected zone + sun events, as `observing_night.resolve_active` does) before host code re-derives a window. |
+| 9 | Three-night outlook day composition | **Mixed** | Required. Complete-hourly-coverage eligibility and first-best-score-tie retention read as deterministic rules; day iteration and payload persistence read as host. Separate them explicitly. |
+| 9 | Authoritative IANA timezone **acquisition** | **Host** | Settled by design. Geocoding and the longitude approximation are host-owned; the engine consumes an authoritative zone. Note the current production fallback yields no IANA identity — the host must resolve that, not the engine. |
+| 10 | Semantic advisory / cloud-timing classification | **Engine-shaped; NOT host-only** | Already audited — see the correction below. Deterministic and calibration-driven today. Requires a contract-slice decision before any Bot surfaces cloud-timing advice. |
+| 11 | Best Nearby / location-set composition | **Mixed** | Required. `BestSpotSearcher` mixes deterministic decisions (`resolveScoringMode`, `averageFogScore` and any fog-factor union, `isHigherRanked`, `suitabilityCandidateCount`, `forecastDaysNeeded`, `calculateScore`, candidate eligibility, center improvement, missing-center behavior) with genuinely host-owned orchestration (async provider fan-out, `defaultMaxConcurrentLookups`, the 40-check suitability cap, CLGeocoder sessions, caches). Do not classify the whole service from its file location. |
+| 12 | Multi-night forecast eligibility and composition | **Mixed** | Required. Same shape as the three-night outlook row; complete-night and deterministic best-night rules are candidates, acquisition and payload lifecycle are not. |
+| 13 | Provider availability, failure and staleness semantics | **Host-shaped; verify the edges** | Required. Fetch, retry, cache lifecycle, error surfaces and freshness/lifecycle policy are host-shaped by the [placement criterion](#placement-criterion-portable-semantics-vs-operational-policy) — deterministic TTLs and bounds do not become engine logic. Swift has its own freshness and failure policies; the Python host simply carries no parity obligation to match them. Verify only the edge case: a state distinction that changes an **Astro-domain answer** (for example what counts as a complete night) is engine-shaped and must not be re-derived per host. |
+| 14 | Bot host persistence: saved locations, selected equipment, user state, observation history | **Host** | Settled by design. The engine is stateless with respect to user history and does not own saved-location persistence. Grok may personalize over host state but must not fold it into deterministic scoring. |
+| 15 | Full pre-1.0 business-logic compatibility / release gate | **Both** | Not a work location. It is the gate that closes only when every row above has an explicit, tested owner. |
+
+Also outstanding and unambiguously host: composed `agent.conditions`,
+`agent.batch_compare` and `agent.forecast_horizon`; onboarding, aliases and
+confirmation flows; the LLM/online-search boundary; and Bot VM installation.
+Precipitation remains an engine-side `weather.decode` domain extension,
+deliberately deferred rather than reclassified.
+
+**Correction to the earlier cloud-timing reading (2026-09-06).**
+`NightQualityAnalysisRules.cloudTiming` is not a presentation concern that
+happens to be written in Swift. It is a deterministic classification —
+heavy-cloud runs of >=2 rows exactly 3600 s apart at the calibrated
+`cloudFloor.cloudCoverMin`, eligibility from usable-score rows before/after
+(`Rating.Thresholds.fairMax`), preference by longest run, then highest average
+cloud, then earliest start, then an early/late/intermittent/none verdict — and it
+already lives inside `packages/astro-engine-swift`. Only `summaryText` is English
+presentation. It has no Python implementation, no capability row, and no field in
+the `night_conditions.analyze` DTO or equality policy. The earlier note that it
+"is consumed only by `generateSummary`" is accurate about its **consumer** and
+was wrong to be read as settling its **home**. Consequence: the classification is
+**engine-shaped**, and if the Bot is to surface production cloud-timing advice it
+takes an engine capability/parity slice — classification enum only, never prose,
+emoji or copy. An independent host re-implementation is **not** an authorized
+alternative, and it is never prompt or LLM territory. The English summary text
+built from the classification stays host presentation, as does the acquisition
+and composition around it.
 
 ### Target metadata / requirements slice (implemented; unreleased 1.0)
 
@@ -2412,9 +2821,148 @@ This slice takes the public capability count to **29**; the new ID uses
 `since: "1.0.0"` and fixtures use `>=1.0.0 <2.0.0`. No engine/package version
 change and no release.
 
+### Observing-night slice (implemented; unreleased 1.0)
+
+Assessment: **Agree, with a narrow decision boundary.** The portable decision is
+`observing_night.resolve_active`: given a reference instant, an authoritative
+IANA zone, the first hourly-forecast timestamp, the per-day astronomical
+twilight pair and how many daily Moon rows the payload carries, it reports which
+local observing night is active and that night's authoritative boundaries. See
+the normative [observing-night procedure](../../contracts/procedures/observing-night.md)
+for the archaeology, the frozen quirks and the exact rejected scope.
+
+**Exact production behaviour, frozen.** `ActiveObservingNightResolver` tries
+`dayOffset: -1` first and keeps it when
+`nightStart <= referenceDate <= nightEnd`; otherwise it resolves `dayOffset: 0`,
+reports `unavailable` when that cannot be built, and reports
+`requiresActivePreviousPayload` when the reference instant is at or before that
+day's own morning astronomical twilight. **All three comparisons are
+inclusive.** The day index is `wholeDays(startOfDay(firstForecastTime) →
+startOfDay(referenceDate)) + dayOffset`, guarded against both daily array
+lengths; with no hourly forecasts it is the bare offset, so the preceding night
+can never resolve and offset `0` always selects row `0`. Night start is that
+day's `astronomicalTwilightEnd`; night end prefers the following row's
+`astronomicalTwilightBegin` and otherwise falls back to the same day's, which
+produces an intentionally empty window on the last represented day. The
+same-local-day guard in the production `requiresActivePreviousPayload` branch is
+a tautology at offset `0`; it is reproduced rather than deleted.
+
+**The three states are not collapsed.** `requiresActivePreviousPayload` is an
+engine business fact, not host cache plumbing: `TonightTargetsWidgetContextResolver`
+and `ThreeNightOutlookWidgetPayloadBuilder` preserve an already-published
+previous-night payload in that state and discard everything in `unavailable`,
+while `WatchComplicationCompanion` hides in both. The capability therefore
+reports it distinctly, so a Bot can tell "cannot determine from this payload"
+from "the current civil date is the observing night".
+
+**Timezone authority.** The engine consumes an authoritative IANA identifier and
+applies that zone's Gregorian calendar and DST rules; it never geocodes and
+never approximates a zone. Production precedence — explicit zone, then
+`ViewingConditions.timeZoneIdentifier`, then
+`LocationTimeZoneResolver.approximate(longitude:)` — is now named once as
+`LocationTimeZoneResolver.authoritative(preferred:timeZoneIdentifier:longitude:)`
+and stays host-owned. The longitude approximation is a 15°-per-hour fixed GMT
+offset with no IANA identity, so it cannot cross the transport at all; the typed
+Swift API accepts any `TimeZone`, which keeps the iOS fallback byte-identical. A
+non-Apple host must resolve an IANA identifier before asking.
+
+**DST.** Four Foundation `Calendar` operations participate and the Python side
+models each **separately**, because Foundation does not apply one ambiguity
+policy across them. The behaviour was derived from a differential scan of
+Foundation over every catalogued zone, sampling every offset transition from
+2000 to 2041: 130,558 `startOfDay`, 50,634 `date(byAdding:)` and 298,488
+`dateComponents` observations. `startOfDay(for:)` takes the earliest instant of
+the local date. `date(byAdding: .day, value:)` instead keeps the source
+instant's own UTC offset wherever that offset still expresses the requested wall
+time, so on a repeated local midnight it selects the **later** occurrence —
+`startOfDay(D) + (−1 day)` can therefore be an hour after `startOfDay(D − 1)`,
+as in `America/Havana` 2026-11-01 and `Atlantic/Azores` 2026-10-25. Only when
+the source offset cannot express the wall time does it fall back to the earliest
+resolution, which is what yields the transition instant on a skipped midnight.
+Two behaviours are frozen rather than cleaned up: on a zone whose transition is
+at local midnight the first moment of that day is `01:00` local, and whole-day
+differencing from a `01:00` first moment to the next `00:00` first moment yields
+one **fewer** day than the civil-date difference. `America/Santiago` on
+2026-09-06 pins both.
+
+**Two deliberate contract narrowings** keep the hosts identical rather than
+merely documented-as-divergent. First, the accepted timezone identifiers are one
+catalogued set — `contracts/data/timezones/observing-night-zones.json`, the
+**catalogued shared location-style identifiers**: the slash-form names present in
+both Foundation `TimeZone.knownTimeZoneIdentifiers` and Python
+`zoneinfo.available_timezones()` for the audited runtime environment — so neither
+Foundation's extra identifiers (`GMT-0800`, `US/Pacific`, `EST5EDT`) nor a host
+tzdata's private names (`right/UTC`) can define the public API; bare `UTC`, `GMT`
+and `Etc/*` are excluded with them, since an observing night is a property of a
+place. The catalogue guarantees that both hosts accept and reject the same
+identifiers; it is deliberately not canonical-IANA-only, and includes historical
+aliases both runtimes publish (`Asia/Calcutta`, `Europe/Kiev`, `America/Godthab`
+and others), sometimes beside their modern spellings. The typed
+Swift API never reads that catalogue, which is why the iOS host keeps its
+longitude-approximation fallback unchanged. Second, a window containing a
+**dropped civil date** — `Pacific/Apia` and `Pacific/Fakaofo` have no 2011-12-30
+— is rejected on both hosts, because Foundation's arithmetic there degenerates
+in a way the observable calendar rules do not explain. A skipped *hour* never
+trips this, and those zones stay usable for any other window.
+
+**Migration equivalence.** `ActiveObservingNightMigrationTests` carries a
+self-contained copy of the pre-migration decision: the old inline timezone
+precedence, the local reference day, the first-hourly-forecast day indexing, the
+Sun/Moon array guards, the observing date and the astronomical-night
+composition. It calls none of `ObservingNightSelector`, `ObservingNightContract`,
+`LocationTimeZoneResolver.authoritative` or `TargetRecommendationContextBuilder`
+— the builder is excluded precisely because this slice changed it to call the
+new `authoritative(...)` helper, so routing the oracle through it would let one
+timezone-precedence bug corrupt both sides at once. Only unchanged primitives
+are shared: the production calendar constructor, `TimeZone(identifier:)`,
+`approximate(longitude:)` and the existing `SunEvents` accessors. It compares
+state, observing date, resolved zone identifier and both boundaries over **700**
+scenario × reference-instant combinations: hourly sweeps through normal
+evenings, local midnight and dawn; empty hourly forecasts; a single represented
+day; a short daily Moon array; a forecast starting after the reference day; an
+explicit timezone override; a payload with no IANA identifier that falls back to
+the longitude approximation (with a focused case pinning an *invalid* identifier
+taking that same fallback); US spring-forward and fall-back days; the Santiago
+midnight transition; Lord Howe's 30-minute DST; and Kathmandu's +05:45 offset.
+All three pre-migration states are exercised.
+
+**Fixtures and tests.** Thirty-seven manual cross-language fixtures pin every
+state, both day offsets, each boundary's inclusivity, the empty-hourly and
+missing-row quirks, the two midnight-DST quirks, the Havana and Azores
+repeated-midnight results, the Apia/Fakaofo dropped-date refusal and those zones'
+continued acceptance elsewhere, the rejected timezone aliases, the exact accepted
+instant range, non-whole-hour offsets, the 16-day cap and fail-closed validation.
+Focused Swift and Python tests additionally pin the local-calendar operations
+directly and the always-present output key set. The transported `daily_sun_events`
+array overflowing is `sample_cap`; `daily_moon_count` is a scalar, so a value
+outside `0...16` is `validation` — the shared repository split between array caps
+and out-of-domain scalars.
+
+**Production migration.** `ActiveObservingNightResolver` now resolves the zone,
+delegates the decision and maps the result onto its existing enum. Every caller
+is untouched. `TargetRecommendationContextBuilder` still assembles Moon info,
+the forecast slice, `NightQualityAnalyzer` output and
+`TargetRecommendationContext`; the resolver simply asks it for the offset the
+engine chose. No scoring, provider, cache or presentation code moved.
+
+This slice takes the public capability count to **30**; the new ID uses
+`since: "1.0.0"` and fixtures use `>=1.0.0 <2.0.0`. No engine/package version
+change and no release.
+
+Still outstanding downstream, with engine-shaped and host-shaped work named
+separately: `NightForecastFilter`'s calendar/DST forecast-window derivation
+(engine-shaped) and host acquisition of an authoritative IANA zone (host-shaped);
+cloud-timing classification (engine-shaped) and the advisory prose built from it
+(host presentation); Best Nearby / location-set composition, whose ranking and
+eligibility rules are engine-shaped while its orchestration is host-shaped;
+multi-night forecast eligibility and composition; provider availability, failure
+and staleness semantics (host-shaped); Bot host persistence and state
+(host-shaped); and the full compatibility / release gate. See the
+[roadmap classification](#required-implementation-order-after-the-audit).
+
 #### Current Bot readiness boundary
 
-With today’s 29 public capabilities plus correct host acquisition/composition,
+With today’s 30 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
 Observing Quality; Sun/twilight events; catalog facts and solar candidate
@@ -2434,7 +2982,13 @@ last — and truncate it, preserving every specialized score with no generic
 re-score. Given resolved requirements, saved-inventory presence and the user's
 selected capability facts, Astro Engine can now apply the production minimum-fit
 policy to that ranked list and return the stable equipment-aware subset without
-changing scores, windows, reasons or order.
+changing scores, windows, reasons or order. Given an authoritative IANA zone and
+the daily twilight rows of a forecast payload, Astro Engine can also
+authoritatively resolve which local observing night is active — including the
+after-midnight case where the preceding civil date is retained — its day
+identity and its astronomical-night start and end, and can distinguish
+"cannot determine from this payload" from "the current civil date is the
+observing night".
 
 **An engine capability existing is not the same as the Bot host composing it into
 a complete product answer.** Each fact above still depends on the host supplying
@@ -2442,11 +2996,14 @@ correct night boundaries, dates and provider data, and on the host having built
 the candidate rows in the first place: `targets.compose_recommendations` ranks
 what it is given and acquires nothing. The Bot can reproduce the deterministic
 equipment-aware subset once its host supplies authoritative saved/session
-equipment facts, but host night/time composition, including active-night date
-semantics; semantic advisory facts and cloud timing; full Best Nearby or
-location-set composition; complete multi-night advice; provider availability,
-failure and staleness semantics; durable host persistence; or precipitation in the
-normalized weather domain. Full host orchestration therefore remains incomplete.
+equipment facts, and it can now resolve the active observing night once its host
+supplies an authoritative IANA timezone and the daily twilight rows. Still
+missing are that timezone acquisition itself (host-shaped),
+`NightForecastFilter`'s calendar/DST forecast-window derivation and cloud-timing
+classification (both engine-shaped, each still needing its own capability slice);
+full Best Nearby or location-set composition; complete multi-night
+advice; provider availability, failure and staleness semantics; durable host
+persistence; or precipitation in the normalized weather domain. Full host orchestration therefore remains incomplete.
 The overall Astronomer Bot compatibility gate is **not** complete. Missing objective facts are an explicit limitation, never an
 invitation for Grok to calculate or guess them.
 
@@ -2455,7 +3012,7 @@ invitation for Grok to calculate or guess them.
 Numbered engine phases are not the whole product. After Phase 16, complete the following before the first actual Astro Engine 1.0.0 release and the single PR to `main`:
 
 - satisfy the pre-1.0 business-logic compatibility gate below;
-- CLI/Bot-host composition: `agent.conditions`, `agent.batch_compare`, and the longer `agent.forecast_horizon` where needed;
+- CLI/Bot-host composition: `agent.conditions`, `agent.batch_compare`, and the longer `agent.forecast_horizon` where needed — implemented in `packages/astro-host-python` and delivered through `apps/cli`, never added to the engine CLI's public 1.0 allow-list (see [Python host boundary](#11-python-host-boundary-packagesastro-host-python));
 - Bot saved-location persistence, onboarding, selected/default-location handling, aliases, confirmation, geocoding, and one-off overrides at the host boundary;
 - **Persistent user state / observing history:** conversation/chat history may provide recent-dialogue references, temporary intent, and continuity, but is not the authoritative observation log. The Bot host owns durable user profile/preferences where appropriate (owned equipment, preferred observing locations, favorite target types, and other personalization facts) and a structured, persistent, user-confirmed observation history. Observation records support create, query, correct, and delete, and capture target identity plus observation time/date, location, equipment, notes, rating, or metadata when known. Do not persist an observation merely because a target was recommended or discussed; obtain explicit or clear user confirmation when a statement is ambiguous. Astro Engine remains stateless with respect to individual user history and authoritative for objective astronomy facts and target ranking. Grok may use host state to personalize its recommendation reasoning, but must visibly distinguish that advice from the underlying objective Astro ranking and must not silently fold history into deterministic scoring. This roadmap does not dictate a future persistence implementation.
 - production Grok Bot VM installation/deployment and real end-to-end Astronomer Bot integration;
@@ -2465,7 +3022,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 **Pre-1.0 business-logic compatibility/release gate.** Before the first public
 Astro Engine / Astronomer Bot 1.0, the Bot must expose the objective/business-logic
 capabilities used by production Astro Conditions for astronomy advice, with the
-LLM layered on top. Availability of the current 29 engine capabilities alone
+LLM layered on top. Availability of the current 30 engine capabilities alone
 does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
 
 - **Audit closure:** reconcile every behavior named in the [production
@@ -2530,9 +3087,23 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   five. This gate does not require, and must not be read as requiring, equipment
   filtering before that production candidate-pool bound.
   What this gate still needs is correct host composition of those capabilities
-  with night/time and semantic reason facts; a request such as "What should I
+  with semantic reason facts; a request such as "What should I
   observe tonight with my S30 Pro?" must use both conditions and selected
   equipment without letting the LLM invent either decision.
+- **Observing night and time: engine side complete for the active-night
+  decision; timezone acquisition and the forecast-window adapter outstanding.**
+  `observing_night.resolve_active` owns which local observing night a reference
+  instant belongs to, its day identity and its astronomical-night boundaries,
+  including the after-midnight retention of the preceding civil date, the
+  inclusive boundary comparisons, the day-indexing guards and the DST/midnight
+  quirks; production delegates to it under migration-equivalence tests. What
+  this gate still needs is the host acquiring an authoritative IANA timezone
+  (production geocodes and falls back to a longitude approximation with no IANA
+  identity) — host-shaped acquisition — and `NightForecastFilter`'s own
+  calendar/DST forecast-window derivation, which is not part of this decision and
+  is **engine-shaped** portable Astro-domain logic awaiting its own slice, not
+  host work. Grok must never re-derive "tonight" from a bare civil date, and no
+  host may re-implement the window derivation instead of calling it.
 - **Best Nearby and location composition:** preserve candidate nighttime-forecast
   eligibility; center/candidate composition; cloud/wind/fog aggregation and any
   surfaced fog-factor union; Observing Quality only when every scorable candidate
@@ -2553,6 +3124,22 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   override, or contradict an authoritative Astro calculation. When online
   information materially conflicts with an Astro fact, preserve and explain
   the distinction instead of silently substituting it.
+- **Shared instant grammar (tracking; not a migration blocker).** The two hosts
+  disagree on one public instant spelling. Python's `parse_utc_z`
+  (`astro_engine.validate`) admits `24:00:00Z` — its `UTC_Z_PATTERN` hour group is
+  `\d{2}`, and `datetime.fromisoformat` then silently rolls the value over to
+  `00:00:00Z` on the following day. Swift's existing ISO round-trip validation
+  (`LiveAstronomy`, and the `ISO8601DateFormatter` re-render check the contract
+  types share) rejects it, because the re-rendered text does not equal the input.
+  This asymmetry **predates the observing-night slice** and no production emitter
+  produces it — Open-Meteo, the Swift encoders and the Python encoders all emit
+  `00`–`23` hours — so it is not a blocker for the current migration and is not a
+  reason to touch parser behavior, tests, contracts, or that slice now. Before
+  1.0, decide the shared public instant grammar **globally** and make both hosts
+  enforce it consistently. Expected resolution is to tighten Python to the
+  narrower Swift-compatible grammar; do **not** special-case one capability or
+  fix it capability-by-capability, which would leave the same trap in every
+  parser that is not the one being reviewed.
 - **End-to-end release scenarios:** verify objective Astro facts, Bot composition,
   and LLM explanation together, with online research constrained as above:
   "How is tonight?"; "What are my best targets tonight?"; "What should I observe

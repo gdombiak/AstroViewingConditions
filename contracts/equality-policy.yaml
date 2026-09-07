@@ -382,3 +382,22 @@ policies:
       selected[].key: exact
       code: exact
       message: exact
+
+  observing_night:
+    description: >
+      Discrete state, day identity and authoritative boundaries. Everything is
+      exact: the three states must never be collapsed into one another, and the
+      boundaries are the instants a host publishes. Fields a state does not
+      carry are JSON null, which `null_vs_omitted: distinct` keeps separate from
+      an omitted key.
+    fields:
+      state: exact
+      time_zone: exact
+      day_offset: exact
+      day_index: exact
+      observing_date: exact
+      observing_day_start: exact
+      astronomical_night_start: exact
+      astronomical_night_end: exact
+      code: exact
+      message: exact

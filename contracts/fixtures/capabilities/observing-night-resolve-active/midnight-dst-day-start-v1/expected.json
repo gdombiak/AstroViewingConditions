@@ -1,0 +1,1 @@
+{"capability":"observing_night.resolve_active","ok":true,"result":{"state":"resolved","time_zone":"America/Santiago","day_offset":-1,"day_index":1,"observing_date":"2026-09-06","observing_day_start":"2026-09-06T04:00:00Z","astronomical_night_start":"2026-09-06T23:51:00Z","astronomical_night_end":"2026-09-07T09:27:00Z"}}

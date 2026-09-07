@@ -12,13 +12,14 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `targets.deep_sky_windows`, `astronomy.sun_events`, `astronomy.moon_info`,
 `astronomy.moon_series`, `astronomy.moon_observation`,
 `targets.moon_recommendation`, `astronomy.planet_observation`,
-`targets.planet_recommendation`, `targets.compose_recommendations`, and
-`targets.filter_recommendations_by_equipment`. Composed agent hosts remain
+`targets.planet_recommendation`, `targets.compose_recommendations`,
+`targets.filter_recommendations_by_equipment`, and
+`observing_night.resolve_active`. Composed agent hosts remain
 later integration work. Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those twenty-nine IDs. Capability
+The public Python CLI allow-lists exactly those thirty IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
 rows keep `since: "0.1.0"`; `location.compare`, `targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
 they are introduced under the unreleased 1.0.0 identity. Do not invent a second
@@ -85,4 +86,19 @@ resolved target requirements, the session's selected capability facts, saved-
 inventory presence and the minimum-fit threshold. It reuses `equipment.match`
 semantics and returns a stable ordered subset as original indices/keys. See the
 [equipment-filter procedure](procedures/filter-recommendations-by-equipment.md).
-Public capability count is 29; version remains unreleased 1.0.0.
+That equipment slice took the public capability count to 29; version remained
+unreleased 1.0.0.
+
+Active observing night: `observing_night.resolve_active` chooses which local
+observing night a reference instant belongs to and reports its identity and
+astronomical-night boundaries. The preceding civil date is retained while its
+night is running; `resolved`, `requires_active_previous_payload` and
+`unavailable` stay distinct. The IANA timezone is supplied by the host — the
+engine applies its calendar/DST rules but never geocodes and never approximates
+a zone from longitude. The transport accepts exactly the catalogued shared
+location-style identifiers in `data/timezones/observing-night-zones.json` — the
+slash-form names present in both Foundation `TimeZone.knownTimeZoneIdentifiers`
+and Python `zoneinfo.available_timezones()` — so neither runtime's own parser
+defines the public set. That catalogue is symmetric across hosts, not
+canonical-IANA-only: historical aliases both runtimes publish are included. See the [observing-night procedure](procedures/observing-night.md).
+Public capability count is 30; version remains unreleased 1.0.0.
