@@ -30,7 +30,19 @@ def match_equipment(inputs: dict) -> dict:
 
 
 def _match(inputs: dict, p: dict) -> dict:
-    r = dict(obj(inputs.get("requirement")))
+    r = _parse_requirement(inputs.get("requirement"))
+    is_planet = boolean(inputs.get("is_planet", False))
+    capabilities = _parse_capabilities(inputs.get("capabilities"))
+    candidates = _ranked_candidates(r, capabilities, is_planet, p)
+    if not candidates:
+        return {"match": None}
+    best = candidates[0]
+    return {"match": {"key": best.key, "level": best.level, "reason": best.reason, "mode": best.mode,
+                      "other_suitable_keys": [c.key for c in candidates[1:] if c.level in ("excellent", "good")]}}
+
+
+def _parse_requirement(value) -> dict:
+    r = dict(obj(value))
     r["naked_eye_suitability"] = enum(r.get("naked_eye_suitability", "unsupported"), ("unsupported", "challenging", "preferred"))
     r["binocular_suitability"] = enum(r.get("binocular_suitability", "unsuitable"), ("unsuitable", "practical", "preferred"))
     r["smart_eaa_suitability"] = enum(r.get("smart_eaa_suitability", "poorMatch"), ("poorMatch", "supported", "preferred"))
@@ -52,23 +64,29 @@ def _match(inputs: dict, p: dict) -> dict:
             raise ValidationError("invalid thresholds")
         if prefix == "smart_eaa" and (r[a] is None) != (r[b] is None):
             raise ValidationError("smart thresholds must be paired")
-    is_planet = boolean(inputs.get("is_planet", False))
+    return r
+
+
+def _parse_capabilities(value) -> list[tuple[str, str, float | None, float | None]]:
     seen: set[str] = set()
-    candidates = []
-    for value in array(inputs.get("capabilities")):
-        row = obj(value)
+    capabilities = []
+    for item in array(value):
+        row = obj(item)
         k = key(row.get("key"), seen)
         kind = enum(row.get("type"), ("nakedEye", "binoculars", "visualTelescope", "smartTelescope"))
         aperture = optional_number(row.get("aperture_mm"))
         magnification = optional_number(row.get("magnification"))
+        capabilities.append((k, kind, aperture, magnification))
+    return capabilities
+
+
+def _ranked_candidates(r, capabilities, is_planet, p) -> list[Candidate]:
+    candidates = []
+    for k, kind, aperture, magnification in capabilities:
         level, reason, mode, preference = _candidate(kind, aperture, magnification, is_planet, r, p)
         candidates.append(Candidate(k, level, reason, mode, preference, aperture, magnification))
     candidates.sort(key=lambda c: (_LEVELS.index(c.level), -c.preference, -(c.aperture or 0), -(c.magnification or 0), c.key.encode("utf-8")))
-    if not candidates:
-        return {"match": None}
-    best = candidates[0]
-    return {"match": {"key": best.key, "level": best.level, "reason": best.reason, "mode": best.mode,
-                      "other_suitable_keys": [c.key for c in candidates[1:] if c.level in ("excellent", "good")]}}
+    return candidates
 
 
 def _candidate(kind, aperture, magnification, is_planet, r, p):

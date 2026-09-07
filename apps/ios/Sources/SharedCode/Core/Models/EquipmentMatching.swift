@@ -103,7 +103,7 @@ public struct EquipmentMatchingService: Sendable {
     }
 }
 
-private extension EquipmentCapability {
+extension EquipmentCapability {
     /// A saved item keeps this identifier when its user-visible name changes.
     var stableSortKey: String {
         switch id {

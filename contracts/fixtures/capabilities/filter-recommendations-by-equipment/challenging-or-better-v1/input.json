@@ -1,0 +1,13 @@
+{
+  "capability": "targets.filter_recommendations_by_equipment",
+  "injected": {
+    "has_saved_inventory": true, "minimum_fit": "challengingOrBetter",
+    "capabilities": [{"key": "0", "type": "nakedEye", "aperture_mm": null, "magnification": null}],
+    "candidates": [
+      {"key": "excellent", "is_planet": false, "requirement": {"naked_eye_suitability": "preferred", "binocular_suitability": "unsuitable", "preferred_binocular_magnification": null, "practical_binocular_aperture_mm": null, "preferred_binocular_aperture_mm": null, "practical_visual_aperture_mm": null, "preferred_visual_aperture_mm": null, "practical_smart_eaa_aperture_mm": null, "preferred_smart_eaa_aperture_mm": null, "framing": "medium", "magnification_benefit": false, "smart_eaa_suitability": "poorMatch"}},
+      {"key": "good", "is_planet": true, "requirement": {"naked_eye_suitability": "preferred", "binocular_suitability": "unsuitable", "preferred_binocular_magnification": null, "practical_binocular_aperture_mm": null, "preferred_binocular_aperture_mm": null, "practical_visual_aperture_mm": null, "preferred_visual_aperture_mm": null, "practical_smart_eaa_aperture_mm": null, "preferred_smart_eaa_aperture_mm": null, "framing": "medium", "magnification_benefit": false, "smart_eaa_suitability": "poorMatch"}},
+      {"key": "challenging", "is_planet": false, "requirement": {"naked_eye_suitability": "challenging", "binocular_suitability": "unsuitable", "preferred_binocular_magnification": null, "practical_binocular_aperture_mm": null, "preferred_binocular_aperture_mm": null, "practical_visual_aperture_mm": null, "preferred_visual_aperture_mm": null, "practical_smart_eaa_aperture_mm": null, "preferred_smart_eaa_aperture_mm": null, "framing": "medium", "magnification_benefit": false, "smart_eaa_suitability": "poorMatch"}},
+      {"key": "poor", "is_planet": false, "requirement": {"naked_eye_suitability": "unsupported", "binocular_suitability": "unsuitable", "preferred_binocular_magnification": null, "practical_binocular_aperture_mm": null, "preferred_binocular_aperture_mm": null, "practical_visual_aperture_mm": null, "preferred_visual_aperture_mm": null, "practical_smart_eaa_aperture_mm": null, "preferred_smart_eaa_aperture_mm": null, "framing": "medium", "magnification_benefit": false, "smart_eaa_suitability": "poorMatch"}}
+    ]
+  }
+}

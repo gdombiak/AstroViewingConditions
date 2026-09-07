@@ -1,0 +1,6 @@
+capability: targets.filter_recommendations_by_equipment
+engine_semver: ">=1.0.0 <2.0.0"
+equality: filter_recommendations_by_equipment
+origin: manual
+hosts: [swift, python]
+notes: Any preserves every row even when no selected capability can produce a fit.

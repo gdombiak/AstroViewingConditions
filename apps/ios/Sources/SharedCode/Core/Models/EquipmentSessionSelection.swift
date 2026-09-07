@@ -47,12 +47,7 @@ public enum EquipmentFitThreshold: String, CaseIterable, Equatable, Sendable {
     }
 
     public func includes(_ level: EquipmentFitLevel) -> Bool {
-        switch self {
-        case .any: return true
-        case .challengingOrBetter: return level != .poor
-        case .goodOrBetter: return level == .excellent || level == .good
-        case .excellentOnly: return level == .excellent
-        }
+        RecommendationEquipmentFitThreshold(rawValue: rawValue)!.includes(level)
     }
 }
 
@@ -159,13 +154,27 @@ public struct EquipmentSessionSelection: Equatable, Sendable {
         inventory: [EquipmentCapability],
         minimumFit: EquipmentFitThreshold
     ) -> [TargetRecommendation] {
-        guard !inventory.isEmpty, minimumFit != .any else { return recommendations }
-        return recommendations.filter { recommendation in
-            guard let fit = equipmentFit(for: recommendation.target, inventory: inventory) else {
-                return false
-            }
-            return minimumFit.includes(fit.level)
+        let capabilities = selectedCapabilities(from: inventory).map {
+            EquipmentMatchCapability(
+                key: $0.stableSortKey,
+                type: $0.type,
+                apertureMillimeters: $0.apertureMillimeters,
+                magnification: $0.magnification
+            )
         }
+        let candidates = recommendations.map {
+            RecommendationEquipmentFilter.Candidate(
+                key: $0.id,
+                isPlanet: $0.target.type == .planet,
+                requirement: $0.target.equipmentRequirement
+            )
+        }
+        return RecommendationEquipmentFilter.selected(
+            candidates: candidates,
+            capabilities: capabilities,
+            hasSavedInventory: !inventory.isEmpty,
+            minimumFit: RecommendationEquipmentFitThreshold(rawValue: minimumFit.rawValue)!
+        ).map { recommendations[$0.index] }
     }
 
     private mutating func ensureAtLeastOneSelection() {

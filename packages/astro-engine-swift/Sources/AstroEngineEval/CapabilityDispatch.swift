@@ -109,6 +109,12 @@ enum CapabilityDispatch {
             } catch let error as RecommendationCompositionInputError {
                 throw EvalValidationError(code: error.code, message: error.message)
             }
+        case "targets.filter_recommendations_by_equipment":
+            do {
+                return try RecommendationEquipmentFilterContract.evaluate(injected(document))
+            } catch let error as RecommendationEquipmentFilterInputError {
+                throw EvalValidationError(code: error.code, message: error.message)
+            }
         case "location.compare":
             return try locationCompare(document)
         case "catalog.deep_sky":

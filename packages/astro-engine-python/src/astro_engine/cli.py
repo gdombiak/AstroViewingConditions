@@ -32,6 +32,9 @@ from astro_engine.grid import CAPABILITY_ID as GRID_ID
 from astro_engine.observing_window import CAPABILITY_ID as WINDOW_ID
 from astro_engine.targets import CAPABILITY_ID as TARGETS_ID
 from astro_engine.equipment import CAPABILITY_ID as EQUIPMENT_ID
+from astro_engine.filter_recommendations_by_equipment import (
+    CAPABILITY_ID as FILTER_RECOMMENDATIONS_BY_EQUIPMENT_ID,
+)
 from astro_engine.location_compare import CAPABILITY_ID as COMPARE_ID
 from astro_engine.iss import CAPABILITY_ID as ISS_ID
 from astro_engine.jsonio import JSONCodecError, STDIN_LIMIT_BYTES, dump_json, load_json_bytes
@@ -78,6 +81,7 @@ PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     "astronomy.planet_observation",
     "targets.planet_recommendation",
     "targets.compose_recommendations",
+    FILTER_RECOMMENDATIONS_BY_EQUIPMENT_ID,
 )
 
 _PUBLIC_ALLOW_LIST = frozenset(PUBLIC_CAPABILITY_IDS)

@@ -295,3 +295,19 @@ capabilities:
       accepted and never deduplicated. No astronomy, no weather, no catalog, no
       equipment filtering, no English copy. See
       contracts/procedures/compose-recommendations.md.
+
+  - id: targets.filter_recommendations_by_equipment
+    hosts: [ios, cli]
+    equality: filter_recommendations_by_equipment
+    since: "1.0.0"
+    requires_injected: [candidates, capabilities, has_saved_inventory, minimum_fit]
+    summary: >
+      Filter an already conditions-ranked recommendation list by the best fit
+      from the user's currently selected equipment capabilities. Empty saved
+      inventory and minimum_fit any bypass matching; active filtering excludes
+      a row with no best fit. Survivors retain caller order and are returned as
+      original index plus echoed key. Resolved requirements and selected
+      capability facts reuse equipment.match semantics. Duplicate candidate
+      keys are accepted; scores, windows, reasons, summaries, UI session state,
+      English copy and result-count truncation are absent. See
+      contracts/procedures/filter-recommendations-by-equipment.md.

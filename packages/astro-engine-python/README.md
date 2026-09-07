@@ -1,7 +1,7 @@
 # astro-engine (Python)
 
 Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the
-twenty-eight catalogued capabilities.
+twenty-nine catalogued capabilities.
 
 Calibration and fixtures are loaded from the repo `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). Do not copy scoring constants into this package.
 
@@ -107,7 +107,13 @@ ascending, caller index ascending — so a host reuses its own recommendation
 objects. It never scores anything. See the
 [composition procedure](../../contracts/procedures/compose-recommendations.md).
 
-The public catalog now contains 28 capabilities; engine/package identity remains
+`targets.filter_recommendations_by_equipment` then applies selected capability
+facts and the minimum-fit policy to that conditions-ranked list. It composes the
+existing equipment matcher and returns a stable subset of original indices/keys;
+it does not transport or change scores, windows, reasons or summaries. See the
+[equipment-filter procedure](../../contracts/procedures/filter-recommendations-by-equipment.md).
+
+The public catalog now contains 29 capabilities; engine/package identity remains
 unreleased 1.0.0.
 
 Target metadata is available through `targets.requirements`,

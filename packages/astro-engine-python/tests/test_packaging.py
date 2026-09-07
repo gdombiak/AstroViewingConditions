@@ -86,6 +86,7 @@ def test_public_imports() -> None:
         "astronomy.planet_observation",
         "targets.planet_recommendation",
         "targets.compose_recommendations",
+        "targets.filter_recommendations_by_equipment",
     )
 
 
@@ -107,7 +108,7 @@ def test_catalog_current_release_matches_engine_version() -> None:
     assert since_lines == (
         ['    since: "0.1.0"'] * 10
         + ['    since: "1.0.0"', '    since: "0.1.0"']
-        + ['    since: "1.0.0"'] * 16
+        + ['    since: "1.0.0"'] * 17
     )
 
 

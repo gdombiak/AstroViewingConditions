@@ -11,13 +11,14 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `catalog.solar_system`, `targets.moon_sensitivity`, `astronomy.horizontal_position`,
 `targets.deep_sky_windows`, `astronomy.sun_events`, `astronomy.moon_info`,
 `astronomy.moon_series`, `astronomy.moon_observation`,
-`targets.moon_recommendation`, `astronomy.planet_observation`, and
-`targets.planet_recommendation`. Composed agent hosts remain
+`targets.moon_recommendation`, `astronomy.planet_observation`,
+`targets.planet_recommendation`, `targets.compose_recommendations`, and
+`targets.filter_recommendations_by_equipment`. Composed agent hosts remain
 later integration work. Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those twenty-seven IDs. Capability
+The public Python CLI allow-lists exactly those twenty-nine IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
 rows keep `since: "0.1.0"`; `location.compare`, `targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
 they are introduced under the unreleased 1.0.0 identity. Do not invent a second
@@ -75,4 +76,13 @@ Mixed-target composition: `targets.compose_recommendations` turns already-scored
 deep-sky, Moon and planet candidates into the production global ranking and
 truncates it. It is the only mixed-target capability and makes no scoring
 decision. See [the composition procedure](procedures/compose-recommendations.md).
-Public capability count is 28; version remains unreleased 1.0.0.
+That mixed-target slice took the public capability count to 28; version remained
+unreleased 1.0.0.
+
+Equipment-aware recommendation filtering:
+`targets.filter_recommendations_by_equipment` consumes the already-ranked rows,
+resolved target requirements, the session's selected capability facts, saved-
+inventory presence and the minimum-fit threshold. It reuses `equipment.match`
+semantics and returns a stable ordered subset as original indices/keys. See the
+[equipment-filter procedure](procedures/filter-recommendations-by-equipment.md).
+Public capability count is 29; version remains unreleased 1.0.0.

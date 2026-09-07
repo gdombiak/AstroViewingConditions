@@ -1355,7 +1355,7 @@ astro-engine <capability-id> --pretty --input -
 
 **Phase 11 historical allow-list (public Python CLI):** `observing_quality.assess`, `night_conditions.analyze`, `night_conditions.score`, `fog.score`, `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`, `weather.decode`, `iss.decode`, `location.grid`, `catalog.deep_sky`. This was the eleven-capability set exposed in Phase 11.
 
-**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 28 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
+**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 29 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
 
 **Later CLI/Bot-host composition** (not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days and are out of `parity.yml` except as optional golden envelopes tagged `hosts: [python]`.
 
@@ -1992,7 +1992,7 @@ the current public engine capabilities. It is not iOS UI parity.
 | Observing-window decision | The audited `NightQualityAnalyzer.calculateBestWindow` (now delegated to `ObservingWindowSelector`) returns no window for no ratings; a one-hour window beginning at the minimum-score rating when no ratings qualify; the interval from the first included rating timestamp to the last included rating timestamp when at least half qualify; otherwise the longest qualifying run. Its current traversal/tie behavior counts consecutive qualifying rows as one hour each without verifying timestamp continuity. `DefaultMoonTargetRecommendationProvider` consumes that result and falls back to the astronomical night only when it is absent. | Best-window decision implemented by `observing_window.select`; see the boundary review below. Phase 11 DTO/equality unchanged. Astronomical-night/calendar composition, sustained/heavy-cloud timing advice and forecast-availability semantics remain host responsibilities requiring Bot validation. English text remains host presentation. |
 | Target metadata and equipment requirements | `TargetEquipmentRequirements` resolves type fallbacks and individual overrides (including M77), aperture, magnification, observing-mode and framing needs. `DefaultTargetCatalogProvider` also supplies solar-system candidates and derives deep-sky Moon sensitivity. `equipment.match` only evaluates already-resolved requirements. | Implemented by `targets.requirements`, `catalog.solar_system`, and `targets.moon_sensitivity`; see the target metadata boundary below. The Bot must consume these authoritative facts rather than ask Grok to invent requirements. Equipment selection filters recommendations; it does not rescore or reorder retained target scores. |
 | Target-type-specific live policies | Deep sky uses catalog RA/Dec, 15-minute samples, a 15-degree threshold, contiguous runs, interpolated crossings, and highest sampled altitude. Moon uses its own 30-minute, useful-window and visible-sample policy. Planets use an extended interval, 15-minute samples, an 8-degree threshold, interpolation, specialized best-time scoring, and Venus twilight treatment. | Required. A shared result vocabulary may be useful, but do not promise one generic `targets.windows` algorithm. Prefer shared lower-level numeric astronomy facts with target-type-specific observation and recommendation policies. |
-| Specialized recommendation and composition | Production has dedicated deep-sky, Moon, and planet providers. Lunar observation facts include continuous phase, illumination, altitude/azimuth, rise/set, always-up/down state, and position samples where applicable; eligibility requires visible samples in the useful window. Numeric lunar scoring uses phase/illumination, visible fraction, and weather quality, while semantic reasons may use facts such as set time and `alwaysDown`. Planet recommendations use the low-precision model rather than generic Skyfield output. | Required. Preserve specialized scores, stable order/ties, reasons, equipment filtering before result-count truncation, and no generic re-score of Moon or planet results. The LLM may explain authoritative facts but must not recreate them. |
+| Specialized recommendation and composition | Production has dedicated deep-sky, Moon, and planet providers. Lunar observation facts include continuous phase, illumination, altitude/azimuth, rise/set, always-up/down state, and position samples where applicable; eligibility requires visible samples in the useful window. Numeric lunar scoring uses phase/illumination, visible fraction, and weather quality, while semantic reasons may use facts such as set time and `alwaysDown`. Planet recommendations use the low-precision model rather than generic Skyfield output. | Required. Preserve specialized scores, stable order/ties, reasons, equipment filtering after the existing host-owned 100-row ranked candidate-pool bound but before downstream/user-facing result truncation, and no generic re-score of Moon or planet results. Candidates beyond that production pool are intentionally not considered. The 100-row bound is host production composition behavior, not an engine transport cap. The LLM may explain authoritative facts but must not recreate them. |
 | Location and forecast-horizon composition | `BestSpotSearcher` has search-wide scoring-mode selection and suitability policy. `ActiveObservingNightResolver` retains the preceding civil date after midnight when its astronomical night is active; the three-night outlook requires complete hourly coverage and retains the first best-score tie. | Required. Preserve candidate forecast eligibility; center/candidate cloud, wind and fog composition; fog-factor union where surfaced; all-or-nothing light-pollution ranking; suitability states; center improvement and missing-center behavior; complete-night and deterministic best-night rules; timezone/DST and provider/data-state distinctions. Host geocoding, search expansion, batching and cache lifecycle may remain host-owned. |
 
 The following boundaries are deliberate:
@@ -2073,15 +2073,19 @@ still has host composition listed under "still outstanding".
    specialized scores, ordering and ties with no generic re-score —
    `targets.compose_recommendations`, the mixed-target slice below. Production
    delegates only the final ordering/truncation decision.
+7. Equipment-aware recommendation filtering over the conditions-ranked pool
+   returned after the host's existing 100-row service candidate-pool bound —
+   `targets.filter_recommendations_by_equipment`. Production delegates the
+   stable subset decision and reuses existing `EquipmentMatchingRules`; selected
+   rows retain their scores, objects and relative order.
 
 **Still outstanding:**
 
-7. Host night/time composition where it is not yet portable: astronomical-night
+8. Host night/time composition where it is not yet portable: astronomical-night
    and calendar boundaries, active-night date semantics across midnight, and
    timezone/DST authority.
-8. Semantic advisory facts that remain intentionally host-owned or composed,
+9. Semantic advisory facts that remain intentionally host-owned or composed,
    including cloud-timing classification.
-9. Equipment-aware target composition and filtering before result-count truncation.
 10. Best Nearby / location-set composition, and its candidate-generation and
     orchestration behavior.
 11. Multi-night forecast eligibility and composition.
@@ -2340,14 +2344,77 @@ That slice takes the public count to **28**; the new ID uses `since: "1.0.0"` an
 fixtures use `>=1.0.0 <2.0.0`. No engine/package version change and no release.
 
 Still outstanding downstream: host night/time composition; semantic advisory
-facts and cloud timing; equipment-aware composition and filtering; Best Nearby /
-location-set composition and its orchestration; multi-night forecast eligibility
-and composition; provider availability, failure and staleness semantics; Bot host
-persistence and state; and the full compatibility / release gate.
+facts and cloud timing; Best Nearby / location-set composition and its
+orchestration; multi-night forecast eligibility and composition; provider
+availability, failure and staleness semantics; Bot host persistence and state;
+and the full compatibility / release gate.
+
+### Equipment-aware recommendation filtering slice (implemented; unreleased 1.0)
+
+Assessment: **Agree, with a composed matching boundary.** The portable decision
+is `targets.filter_recommendations_by_equipment`: selected capability facts,
+saved-inventory presence, a minimum-fit threshold and resolved requirements are
+applied to an already conditions-ranked recommendation list. It returns only the
+surviving original `{index, key}` identities. This is intentionally narrower
+than an end-to-end recommendation API, while still letting the CLI reproduce the
+real product decision in one call. It carries no score, visibility window,
+reason, summary, display name, astronomy fact, weather fact or English fit copy.
+
+The implementation composes the existing `EquipmentMatchingRules` semantics;
+it does not extract matching a second time. For each row under an active filter,
+only the best match's `EquipmentFitLevel` participates. `.any` and empty saved
+inventory bypass matching; active filtering rejects a row with no best match.
+`challengingOrBetter` excludes only poor, `goodOrBetter` includes excellent and
+good, and `excellentOnly` includes excellent only. The operation neither sorts
+nor deduplicates, so duplicate target IDs/windows remain independent and every
+survivor preserves its prior score, full recommendation object and relative
+conditions order. Capability input order cannot change the best-fit result
+because the pre-existing matcher owns its total order.
+
+Production `EquipmentSessionSelection.filteredRecommendations` now delegates
+the subset decision and maps selected indices back to the exact existing
+`TargetRecommendation` values. iOS still owns all-equipment/custom selection,
+toggle mechanics, the selected-ID set, naked-eye insertion, reconciliation,
+saved-equipment persistence, fit explanations and presentation/accessibility
+copy. `minimumFitAfterInventoryTransition` remains host-only because resetting a
+session threshold when inventory becomes empty is UI/session state, not a
+stateless filtering decision.
+
+The production sequence is explicitly preserved: conditions ranking first,
+then host production composition bounds the ranked candidate pool to the
+existing service limit of 100, then the equipment filter operates on that whole
+returned pool, and finally presentation applies the five-row dashboard limit.
+A passing row inside the 100-row pool can therefore survive when earlier rows
+fail; a candidate beyond that pre-existing pool is intentionally not considered.
+The 100-row bound is an intentional host production composition compatibility
+quirk, not an engine transport cap. In this roadmap, "before result-count
+truncation" means before downstream/user-facing truncation, not before that
+candidate-pool bound. Source inspection establishes the upstream 100-row
+behavior; the existing regression where the first five rows fail and the sixth
+passes distinguishes filter-before-display-limit from limit-before-filter
+without manufacturing a larger host fixture.
+
+Migration equivalence uses an independent inline copy of the old filter that
+calls only the already-existing `EquipmentMatchingService`, not the new filter
+or migrated threshold helper. It compares 60 combinations across mixed deep-sky,
+Moon and planet rows, duplicate target windows, reversed and empty lists, empty,
+all-equipment, custom-smart and naked-eye-only sessions, and every threshold.
+Whole recommendation values, scores, windows, reasons and summaries compare.
+
+Twelve small manual cross-language fixtures pin the threshold truth table,
+bypasses, alternating order, all-pass and none-pass outcomes, missing fit,
+custom/naked-eye selection facts, duplicate identity and strict fail-closed
+validation. Focused typed tests additionally pin capability-order independence,
+row caps before iteration and filter-before-display-limit. See the normative
+[equipment-filter procedure](../../contracts/procedures/filter-recommendations-by-equipment.md).
+
+This slice takes the public capability count to **29**; the new ID uses
+`since: "1.0.0"` and fixtures use `>=1.0.0 <2.0.0`. No engine/package version
+change and no release.
 
 #### Current Bot readiness boundary
 
-With today’s 28 public capabilities plus correct host acquisition/composition,
+With today’s 29 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
 Observing Quality; Sun/twilight events; catalog facts and solar candidate
@@ -2364,14 +2431,18 @@ twilight behavior. Astro Engine can now also authoritatively compose
 already-scored deep-sky, Moon and planet recommendation candidates into the
 production global ranking — score descending, best time ascending, caller order
 last — and truncate it, preserving every specialized score with no generic
-re-score.
+re-score. Given resolved requirements, saved-inventory presence and the user's
+selected capability facts, Astro Engine can now apply the production minimum-fit
+policy to that ranked list and return the stable equipment-aware subset without
+changing scores, windows, reasons or order.
 
 **An engine capability existing is not the same as the Bot host composing it into
 a complete product answer.** Each fact above still depends on the host supplying
 correct night boundaries, dates and provider data, and on the host having built
 the candidate rows in the first place: `targets.compose_recommendations` ranks
-what it is given and acquires nothing. The Bot cannot yet claim equipment-aware
-target recommendations; host night/time composition, including active-night date
+what it is given and acquires nothing. The Bot can reproduce the deterministic
+equipment-aware subset once its host supplies authoritative saved/session
+equipment facts, but host night/time composition, including active-night date
 semantics; semantic advisory facts and cloud timing; full Best Nearby or
 location-set composition; complete multi-night advice; provider availability,
 failure and staleness semantics; durable host persistence; or precipitation in the
@@ -2394,7 +2465,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 **Pre-1.0 business-logic compatibility/release gate.** Before the first public
 Astro Engine / Astronomer Bot 1.0, the Bot must expose the objective/business-logic
 capabilities used by production Astro Conditions for astronomy advice, with the
-LLM layered on top. Availability of the current 27 engine capabilities alone
+LLM layered on top. Availability of the current 29 engine capabilities alone
 does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
 
 - **Audit closure:** reconcile every behavior named in the [production
@@ -2451,10 +2522,17 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   deep-sky, Moon and planet score paths, stable ordering/ties,
   missing-specialized-result behavior and no generic re-score of specialized
   Moon/planet results are preserved and covered by migration-equivalence tests.
-  What this gate still needs is semantic reason facts and equipment-aware
-  composition: a request such as "What should I observe tonight with my S30 Pro?"
-  must use both conditions and selected equipment, and equipment filtering is
-  still outside the shared engine.
+  Equipment filtering is now shared as
+  `targets.filter_recommendations_by_equipment`: the host supplies authoritative
+  saved-inventory/session selections and resolved requirements. Filtering occurs
+  after conditions ranking and the existing host production composition bound
+  of 100 candidates, but before downstream/user-facing dashboard truncation to
+  five. This gate does not require, and must not be read as requiring, equipment
+  filtering before that production candidate-pool bound.
+  What this gate still needs is correct host composition of those capabilities
+  with night/time and semantic reason facts; a request such as "What should I
+  observe tonight with my S30 Pro?" must use both conditions and selected
+  equipment without letting the LLM invent either decision.
 - **Best Nearby and location composition:** preserve candidate nighttime-forecast
   eligibility; center/candidate composition; cloud/wind/fog aggregation and any
   surfaced fog-factor union; Observing Quality only when every scorable candidate

@@ -1737,6 +1737,99 @@ final class EquipmentTests: XCTestCase {
         )
     }
 
+    /// Compares the migrated production seam against an independent copy of
+    /// the pre-migration filtering decision. The oracle calls the already-
+    /// existing equipment matcher, but neither the new engine filter nor the
+    /// threshold helper migrated in this slice.
+    func testEquipmentRecommendationFilterMatchesLegacyDecisionAcrossMixedSessions() {
+        let binoculars = capability(
+            name: "10×50", type: .binoculars, magnification: 10, aperture: 50
+        )
+        let smart = capability(name: "Seestar S30 Pro", type: .smartTelescope, aperture: 30)
+        let visual = capability(name: "Heritage P150", type: .visualTelescope, aperture: 150)
+
+        var smartOnly = EquipmentSessionSelection()
+        smartOnly.selectNakedEyeOnly()
+        smartOnly.toggle(smart.id, inventory: [smart, binoculars])
+        smartOnly.toggle(.nakedEye, inventory: [smart, binoculars])
+
+        var nakedEyeOnly = EquipmentSessionSelection()
+        nakedEyeOnly.selectNakedEyeOnly()
+
+        let sessions: [(selection: EquipmentSessionSelection, inventory: [EquipmentCapability])] = [
+            (.init(), []),
+            (.init(), [binoculars]),
+            (.init(), [smart, visual]),
+            (smartOnly, [smart, binoculars]),
+            (nakedEyeOnly, [smart, binoculars]),
+        ]
+        let m31 = catalogTarget(id: "m31")
+        let mixed = [
+            recommendation(for: catalogTarget(id: "m45", deepSkyObjectType: .openCluster), score: 96),
+            recommendation(for: catalogTarget(id: "moon", type: .moon), score: 90),
+            recommendation(for: catalogTarget(id: "jupiter", type: .planet), score: 84),
+            recommendation(for: catalogTarget(id: "m77"), score: 78),
+            recommendation(for: m31, score: 72),
+            recommendation(for: m31, score: 66),
+        ]
+        let recommendationSets = [mixed, Array(mixed.reversed()), []]
+
+        var comparisons = 0
+        for recommendations in recommendationSets {
+            for session in sessions {
+                for threshold in EquipmentFitThreshold.allCases {
+                    let actual = session.selection.filteredRecommendations(
+                        recommendations,
+                        inventory: session.inventory,
+                        minimumFit: threshold
+                    )
+                    let legacy = legacyFilteredRecommendations(
+                        recommendations,
+                        selection: session.selection,
+                        inventory: session.inventory,
+                        minimumFit: threshold
+                    )
+                    comparisons += 1
+                    XCTAssertEqual(actual, legacy)
+                    XCTAssertEqual(actual.map(\.score), legacy.map(\.score))
+                    XCTAssertEqual(actual.map(\.visibilityWindow), legacy.map(\.visibilityWindow))
+                    XCTAssertEqual(actual.map(\.reasons), legacy.map(\.reasons))
+                    XCTAssertEqual(actual.map(\.summary), legacy.map(\.summary))
+                }
+            }
+        }
+
+        XCTAssertEqual(comparisons, 60)
+    }
+
+    private func legacyFilteredRecommendations(
+        _ recommendations: [TargetRecommendation],
+        selection: EquipmentSessionSelection,
+        inventory: [EquipmentCapability],
+        minimumFit: EquipmentFitThreshold
+    ) -> [TargetRecommendation] {
+        guard !inventory.isEmpty, minimumFit != .any else { return recommendations }
+        let capabilities = selection.selectedCapabilities(from: inventory)
+        return recommendations.filter { recommendation in
+            guard let level = EquipmentMatchingService().match(
+                target: recommendation.target,
+                using: capabilities
+            )?.level else {
+                return false
+            }
+            switch minimumFit {
+            case .any:
+                return true
+            case .challengingOrBetter:
+                return level != .poor
+            case .goodOrBetter:
+                return level == .excellent || level == .good
+            case .excellentOnly:
+                return level == .excellent
+            }
+        }
+    }
+
     private func XCTAssertValidationError(
         _ expectedError: EquipmentValidationError,
         file: StaticString = #filePath,

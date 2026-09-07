@@ -30,7 +30,7 @@ def test_public_catalog_and_manual_fixture_contract():
     catalog = (contracts_root() / "capabilities.yaml").read_text()
     ids = [line.split(": ", 1)[1] for line in catalog.splitlines() if line.startswith("  - id: ")]
     assert ids == list(PUBLIC_CAPABILITY_IDS)
-    assert len(ids) == 28
+    assert len(ids) == 29
     assert len(CASES) == 74
     for fixture in CASES:
         assert fixture['meta']['engine_semver'] == '>=1.0.0 <2.0.0'

@@ -371,3 +371,14 @@ policies:
       selected[].key: exact
       code: exact
       message: exact
+
+  filter_recommendations_by_equipment:
+    description: >
+      Deterministic stable subset selection. The selected array and every
+      original index/key identity compare exactly. Empty selection is success.
+    fields:
+      selected: exact
+      selected[].index: exact
+      selected[].key: exact
+      code: exact
+      message: exact

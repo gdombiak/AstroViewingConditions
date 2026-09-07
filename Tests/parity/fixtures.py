@@ -35,6 +35,7 @@ DETERMINISTIC_FIXTURE_DIRS = (
     "fixtures/capabilities/moon-recommendation",
     "fixtures/capabilities/planet-recommendation",
     "fixtures/capabilities/compose-recommendations",
+    "fixtures/capabilities/filter-recommendations-by-equipment",
 )
 
 
