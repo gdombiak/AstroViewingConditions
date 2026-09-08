@@ -151,6 +151,27 @@ policies:
       locations[].latitude: abs_1e9
       locations[].longitude: abs_1e9
 
+  location_compose_scores:
+    description: >
+      Exact coherent score mode, stable survivor indices, public scores and
+      score-only center deltas. Null is distinct from zero for a missing
+      scorable center. Domain and transport errors compare exactly.
+    fields:
+      scoring_mode: exact
+      candidates: exact
+      candidates[].input_index: exact
+      candidates[].public_score: exact
+      candidates[].improvement_over_center: exact
+      code: exact
+      message: exact
+
+  location_filter_recommendable:
+    description: Exact stable subset of original suitability-row indices.
+    fields:
+      recommendable_input_indices: exact
+      code: exact
+      message: exact
+
   catalog_deep_sky:
     description: Exact curated catalog entries in canonical file order
     fields:

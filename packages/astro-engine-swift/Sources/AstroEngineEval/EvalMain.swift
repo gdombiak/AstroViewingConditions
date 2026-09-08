@@ -23,6 +23,8 @@ Eval allow-list (not the public Python CLI):
   iss.decode
   location.grid
   location.compare
+  location.compose_scores
+  location.filter_recommendable
   catalog.deep_sky
   targets.recommend
   equipment.match
@@ -59,6 +61,8 @@ private let supportedCapabilities: Set<String> = [
     "iss.decode",
     "location.grid",
     "location.compare",
+    "location.compose_scores",
+    "location.filter_recommendable",
     "catalog.deep_sky",
     "targets.recommend",
     "equipment.match",

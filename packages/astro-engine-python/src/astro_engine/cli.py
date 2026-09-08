@@ -36,6 +36,8 @@ from astro_engine.filter_recommendations_by_equipment import (
     CAPABILITY_ID as FILTER_RECOMMENDATIONS_BY_EQUIPMENT_ID,
 )
 from astro_engine.location_compare import CAPABILITY_ID as COMPARE_ID
+from astro_engine.location_compose_scores import CAPABILITY_ID as COMPOSE_LOCATION_SCORES_ID
+from astro_engine.location_filter_recommendable import CAPABILITY_ID as FILTER_RECOMMENDABLE_ID
 from astro_engine.observing_night import CAPABILITY_ID as OBSERVING_NIGHT_ID
 from astro_engine.night_forecast import CAPABILITY_ID as NIGHT_FORECAST_ID
 from astro_engine.cloud_timing import CAPABILITY_ID as CLOUD_TIMING_ID
@@ -71,6 +73,8 @@ PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     ISS_ID,
     GRID_ID,
     COMPARE_ID,
+    COMPOSE_LOCATION_SCORES_ID,
+    FILTER_RECOMMENDABLE_ID,
     CATALOG_ID,
     TARGETS_ID,
     EQUIPMENT_ID,

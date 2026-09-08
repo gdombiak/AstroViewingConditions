@@ -33,6 +33,21 @@ private struct OneCoordinateNilBrightnessProvider: LightPollutionProviding, Send
     }
 }
 
+/// Fails LP only at one exact coordinate, leaving same-latitude grid rows valid.
+private struct ExactCoordinateNilBrightnessProvider: LightPollutionProviding, Sendable {
+    let coordinate: Coordinate
+    let successValue: Double
+    let tolerance: Double
+
+    func modeledZenithSkyBrightness(latitude: Double, longitude: Double) -> Double? {
+        if abs(latitude - coordinate.latitude) <= tolerance,
+           abs(longitude - coordinate.longitude) <= tolerance {
+            return nil
+        }
+        return successValue
+    }
+}
+
 /// Counts assessor invocations (and prepare).
 private final class CountingAssessor: ObservingQualityAssessing, @unchecked Sendable {
     private let lock = NSLock()
@@ -458,6 +473,54 @@ final class BestSpotObservingQualityTests: XCTestCase {
         XCTAssertEqual(counter.prepareCount, 1)
         // Still assessed every candidate before deciding mode.
         XCTAssertEqual(counter.assessCount, result.allScoredLocations.count)
+    }
+
+    func testUnscorableCenterMissingLPDoesNotForceFallbackOrSupplyDeltaBaseline() async throws {
+        let centerLoc = Self.center()
+        let provider = ExactCoordinateNilBrightnessProvider(
+            coordinate: Coordinate(latitude: centerLoc.latitude, longitude: centerLoc.longitude),
+            successValue: 19.5,
+            tolerance: 0.001
+        )
+        let calendar = Calendar(identifier: .gregorian)
+        let start = calendar.startOfDay(for: Date())
+        let daytimeOnly = [HourlyForecast(
+            time: start.addingTimeInterval(12 * 3600),
+            cloudCover: 5,
+            humidity: 40,
+            windSpeed: 2,
+            windDirection: 180,
+            temperature: 15,
+            dewPoint: 5,
+            visibility: 20_000,
+            lowCloudCover: 0,
+            midCloudCover: 0,
+            highCloudCover: 5,
+            windSpeed200hPa: 40
+        )]
+        let searcher = Self.makeSearcher(
+            brightness: provider,
+            weather: MockWeather { coordinate in
+                let isCenter = abs(coordinate.latitude - centerLoc.latitude) < 0.001 &&
+                    abs(coordinate.longitude - centerLoc.longitude) < 0.001
+                return isCenter ? daytimeOnly : Self.clearNightForecasts(for: coordinate)
+            }
+        )
+
+        let result = try await searcher.findBestSpots(
+            around: centerLoc,
+            radiusMiles: 15,
+            spacingMiles: 10,
+            for: Date(),
+            topN: 5
+        )
+
+        XCTAssertEqual(result.scoringMode, .observingQuality)
+        XCTAssertFalse(result.allScoredLocations.isEmpty)
+        XCTAssertFalse(result.allScoredLocations.contains(where: \.point.isCenter))
+        XCTAssertTrue(result.allScoredLocations.allSatisfy {
+            $0.improvementOverCenter == nil
+        })
     }
 
     func testSearchWideFallbackWhenBrightnessOutOfRange() async throws {

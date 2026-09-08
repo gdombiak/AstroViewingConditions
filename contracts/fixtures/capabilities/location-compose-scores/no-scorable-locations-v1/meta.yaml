@@ -1,0 +1,6 @@
+capability: location.compose_scores
+engine_semver: ">=1.0.0 <2.0.0"
+equality: location_compose_scores
+hosts: [swift, python]
+origin: manual
+notes: Valid analyzed rows with no nighttime data preserve the production domain error.

@@ -1,0 +1,11 @@
+{
+  "capability": "location.compose_scores",
+  "injected": {
+    "candidates": [
+      {"is_center": false, "night_conditions_score": 70, "has_nighttime_rows": true, "observing_quality": {"score": 60, "has_valid_light_pollution": true}},
+      {"is_center": false, "night_conditions_score": 99, "has_nighttime_rows": false, "observing_quality": {"score": 99, "has_valid_light_pollution": false}},
+      {"is_center": true, "night_conditions_score": 74, "has_nighttime_rows": true, "observing_quality": {"score": 66, "has_valid_light_pollution": true}},
+      {"is_center": false, "night_conditions_score": 10, "has_nighttime_rows": true, "observing_quality": {"score": 66, "has_valid_light_pollution": true}}
+    ]
+  }
+}

@@ -421,7 +421,7 @@ public final class BestSpotSearcher: BestSpotSearching {
             try Task.checkCancellation()
             guard let forecasts = weatherData[gridPoint.coordinate] else { continue }
             
-            if let draft = scoreLocationDraft(
+            let draft = scoreLocationDraft(
                 gridPoint: gridPoint,
                 forecasts: forecasts,
                 sunEventsToday: sunEventsToday,
@@ -431,28 +431,33 @@ public final class BestSpotSearcher: BestSpotSearching {
                 calendar: calendar,
                 moonCalculationCache: moonCalculationCache,
                 observingQualityAssessor: observingQualityAssessor
-            ) {
-                intermediate.append(draft)
-            }
+            )
+            intermediate.append(draft)
             
             // Update progress (50% to 90%)
             let progress = 0.5 + (Double(index + 1) / Double(totalPoints)) * 0.4
             progressHandler?(progress)
         }
         
-        guard !intermediate.isEmpty else {
+        let composition: LocationScoreCompositionResult
+        do {
+            composition = try LocationScoreComposition.compose(
+                intermediate.map(\.compositionCandidate)
+            )
+        } catch LocationScoreCompositionError.noScorableLocations {
             throw BestSpotSearchError.noScorableLocations
         }
 
         try Task.checkCancellation()
 
-        // Coherent search-wide mode: OQ only when every scorable candidate has valid LP.
-        let scoringMode = Self.resolveScoringMode(for: intermediate)
-        let scoredLocations = intermediate.map { $0.makeLocationScore(scoringMode: scoringMode) }
-
-        let centerScore = scoredLocations.first { $0.point.isCenter }?.score
+        let scoringMode = composition.scoringMode
+        let scoredLocations = composition.candidates.map { candidate in
+            intermediate[candidate.inputIndex].makeLocationScore(
+                publicScore: candidate.publicScore,
+                improvementOverCenter: candidate.improvementOverCenter
+            )
+        }
         let rankedWeatherLocations = scoredLocations
-            .map { $0.withImprovement(comparedTo: centerScore) }
             .sorted(by: Self.isHigherRanked(_:than:))
         var checkedCandidates: [LocationScore] = []
         var checkedIDs = Set<LocationScore.ID>()
@@ -481,8 +486,10 @@ public final class BestSpotSearcher: BestSpotSearching {
                 location.with(suitability: suitabilityByPoint[location.point] ?? .unknown(reason: .geocodingFailed))
             }
             checkedCandidates.append(contentsOf: checkedBand)
-            recommendableLocations = checkedCandidates
-                .filter { $0.suitability.isRecommendable }
+            let recommendableIndices = LocationRecommendabilityFilter
+                .recommendableInputIndices(for: checkedCandidates.map(\.suitability))
+            recommendableLocations = recommendableIndices
+                .map { checkedCandidates[$0] }
                 .sorted(by: Self.isHigherRanked(_:than:))
         }
 
@@ -527,45 +534,52 @@ public final class BestSpotSearcher: BestSpotSearching {
         return ObservingQualityService(lightPollutionProvider: nil)
     }
 
-    /// Intermediate night + OQ pair before search-wide mode is chosen.
+    /// Intermediate analysis retained until the engine composes the scorable set.
     private struct ScoredLocationDraft: Sendable {
+        struct ScorableDetails: Sendable {
+            let fogScore: FogScore
+            let avgCloudCover: Double
+            let avgWindSpeed: Double
+            let summary: String
+        }
+
         let point: GridPoint
         let nightConditionsScore: Int
         let observingQuality: ObservingQualityAssessment
         let nightQuality: NightQualityAssessment
-        let fogScore: FogScore
-        let avgCloudCover: Double
-        let avgWindSpeed: Double
-        let summary: String
+        let scorableDetails: ScorableDetails?
 
-        var hasValidLightPollution: Bool {
-            observingQuality.lightPollution != nil
+        var compositionCandidate: LocationScoreCompositionCandidate {
+            LocationScoreCompositionCandidate(
+                isCenter: point.isCenter,
+                nightConditionsScore: nightConditionsScore,
+                hasNighttimeRows: !nightQuality.hourlyRatings.isEmpty,
+                observingQuality: ObservingQualityCompositionInput(
+                    score: observingQuality.score,
+                    hasValidLightPollution: observingQuality.lightPollution != nil
+                )
+            )
         }
 
-        func makeLocationScore(scoringMode: BestSpotScoringMode) -> LocationScore {
-            let publicScore: Int
-            switch scoringMode {
-            case .observingQuality:
-                publicScore = observingQuality.score
-            case .nightConditionsFallback:
-                publicScore = nightConditionsScore
+        func makeLocationScore(
+            publicScore: Int,
+            improvementOverCenter: Int?
+        ) -> LocationScore {
+            guard let scorableDetails else {
+                preconditionFailure("composition returned an unscorable location")
             }
             return LocationScore(
                 point: point,
                 score: publicScore,
                 nightConditionsScore: nightConditionsScore,
                 nightQuality: nightQuality,
-                fogScore: fogScore,
-                avgCloudCover: avgCloudCover,
-                avgWindSpeed: avgWindSpeed,
-                summary: summary
+                fogScore: scorableDetails.fogScore,
+                avgCloudCover: scorableDetails.avgCloudCover,
+                avgWindSpeed: scorableDetails.avgWindSpeed,
+                improvementOverCenter: improvementOverCenter,
+                summary: scorableDetails.summary
             )
         }
-    }
-
-    private static func resolveScoringMode(for drafts: [ScoredLocationDraft]) -> BestSpotScoringMode {
-        // OQ mode only when every scorable location has valid LP-backed assessment.
-        drafts.allSatisfy(\.hasValidLightPollution) ? .observingQuality : .nightConditionsFallback
     }
     
     /// Scores a single location: night quality + one canonical OQ assess (before mode selection).
@@ -579,7 +593,7 @@ public final class BestSpotSearcher: BestSpotSearching {
         calendar: Calendar,
         moonCalculationCache: NightQualityAnalyzer.MoonCalculationCache,
         observingQualityAssessor: any ObservingQualityAssessing
-    ) -> ScoredLocationDraft? {
+    ) -> ScoredLocationDraft {
         // Calculate night quality using the existing analyzer
         let nightQuality = NightQualityAnalyzer.analyzeNight(
             forecasts: forecasts,
@@ -603,34 +617,38 @@ public final class BestSpotSearcher: BestSpotSearching {
             longitude: gridPoint.coordinate.longitude
         )
         
-        // Calculate average metrics for the night
-        let nightForecasts = NightForecastFilter.filterToNighttime(
-            forecasts: forecasts,
-            sunEventsToday: sunEventsToday,
-            sunEventsTomorrow: sunEventsTomorrow,
-            for: date,
-            calendar: calendar
-        )
-        
-        guard !nightForecasts.isEmpty else { return nil }
-        
-        let avgCloudCover = Double(nightForecasts.map { $0.cloudCover }.reduce(0, +)) / Double(nightForecasts.count)
-        let avgWindSpeed = nightForecasts.map { $0.windSpeed }.reduce(0, +) / Double(nightForecasts.count)
-        
-        let fogScore = averageFogScore(for: nightForecasts)
-        
-        // Weather summary uses night quality (not LP).
-        let summary = generateSummary(nightQuality: nightQuality, score: nightConditionsScore)
+        let scorableDetails: ScoredLocationDraft.ScorableDetails?
+        if nightQuality.hourlyRatings.isEmpty {
+            scorableDetails = nil
+        } else {
+            // This is the same half-open window the analyzer used. Forecasts are
+            // retained here only for Best Nearby's host-owned aggregate fields.
+            let nightForecasts = NightForecastFilter.filterToNighttime(
+                forecasts: forecasts,
+                sunEventsToday: sunEventsToday,
+                sunEventsTomorrow: sunEventsTomorrow,
+                for: date,
+                calendar: calendar
+            )
+            precondition(!nightForecasts.isEmpty, "night analyzer/filter window mismatch")
+            let avgCloudCover = Double(nightForecasts.map { $0.cloudCover }.reduce(0, +))
+                / Double(nightForecasts.count)
+            let avgWindSpeed = nightForecasts.map { $0.windSpeed }.reduce(0, +)
+                / Double(nightForecasts.count)
+            scorableDetails = ScoredLocationDraft.ScorableDetails(
+                fogScore: averageFogScore(for: nightForecasts),
+                avgCloudCover: avgCloudCover,
+                avgWindSpeed: avgWindSpeed,
+                summary: generateSummary(nightQuality: nightQuality, score: nightConditionsScore)
+            )
+        }
         
         return ScoredLocationDraft(
             point: gridPoint,
             nightConditionsScore: nightConditionsScore,
             observingQuality: observingQuality,
             nightQuality: nightQuality,
-            fogScore: fogScore,
-            avgCloudCover: avgCloudCover,
-            avgWindSpeed: avgWindSpeed,
-            summary: summary
+            scorableDetails: scorableDetails
         )
     }
 

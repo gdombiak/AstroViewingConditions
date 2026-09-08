@@ -117,6 +117,34 @@ capabilities:
       night_conditions_score is required and is not a ranking key. Does not
       geocode, fetch weather, generate grids, or compute live astronomy.
 
+  - id: location.compose_scores
+    hosts: [ios, cli]
+    equality: location_compose_scores
+    since: "1.0.0"
+    requires_injected: [candidates]
+    summary: >
+      Compose an ordered set of already-analyzed Best Nearby candidate score
+      facts. Rows without nighttime data are excluded; all surviving rows use
+      Observing Quality only when every survivor has valid light-pollution
+      participation, otherwise all use Night Conditions. Returns original input
+      indices, public scores, and score-only deltas from a scorable center in
+      survivor order. No weather acquisition, scoring, ranking, suitability,
+      coordinates, truncation, or English copy. No scorable rows is the
+      no_scorable_locations domain error. See
+      contracts/procedures/location-compose-scores.md.
+
+  - id: location.filter_recommendable
+    hosts: [ios, cli]
+    equality: location_filter_recommendable
+    since: "1.0.0"
+    requires_injected: [suitability]
+    summary: >
+      Stable suitability-only filtering over the four portable Best Nearby
+      states. Suitable and unknown rows survive; unchecked and unsuitable rows
+      do not. Returns original zero-based indices only, without geocoding,
+      reasons, ranking, score inspection, candidate-check caps, or truncation.
+      See contracts/procedures/location-filter-recommendable.md.
+
   - id: catalog.deep_sky
     hosts: [ios, cli]
     equality: catalog_deep_sky

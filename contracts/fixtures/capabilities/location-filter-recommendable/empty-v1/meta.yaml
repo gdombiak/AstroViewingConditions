@@ -1,0 +1,6 @@
+capability: location.filter_recommendable
+engine_semver: ">=1.0.0 <2.0.0"
+equality: location_filter_recommendable
+hosts: [swift, python]
+origin: manual
+notes: Empty input is a successful empty stable subset.

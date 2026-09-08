@@ -65,6 +65,14 @@ from astro_engine.location_compare import (
     CAPABILITY_ID as COMPARE_ID,
     compare_locations,
 )
+from astro_engine.location_compose_scores import (
+    CAPABILITY_ID as COMPOSE_LOCATION_SCORES_ID,
+    compose_location_scores,
+)
+from astro_engine.location_filter_recommendable import (
+    CAPABILITY_ID as FILTER_RECOMMENDABLE_ID,
+    filter_recommendable,
+)
 from astro_engine.iss import CAPABILITY_ID as ISS_ID, decode_iss
 from astro_engine.light_pollution import (
     CAPABILITY_ID as LP_ID,
@@ -95,7 +103,8 @@ SCORING_CAPABILITY_IDS = (
 DECODE_CAPABILITY_IDS = (WEATHER_ID, ISS_ID)
 
 DETERMINISTIC_CAPABILITY_IDS = (
-    WINDOW_ID, GRID_ID, COMPARE_ID, CATALOG_ID, TARGETS_ID, EQUIPMENT_ID, *DEEP_SKY_IDS,
+    WINDOW_ID, GRID_ID, COMPARE_ID, COMPOSE_LOCATION_SCORES_ID, FILTER_RECOMMENDABLE_ID,
+    CATALOG_ID, TARGETS_ID, EQUIPMENT_ID, *DEEP_SKY_IDS,
     MOON_RECOMMENDATION_ID, PLANET_RECOMMENDATION_ID, COMPOSE_RECOMMENDATIONS_ID,
     FILTER_RECOMMENDATIONS_BY_EQUIPMENT_ID, NIGHT_FORECAST_ID, CLOUD_TIMING_ID,
 )
@@ -272,6 +281,10 @@ def evaluate_capability(
         return location_grid(_injected(document))
     if capability == COMPARE_ID:
         return compare_locations(_injected(document))
+    if capability == COMPOSE_LOCATION_SCORES_ID:
+        return compose_location_scores(_injected(document))
+    if capability == FILTER_RECOMMENDABLE_ID:
+        return filter_recommendable(_injected(document))
     if capability in METADATA_IDS:
         return evaluate_metadata(capability, _injected(document))
     if capability in DEEP_SKY_IDS:

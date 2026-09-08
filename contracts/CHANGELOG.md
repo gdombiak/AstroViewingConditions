@@ -203,6 +203,15 @@
   Compare fixtures use applicability `>=1.0.0 <2.0.0`. Suitability overlay
   is an array of `{key, suitability}` entries.
 
+- Best Nearby deterministic composition slice: add `location.compose_scores`
+  and `location.filter_recommendable`, their strict transports, manual parity
+  fixtures, and Swift production delegation. Coherent score mode, score-only
+  center deltas, and the four-state recommendability filter move into shared
+  authorities without moving ranking, provider work, suitability lookup bands,
+  caps, truncation, or host orchestration. Both rows are unreleased 1.0.0 work;
+  the public catalog now contains 36 capabilities and engine identity is
+  unchanged.
+
 - Phase 15: add deterministic `targets.recommend` and `equipment.match`, their
   normative procedures, manual fixtures, exact equality and Swift/Python ports.
   Bind canonical target scoring and equipment preferences; reuse engine rules in

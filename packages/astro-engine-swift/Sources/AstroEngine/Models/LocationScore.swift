@@ -13,12 +13,7 @@ public enum LocationSuitabilityStatus: Sendable, Hashable {
     }
 
     public var isRecommendable: Bool {
-        switch self {
-        case .suitable, .unknown:
-            return true
-        case .unchecked, .unsuitable:
-            return false
-        }
+        LocationRecommendabilityFilter.isRecommendable(self)
     }
 
     public var verificationRank: Int {

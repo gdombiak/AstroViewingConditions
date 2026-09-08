@@ -12,6 +12,8 @@ from astro_engine.contracts import engine_semver
 from astro_engine.fog import score_fog
 from astro_engine.grid import generate_grid
 from astro_engine.location_compare import compare_locations
+from astro_engine.location_compose_scores import compose_location_scores
+from astro_engine.location_filter_recommendable import filter_recommendable
 from astro_engine.iss import decode_iss
 from astro_engine.light_pollution import LightPollutionArtifact
 from astro_engine.night_conditions import analyze_night_conditions, public_night_score
@@ -30,7 +32,9 @@ __all__ = [
     "decode_weather",
     "derive_night_forecast_window",
     "compare_locations",
+    "compose_location_scores",
     "engine_semver",
+    "filter_recommendable",
     "generate_grid",
     "load_deep_sky_catalog",
     "public_night_score",

@@ -551,6 +551,46 @@ final class BestSpotSearcherTests: XCTestCase {
 
         XCTAssertFalse(result.bestSpot?.point.isCenter ?? true)
         XCTAssertEqual(result.bestSpot?.suitability, .suitable)
+        let center = try XCTUnwrap(result.allScoredLocations.first(where: \.point.isCenter))
+        let best = try XCTUnwrap(result.bestSpot)
+        XCTAssertEqual(center.suitability, .unsuitable(reason: "Water area"))
+        XCTAssertEqual(center.improvementOverCenter, 0)
+        XCTAssertEqual(best.improvementOverCenter, best.score - center.score)
+    }
+
+    func testRecommendationFilterPreservesTheFourLegacySuitabilityStates() async throws {
+        let date = currentSearchDate()
+        let suitability = OrderedSuitabilityProvider { index, _ in
+            switch index {
+            case 0: return .suitable
+            case 1: return .unknown(reason: .geocodingFailed)
+            case 2: return .unchecked
+            default: return .unsuitable(reason: "Water area")
+            }
+        }
+        let searcher = searcher(
+            weather: MockWeatherProvider { _ in
+                Self.nightForecasts(for: date, cloudCover: 5)
+            },
+            suitability: suitability
+        )
+
+        let result = try await searcher.findBestSpots(
+            around: CachedLocation(from: createSavedLocation()),
+            radiusMiles: 10,
+            spacingMiles: 10,
+            for: date,
+            topN: 4
+        )
+
+        XCTAssertEqual(result.topLocations.map(\.suitability), [
+            .suitable,
+            .unknown(reason: .geocodingFailed),
+        ])
+        XCTAssertTrue(result.allScoredLocations.contains { $0.suitability == .unchecked })
+        XCTAssertTrue(result.allScoredLocations.contains {
+            $0.suitability == .unsuitable(reason: "Water area")
+        })
     }
 
     func testAllWaterSearchStopsAtSuitabilityCapAndThrowsNoRecommendableLocations() async throws {
@@ -1096,6 +1136,91 @@ final class BestSpotSearcherTests: XCTestCase {
 
         XCTAssertNotNil(result.bestSpot?.improvementOverCenter)
         XCTAssertGreaterThan(result.bestSpot?.improvementOverCenter ?? 0, 0)
+    }
+
+    func testCenterAndWorseCandidatesKeepZeroAndNegativeDeltas() async throws {
+        let date = currentSearchDate()
+        let searcher = searcher(
+            weather: MockWeatherProvider { coordinate in
+                let isCenter = abs(coordinate.latitude - 40.7128) < 0.0001 &&
+                    abs(coordinate.longitude + 74.0060) < 0.0001
+                return Self.nightForecasts(for: date, cloudCover: isCenter ? 1 : 80)
+            },
+            suitability: MockSuitabilityProvider { _ in .suitable }
+        )
+
+        let result = try await searcher.findBestSpots(
+            around: CachedLocation(from: createSavedLocation()),
+            radiusMiles: 10,
+            spacingMiles: 10,
+            for: date,
+            topN: 5
+        )
+
+        let center = try XCTUnwrap(result.allScoredLocations.first(where: \.point.isCenter))
+        let nonCenter = result.allScoredLocations.filter { !$0.point.isCenter }
+        XCTAssertEqual(center.improvementOverCenter, 0)
+        XCTAssertFalse(nonCenter.isEmpty)
+        XCTAssertTrue(nonCenter.allSatisfy {
+            $0.improvementOverCenter == $0.score - center.score &&
+                ($0.improvementOverCenter ?? 0) < 0
+        })
+    }
+
+    func testOneAndGappedNighttimeRowsRemainScorable() async throws {
+        let date = currentSearchDate()
+        let calendar = Calendar(identifier: .gregorian)
+
+        for offsets in [[20], [20, 23]] {
+            let forecasts = Self.nightForecasts(
+                for: date,
+                calendar: calendar,
+                hourOffsets: offsets,
+                cloudCover: 5
+            )
+            let result = try await searcher(
+                weather: MockWeatherProvider { _ in forecasts },
+                suitability: MockSuitabilityProvider { _ in .suitable }
+            ).findBestSpots(
+                around: CachedLocation(from: createSavedLocation()),
+                radiusMiles: 10,
+                spacingMiles: 10,
+                for: date,
+                topN: 5
+            )
+
+            XCTAssertFalse(result.allScoredLocations.isEmpty, "offsets=\(offsets)")
+            XCTAssertTrue(result.allScoredLocations.allSatisfy {
+                $0.nightQuality.hourlyRatings.count == offsets.count
+            }, "offsets=\(offsets)")
+        }
+    }
+
+    func testAllScoredOrderDoesNotRerankAfterSuitabilityOverlay() async throws {
+        let date = currentSearchDate()
+        let suitability = OrderedSuitabilityProvider { index, _ in
+            index == 0 ? .unknown(reason: .notChecked) : .suitable
+        }
+        let result = try await searcher(
+            weather: MockWeatherProvider { _ in
+                Self.nightForecasts(for: date, cloudCover: 5)
+            },
+            suitability: suitability
+        ).findBestSpots(
+            around: CachedLocation(from: createSavedLocation()),
+            radiusMiles: 10,
+            spacingMiles: 10,
+            for: date,
+            topN: 5
+        )
+
+        XCTAssertTrue(try XCTUnwrap(result.allScoredLocations.first).point.isCenter)
+        XCTAssertEqual(
+            result.allScoredLocations.first?.suitability,
+            .unknown(reason: .notChecked)
+        )
+        XCTAssertFalse(try XCTUnwrap(result.topLocations.first).point.isCenter)
+        XCTAssertEqual(result.topLocations.first?.suitability, .suitable)
     }
 
     func testAllScoredLocationsAreSeparateFromTopRecommendations() async throws {

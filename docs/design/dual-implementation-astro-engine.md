@@ -374,7 +374,7 @@ Do this **in place** before `Package.swift` exists. Engine XCTest must `import A
 | `Services/ObservingQualityService.swift` | Pure assess-after-lookup | Bootstrap / session wiring |
 | `Services/DeepSkyCatalogService.swift` | Curated catalog **data** (`DeepSkyCatalogEntry` identity/fields, `CuratedDeepSkyCatalogProvider`). Engine catalog does **not** depend on `TargetImageManifest` and must **not** own `TargetImageCredit` presentation metadata. SharedCode may keep optional `DeepSkyCatalogEntry.image` temporarily so injected providers can supply a credit; Phase 3 must not copy that compatibility field into AstroEngine merely because it exists today. Split this file on extract: curated data moves; host mapping stays | `DefaultTargetCatalogProvider` host mapping (`entry.image ?? TargetImageManifest.image(for: id)`), `TargetImageManifest`, iOS images (`TargetImageRepository` loads pixels by target id) |
 | `Services/TargetRecommendationService.swift` | `DefaultTargetRecommendationScorer` (later unreleased fixtures) | Service orchestration, debug logger |
-| `Services/BestSpotSearcher.swift` | `NightConditionsScoring.publicScore` (already the formula owner; `BestSpotSearcher.calculateScore` is a one-line wrapper); `isHigherRanked` total order (`location.compare`, delivered in Phase 14); coherent mode selection | `CoreLocationSuitabilityResolver`, search actor, progress, 40-check cap, English `generateSummary`. Phase 2 already deleted unused `import SunCalc`. Remaining Apple coupling is real `CLGeocoder` / `CLLocation`, not SunCalc |
+| `Services/BestSpotSearcher.swift` | `NightConditionsScoring.publicScore` (already the formula owner; `BestSpotSearcher.calculateScore` is a one-line wrapper); `isHigherRanked` total order (`location.compare`, delivered in Phase 14); coherent mode/public-score/center-delta composition (`location.compose_scores`); recommendability state filtering (`location.filter_recommendable`) | `CoreLocationSuitabilityResolver`, search actor, progress, suitability bands and 40-check cap, final truncation, English `generateSummary`. Phase 2 already deleted unused `import SunCalc`. Remaining Apple coupling is real `CLGeocoder` / `CLLocation`, not SunCalc |
 | `Utilities/LocationTimeZoneResolver.swift` | `calendar(for:)` Gregorian+tz; **not** `resolve` / `approximate` | `CLGeocoder` resolve + longitude fallback (iOS host) |
 | `Utilities/AdaptiveFont.swift`, `BestSpotSettings.swift` | Geometry defaults (radius/spacing numbers) may live in calibration JSON | SwiftUI / AppGroup persistence |
 | `Services/AstronomyService.swift` | **1.0:** `MoonSampling` + `SunEventsSampling` protocols and `SunCalcMoonSampler` / `SunCalcSunEventsSampler` (the only `import SunCalc` in the iOS tree). Polar missing-times stay out of the sampler. | Host actor: injects samplers, maps missing SunCalc times through Foundation-only `approximateSunEvents` (`hosts: [ios]`). **Never `import SunCalc`.** |
@@ -1400,7 +1400,7 @@ the host half.
 |---|---|
 | `packages/` holds `astro-engine-swift` and `astro-engine-python` | `packages/` means "importable library", not "delivery surface" |
 | `apps/` holds `ios` and `cli`; `apps/cli/astro-engine` is a small launcher that resolves an import path and calls `astro_engine.cli:main` | `apps/` means "delivery surface"; the CLI is already thin |
-| `contracts/capabilities.yaml` — 34 rows, **every one** `hosts: [ios, cli]` with a real equality class | The catalog is today exclusively the dual-host parity surface. Its `hosts:` key models the host axis, but nothing host-only has ever been catalogued, so host operations have no place in it as it stands |
+| `contracts/capabilities.yaml` — 36 rows, **every one** `hosts: [ios, cli]` with a real equality class | The catalog is today exclusively the dual-host parity surface. Its `hosts:` key models the host axis, but nothing host-only has ever been catalogued, so host operations have no place in it as it stands |
 | `CODEOWNERS` guards only `/contracts/` | Governance follows the contract, not the directory |
 | `.github/workflows/python.yml` path-filters `packages/astro-engine-python/**`, `contracts/**`, `Tests/parity/**`, `apps/cli/**` | Path filters already encode which trees are parity-relevant |
 | The design's own "Swift/iOS only" and "Python/CLI only" lists | The responsibility split exists in prose without a filesystem home |
@@ -1717,7 +1717,7 @@ astro-engine <capability-id> --pretty --input -
 
 **Phase 11 historical allow-list (public Python CLI):** `observing_quality.assess`, `night_conditions.analyze`, `night_conditions.score`, `fog.score`, `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`, `weather.decode`, `iss.decode`, `location.grid`, `catalog.deep_sky`. This was the eleven-capability set exposed in Phase 11.
 
-**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 34 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
+**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 36 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
 
 **Later Bot-host composition** (proposed names; not catalogued and not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days, live in `packages/astro-host-python`, and stay out of `parity.yml`. If host-side golden envelopes are ever wanted they would need a non-parity marker of their own; no such marker (`hosts: [python]` or otherwise) exists in the catalog today.
 
@@ -1738,7 +1738,7 @@ Capability envelope (success):
 {"engine_semver":"1.0.0"}
 ```
 
-`error.code` values: `validation`, `decode_failure`, `engine_failure`, `capability_unknown`, `payload_too_large`, `ref_escape`, `grid_cap`, `fixture_missing`, `atlas_invalid`. **No** `missing_atlas` error for OQ fallback.
+`error.code` values: `validation`, `decode_failure`, `engine_failure`, `capability_unknown`, `payload_too_large`, `ref_escape`, `grid_cap`, `sample_cap`, `fixture_missing`, `atlas_invalid`, and the deterministic Best Nearby domain error `no_scorable_locations`. **No** `missing_atlas` error for OQ fallback.
 
 `astro-engine-eval` (Swift) accepts a fixture directory and writes the envelope. Python parity uses the private `_capability` adapter (`Tests/parity/python_eval.py`), not the user-facing CLI. `scripts/parity` runs `python -m pytest Tests/parity`.
 
@@ -1763,6 +1763,12 @@ Publish `BestSpotSearcher.isHigherRanked` as the in-contract order. Candidate A 
 Suitability is an **optional injected overlay** as an array of `{key, suitability}` objects. JSON object maps are not used: Foundation `JSONSerialization` keeps byte-distinct keys in `NSDictionary`, but bridging to `[String: Any]` collapses Swift-canonically equivalent keys (`A\u{030A}` vs `\u{00C5}`) to one entry. String *values* in an array survive. If omitted, every candidate is `unchecked` (rank 2), so it does not change relative order. iOS production still uses CLGeocoder **outside** this capability. The JSON envelope carries the overlay; there is no separate CLI `--suitability-json` flag. Equality omits `LocationScore.id` (`UUID()`), English `summary`, and search-level `scoring_mode` (already baked into `public_score`). `night_conditions_score` is required on each candidate, echoed, and is **not** a ranking key; it must not be inferred from `public_score`.
 
 Coherent mode is a Best Nearby *search* property, not a compare input: OQ for all iff every scorable candidate has valid brightness; else all Night Conditions. `location.compare` ranks already-assigned public scores.
+
+`location.compose_scores` owns that set-wide mode decision, excludes candidates
+without nighttime rows, assigns each surviving public score, and computes the
+score-only delta from a scorable center. `location.filter_recommendable` later
+owns only the stable suitable/unknown subset decision. Neither capability ranks,
+truncates, geocodes, fetches providers, or changes `location.compare`.
 
 ### Astronomer Bot host location model
 
@@ -2508,7 +2514,7 @@ not determinism alone.
 | 9 | Three-night outlook **host/presentation** composition | **Host presentation over engine facts** | Deterministic core **complete**: `observing_night.compose_outlook` and `observing_night.select_best` (item 11 above, and the slice below) own the three observing dates, the per-night `available` / `no_astronomical_night` / `unavailable` classification and the best-night tie rule. What remains is host-shaped — `Tonight`/`Tomorrow`/`Day After`, verdict and status prose, score tone, the widget cache DTO, AppGroup persistence, last-known-good retention, maximum age, stale-cache acceptance, widget reloads and timeline scheduling. A Bot must consume the capabilities, never re-derive the composition. |
 | 9 | Authoritative IANA timezone **acquisition** | **Host** | Settled by design. Geocoding and the longitude approximation are host-owned; the engine consumes an authoritative zone. Note the current production fallback yields no IANA identity — the host must resolve that, not the engine. |
 | 10 | Semantic advisory prose built on cloud timing | **Host presentation over an engine fact** | Classification **complete**: `night_conditions.classify_cloud_timing` (item 10 above, and the slice below). What remains is host-shaped — deciding when to surface the advice and wording it — over the engine's verdict. A Bot must consume the capability, never re-derive the classification. |
-| 11 | Best Nearby / location-set composition | **Mixed** | Required. `BestSpotSearcher` mixes deterministic decisions (`resolveScoringMode`, `averageFogScore` and any fog-factor union, `isHigherRanked`, `suitabilityCandidateCount`, `forecastDaysNeeded`, `calculateScore`, candidate eligibility, center improvement, missing-center behavior) with genuinely host-owned orchestration (async provider fan-out, `defaultMaxConcurrentLookups`, the 40-check suitability cap, CLGeocoder sessions, caches). Do not classify the whole service from its file location. |
+| 11 | Best Nearby / location-set composition | **Host orchestration over engine facts** | Deterministic core **complete**: `location.grid` owns candidate geometry, `location.compare` owns ranking, `location.compose_scores` owns scorable-set filtering, coherent OQ/Night Conditions mode, public-score assignment and center deltas, and `location.filter_recommendable` owns suitability eligibility. What remains is host-shaped orchestration: timezone acquisition, forecast-horizon planning, provider fan-out/batching, retries/timeouts, LP-provider lifecycle, CLGeocoder suitability checks, suitability bands and the 40-check cap, caches, cancellation/progress, final `topN`, and presentation. A Bot must consume the engine capabilities and must not re-derive these deterministic decisions. |
 | 12 | Multi-night forecast eligibility and composition | **Mixed** | Required, and still open. The three-night outlook's complete-night and best-night rules are now `observing_night.compose_outlook` and `observing_night.select_best`; a multi-night composition must reuse them rather than re-derive them. Acquisition and payload lifecycle are not engine work. |
 | 13 | Provider availability, failure and staleness semantics | **Host-shaped; verify the edges** | Required. Fetch, retry, cache lifecycle, error surfaces and freshness/lifecycle policy are host-shaped by the [placement criterion](#placement-criterion-portable-semantics-vs-operational-policy) — deterministic TTLs and bounds do not become engine logic. Swift has its own freshness and failure policies; the Python host simply carries no parity obligation to match them. Verify only the edge case: a state distinction that changes an **Astro-domain answer** (for example what counts as a complete night) is engine-shaped and must not be re-derived per host. |
 | 14 | Bot host persistence: saved locations, selected equipment, user state, observation history | **Host** | Settled by design. The engine is stateless with respect to user history and does not own saved-location persistence. Grok may personalize over host state but must not fold it into deterministic scoring. |
@@ -3218,7 +3224,7 @@ items that must **reuse** these two capabilities rather than re-derive them.
 
 #### Current Bot readiness boundary
 
-With today’s 34 public capabilities plus correct host acquisition/composition,
+With today’s 36 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
 Observing Quality; Sun/twilight events; catalog facts and solar candidate
@@ -3288,7 +3294,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 **Pre-1.0 business-logic compatibility/release gate.** Before the first public
 Astro Engine / Astronomer Bot 1.0, the Bot must expose the objective/business-logic
 capabilities used by production Astro Conditions for astronomy advice, with the
-LLM layered on top. Availability of the current 34 engine capabilities alone
+LLM layered on top. Availability of the current 36 engine capabilities alone
 does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
 
 - **Audit closure:** reconcile every behavior named in the [production

@@ -147,6 +147,18 @@ enum CapabilityDispatch {
             }
         case "location.compare":
             return try locationCompare(document)
+        case "location.compose_scores":
+            do {
+                return try LocationScoreCompositionContract.evaluate(injected(document))
+            } catch let error as LocationScoreCompositionError {
+                throw EvalValidationError(code: error.code, message: error.message)
+            }
+        case "location.filter_recommendable":
+            do {
+                return try LocationRecommendabilityFilterContract.evaluate(injected(document))
+            } catch let error as LocationRecommendabilityFilterInputError {
+                throw EvalValidationError(code: error.code, message: error.message)
+            }
         case "catalog.deep_sky":
             return try catalogDeepSky(document)
         default:

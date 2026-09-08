@@ -7,6 +7,7 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `night_conditions.analyze`, `night_conditions.score`, `fog.score`,
 `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`,
 `weather.decode`, `iss.decode`, `location.grid`, `location.compare`,
+`location.compose_scores`, `location.filter_recommendable`,
 `catalog.deep_sky`, `targets.recommend`, `equipment.match`, `observing_window.select`, `targets.requirements`,
 `catalog.solar_system`, `targets.moon_sensitivity`, `astronomy.horizontal_position`,
 `targets.deep_sky_windows`, `astronomy.sun_events`, `astronomy.moon_info`,
@@ -20,9 +21,10 @@ later integration work. Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those thirty-four IDs. Capability
+The public Python CLI allow-lists exactly those thirty-six IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
-rows keep `since: "0.1.0"`; `location.compare`, `targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
+rows keep `since: "0.1.0"`; the three `location.*` Best Nearby decision rows,
+`targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
 they are introduced under the unreleased 1.0.0 identity. Do not invent a second
 semantic release.
 

@@ -1,0 +1,1 @@
+{"capability":"location.compose_scores","ok":true,"result":{"scoring_mode":"observing_quality","candidates":[{"input_index":1,"public_score":0,"improvement_over_center":null},{"input_index":2,"public_score":100,"improvement_over_center":null}]}}

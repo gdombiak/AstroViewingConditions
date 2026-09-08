@@ -1,0 +1,1 @@
+{"capability":"location.compose_scores","ok":true,"result":{"scoring_mode":"night_conditions_fallback","candidates":[{"input_index":0,"public_score":74,"improvement_over_center":0},{"input_index":1,"public_score":80,"improvement_over_center":6}]}}

@@ -50,6 +50,16 @@ REPRESENTATIVE_FIXTURES: tuple[tuple[str, str, str], ...] = (
     ("iss.decode", "fixtures/capabilities/iss-decode", "two-passes"),
     ("location.grid", "fixtures/capabilities/location-grid", "nyc-10-5-v1"),
     ("location.compare", "fixtures/capabilities/location-compare", "public-score-wins-v1"),
+    (
+        "location.compose_scores",
+        "fixtures/capabilities/location-compose-scores",
+        "oq-mode-unscorable-lp-ignored-v1",
+    ),
+    (
+        "location.filter_recommendable",
+        "fixtures/capabilities/location-filter-recommendable",
+        "four-states-v1",
+    ),
     ("catalog.deep_sky", "fixtures/capabilities/catalog-deep-sky", "curated-v1"),
     ("targets.recommend", "fixtures/capabilities/targets-recommend", "basic-v1"),
     ("equipment.match", "fixtures/capabilities/equipment-match", "selected-ranking-v1"),
@@ -176,7 +186,7 @@ def test_public_allow_list_matches_catalog_order() -> None:
          TRAILING_FIXTURES[1][0], TRAILING_FIXTURES[2][0], TRAILING_FIXTURES[3][0],
          TRAILING_FIXTURES[4][0], TRAILING_FIXTURES[5][0], TRAILING_FIXTURES[6][0],
          TRAILING_FIXTURES[7][0], TRAILING_FIXTURES[8][0])
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 34
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 36
 
 
 def test_every_public_capability_is_accepted() -> None:
