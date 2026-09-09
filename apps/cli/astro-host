@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""Repo-checkout launcher for the Astro host CLI."""
+
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+
+
+def _prepare_sys_path() -> None:
+    root = Path(__file__).resolve().parents[2]
+    if importlib.util.find_spec("astro_engine") is None:
+        sys.path.insert(0, str(root / "packages" / "astro-engine-python" / "src"))
+    if importlib.util.find_spec("astro_host") is None:
+        sys.path.insert(0, str(root / "packages" / "astro-host-python" / "src"))
+
+
+_prepare_sys_path()
+from astro_host.cli import main  # noqa: E402
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

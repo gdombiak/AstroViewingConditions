@@ -1,0 +1,42 @@
+from __future__ import annotations
+
+import ast
+from pathlib import Path
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+
+
+def test_engine_has_no_host_import_back_edge() -> None:
+    engine_root = REPOSITORY_ROOT / "packages" / "astro-engine-python" / "src"
+    offenders: list[str] = []
+    for path in engine_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [node.module or ""]
+            else:
+                continue
+            if any(name == "astro_host" or name.startswith("astro_host.") for name in names):
+                offenders.append(str(path.relative_to(REPOSITORY_ROOT)))
+    assert offenders == []
+
+
+def test_launcher_stays_a_thin_host_import() -> None:
+    launcher = REPOSITORY_ROOT / "apps" / "cli" / "astro-host"
+    source = launcher.read_text(encoding="utf-8")
+    assert "from astro_host.cli import main" in source
+    assert "subprocess" not in source
+    assert "astro_engine.cli" not in source
+
+
+def test_host_never_uses_engine_cli_or_private_capability_dispatch() -> None:
+    host_root = REPOSITORY_ROOT / "packages" / "astro-host-python" / "src"
+    source = "\n".join(
+        path.read_text(encoding="utf-8") for path in host_root.rglob("*.py")
+    )
+    assert "astro_engine.cli" not in source
+    assert "astro_engine._capability" not in source
+    assert "subprocess" not in source

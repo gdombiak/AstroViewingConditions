@@ -1,4 +1,4 @@
-name: Python Engine
+name: Python Engine and Host
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
       - feature/astro-engine-cli
     paths:
       - "packages/astro-engine-python/**"
+      - "packages/astro-host-python/**"
       - "contracts/**"
       - "Tests/parity/**"
       - "apps/cli/**"
@@ -17,6 +18,7 @@ on:
       - main
     paths:
       - "packages/astro-engine-python/**"
+      - "packages/astro-host-python/**"
       - "contracts/**"
       - "Tests/parity/**"
       - "apps/cli/**"
@@ -48,3 +50,41 @@ jobs:
           CONTRACTS_ROOT: ${{ github.workspace }}/contracts
           NO_NETWORK: "1"
         run: python -m pytest
+
+  host:
+    name: host pytest and installed-wheel smoke
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/astro-host-python
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install packages
+        run: python -m pip install -e ../astro-engine-python -e ".[dev]"
+
+      - name: Test
+        env:
+          CONTRACTS_ROOT: ${{ github.workspace }}/contracts
+          NO_NETWORK: "1"
+        run: python -m pytest
+
+      - name: Build local wheelhouse
+        run: python -m pip wheel --wheel-dir "${RUNNER_TEMP}/astro-wheels" ../astro-engine-python .
+
+      - name: Smoke test installed wheels outside checkout
+        env:
+          CONTRACTS_ROOT: ${{ github.workspace }}/contracts
+          NO_NETWORK: "1"
+        run: |
+          python -m venv "${RUNNER_TEMP}/astro-smoke"
+          "${RUNNER_TEMP}/astro-smoke/bin/python" -m pip install --no-index --find-links "${RUNNER_TEMP}/astro-wheels" astro-host
+          cd "${RUNNER_TEMP}"
+          "${RUNNER_TEMP}/astro-smoke/bin/python" -c "import astro_host; from astro_engine.contracts import engine_semver; from astro_engine.observing_quality import assess_observing_quality; assert engine_semver() == '1.0.0'; assert assess_observing_quality(80, None)['score'] == 80"
+          "${RUNNER_TEMP}/astro-smoke/bin/astro-host" --help

@@ -1483,6 +1483,47 @@ package because they are runtime resources the host loads (see
 [packaging](#packaging-version-and-resource-loading)); keeping them there is what
 makes package-safe loading and the installed-wheel test meaningful.
 
+#### Implemented first slice (2026-09-08)
+
+`packages/astro-host-python` now exists with the first composed operation,
+`agent.conditions`, and `apps/cli/astro-host` is its thin JSON launcher. The
+implemented path is coordinates plus an aware reference instant → Open-Meteo →
+validated authoritative IANA timezone → in-process Astro Engine weather,
+Sun/Moon, active-or-explicit observing-night, exact night-window, Night
+Conditions, best-window, cloud-timing, and optional Observing Quality facts.
+
+Timezone remains location-derived: a valid saved-location IANA hint has
+precedence, then the validated Open-Meteo IANA timezone for those coordinates.
+The longitude fixed offset is retained only as non-authoritative diagnostic
+context. Missing required twilight—including the first Linux polar case—returns
+structured unavailability; this slice does not copy the iOS fixed-time polar
+approximation.
+
+Fresh Open-Meteo cache reuse uses the current production normal-conditions TTL
+of exactly one hour (3600 seconds), with matching location, query coverage, and
+relevant local acquisition day. Stale-on-error remains separately configurable,
+disabled by default, and visibly degraded when used. The bounded retry/backoff
+for network/timeouts, HTTP 429, and selected transient 5xx responses is Bot-host
+operational policy, intentionally not Swift lifecycle parity.
+
+Current first-slice cache storage is process-local memory only. The one-hour
+freshness rule applies within a running host process; separate one-shot CLI
+invocations do not reuse the prior process's cache, and durable reuse across
+CLI/Bot process restarts is deferred. Before serious real Bot acceptance testing
+and before 1.0, add a durable host-owned weather cache that persists across
+process/Bot restarts, stores multiple locations, preserves provider/query
+coverage including past and forecast days, preserves the one-hour fresh TTL and
+configurable stale-on-error semantics, and uses explicit persisted state rather
+than LLM conversational memory. This note intentionally chooses no persistence
+format or schema, and this first slice implements none.
+
+For fresh-process active-night requests after local midnight, the initial
+current-day payload may cause `observing_night.resolve_active` to return
+`requires_active_previous_payload`. The host responds to that engine state with
+one bounded Open-Meteo re-acquisition using `past_days=1`, then invokes the same
+engine resolution again. This supplies the preceding evening without embedding
+a host-owned dawn cutoff or duplicating the active-night rule.
+
 Platform skill bundles are deliberately absent from this tree — see below.
 
 #### Resource ownership: host runtime resources vs platform delivery artifacts
