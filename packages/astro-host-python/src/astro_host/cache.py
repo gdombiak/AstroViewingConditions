@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from collections.abc import Callable, Sequence
+from datetime import datetime, timedelta, timezone
 from typing import Protocol
 from zoneinfo import ZoneInfo
 
@@ -13,38 +14,82 @@ FRESH_WEATHER_TTL = timedelta(seconds=3600)
 
 
 class WeatherCache(Protocol):
-    async def get(self, query: WeatherQuery) -> WeatherSnapshot | None: ...
+    async def get(
+        self, query: WeatherQuery, *, provider: str
+    ) -> WeatherSnapshot | None: ...
 
     async def put(self, snapshot: WeatherSnapshot) -> None: ...
 
 
 class MemoryWeatherCache:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+    ) -> None:
         self._entries: list[WeatherSnapshot] = []
+        self._clock = clock
 
-    async def get(self, query: WeatherQuery) -> WeatherSnapshot | None:
-        candidates = [
-            entry
-            for entry in self._entries
-            if same_location(entry.query, query)
-            and entry.query.forecast_days >= query.forecast_days
-            and entry.query.past_days >= query.past_days
-        ]
-        if not candidates:
-            return None
-        return max(candidates, key=lambda entry: entry.fetched_at)
+    async def get(
+        self, query: WeatherQuery, *, provider: str
+    ) -> WeatherSnapshot | None:
+        return newest_usable_snapshot(
+            self._entries, query, provider=provider, now=self._clock()
+        )
 
     async def put(self, snapshot: WeatherSnapshot) -> None:
+        if not snapshot.hourly:
+            return
+        if snapshot_age(snapshot, self._clock()) is None:
+            return
         self._entries = [
             entry
             for entry in self._entries
-            if not (
-                same_location(entry.query, snapshot.query)
-                and entry.query.forecast_days == snapshot.query.forecast_days
-                and entry.query.past_days == snapshot.query.past_days
-            )
+            if not same_cache_identity(entry, snapshot)
         ]
         self._entries.append(snapshot)
+
+
+def covering_snapshots(
+    entries: Sequence[WeatherSnapshot],
+    query: WeatherQuery,
+    *,
+    provider: str,
+) -> list[WeatherSnapshot]:
+    return [
+        entry
+        for entry in entries
+        if entry.provider == provider
+        and same_location(entry.query, query)
+        and entry.query.forecast_days >= query.forecast_days
+        and entry.query.past_days >= query.past_days
+    ]
+
+
+def newest_usable_snapshot(
+    entries: Sequence[WeatherSnapshot],
+    query: WeatherQuery,
+    *,
+    provider: str,
+    now: datetime,
+) -> WeatherSnapshot | None:
+    candidates = [
+        entry
+        for entry in covering_snapshots(entries, query, provider=provider)
+        if snapshot_age(entry, now) is not None
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda entry: entry.fetched_at)
+
+
+def same_cache_identity(left: WeatherSnapshot, right: WeatherSnapshot) -> bool:
+    return (
+        left.provider == right.provider
+        and same_location(left.query, right.query)
+        and left.query.forecast_days == right.query.forecast_days
+        and left.query.past_days == right.query.past_days
+    )
 
 
 def same_location(left: WeatherQuery, right: WeatherQuery) -> bool:
@@ -55,7 +100,12 @@ def same_location(left: WeatherQuery, right: WeatherQuery) -> bool:
 
 
 def snapshot_age(snapshot: WeatherSnapshot, now: datetime) -> timedelta | None:
-    age = now - snapshot.fetched_at
+    if now.tzinfo is None or now.utcoffset() is None:
+        raise TypeError("now must be timezone-aware")
+    fetched_at = snapshot.fetched_at
+    if fetched_at.tzinfo is None or fetched_at.utcoffset() is None:
+        return None
+    age = now - fetched_at
     return age if age >= timedelta(0) else None
 
 

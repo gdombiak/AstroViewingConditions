@@ -41,10 +41,10 @@ production normal-conditions cache. Cache reuse also requires matching
 coordinates, past/forecast coverage, and local acquisition day; future
 timestamps are invalid.
 
-Current first-slice cache storage is process-local memory only. The one-hour
-freshness rule applies within a running host process; separate one-shot CLI
-invocations do not reuse cache data, and durable cache reuse across CLI/Bot
-process restarts is deferred.
+`ConditionsService()` still defaults to a process-local memory cache. Durable
+reuse across CLI/Bot process restarts is **composition**: the CLI injects
+`FileWeatherCache`. Setting `ASTRO_HOST_STATE_DIR` without that composition
+does not persist anything. The one-hour freshness rule is unchanged.
 
 Open-Meteo normally returns the current local day forward. For an active-night
 request after midnight, the host first lets `observing_night.resolve_active`
@@ -60,12 +60,13 @@ Open-Meteo timeout/network errors, HTTP 429, and selected transient 5xx statuses
 use a small bounded retry/backoff policy. This is **Bot-host operational policy,
 intentionally not Swift lifecycle parity**.
 
-Before serious real Bot acceptance testing and before 1.0, the host needs a
-durable weather cache that persists across process/Bot restarts, stores multiple
-locations, retains provider/query coverage (including past and forecast days),
-and preserves the one-hour fresh TTL plus configurable stale-on-error semantics.
-That state must be explicitly persisted rather than inferred from LLM
-conversation memory. This first slice does not design or implement it.
+The CLI persists decoded weather snapshots in a versioned JSON file so multiple
+locations and past/forecast coverage variants survive process restarts. Default
+path is `$ASTRO_HOST_STATE_DIR/weather-cache.json`, else
+`~/.astro-host/weather-cache.json`. Pass `--weather-cache-path` to override.
+EMPTY snapshots are not stored; usable PARTIAL snapshots are. Stale-on-error
+remains separately configurable and disabled by default. That file is host-owned
+state; LLM conversation memory is never the cache.
 
 ## CLI
 
@@ -75,7 +76,9 @@ Install the engine and host packages, or use the checkout launcher:
 apps/cli/astro-host agent.conditions --input request.json --pretty
 ```
 
-Use `--input -` for stdin. The output is a deterministic JSON envelope.
+Use `--input -` for stdin. Optional `--weather-cache-path` selects the durable
+weather JSON file; otherwise `$ASTRO_HOST_STATE_DIR/weather-cache.json` or
+`~/.astro-host/weather-cache.json`. The output is a deterministic JSON envelope.
 Complete, degraded, and unavailable domain results are successful envelopes;
 invalid caller input and unexpected host failures have distinct nonzero exits.
 

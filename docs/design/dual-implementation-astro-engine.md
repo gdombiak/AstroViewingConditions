@@ -1506,16 +1506,18 @@ disabled by default, and visibly degraded when used. The bounded retry/backoff
 for network/timeouts, HTTP 429, and selected transient 5xx responses is Bot-host
 operational policy, intentionally not Swift lifecycle parity.
 
-Current first-slice cache storage is process-local memory only. The one-hour
-freshness rule applies within a running host process; separate one-shot CLI
-invocations do not reuse the prior process's cache, and durable reuse across
-CLI/Bot process restarts is deferred. Before serious real Bot acceptance testing
-and before 1.0, add a durable host-owned weather cache that persists across
-process/Bot restarts, stores multiple locations, preserves provider/query
-coverage including past and forecast days, preserves the one-hour fresh TTL and
-configurable stale-on-error semantics, and uses explicit persisted state rather
-than LLM conversational memory. This note intentionally chooses no persistence
-format or schema, and this first slice implements none.
+`ConditionsService()` still defaults to process-local `MemoryWeatherCache`.
+Durable reuse is CLI/Bot **composition**: `apps/cli/astro-host` injects
+`FileWeatherCache`, a versioned JSON snapshot file (`schema_version` 1) that
+keeps multiple locations and past/forecast coverage variants across process
+restarts. Path policy: `--weather-cache-path`, else
+`$ASTRO_HOST_STATE_DIR/weather-cache.json`, else `~/.astro-host/weather-cache.json`.
+The env var alone does not persist; Bot must run that CLI or inject
+`FileWeatherCache`. Fresh TTL remains exactly 3600 seconds with matching
+location, richer query coverage, provider identity, and local acquisition day.
+Stale-on-error remains separately configurable and disabled by default. EMPTY
+snapshots are not stored; usable PARTIAL snapshots are. The file is explicit
+host-owned state, never inferred from LLM conversational memory.
 
 For fresh-process active-night requests after local midnight, the initial
 current-day payload may cause `observing_night.resolve_active` to return

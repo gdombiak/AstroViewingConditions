@@ -86,7 +86,7 @@ class ConditionsService:
         if stale_on_error_max_age is not None and stale_on_error_max_age <= timedelta(0):
             raise ValueError("stale_on_error_max_age must be positive")
         self._weather = weather_provider or OpenMeteoWeatherProvider(clock=clock)
-        self._cache = cache or MemoryWeatherCache()
+        self._cache = cache or MemoryWeatherCache(clock=clock)
         self._engine = engine or ConditionsEngine()
         self._stale_max_age = stale_on_error_max_age
         self._atlas_path = None if atlas_path is None else Path(atlas_path)
@@ -467,7 +467,7 @@ class ConditionsService:
         past_days: int = 0,
     ) -> _Acquired:
         query = WeatherQuery(request.location, forecast_days, past_days)
-        cached = await self._cache.get(query)
+        cached = await self._cache.get(query, provider=self._weather.name)
         if cached is not None and not request.force_refresh:
             cached_tz, _ = resolve_timezone(
                 request.location,

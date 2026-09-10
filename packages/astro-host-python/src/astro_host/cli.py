@@ -16,6 +16,7 @@ from typing import Any, Mapping, Sequence, TextIO
 from astro_host.conditions import ConditionsService
 from astro_host.errors import InvalidRequestError
 from astro_host.models import ConditionsRequest, Location
+from astro_host.weather_cache_file import FileWeatherCache, default_weather_cache_path
 
 
 EXIT_OK = 0
@@ -31,7 +32,32 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--pretty", action="store_true")
     parser.add_argument("--atlas-path")
     parser.add_argument("--stale-on-error-seconds", type=float)
+    parser.add_argument("--weather-cache-path")
     return parser
+
+
+def build_default_service(args: argparse.Namespace) -> ConditionsService:
+    cache_path = (
+        Path(args.weather_cache_path)
+        if args.weather_cache_path
+        else default_weather_cache_path()
+    )
+    return ConditionsService(
+        cache=FileWeatherCache(cache_path),
+        stale_on_error_max_age=_stale_age(args),
+        atlas_path=args.atlas_path,
+    )
+
+
+def _stale_age(args: argparse.Namespace) -> timedelta | None:
+    if args.stale_on_error_seconds is None:
+        return None
+    if (
+        not math.isfinite(args.stale_on_error_seconds)
+        or args.stale_on_error_seconds <= 0
+    ):
+        raise InvalidRequestError("stale-on-error-seconds must be positive")
+    return timedelta(seconds=args.stale_on_error_seconds)
 
 
 def main(
@@ -50,20 +76,7 @@ def main(
         document = _read_json(args.input_path)
         request = parse_conditions_request(document)
         if service is None:
-            stale_age = None
-            if args.stale_on_error_seconds is not None:
-                if (
-                    not math.isfinite(args.stale_on_error_seconds)
-                    or args.stale_on_error_seconds <= 0
-                ):
-                    raise InvalidRequestError(
-                        "stale-on-error-seconds must be positive"
-                    )
-                stale_age = timedelta(seconds=args.stale_on_error_seconds)
-            service = ConditionsService(
-                stale_on_error_max_age=stale_age,
-                atlas_path=args.atlas_path,
-            )
+            service = build_default_service(args)
         result = asyncio.run(service.conditions(request))
         _write_json({
             "ok": True,

@@ -6,8 +6,13 @@ import math
 
 import pytest
 
-from astro_host.cli import EXIT_FAILURE, EXIT_INVALID_REQUEST, EXIT_OK, main
+from argparse import Namespace
+
+from astro_host.cli import (
+    EXIT_FAILURE, EXIT_INVALID_REQUEST, EXIT_OK, build_default_service, main,
+)
 from astro_host.conditions import ConditionsService
+from astro_host.weather_cache_file import FileWeatherCache
 
 from support import FakeEngine, FakeProvider, NOW
 
@@ -134,6 +139,43 @@ def test_cli_accepts_finite_elevation(tmp_path) -> None:
     payload = json.loads(stdout.getvalue())
     assert status == EXIT_OK
     assert payload["result"]["request"]["location"]["elevation_m"] == 123.5
+
+
+def test_build_default_service_uses_explicit_weather_cache_path(tmp_path) -> None:
+    path = tmp_path / "custom" / "weather-cache.json"
+    service = build_default_service(Namespace(
+        weather_cache_path=str(path),
+        stale_on_error_seconds=None,
+        atlas_path=None,
+    ))
+    assert isinstance(service._cache, FileWeatherCache)
+    assert service._cache.path == path.expanduser().resolve()
+    assert not path.exists()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_build_default_service_uses_state_dir_env(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("ASTRO_HOST_STATE_DIR", str(tmp_path / "state"))
+    service = build_default_service(Namespace(
+        weather_cache_path=None,
+        stale_on_error_seconds=None,
+        atlas_path=None,
+    ))
+    expected = (tmp_path / "state" / "weather-cache.json").resolve()
+    assert isinstance(service._cache, FileWeatherCache)
+    assert service._cache.path == expected
+    assert not expected.exists()
+
+
+def test_injected_service_does_not_construct_file_cache(tmp_path) -> None:
+    before = {path.resolve() for path in tmp_path.rglob("*")}
+    status, payload, _ = invoke(tmp_path, FakeProvider())
+    assert status == EXIT_OK
+    assert payload["ok"] is True
+    after = {path.resolve() for path in tmp_path.rglob("*")}
+    created = after - before
+    assert all(path.name == "request.json" or path.is_dir() for path in created)
+    assert not any(path.name == "weather-cache.json" for path in created)
 
 
 class NonFiniteResultService:

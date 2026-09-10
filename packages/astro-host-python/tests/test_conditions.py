@@ -3,11 +3,13 @@ from __future__ import annotations
 import asyncio
 from dataclasses import replace
 from datetime import date, timedelta
+import json
 
 import astro_engine.observing_night as observing_night_module
 
-from astro_host.cache import MemoryWeatherCache
+from astro_host.cache import MemoryWeatherCache, WeatherCache
 from astro_host.conditions import ConditionsService
+from astro_host.weather_cache_file import FileWeatherCache
 from astro_host.engine import ConditionsEngine
 from astro_host.errors import EngineCallError
 from astro_host.models import (
@@ -32,7 +34,7 @@ def run_conditions(
     *,
     engine: FakeEngine | None = None,
     request: ConditionsRequest | None = None,
-    cache: MemoryWeatherCache | None = None,
+    cache: WeatherCache | None = None,
     stale_age: timedelta | None = None,
     atlas_path: str | None = "test-atlas",
 ):
@@ -374,3 +376,212 @@ def test_explicit_date_ignores_unrelated_missing_sun_row() -> None:
     assert result.selected_night is not None
     assert result.selected_night.observing_date == date(2026, 2, 20)
     assert "required_twilight_unavailable" not in issue_codes(result)
+
+
+def test_file_cache_reuses_home_across_services_and_keeps_other_locations(
+    tmp_path,
+) -> None:
+    path = tmp_path / "weather-cache.json"
+    cache = FileWeatherCache(path)
+    home_provider = FakeProvider()
+    first = run_conditions(home_provider, cache=cache)
+    assert first.status is ConditionsStatus.COMPLETE
+    assert home_provider.calls
+    assert first.acquisition.snapshot is not None
+    assert first.acquisition.snapshot.origin.value == "live"
+
+    hood = Location(45.37, -121.70, time_zone_hint="America/Los_Angeles")
+    hood_provider = FakeProvider()
+    hood_result = run_conditions(
+        hood_provider,
+        cache=cache,
+        request=ConditionsRequest(hood, NOW),
+    )
+    assert hood_result.status is ConditionsStatus.COMPLETE
+    assert hood_provider.calls
+
+    reuse_provider = FakeProvider()
+    reused = run_conditions(reuse_provider, cache=cache)
+    assert reused.status is ConditionsStatus.COMPLETE
+    assert reuse_provider.calls == []
+    assert reused.acquisition.snapshot is not None
+    assert reused.acquisition.snapshot.origin.value == "cache"
+
+    hood_again = FakeProvider()
+    hood_reused = run_conditions(
+        hood_again,
+        cache=cache,
+        request=ConditionsRequest(hood, NOW),
+    )
+    assert hood_again.calls == []
+    assert hood_reused.acquisition.snapshot is not None
+    assert hood_reused.acquisition.snapshot.origin.value == "cache"
+
+
+def test_file_cache_does_not_persist_empty_snapshots(tmp_path) -> None:
+    path = tmp_path / "weather-cache.json"
+    result = run_conditions(FakeProvider(empty=True), cache=FileWeatherCache(path))
+    assert result.status is ConditionsStatus.UNAVAILABLE
+    assert not path.exists()
+
+
+def test_file_cache_persists_partial_with_rows(tmp_path) -> None:
+    path = tmp_path / "weather-cache.json"
+    result = run_conditions(FakeProvider(partial=True), cache=FileWeatherCache(path))
+    assert result.status is ConditionsStatus.DEGRADED
+    loaded = asyncio.run(FileWeatherCache(path).get(
+        WeatherQuery(LOCATION, 1), provider="open_meteo",
+    ))
+    assert loaded is not None
+    assert loaded.hourly
+    assert loaded.diagnostics.state is PayloadState.PARTIAL
+
+
+def test_file_cache_oversized_number_does_not_host_fail(tmp_path) -> None:
+    path = tmp_path / "weather-cache.json"
+    first = run_conditions(FakeProvider(), cache=FileWeatherCache(path))
+    assert first.status is ConditionsStatus.COMPLETE
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["entries"][0]["hourly"][0]["wind_speed"] = 10 ** 400
+    path.write_text(json.dumps(document), encoding="utf-8")
+    provider = FakeProvider()
+    result = run_conditions(provider, cache=FileWeatherCache(path))
+    assert result.status is ConditionsStatus.COMPLETE
+    assert provider.calls
+
+
+def test_file_cache_stale_fallback_survives_new_instance(tmp_path) -> None:
+    path = tmp_path / "weather-cache.json"
+    stale = WeatherSnapshot(
+        query=WeatherQuery(LOCATION, 2),
+        provider="open_meteo",
+        fetched_at=NOW - timedelta(hours=2),
+        provider_timezone="America/Los_Angeles",
+        utc_offset_seconds=-28_800,
+        hourly=hourly_rows(),
+        diagnostics=PayloadDiagnostics(PayloadState.COMPLETE, (), 48),
+    )
+    asyncio.run(FileWeatherCache(path).put(stale))
+    result = run_conditions(
+        FakeProvider(failure=True),
+        cache=FileWeatherCache(path),
+        stale_age=timedelta(hours=3),
+    )
+    assert result.status is ConditionsStatus.DEGRADED
+    assert "stale_weather_fallback" in issue_codes(result)
+    assert result.acquisition.snapshot is not None
+    assert result.acquisition.snapshot.freshness.value == "stale"
+
+
+def test_file_cache_stale_fallback_ignores_future_richer_snapshot(tmp_path) -> None:
+    path = tmp_path / "weather-cache.json"
+    older = WeatherSnapshot(
+        query=WeatherQuery(LOCATION, 2),
+        provider="open_meteo",
+        fetched_at=NOW - timedelta(hours=2),
+        provider_timezone="America/Los_Angeles",
+        utc_offset_seconds=-28_800,
+        hourly=hourly_rows(),
+        diagnostics=PayloadDiagnostics(PayloadState.COMPLETE, (), 48),
+    )
+    richer = WeatherSnapshot(
+        query=WeatherQuery(LOCATION, 2, past_days=1),
+        provider="open_meteo",
+        fetched_at=NOW + timedelta(minutes=30),
+        provider_timezone="America/Los_Angeles",
+        utc_offset_seconds=-28_800,
+        hourly=hourly_rows(3),
+        diagnostics=PayloadDiagnostics(PayloadState.COMPLETE, (), 72),
+    )
+    asyncio.run(FileWeatherCache(path, clock=lambda: NOW).put(older))
+    asyncio.run(FileWeatherCache(
+        path, clock=lambda: NOW + timedelta(hours=1),
+    ).put(richer))
+    result = run_conditions(
+        FakeProvider(failure=True),
+        cache=FileWeatherCache(path, clock=lambda: NOW),
+        stale_age=timedelta(hours=3),
+    )
+    assert result.status is ConditionsStatus.DEGRADED
+    assert "stale_weather_fallback" in issue_codes(result)
+    assert result.acquisition.snapshot is not None
+    assert result.acquisition.snapshot.freshness.value == "stale"
+    assert result.acquisition.snapshot.query.past_days == 0
+
+
+class _ClockedProvider(FakeProvider):
+    def __init__(self, clock, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._clock = clock
+
+    async def fetch(self, query):
+        response = await super().fetch(query)
+        return replace(response, fetched_at=self._clock())
+
+
+def test_default_cache_uses_service_clock_for_fresh_reuse(monkeypatch) -> None:
+    class _Wall:
+        @staticmethod
+        def now(tz=None):
+            return NOW
+
+    monkeypatch.setattr("astro_host.cache.datetime", _Wall)
+    shifted = NOW + timedelta(hours=2)
+    provider = _ClockedProvider(lambda: shifted)
+    service = ConditionsService(
+        provider,
+        engine=FakeEngine(),
+        atlas_path="test-atlas",
+        clock=lambda: shifted,
+    )
+    request = ConditionsRequest(LOCATION, shifted)
+    first = asyncio.run(service.conditions(request))
+    calls = len(provider.calls)
+    second = asyncio.run(service.conditions(request))
+    assert first.status is ConditionsStatus.COMPLETE
+    assert second.status is ConditionsStatus.COMPLETE
+    assert second.acquisition.snapshot is not None
+    assert second.acquisition.snapshot.origin.value == "cache"
+    assert len(provider.calls) == calls
+
+
+def test_default_cache_inverse_skew_does_not_mask_stale_entry(monkeypatch) -> None:
+    class _Wall:
+        @staticmethod
+        def now(tz=None):
+            return NOW + timedelta(hours=3)
+
+    monkeypatch.setattr("astro_host.cache.datetime", _Wall)
+    service = ConditionsService(
+        FakeProvider(failure=True),
+        engine=FakeEngine(),
+        atlas_path="test-atlas",
+        clock=lambda: NOW,
+        stale_on_error_max_age=timedelta(hours=3),
+    )
+    older = WeatherSnapshot(
+        query=WeatherQuery(LOCATION, 2),
+        provider="open_meteo",
+        fetched_at=NOW - timedelta(hours=2),
+        provider_timezone="America/Los_Angeles",
+        utc_offset_seconds=-28_800,
+        hourly=hourly_rows(),
+        diagnostics=PayloadDiagnostics(PayloadState.COMPLETE, (), 48),
+    )
+    richer = WeatherSnapshot(
+        query=WeatherQuery(LOCATION, 2, past_days=1),
+        provider="open_meteo",
+        fetched_at=NOW + timedelta(minutes=30),
+        provider_timezone="America/Los_Angeles",
+        utc_offset_seconds=-28_800,
+        hourly=hourly_rows(3),
+        diagnostics=PayloadDiagnostics(PayloadState.COMPLETE, (), 72),
+    )
+    asyncio.run(service._cache.put(older))
+    asyncio.run(service._cache.put(richer))
+    result = asyncio.run(service.conditions(ConditionsRequest(LOCATION, NOW)))
+    assert result.status is ConditionsStatus.DEGRADED
+    assert "stale_weather_fallback" in issue_codes(result)
+    assert result.acquisition.snapshot is not None
+    assert result.acquisition.snapshot.freshness.value == "stale"
+    assert result.acquisition.snapshot.query.past_days == 0
