@@ -483,7 +483,7 @@ Field Mode, Dynamic Type, SwiftData, GPS, MapKit, `CoreLocationSuitabilityResolv
 
 #### Python / CLI only (out of contract)
 
-Argparse/typer, env, `--atlas-path` (defaults to the bundled production LPATLAS1 on the bot VM), stdin/stdout framing, `--pretty`, logging, HTTP client, composed `agent.conditions` / `agent.batch_compare` (later Bot-host work), `agent.forecast_horizon` (CLI-only longer Open-Meteo fetch; out of contract), `--suitability-json` overlay file.
+Argparse/typer, env, `--atlas-path` (defaults to the bundled production LPATLAS1 on the bot VM), stdin/stdout framing, `--pretty`, logging, HTTP client, composed `agent.conditions` (implemented in `packages/astro-host-python`) and `agent.batch_compare` (still later Bot-host work), `agent.forecast_horizon` (CLI-only longer Open-Meteo fetch; out of contract; not yet built), `--suitability-json` overlay file.
 
 "Out of contract" is not one location. Argv parsing, stdio framing, `--pretty`,
 `--atlas-path` and exit-code mapping belong to the **engine's own** JSON CLI
@@ -1483,10 +1483,13 @@ package because they are runtime resources the host loads (see
 [packaging](#packaging-version-and-resource-loading)); keeping them there is what
 makes package-safe loading and the installed-wheel test meaningful.
 
-#### Implemented first slice (2026-09-08)
+#### Implemented host slices (2026-09-08 and 2026-09-09)
 
-`packages/astro-host-python` now exists with the first composed operation,
-`agent.conditions`, and `apps/cli/astro-host` is its thin JSON launcher. The
+Two host slices have landed: the `agent.conditions` composition (2026-09-08) and
+the durable weather cache (2026-09-09). `packages/astro-host-python` now exists
+with the first composed operation, `agent.conditions`, and `apps/cli/astro-host`
+is its thin JSON launcher. The roadmap summary of what these closed is under
+[Completed (host-side)](#required-implementation-order-after-the-audit). The
 implemented path is coordinates plus an aware reference instant → Open-Meteo →
 validated authoritative IANA timezone → in-process Astro Engine weather,
 Sun/Moon, active-or-explicit observing-night, exact night-window, Night
@@ -1744,7 +1747,7 @@ astro-engine <capability-id> --pretty --input -
 ```
 
 - `<capability-id>` is an allow-list from `capabilities.yaml` with `since <=` implemented engine version and `hosts` containing `cli`. Unknown id → exit 3, stderr usage, no stdout JSON.
-- `--input -` reads stdin. `--input` and flags for lat/lon are **mutually exclusive** in the initial public CLI (no flag form). Composed flag-style commands are later CLI/Bot-host work (`agent.conditions`).
+- `--input -` reads stdin. `--input` and flags for lat/lon are **mutually exclusive** in the initial public CLI (no flag form). Composed commands are host work and never enter this allow-list; the implemented `apps/cli/astro-host agent.conditions` is a separate entry point and also takes `--input`, not a flag form.
 - **Stdout:** JSON for capability invocations and `--engine-version`. Compact; `--pretty` adds 2-space indent + sorted keys.
 - **Stderr:** diagnostics only. Never mix traces into stdout.
 - **Exit codes / envelopes:**
@@ -1762,7 +1765,7 @@ astro-engine <capability-id> --pretty --input -
 
 **Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 36 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
 
-**Later Bot-host composition** (proposed names; not catalogued and not capability eval targets): `agent.conditions`, `agent.batch_compare`, `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days, live in `packages/astro-host-python`, and stay out of `parity.yml`. If host-side golden envelopes are ever wanted they would need a non-parity marker of their own; no such marker (`hosts: [python]` or otherwise) exists in the catalog today.
+**Bot-host composition** (not catalogued and not capability eval targets): `agent.conditions` — **implemented**, see [implemented host slices](#implemented-host-slices-2026-09-08-and-2026-09-09) — plus the still-proposed `agent.batch_compare` and `agent.forecast_horizon`. They compose implemented engine capabilities or fetch extra forecast days, live in `packages/astro-host-python`, and stay out of `parity.yml`. Being implemented did not catalogue `agent.conditions`: it holds no `contracts/capabilities.yaml` row and is not on the engine CLI's public allow-list. If host-side golden envelopes are ever wanted they would need a non-parity marker of their own; no such marker (`hosts: [python]` or otherwise) exists in the catalog today.
 
 Capability envelope (success):
 
@@ -2256,7 +2259,7 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 - **Notes:** The CLI binary already exists from F2. This phase only expands it.
 - **Implementation notes (2026-09-05):**
   - **Partially Agree** with the original “only expand the allow-list” wording. The F2 CLI was a hardcoded `observing_quality.assess` wrapper (`_extract_injected` + direct `assess_observing_quality`). Copying that per capability would have duplicated engine logic. Phase 11 turned the public CLI into JSON transport over the existing Python dispatcher.
-  - Public initial allow-list is explicit in `cli.py` (`PUBLIC_CAPABILITY_IDS`, catalog order) and is **not** “every private `_capability` ID forever.” At the time it contained the eleven `since: 0.1.0` rows in `contracts/capabilities.yaml`. Not-yet-implemented IDs (`targets.recommend`, `equipment.match`, `astronomy.*`, `agent.conditions`) and uncatalogued `light_pollution.validity` remain usage/exit 3; Phase 14 later added `location.compare` to the public allow-list.
+  - Public initial allow-list is explicit in `cli.py` (`PUBLIC_CAPABILITY_IDS`, catalog order) and is **not** “every private `_capability` ID forever.” At the time it contained the eleven `since: 0.1.0` rows in `contracts/capabilities.yaml`. IDs not implemented **at that time** (`targets.recommend`, `equipment.match`, `astronomy.*`) and uncatalogued `light_pollution.validity` were usage/exit 3; Phase 14 later added `location.compare` to the public allow-list. Those engine capabilities have since been implemented and catalogued, while composed host operations such as `agent.conditions` stay off this allow-list permanently by design — they are served by `apps/cli/astro-host`, a separate entry point over `astro_host`.
   - Dispatch: parse argv → 1 MiB stdin/file limit → JSON decode → public envelope → allow-list → optional `CapabilityHost` → `evaluate_capability` → wrap `{capability, engine_semver, ok, result}`. Capability math stays in the library. CLI and `Tests/parity/python_eval.py` now share that path. `location.grid` goes through `location_grid` (885-point cap), not uncapped `generate_grid`.
   - Public envelope: input must be an object; `injected` is required and must be an object (including `catalog.deep_sky` with `injected: {}`); if `capability` is present it must match argv; extra top-level keys fail. `night_conditions.analyze` additionally allows `clock`, `time_zone`, and `location` so contract fixtures round-trip. The F2 OQ injected-key whitelist was removed; capability-specific injected validation is owned by the engine modules / dispatcher.
   - `$ref`: whole-`injected` JSON `$ref` (weather/ISS fixtures) and `injected.artifact.$ref` (LPATLAS1 bytes) resolve only under `contracts/fixtures` via `resolve_fixture_ref` / `load_fixture_ref`. `ref_escape` / `fixture_missing` surface as those codes, exit 2. JSON `artifact.path` is rejected. Inline raw Open-Meteo / N2YO envelopes are also accepted.
@@ -2319,7 +2322,7 @@ Pass criteria: [feasibility gate](#feasibility-gate-grok-bot-vm).
 ### Phase 16 — Live astronomy (implemented; unreleased first-1.0 work)
 
 - **Depends on:** Phase 3, Phase 12
-- **Notes:** Implement `astronomy.sun_events`, `astronomy.moon_info`, and `astronomy.moon_series` using Swift SunCalc and Python Skyfield. Sun events compare at about ±60 seconds, moon altitude at about ±0.5°, and illumination at integer ±1. Live astronomy must never feed product-integer parity assertions. Polar approximate fallback remains `hosts: [ios]`. Planets and live target windows are deliberately not committed by this phase label: before implementation, perform a reality check against the intended production architecture, procedures, and fixtures; add neither by assumption. Optional composed `agent.conditions` remains subsequent Bot-host work, not engine math.
+- **Notes:** Implement `astronomy.sun_events`, `astronomy.moon_info`, and `astronomy.moon_series` using Swift SunCalc and Python Skyfield. Sun events compare at about ±60 seconds, moon altitude at about ±0.5°, and illumination at integer ±1. Live astronomy must never feed product-integer parity assertions. Polar approximate fallback remains `hosts: [ios]`. Planets and live target windows are deliberately not committed by this phase label: before implementation, perform a reality check against the intended production architecture, procedures, and fixtures; add neither by assumption. Optional composed `agent.conditions` was subsequent Bot-host work, not engine math; it has since landed in `packages/astro-host-python`.
 
 - **Subsequently implemented (outside this phase).** The reality checks below were
   carried out and their conclusions held: the deep-sky, lunar and planet slices
@@ -2477,8 +2480,10 @@ an ordering of dependencies and product value, not seven public IDs or new
 numbered phases:
 
 An engine capability existing is not the same as the Bot host composing it into a
-complete product answer. Items 1–5 are engine-side complete; every one of them
-still has host composition listed under "still outstanding".
+complete product answer. Items 1–11 below are engine-side complete. Host
+composition is tracked separately: what has since landed in
+`packages/astro-host-python` is listed under **Completed (host-side)**, and what
+has not is listed under **Still outstanding**.
 
 **Completed (engine-side):**
 
@@ -2530,6 +2535,63 @@ still has host composition listed under "still outstanding".
    labels, verdict and tone copy, scores, best windows, AppGroup persistence,
    last-known-good retention and timeline scheduling stay host-owned.
 
+**Completed (host-side, `packages/astro-host-python`).** These carry **no**
+Swift-parity obligation, contribute no `contracts/capabilities.yaml` rows and are
+not compared in `Tests/parity`; they are landed operational policy and
+composition, tested as ordinary host tests. Details and exact policy live in the
+[implemented host slices](#implemented-host-slices-2026-09-08-and-2026-09-09);
+this list records **that** they are done so the outstanding list below stays
+readable.
+
+- **H1 — `agent.conditions` end-to-end host composition.** Coordinates plus an aware
+  reference instant → typed weather, Sun/Moon, observing-night, exact night
+  window, Night Conditions, best window, cloud-timing verdict and optional
+  Observing Quality facts, composed in-process over `weather.decode`,
+  `astronomy.sun_events`, `astronomy.moon_series`,
+  `observing_night.resolve_active`, `night_forecast.derive_window`,
+  `night_conditions.analyze`, `observing_window.select`,
+  `night_conditions.classify_cloud_timing`, `light_pollution.lookup` and
+  `observing_quality.assess`. `apps/cli/astro-host` is the thin JSON launcher
+  over `astro_host.cli`; nothing entered the engine CLI's public 1.0 allow-list.
+  No engine rule is re-derived in the host.
+- **H2 — Open-Meteo acquisition for that flow**, including the single bounded
+  `past_days=1` re-acquisition the host performs when the engine returns
+  `requires_active_previous_payload` after local midnight — the provider supplies
+  data; the engine keeps the active-night rule.
+- **H3 — Authoritative IANA timezone acquisition for the requested coordinates.** A
+  valid caller-supplied/saved-location IANA hint wins, then the validated Open-Meteo IANA zone
+  for the same coordinates. The longitude fixed offset is retained only as
+  non-authoritative diagnostic context and can never authorize a
+  calendar-sensitive engine call. This closes the host half of the acquisition
+  the engine deliberately does not own; production's own fallback yields no IANA
+  identity, and resolving that stayed host-shaped as designed.
+- **H4 — Bounded retry/backoff** for provider timeouts and network errors, HTTP 429
+  and selected transient 5xx statuses — Bot-host operational policy,
+  intentionally not Swift lifecycle parity.
+- **H5 — Process-local `MemoryWeatherCache`**, the `ConditionsService()` default,
+  carrying the production normal-conditions fresh TTL of exactly 3600 seconds
+  with matching location, query coverage and relevant local acquisition day.
+- **H6 — Configurable stale-on-error behavior**, separate from the fresh TTL and
+  disabled by default: a stale snapshot must still continuously cover the
+  selected night, and the answer is visibly `degraded` with stale provenance.
+- **H7 — Durable multi-location `FileWeatherCache`** — a versioned JSON snapshot
+  file (`schema_version` 1) keeping multiple locations and past/forecast
+  coverage variants across process restarts, with the same 3600-second fresh
+  rule plus provider identity. EMPTY snapshots are not stored; usable PARTIAL
+  snapshots are.
+- **H8 — CLI composition of the durable cache.** `apps/cli/astro-host` injects
+  `FileWeatherCache`; `ConditionsService()` itself stays memory-backed.
+  Durability is deliberately composition, not a service default.
+- **H9 — Durable cache path policy and restart reuse:** `--weather-cache-path`, else
+  `$ASTRO_HOST_STATE_DIR/weather-cache.json`, else
+  `~/.astro-host/weather-cache.json`. The env var alone does not persist — the
+  Bot must run that CLI or inject `FileWeatherCache` itself. The file is
+  explicit host-owned state; LLM conversational memory is never the cache.
+
+H5–H9 describe a **provider** cache, not user state. They do not satisfy row 14
+below (saved locations, the selected location, selected equipment, user profile
+and observation history), which remains entirely outstanding.
+
 **Still outstanding.** Each item below carries a **provisional** engine/host
 reading. Provisional is load-bearing: with the
 [Python host boundary](#11-python-host-boundary-packagesastro-host-python) now
@@ -2555,19 +2617,29 @@ not determinism alone.
 | # | Outstanding item | Provisional home | Archaeology status |
 |---|---|---|---|
 | 9 | Three-night outlook **host/presentation** composition | **Host presentation over engine facts** | Deterministic core **complete**: `observing_night.compose_outlook` and `observing_night.select_best` (item 11 above, and the slice below) own the three observing dates, the per-night `available` / `no_astronomical_night` / `unavailable` classification and the best-night tie rule. What remains is host-shaped — `Tonight`/`Tomorrow`/`Day After`, verdict and status prose, score tone, the widget cache DTO, AppGroup persistence, last-known-good retention, maximum age, stale-cache acceptance, widget reloads and timeline scheduling. A Bot must consume the capabilities, never re-derive the composition. |
-| 9 | Authoritative IANA timezone **acquisition** | **Host** | Settled by design. Geocoding and the longitude approximation are host-owned; the engine consumes an authoritative zone. Note the current production fallback yields no IANA identity — the host must resolve that, not the engine. |
-| 10 | Semantic advisory prose built on cloud timing | **Host presentation over an engine fact** | Classification **complete**: `night_conditions.classify_cloud_timing` (item 10 above, and the slice below). What remains is host-shaped — deciding when to surface the advice and wording it — over the engine's verdict. A Bot must consume the capability, never re-derive the classification. |
-| 11 | Best Nearby / location-set composition | **Host orchestration over engine facts** | Deterministic core **complete**: `location.grid` owns candidate geometry, `location.compare` owns ranking, `location.compose_scores` owns scorable-set filtering, coherent OQ/Night Conditions mode, public-score assignment and center deltas, and `location.filter_recommendable` owns suitability eligibility. What remains is host-shaped orchestration: timezone acquisition, forecast-horizon planning, provider fan-out/batching, retries/timeouts, LP-provider lifecycle, CLGeocoder suitability checks, suitability bands and the 40-check cap, caches, cancellation/progress, final `topN`, and presentation. A Bot must consume the engine capabilities and must not re-derive these deterministic decisions. |
-| 12 | Multi-night forecast eligibility and composition | **Host orchestration over existing engine facts** | Archaeology **complete**. Production's only cross-night astronomy decision is the exact Three-Night Outlook: `observing_night.compose_outlook` owns the represented observing dates and structural availability, and `observing_night.select_best` owns best-night eligibility, score comparison and earliest-wins ties. Dashboard future dates and Best Nearby are single-night flows and provide no arbitrary-N production oracle. What remains is host-shaped: provider-specific horizon planning, acquisition, scoring orchestration, lifecycle/freshness, and presentation in `astro-host`. No new engine capability is required for production compatibility. |
-| 13 | Provider availability, failure and staleness semantics | **Host-shaped; verify the edges** | Required. Fetch, retry, cache lifecycle, error surfaces and freshness/lifecycle policy are host-shaped by the [placement criterion](#placement-criterion-portable-semantics-vs-operational-policy) — deterministic TTLs and bounds do not become engine logic. Swift has its own freshness and failure policies; the Python host simply carries no parity obligation to match them. Verify only the edge case: a state distinction that changes an **Astro-domain answer** (for example what counts as a complete night) is engine-shaped and must not be re-derived per host. |
-| 14 | Bot host persistence: saved locations, selected equipment, user state, observation history | **Host** | Settled by design. The engine is stateless with respect to user history and does not own saved-location persistence. Grok may personalize over host state but must not fold it into deterministic scoring. |
+| 10 | Semantic advisory prose built on cloud timing | **Host presentation over an engine fact** | Classification **complete**: `night_conditions.classify_cloud_timing` (item 10 above, and the slice below), and the host already **composes** that verdict — `agent.conditions` returns it as a fact (H1). What remains is the presentation half — deciding when to surface the advice and wording it, including in Bot-facing prose. A Bot must consume the capability, never re-derive the classification. |
+| 11 | Best Nearby / location-set composition | **Host orchestration over engine facts** | Deterministic core **complete**: `location.grid` owns candidate geometry, `location.compare` owns ranking, `location.compose_scores` owns scorable-set filtering, coherent OQ/Night Conditions mode, public-score assignment and center deltas, and `location.filter_recommendable` owns suitability eligibility. What remains is host-shaped orchestration: forecast-horizon planning, provider fan-out/batching and concurrency bounds, LP-provider lifecycle, CLGeocoder suitability checks, suitability bands and the 40-check cap, caches, cancellation/progress, final `topN`, and presentation. Per-location timezone acquisition, bounded retry/backoff and the weather cache already exist (H3–H9) and must be **reused** by that fan-out rather than re-invented. A Bot must consume the engine capabilities and must not re-derive these deterministic decisions. |
+| 12 | Multi-night forecast eligibility and composition | **Host orchestration over existing engine facts** | Archaeology **complete**. Production's only cross-night astronomy decision is the exact Three-Night Outlook: `observing_night.compose_outlook` owns the represented observing dates and structural availability, and `observing_night.select_best` owns best-night eligibility, score comparison and earliest-wins ties. Dashboard future dates and Best Nearby are single-night flows and provide no arbitrary-N production oracle. What remains is host-shaped: provider-specific horizon planning (the `agent.forecast_horizon` fetch), multi-day acquisition, scoring orchestration, lifecycle/freshness, and presentation in `astro-host`. The single-night acquisition path, timezone resolution and weather cache (H1–H9) are the pieces to extend, not to duplicate. No new engine capability is required for production compatibility. |
+| 13 | Provider availability, failure and staleness semantics | **Host-shaped; verify the edges** — **partly implemented** | Classification unchanged: fetch, retry, cache lifecycle, error surfaces and freshness/lifecycle policy are host-shaped by the [placement criterion](#placement-criterion-portable-semantics-vs-operational-policy) — deterministic TTLs and bounds do not become engine logic. Swift has its own freshness and failure policies; the Python host simply carries no parity obligation to match them. **Landed** for the single-location `agent.conditions` Open-Meteo flow: bounded retry/backoff, the 3600-second fresh TTL, configurable stale-on-error with visible `degraded` provenance, distinguishable provider attempt/failure/payload states, and the durable multi-location snapshot cache (H2, H4–H9). **Outstanding** is the same policy for the flows that do not exist yet — forecast-horizon, Best Nearby fan-out and batch compare — including provider lifecycle, batching and concurrency bounds. The standing edge-case rule still applies: a state distinction that changes an **Astro-domain answer** (for example what counts as a complete night) is engine-shaped and must not be re-derived per host. |
+| 14 | Bot host persistence: saved locations and the selected/default location, place resolution/onboarding/aliases/confirmation, selected equipment, user state, observation history | **Host** | Settled by design. The engine is stateless with respect to user history and does not own saved-location persistence. Grok may personalize over host state but must not fold it into deterministic scoring. **Nothing here has landed.** The durable `FileWeatherCache` (H7–H9) is a provider snapshot cache and must not be read as user-state persistence; `agent.conditions` today accepts a saved IANA hint but does not store one. |
 | 15 | Full pre-1.0 business-logic compatibility / release gate | **Both** | Not a work location. It is the gate that closes only when every row above has an explicit, tested owner. |
 
-Also outstanding and unambiguously host: composed `agent.conditions`,
-`agent.batch_compare` and `agent.forecast_horizon`; onboarding, aliases and
-confirmation flows; the LLM/online-search boundary; and Bot VM installation.
-Precipitation remains an engine-side `weather.decode` domain extension,
-deliberately deferred rather than reclassified.
+Authoritative IANA timezone **acquisition** previously appeared here as its own
+row. It has graduated to **Completed (host-side)** as H3; the design reading is
+unchanged — geocoding and the longitude approximation are host-owned, the engine
+consumes an authoritative zone, and production's own fallback yields no IANA
+identity, which is exactly why the host had to resolve it.
+
+Also outstanding and unambiguously host: `agent.batch_compare` and
+`agent.forecast_horizon`; saved-location and selected-location persistence with
+place resolution, onboarding, aliases and confirmation; selected equipment and
+the rest of durable user state; target-recommendation host composition over the
+existing engine facts (`targets.*` and `equipment.match`); the LLM/online-search
+boundary and Bot-facing presentation; and Bot skill packaging, VM installation
+and real end-to-end acceptance testing. Composed `agent.conditions` is **no
+longer outstanding** — see **Completed (host-side)** above. Precipitation remains
+an engine-side `weather.decode` domain extension, deliberately deferred rather
+than reclassified.
 
 **Correction to the earlier cloud-timing reading (2026-09-06).**
 `NightQualityAnalysisRules.cloudTiming` is not a presentation concern that
@@ -3259,11 +3331,17 @@ failure. This slice takes the public capability count to **34**; both new IDs us
 version change and no release.
 
 **This does not make the Three-Night Outlook product portable.** Only its
-deterministic core is. Remaining, and explicitly not started here: the
-host/presentation composition listed above; authoritative IANA timezone
+deterministic core is. Remaining, and explicitly not started **in this slice**:
+the host/presentation composition listed above; authoritative IANA timezone
 acquisition; provider availability, failure and staleness semantics; and host
 persistence. Best Nearby and multi-night composition remain separate outstanding
 items that must **reuse** these two capabilities rather than re-derive them.
+
+Two of those have since been closed by the host slices that followed — timezone
+acquisition, and provider availability/failure/staleness for the single-location
+`agent.conditions` flow. The current reading is in the boundary below and in
+[Completed (host-side)](#required-implementation-order-after-the-audit); the
+paragraph above records the state at this slice.
 
 #### Current Bot readiness boundary
 
@@ -3309,16 +3387,31 @@ the candidate rows in the first place: `targets.compose_recommendations` ranks
 what it is given and acquires nothing. The Bot can reproduce the deterministic
 equipment-aware subset once its host supplies authoritative saved/session
 equipment facts, and it can now resolve the active observing night once its host
-supplies an authoritative IANA timezone and the daily twilight rows. Still
-missing are that timezone acquisition itself (host-shaped), host composition of
-the new `night_forecast.derive_window` fact with forecast rows, and host
-composition of the new `night_conditions.classify_cloud_timing` verdict into
-advice the Bot actually words;
-full Best Nearby or location-set composition; host composition of the canonical
-three-night outlook; the three-night outlook's own host/presentation composition — labels,
-verdict and status prose, score tone, the widget cache, persistence, freshness
-and timeline scheduling; provider availability, failure and staleness semantics; durable host
-persistence; or precipitation in the normalized weather domain. Full host orchestration therefore remains incomplete.
+supplies an authoritative IANA timezone and the daily twilight rows.
+
+**The first host composition has since landed.** For a single location and a
+single night, `packages/astro-host-python` now performs authoritative IANA
+timezone acquisition, Open-Meteo acquisition with bounded retry/backoff, fresh
+and configurable stale-on-error reuse and a durable multi-location weather cache,
+and composes `night_forecast.derive_window` with forecast rows,
+`night_conditions.analyze`, `observing_window.select` and
+`night_conditions.classify_cloud_timing` into one `agent.conditions` answer
+delivered through `apps/cli/astro-host`. See
+[Completed (host-side)](#required-implementation-order-after-the-audit).
+
+Still missing are the semantic advisory prose the Bot words over that
+cloud-timing verdict; target-recommendation host composition over the existing
+`targets.*` and `equipment.match` facts; full Best Nearby or location-set
+composition; host composition of the canonical three-night outlook, and the
+three-night outlook's own host/presentation composition — labels, verdict and
+status prose, score tone, the widget cache, persistence, freshness and timeline
+scheduling; `agent.forecast_horizon` and `agent.batch_compare`, with the provider
+lifecycle, batching and concurrency those broader flows need; durable host
+persistence of saved locations, the selected location, place resolution,
+onboarding, aliases and confirmation, selected equipment and user state; the
+LLM/online-search boundary and Bot-facing presentation; Bot skill packaging, VM
+installation and real end-to-end acceptance testing; or precipitation in the
+normalized weather domain. Full host orchestration therefore remains incomplete.
 The overall Astronomer Bot compatibility gate is **not** complete. Missing objective facts are an explicit limitation, never an
 invitation for Grok to calculate or guess them.
 
@@ -3327,7 +3420,8 @@ invitation for Grok to calculate or guess them.
 Numbered engine phases are not the whole product. After Phase 16, complete the following before the first actual Astro Engine 1.0.0 release and the single PR to `main`:
 
 - satisfy the pre-1.0 business-logic compatibility gate below;
-- CLI/Bot-host composition: `agent.conditions`, `agent.batch_compare`, and the longer `agent.forecast_horizon` where needed — implemented in `packages/astro-host-python` and delivered through `apps/cli`, never added to the engine CLI's public 1.0 allow-list (see [Python host boundary](#11-python-host-boundary-packagesastro-host-python));
+- CLI/Bot-host composition — all of it lives in `packages/astro-host-python`, is delivered through `apps/cli`, and is never added to the engine CLI's public 1.0 allow-list (see [Python host boundary](#11-python-host-boundary-packagesastro-host-python)). `agent.conditions` **has landed**, together with its Open-Meteo acquisition, authoritative timezone resolution, bounded retry/backoff and durable weather cache (see [implemented host slices](#implemented-host-slices-2026-09-08-and-2026-09-09)). Still to build: `agent.batch_compare`, the longer `agent.forecast_horizon` where needed, and the broader provider lifecycle/batching/concurrency those flows require;
+- host composition of the remaining product answers over facts the engine already owns: target recommendation (`targets.*` plus `equipment.match`), the three-night / forecast-horizon outlook and its presentation, Best Nearby / location-set orchestration, and the semantic advisory prose built on `night_conditions.classify_cloud_timing`;
 - Bot saved-location persistence, onboarding, selected/default-location handling, aliases, confirmation, geocoding, and one-off overrides at the host boundary;
 - **Persistent user state / observing history:** conversation/chat history may provide recent-dialogue references, temporary intent, and continuity, but is not the authoritative observation log. The Bot host owns durable user profile/preferences where appropriate (owned equipment, preferred observing locations, favorite target types, and other personalization facts) and a structured, persistent, user-confirmed observation history. Observation records support create, query, correct, and delete, and capture target identity plus observation time/date, location, equipment, notes, rating, or metadata when known. Do not persist an observation merely because a target was recommended or discussed; obtain explicit or clear user confirmation when a statement is ambiguous. Astro Engine remains stateless with respect to individual user history and authoritative for objective astronomy facts and target ranking. Grok may use host state to personalize its recommendation reasoning, but must visibly distinguish that advice from the underlying objective Astro ranking and must not silently fold history into deterministic scoring. This roadmap does not dictate a future persistence implementation.
 - production Grok Bot VM installation/deployment and real end-to-end Astronomer Bot integration;
@@ -3411,14 +3505,18 @@ does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
   instant belongs to, its day identity and its astronomical-night boundaries,
   including the after-midnight retention of the preceding civil date, the
   inclusive boundary comparisons, the day-indexing guards and the DST/midnight
-  quirks; production delegates to it under migration-equivalence tests. What
-  this gate still needs is the host acquiring an authoritative IANA timezone
-  (production geocodes and falls back to a longitude approximation with no IANA
-  identity) — host-shaped acquisition — then composing the authoritative zone,
-  observing day and Sun-event facts through `night_forecast.derive_window` before
-  applying the returned half-open interval to forecast rows. Grok must never
-  re-derive "tonight" from a bare civil date, and no host may re-implement the
-  window derivation instead of calling it.
+  quirks; production delegates to it under migration-equivalence tests. The
+  host-shaped half has since landed for the single-location `agent.conditions`
+  flow: `astro_host` resolves an authoritative IANA zone per coordinates (a valid
+  saved hint first, then the validated Open-Meteo zone; the longitude offset is
+  diagnostic only, and production's own fallback yields no IANA identity), then
+  composes the authoritative zone, observing day and Sun-event facts through
+  `night_forecast.derive_window` before applying the returned half-open interval
+  to forecast rows. What this gate still needs is the same acquisition and
+  composition in the flows that do not exist yet — three-night/forecast-horizon,
+  Best Nearby and batch compare — reusing that path rather than duplicating it.
+  Grok must never re-derive "tonight" from a bare civil date, and no host may
+  re-implement the window derivation instead of calling it.
 - **Best Nearby and location composition:** preserve candidate nighttime-forecast
   eligibility; center/candidate composition; cloud/wind/fog aggregation and any
   surfaced fog-factor union; Observing Quality only when every scorable candidate
