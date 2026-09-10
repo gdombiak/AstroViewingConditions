@@ -81,6 +81,44 @@ class Location:
 
 
 @dataclass(frozen=True)
+class SavedLocation:
+    id: str
+    name: str
+    latitude: float
+    longitude: float
+    time_zone: str
+    aliases: tuple[str, ...] = ()
+    elevation_m: float | None = None
+
+    def to_conditions_location(self) -> Location:
+        return Location(
+            latitude=self.latitude,
+            longitude=self.longitude,
+            name=self.name,
+            location_id=self.id,
+            elevation_m=self.elevation_m,
+            time_zone_hint=self.time_zone,
+        )
+
+
+@dataclass(frozen=True)
+class SavedLocationDraft:
+    name: str
+    latitude: float
+    longitude: float
+    time_zone: str
+    aliases: tuple[str, ...] = ()
+    elevation_m: float | None = None
+    id: str | None = None
+
+
+@dataclass(frozen=True)
+class LocationState:
+    locations: tuple[SavedLocation, ...]
+    selected_location_id: str | None
+
+
+@dataclass(frozen=True)
 class ConditionsRequest:
     location: Location
     reference_time: datetime

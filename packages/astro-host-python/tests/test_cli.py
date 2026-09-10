@@ -183,6 +183,50 @@ class NonFiniteResultService:
         return {"non_finite": math.nan}
 
 
+def test_conditions_cli_does_not_construct_location_store(tmp_path, monkeypatch) -> None:
+    def boom(*_args, **_kwargs):
+        raise AssertionError("FileLocationStore constructed")
+
+    monkeypatch.setattr("astro_host.cli.FileLocationStore", boom)
+    path = tmp_path / "request.json"
+    path.write_text(json.dumps(request_document()), encoding="utf-8")
+    locations = tmp_path / "locations.json"
+    stdout = io.StringIO()
+    status = main(
+        ["agent.conditions", "--input", str(path), "--locations-path", str(locations)],
+        service=ConditionsService(
+            FakeProvider(), engine=FakeEngine(), atlas_path="test-atlas",
+            clock=lambda: NOW,
+        ),
+        stdout=stdout,
+        stderr=io.StringIO(),
+    )
+    assert status == EXIT_OK
+    assert json.loads(stdout.getvalue())["ok"] is True
+    assert not locations.exists()
+
+
+def test_conditions_cli_ignores_truncated_locations_file(tmp_path) -> None:
+    locations = tmp_path / "locations.json"
+    original = b'{"schema_version":1,"locations":['
+    locations.write_bytes(original)
+    path = tmp_path / "request.json"
+    path.write_text(json.dumps(request_document()), encoding="utf-8")
+    stdout = io.StringIO()
+    status = main(
+        ["agent.conditions", "--input", str(path), "--locations-path", str(locations)],
+        service=ConditionsService(
+            FakeProvider(), engine=FakeEngine(), atlas_path="test-atlas",
+            clock=lambda: NOW,
+        ),
+        stdout=stdout,
+        stderr=io.StringIO(),
+    )
+    assert status == EXIT_OK
+    assert json.loads(stdout.getvalue())["ok"] is True
+    assert locations.read_bytes() == original
+
+
 def test_cli_serialization_failure_emits_one_complete_envelope(tmp_path) -> None:
     path = tmp_path / "request.json"
     path.write_text(json.dumps(request_document()), encoding="utf-8")

@@ -6,7 +6,7 @@ import pytest
 
 from astro_host.errors import TimeZoneCatalogError
 from astro_host.models import Location, TimeZoneAuthority, TimeZoneSource
-from astro_host.timezones import approximate_offset_seconds, resolve_timezone
+from astro_host.timezones import approximate_offset_seconds, resolve_timezone, validate_iana
 import astro_host.timezones as timezone_module
 
 
@@ -86,6 +86,14 @@ def test_catalogue_failure_is_not_a_candidate_rejection(monkeypatch) -> None:
 def test_fixed_offset_rounds_half_away_and_is_never_iana() -> None:
     assert approximate_offset_seconds(7.5) == 3600
     assert approximate_offset_seconds(-7.5) == -3600
+
+
+def test_validate_iana_is_public_and_rejects_utc() -> None:
+    ok, reason = validate_iana("America/Los_Angeles", TimeZoneSource.LOCATION_HINT)
+    assert ok is True
+    ok, reason = validate_iana("UTC", TimeZoneSource.LOCATION_HINT)
+    assert ok is False
+    assert reason == "not present in the shared engine timezone catalogue"
 
 
 def test_dst_zone_is_retained_as_iana_identity() -> None:

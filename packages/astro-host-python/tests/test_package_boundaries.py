@@ -40,3 +40,21 @@ def test_host_never_uses_engine_cli_or_private_capability_dispatch() -> None:
     assert "astro_engine.cli" not in source
     assert "astro_engine._capability" not in source
     assert "subprocess" not in source
+
+
+def test_public_exports_include_location_store() -> None:
+    import astro_host
+
+    for name in (
+        "FileLocationStore",
+        "MemoryLocationStore",
+        "SavedLocation",
+        "SavedLocationDraft",
+        "LocationState",
+        "canonicalize_location_id",
+        "normalize_label",
+        "default_locations_path",
+    ):
+        assert name in astro_host.__all__
+        assert hasattr(astro_host, name)
+    assert "_encode_document" not in astro_host.__all__

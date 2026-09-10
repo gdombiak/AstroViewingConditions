@@ -37,6 +37,42 @@ class TimeZoneCatalogError(RuntimeError):
         self.cause = cause
 
 
+class LocationStoreError(Exception):
+    """Base for location-store failures. ``code`` maps to the CLI error.code."""
+
+    def __init__(self, message: str, *, code: str = "host_failure") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class LocationStoreCorruptError(LocationStoreError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="corrupt")
+
+
+class LocationStoreUnsupportedSchemaError(LocationStoreError):
+    def __init__(self, message: str, *, schema_version: object) -> None:
+        super().__init__(message, code="unsupported_schema")
+        self.schema_version = schema_version
+
+
+class LocationConflictError(LocationStoreError):
+    def __init__(self, message: str, *, normalized: str) -> None:
+        super().__init__(message, code="conflict")
+        self.normalized = normalized
+
+
+class LocationNotFoundError(LocationStoreError):
+    def __init__(self, message: str, *, query: str) -> None:
+        super().__init__(message, code="not_found")
+        self.query = query
+
+
+class InvalidLocationError(LocationStoreError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="invalid_request")
+
+
 class EngineCallError(Exception):
     def __init__(
         self,

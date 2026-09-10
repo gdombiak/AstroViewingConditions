@@ -19,7 +19,13 @@ or duplicate engine scoring, window, active-night, or classification rules.
 ```python
 from datetime import datetime, timezone
 
-from astro_host import ConditionsRequest, ConditionsService, Location
+from astro_host import (
+    ConditionsRequest,
+    ConditionsService,
+    Location,
+    MemoryLocationStore,
+    SavedLocationDraft,
+)
 
 result = await ConditionsService().conditions(ConditionsRequest(
     location=Location(latitude=34.05, longitude=-118.24),
@@ -33,6 +39,33 @@ Open-Meteo for the same coordinates. The longitude-derived fixed offset is
 diagnostic only and cannot authorize calendar-sensitive engine calls. Missing
 required twilight boundaries, including the first-slice polar case, produce a
 structured `unavailable` result rather than invented boundaries.
+
+Saved observing locations are a separate host-owned store. They are not the
+weather cache and are not conversation memory. Every saved site has a stable
+UUID, coordinates, and a mandatory authoritative IANA timezone. One location
+may be selected as the default. `ConditionsService` does not read this store;
+one-off requests still pass a `Location` explicitly.
+
+```python
+from astro_host import MemoryLocationStore, SavedLocationDraft
+
+store = MemoryLocationStore()
+home = store.save(SavedLocationDraft(
+    name="Home",
+    latitude=34.05,
+    longitude=-118.24,
+    time_zone="America/Los_Angeles",
+    aliases=("house",),
+))
+assert store.get_selected() == home
+```
+
+Durable reuse is composition: construct `FileLocationStore(path)` or invoke
+`agent.locations` so the CLI injects one. The default file is
+`$ASTRO_HOST_STATE_DIR/locations.json`, else `~/.astro-host/locations.json`.
+Pass `--locations-path` to override. Missing file is an empty first-run
+directory; any other unreadable or foreign-schema document is an error, not
+an empty list. Unknown v1 fields are preserved on rewrite.
 
 ## Weather lifecycle
 
@@ -74,13 +107,20 @@ Install the engine and host packages, or use the checkout launcher:
 
 ```sh
 apps/cli/astro-host agent.conditions --input request.json --pretty
+apps/cli/astro-host agent.locations --input locations.json --pretty
 ```
 
 Use `--input -` for stdin. Optional `--weather-cache-path` selects the durable
 weather JSON file; otherwise `$ASTRO_HOST_STATE_DIR/weather-cache.json` or
-`~/.astro-host/weather-cache.json`. The output is a deterministic JSON envelope.
+`~/.astro-host/weather-cache.json`. Optional `--locations-path` selects the
+saved-location file; otherwise `$ASTRO_HOST_STATE_DIR/locations.json` or
+`~/.astro-host/locations.json`. The two files are independent: `agent.conditions`
+does not open the location store, and `agent.locations` does not open the
+weather cache. The output is a deterministic JSON envelope.
 Complete, degraded, and unavailable domain results are successful envelopes;
 invalid caller input and unexpected host failures have distinct nonzero exits.
+A damaged locations file is `error.code=corrupt` or `unsupported_schema`, never
+an empty success list.
 
 Run tests from this directory with an environment containing the engine's dev
 dependencies:

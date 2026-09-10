@@ -30,7 +30,7 @@ def resolve_timezone(
     attempts: list[TimeZoneAttempt] = []
     issues: list[HostIssue] = []
     hint = location.time_zone_hint
-    valid_hint, hint_reason = _validate_iana(hint, TimeZoneSource.LOCATION_HINT)
+    valid_hint, hint_reason = validate_iana(hint, TimeZoneSource.LOCATION_HINT)
     if hint is None:
         attempts.append(TimeZoneAttempt(
             TimeZoneSource.LOCATION_HINT, None, TimeZoneAttemptState.NOT_AVAILABLE
@@ -63,7 +63,7 @@ def resolve_timezone(
             details={"candidate": hint},
         ))
 
-    valid_provider, provider_reason = _validate_iana(
+    valid_provider, provider_reason = validate_iana(
         provider_identifier, TimeZoneSource.WEATHER_PROVIDER
     )
     if provider_identifier is None:
@@ -168,7 +168,7 @@ def _round_half_away_from_zero(value: float) -> int:
     return int(math.copysign(math.floor(abs(value) + 0.5), value))
 
 
-def _validate_iana(
+def validate_iana(
     candidate: str | None, source: TimeZoneSource
 ) -> tuple[bool, str | None]:
     if not candidate:
