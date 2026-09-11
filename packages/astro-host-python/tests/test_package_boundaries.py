@@ -91,3 +91,29 @@ def test_public_exports_include_equipment_store() -> None:
     ).read_text(encoding="utf-8")
     assert "match_equipment" not in session
     assert "filter_recommendations" not in session
+
+
+def test_public_exports_include_recommendations() -> None:
+    import astro_host
+
+    for name in (
+        "RecommendationService",
+        "RecommendationEngine",
+        "RecommendationsResult",
+        "HostRecommendationsRequest",
+        "MinimumFit",
+    ):
+        assert name in astro_host.__all__
+        assert hasattr(astro_host, name)
+    source = (
+        Path(__file__).resolve().parents[1] / "src" / "astro_host" / "recommendations.py"
+    ).read_text(encoding="utf-8")
+    assert "_project_hourly_ratings" not in source
+    assert "_project_moon_observation" not in source
+    assert "from astro_engine" not in source
+    assert "_PLANET_IDS" not in source
+    engine = (
+        Path(__file__).resolve().parents[1] / "src" / "astro_host" / "engine.py"
+    ).read_text(encoding="utf-8")
+    assert "_CATALOG_TYPES" not in engine
+    assert "self.recorded" not in engine

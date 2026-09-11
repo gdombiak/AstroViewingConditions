@@ -16,8 +16,11 @@ from typing import Any, Mapping, Sequence, TextIO
 from astro_host.conditions import ConditionsService
 from astro_host.equipment import FileEquipmentStore, EquipmentStore, default_equipment_path
 from astro_host.equipment_session import EquipmentSessionService
+from astro_host.engine import RecommendationEngine
 from astro_host.errors import (
+    EngineCallError,
     EquipmentStoreError,
+    HostInvariantError,
     InvalidProviderTimezoneError,
     InvalidRequestError,
     LocationStoreError,
@@ -35,9 +38,11 @@ from astro_host.models import (
     EquipmentType,
     EquipmentWriteResult,
     HostConditionsRequest,
+    HostRecommendationsRequest,
     InlineEquipmentDraft,
     Location,
     LocationSource,
+    MinimumFit,
     PlaceCandidate,
     PlaceConfirmRequest,
     SavedEquipment,
@@ -45,6 +50,7 @@ from astro_host.models import (
     SavedLocationDraft,
 )
 from astro_host.places import ObservingLocationService
+from astro_host.recommendations import DEFAULT_MINIMUM_FIT, RecommendationService
 from astro_host.providers.open_meteo_geocoding import OpenMeteoPlaceResolver
 from astro_host.providers.place import PlaceResolver
 from astro_host.weather_cache_file import FileWeatherCache, default_weather_cache_path
@@ -140,7 +146,13 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="astro-host")
     parser.add_argument(
         "operation",
-        choices=["agent.conditions", "agent.locations", "agent.places", "agent.equipment"],
+        choices=[
+            "agent.conditions",
+            "agent.locations",
+            "agent.places",
+            "agent.equipment",
+            "agent.recommendations",
+        ],
     )
     parser.add_argument("--input", required=True, dest="input_path")
     parser.add_argument("--pretty", action="store_true")
@@ -201,6 +213,7 @@ def main(
     store: LocationStore | None = None,
     resolver: PlaceResolver | None = None,
     equipment_store: EquipmentStore | None = None,
+    recommendation_engine: RecommendationEngine | None = None,
     stdout: TextIO = sys.stdout,
     stderr: TextIO = sys.stderr,
 ) -> int:
@@ -218,6 +231,16 @@ def main(
     if args.operation == "agent.equipment":
         return _main_equipment(
             args, store=equipment_store, stdout=stdout, stderr=stderr
+        )
+    if args.operation == "agent.recommendations":
+        return _main_recommendations(
+            args,
+            service=service,
+            store=store,
+            equipment_store=equipment_store,
+            recommendation_engine=recommendation_engine,
+            stdout=stdout,
+            stderr=stderr,
         )
     return _main_conditions(
         args, service=service, store=store, stdout=stdout, stderr=stderr
@@ -317,6 +340,102 @@ def _main_conditions(
         _write_json({
             "ok": False,
             "operation": "agent.conditions",
+            "error": {"code": "host_failure", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+
+
+def _main_recommendations(
+    args: argparse.Namespace,
+    *,
+    service: ConditionsService | None,
+    store: LocationStore | None,
+    equipment_store: EquipmentStore | None,
+    recommendation_engine: RecommendationEngine | None,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> int:
+    try:
+        document = _read_json(args.input_path)
+        host_request = parse_recommendations_request(document)
+        location, location_source = _compose_conditions_location(
+            args, host_request.location, store
+        )
+        if equipment_store is None:
+            equipment_store = build_default_equipment_store(args)
+        active = EquipmentSessionService(equipment_store).active(host_request.equipment)
+        if service is None:
+            service = build_default_service(args)
+        result = asyncio.run(
+            RecommendationService(
+                service, engine=recommendation_engine
+            ).recommend(
+                location=location,
+                location_source=location_source,
+                reference_time=host_request.reference_time,
+                observing_date=host_request.observing_date,
+                force_refresh=host_request.force_refresh,
+                equipment=active,
+                minimum_fit=host_request.minimum_fit or DEFAULT_MINIMUM_FIT,
+            )
+        )
+        _write_json({
+            "ok": True,
+            "operation": "agent.recommendations",
+            "result": _json_value(result),
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_OK
+    except (InvalidRequestError, json.JSONDecodeError, OSError) as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.recommendations",
+            "error": {"code": "invalid_request", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST
+    except LocationStoreError as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.recommendations",
+            "error": {"code": exc.code, "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST if exc.code == "invalid_request" else EXIT_FAILURE
+    except EquipmentStoreError as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.recommendations",
+            "error": {"code": exc.code, "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST if exc.code == "invalid_request" else EXIT_FAILURE
+    except EngineCallError as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.recommendations",
+            "error": {
+                "code": "engine_failure",
+                "message": exc.message,
+                "details": {
+                    "capability": exc.capability,
+                    "engine_code": exc.code,
+                },
+            },
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+    except HostInvariantError as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.recommendations",
+            "error": {
+                "code": exc.code,
+                "message": str(exc),
+                "details": exc.details,
+            },
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+    except Exception as exc:
+        print(f"astro-host: {exc}", file=stderr)
+        _write_json({
+            "ok": False,
+            "operation": "agent.recommendations",
             "error": {"code": "host_failure", "message": str(exc)},
         }, pretty=args.pretty, stream=stdout)
         return EXIT_FAILURE
@@ -978,6 +1097,47 @@ def parse_conditions_request(document: object) -> HostConditionsRequest:
         reference_time=reference_time,
         observing_date=observing_date,
         force_refresh=force_refresh,
+    )
+
+
+_RECOMMENDATIONS_KEYS = frozenset({
+    "location",
+    "reference_time",
+    "observing_date",
+    "force_refresh",
+    "equipment",
+    "minimum_fit",
+})
+_MINIMUM_FIT_VALUES = frozenset(item.value for item in MinimumFit)
+
+
+def parse_recommendations_request(document: object) -> HostRecommendationsRequest:
+    if not isinstance(document, Mapping) or set(document) - _RECOMMENDATIONS_KEYS:
+        raise InvalidRequestError("request must be an object with known fields")
+    base = {
+        key: document[key]
+        for key in ("location", "reference_time", "observing_date", "force_refresh")
+        if key in document
+    }
+    conditions = parse_conditions_request(base)
+    equipment = None
+    if "equipment" in document:
+        equipment = _parse_equipment_override(document["equipment"])
+    minimum_fit = None
+    if "minimum_fit" in document:
+        raw = document["minimum_fit"]
+        if not isinstance(raw, str) or raw not in _MINIMUM_FIT_VALUES:
+            raise InvalidRequestError(
+                "minimum_fit must be any, challengingOrBetter, goodOrBetter, or excellentOnly"
+            )
+        minimum_fit = MinimumFit(raw)
+    return HostRecommendationsRequest(
+        location=conditions.location,
+        reference_time=conditions.reference_time,
+        observing_date=conditions.observing_date,
+        force_refresh=conditions.force_refresh,
+        equipment=equipment,
+        minimum_fit=minimum_fit,
     )
 
 

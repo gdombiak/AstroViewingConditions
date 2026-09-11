@@ -1,6 +1,7 @@
 """Public typed API for Astro host composition."""
 
 from astro_host.conditions import ConditionsService
+from astro_host.engine import RecommendationEngine
 from astro_host.equipment import (
     EquipmentStore,
     FileEquipmentStore,
@@ -46,6 +47,7 @@ from astro_host.models import (
     EquipmentSelectionMode,
     EquipmentState,
     HostConditionsRequest,
+    HostRecommendationsRequest,
     InlineEquipmentDraft,
     Location,
     LocationSource,
@@ -56,10 +58,14 @@ from astro_host.models import (
     EquipmentType,
     SavedEquipment,
     SavedEquipmentDraft,
+    MinimumFit,
+    RecommendationRow,
+    RecommendationsResult,
     SavedLocation,
     SavedLocationDraft,
 )
 from astro_host.places import ObservingLocationService
+from astro_host.recommendations import RecommendationService
 
 __all__ = [
     "ActiveEquipment",
@@ -83,6 +89,7 @@ __all__ = [
     "FileEquipmentStore",
     "FileLocationStore",
     "HostConditionsRequest",
+    "HostRecommendationsRequest",
     "InlineEquipmentDraft",
     "InvalidEquipmentError",
     "InvalidLocationError",
@@ -99,8 +106,13 @@ __all__ = [
     "LocationStoreUnsupportedSchemaError",
     "MemoryEquipmentStore",
     "MemoryLocationStore",
+    "MinimumFit",
     "NoSelectedLocationError",
     "ObservingLocationService",
+    "RecommendationEngine",
+    "RecommendationRow",
+    "RecommendationService",
+    "RecommendationsResult",
     "PlaceCandidate",
     "PlaceConfirmRequest",
     "PlaceProviderError",

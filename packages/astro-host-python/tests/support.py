@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, time, timedelta, timezone
 
+from astro_host.engine import RecommendationEngine
 from astro_host.errors import WeatherProviderError
 from astro_host.models import (
     ActiveNightResolution,
@@ -85,6 +86,17 @@ class FakeProvider:
                 state, messages, 0 if self.empty else query.forecast_days * 24
             ),
         )
+
+
+class RecordingRecommendationEngine(RecommendationEngine):
+    """Test-only observer. Production RecommendationEngine has no call history."""
+
+    def __init__(self) -> None:
+        self.recorded: list[tuple[str, dict[str, object]]] = []
+
+    def _invoke(self, capability, payload, fn):
+        self.recorded.append((capability, payload))
+        return super()._invoke(capability, payload, fn)
 
 
 class FakeEngine:

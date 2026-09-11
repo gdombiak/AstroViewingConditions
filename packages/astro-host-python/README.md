@@ -1,9 +1,11 @@
 # astro-host (Python)
 
 `astro-host` is the Python-only orchestration layer above `astro-engine`. Its
-first operation, `agent.conditions`, turns a location and an aware reference
-instant into typed weather, Sun/Moon, observing-night, Night Conditions,
-best-window, cloud-timing, and optional Observing Quality facts.
+operations include `agent.conditions`, which turns a location and an aware
+reference instant into typed weather, Sun/Moon, observing-night, Night
+Conditions, best-window, cloud-timing, and optional Observing Quality facts;
+and `agent.recommendations`, which answers “what should I observe tonight?”
+from those same night facts plus H12 equipment.
 
 The dependency direction is one-way:
 
@@ -116,6 +118,36 @@ an empty inventory. Unknown v1 fields are preserved on rewrite. An explicit
 `get_active` equipment override never mutates the store. Override `mode` is
 `all_saved` or `naked_eye_only` only; exclusive one-off use is `id` or `query`.
 
+`agent.recommendations` reuses `ConditionsService.conditions` once for the same
+location/night, then composes Moon, Venus/Mars/Jupiter/Saturn, and the 29
+deep-sky catalog objects through existing engine capabilities. Mixed ranking is
+`targets.compose_recommendations` with production limit 100. Equipment filtering
+sees that whole pool, then the host slices the dashboard five. Omitted
+`minimum_fit` is production `any`: selected equipment annotates `equipment_fit`
+and does not change membership. Explicit `challengingOrBetter` / `goodOrBetter`
+/ `excellentOnly` are echoed unchanged. The host does not rank, match, or
+resolve requirements itself.
+
+```python
+from datetime import datetime, timezone
+
+from astro_host import (
+    ConditionsService,
+    Location,
+    LocationSource,
+    MemoryEquipmentStore,
+    RecommendationService,
+    compose_active,
+)
+
+result = await RecommendationService(ConditionsService()).recommend(
+    location=Location(latitude=34.05, longitude=-118.24),
+    location_source=LocationSource.EXPLICIT_OVERRIDE,
+    reference_time=datetime.now(timezone.utc).replace(microsecond=0),
+    equipment=compose_active(MemoryEquipmentStore().load()),
+)
+```
+
 ## Weather lifecycle
 
 The normal fresh-cache TTL is exactly 3600 seconds, matching the current
@@ -159,6 +191,7 @@ apps/cli/astro-host agent.conditions --input request.json --pretty
 apps/cli/astro-host agent.locations --input locations.json --pretty
 apps/cli/astro-host agent.places --input places.json --pretty
 apps/cli/astro-host agent.equipment --input equipment.json --pretty
+apps/cli/astro-host agent.recommendations --input request.json --pretty
 ```
 
 Use `--input -` for stdin. Optional `--weather-cache-path` selects the durable
@@ -172,7 +205,11 @@ does not open the weather cache or equipment store, `agent.equipment` does not
 open locations or weather, and `agent.places` does not open any of them.
 `agent.conditions` opens the location store only when `location` is omitted, to
 read the selected saved site. An explicit `location` object does not open the
-store. The output is a deterministic JSON envelope.
+store. `agent.recommendations` uses the same location rule, always opens the
+equipment store for `get_active` projection, and shares one `ConditionsService`
+(one weather acquisition) with `agent.conditions`. Compose remaps by index into
+the mixed catalog array; filter remaps by index into compose survivors. The
+output is a deterministic JSON envelope.
 Complete, degraded, and unavailable domain results are successful envelopes;
 invalid caller input and unexpected host failures have distinct nonzero exits.
 A damaged locations file is `error.code=corrupt` or `unsupported_schema`, never

@@ -11,19 +11,33 @@ from pathlib import Path
 from typing import Mapping, Sequence
 
 from astro_engine.astronomy import evaluate_astronomy
+from astro_engine.catalog import catalog_deep_sky
 from astro_engine.cloud_timing import classify_cloud_timing
+from astro_engine.compose_recommendations import compose_recommendations
 from astro_engine.contracts import ContractsRootError, engine_semver
+from astro_engine.deep_sky_observation import evaluate_deep_sky_observation
+from astro_engine.equipment import match_equipment
 from astro_engine.errors import ValidationError
+from astro_engine.filter_recommendations_by_equipment import (
+    filter_recommendations_by_equipment,
+)
 from astro_engine.light_pollution import LightPollutionArtifact, LightPollutionArtifactError
+from astro_engine.moon_observation import evaluate_moon_observation
+from astro_engine.moon_recommendation import recommend_moon
 from astro_engine.night_conditions import analyze_night_conditions
 from astro_engine.night_forecast import derive_night_forecast_window
 from astro_engine.observing_night import resolve_active_observing_night
 from astro_engine.observing_quality import ObservingQualityError, assess_observing_quality
 from astro_engine.observing_window import select_observing_window
+from astro_engine.planet_observation import evaluate_planet_observation
+from astro_engine.planet_recommendation import recommend_planet
+from astro_engine.target_metadata import evaluate_metadata
+from astro_engine.targets import recommend_targets
 from astro_engine.weather import decode_weather
 
 from astro_host.errors import EngineCallError
 from astro_host.models import (
+    ActiveEquipment,
     ActiveNightResolution,
     HourlyRating,
     HourlyWeather,
@@ -33,6 +47,7 @@ from astro_host.models import (
     ObservingQualityFacts,
     SunEventsFacts,
     TimeWindow,
+    VisibilityWindow,
 )
 
 
@@ -293,6 +308,351 @@ class ConditionsEngine:
             )
         except Exception as exc:
             raise _engine_error(capability, exc) from exc
+
+
+CATALOG_OBJECT_TYPES = {
+    "galaxy": "galaxy",
+    "diffuse_nebula": "diffuseNebula",
+    "globular_cluster": "globularCluster",
+    "open_cluster": "openCluster",
+    "double_star": "doubleStar",
+    "planetary_nebula": "planetaryNebula",
+}
+
+_MOON_BUNDLE_KEYS = (
+    "phase",
+    "illumination",
+    "rise",
+    "set",
+    "always_up",
+    "always_down",
+    "samples",
+)
+
+
+class RecommendationEngine:
+    """Sole JSON-projection owner for recommendation capabilities."""
+
+    def catalog_object_type(self, snake: str) -> str:
+        try:
+            return CATALOG_OBJECT_TYPES[snake]
+        except KeyError as exc:
+            raise EngineCallError(
+                "targets.moon_sensitivity",
+                "validation",
+                f"unknown catalog object_type: {snake}",
+            ) from exc
+
+    def solar_system(self) -> list[dict[str, object]]:
+        result = self._invoke(
+            "catalog.solar_system",
+            {},
+            lambda payload: evaluate_metadata("catalog.solar_system", payload),
+        )
+        return list(result["entries"])
+
+    def deep_sky(self) -> list[dict[str, object]]:
+        result = self._invoke(
+            "catalog.deep_sky",
+            {},
+            catalog_deep_sky,
+        )
+        return list(result["entries"])
+
+    def moon_sensitivity(
+        self, object_type: str, surface_brightness: float | None
+    ) -> float:
+        mapped = self.catalog_object_type(object_type)
+        payload = {
+            "object_type": mapped,
+            "surface_brightness": surface_brightness,
+        }
+        result = self._invoke(
+            "targets.moon_sensitivity",
+            payload,
+            lambda body: evaluate_metadata("targets.moon_sensitivity", body),
+        )
+        return float(result["sensitivity"])
+
+    def moon_info(self, location: Location, instant: datetime) -> dict[str, object]:
+        payload = {
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "time": _utc_z(instant),
+        }
+        result = self._invoke(
+            "astronomy.moon_info",
+            payload,
+            lambda body: evaluate_astronomy("astronomy.moon_info", body),
+        )
+        return {
+            "altitude": result["altitude"],
+            "illumination": result["illumination"],
+        }
+
+    def moon_observation(
+        self, location: Location, night_start: datetime, night_end: datetime
+    ) -> dict[str, object]:
+        payload = {
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "night_start": _utc_z(night_start),
+            "night_end": _utc_z(night_end),
+        }
+        return self._invoke(
+            "astronomy.moon_observation", payload, evaluate_moon_observation
+        )
+
+    def moon_recommendation(
+        self,
+        observation: Mapping[str, object],
+        *,
+        night_start: datetime,
+        night_end: datetime,
+        cloud_cover_score: object,
+        hourly_ratings: Sequence[HourlyRating],
+        best_window: TimeWindow | None,
+    ) -> dict[str, object] | None:
+        payload = {
+            "night_start": _utc_z(night_start),
+            "night_end": _utc_z(night_end),
+            "best_window": (
+                None
+                if best_window is None
+                else {"start": _utc_z(best_window.start), "end": _utc_z(best_window.end)}
+            ),
+            "moon": {key: observation[key] for key in _MOON_BUNDLE_KEYS},
+            "cloud_cover_score": cloud_cover_score,
+            "hourly_ratings": _hourly_scores(hourly_ratings),
+        }
+        result = self._invoke(
+            "targets.moon_recommendation", payload, recommend_moon
+        )
+        raw = result["recommendation"]
+        return None if raw is None else dict(raw)
+
+    def planet_observation(
+        self,
+        target_id: str,
+        location: Location,
+        night_start: datetime,
+        night_end: datetime,
+    ) -> dict[str, object] | None:
+        payload = {
+            "target_id": target_id,
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "night_start": _utc_z(night_start),
+            "night_end": _utc_z(night_end),
+        }
+        result = self._invoke(
+            "astronomy.planet_observation", payload, evaluate_planet_observation
+        )
+        observation = result["observation"]
+        return None if observation is None else dict(observation)
+
+    def planet_recommendation(
+        self,
+        target_id: str,
+        samples: Sequence[Mapping[str, object]],
+        *,
+        night_start: datetime,
+        night_end: datetime,
+        cloud_cover_score: object,
+        hourly_ratings: Sequence[HourlyRating],
+    ) -> dict[str, object] | None:
+        payload = {
+            "target_id": target_id,
+            "night_start": _utc_z(night_start),
+            "night_end": _utc_z(night_end),
+            "samples": list(samples),
+            "cloud_cover_score": cloud_cover_score,
+            "hourly_ratings": _hourly_scores(hourly_ratings),
+        }
+        result = self._invoke(
+            "targets.planet_recommendation", payload, recommend_planet
+        )
+        raw = result["recommendation"]
+        return None if raw is None else dict(raw)
+
+    def deep_sky_windows(
+        self,
+        target_id: str,
+        location: Location,
+        night_start: datetime,
+        night_end: datetime,
+    ) -> list[dict[str, object]]:
+        payload = {
+            "target_id": target_id,
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "night_start": _utc_z(night_start),
+            "night_end": _utc_z(night_end),
+        }
+        result = self._invoke(
+            "targets.deep_sky_windows",
+            payload,
+            lambda body: evaluate_deep_sky_observation(
+                "targets.deep_sky_windows", body
+            ),
+        )
+        return list(result["windows"])
+
+    def recommend_deep_sky(
+        self,
+        *,
+        darkness_start: datetime,
+        darkness_end: datetime,
+        moon: Mapping[str, object],
+        cloud_cover_score: object,
+        hourly_ratings: Sequence[HourlyRating],
+        rows: Sequence[tuple[str, str, float, float, datetime, datetime, datetime, float]],
+    ) -> dict[str, int]:
+        candidates = [
+            {
+                "key": key,
+                "type": "deepSky",
+                "object_type": self.catalog_object_type(object_type),
+                "difficulty": difficulty,
+                "sensitivity": sensitivity,
+                "window": {
+                    "start": _utc_z(start),
+                    "end": _utc_z(end),
+                    "best_time": _utc_z(best_time),
+                    "max_altitude": max_altitude,
+                },
+            }
+            for (
+                key,
+                object_type,
+                difficulty,
+                sensitivity,
+                start,
+                end,
+                best_time,
+                max_altitude,
+            ) in rows
+        ]
+        payload = {
+            "darkness_window": {
+                "start": _utc_z(darkness_start),
+                "end": _utc_z(darkness_end),
+            },
+            "moon": {"altitude": moon["altitude"], "illumination": moon["illumination"]},
+            "hourly_ratings": _hourly_scores(hourly_ratings),
+            "cloud_cover_score": cloud_cover_score,
+            "candidates": candidates,
+            "limit": len(candidates),
+        }
+        result = self._invoke(
+            "targets.recommend", payload, recommend_targets
+        )
+        return {
+            str(row["key"]): int(row["score"])
+            for row in result["recommendations"]
+        }
+
+    def compose_recommendations(
+        self,
+        rows: Sequence[tuple[str, int, datetime]],
+        *,
+        limit: int,
+    ) -> list[int]:
+        payload = {
+            "candidates": [
+                {
+                    "key": key,
+                    "score": score,
+                    "best_time": _utc_z(best_time),
+                }
+                for key, score, best_time in rows
+            ],
+            "limit": limit,
+        }
+        result = self._invoke(
+            "targets.compose_recommendations", payload, compose_recommendations
+        )
+        return [int(row["index"]) for row in result["selected"]]
+
+    def requirements(self, target_id: str) -> dict[str, object]:
+        payload = {"id": target_id}
+        result = self._invoke(
+            "targets.requirements",
+            payload,
+            lambda body: evaluate_metadata("targets.requirements", body),
+        )
+        return {
+            "requirement": dict(result["requirement"]),
+            "is_planet": bool(result["is_planet"]),
+        }
+
+    def filter_recommendations(
+        self,
+        rows: Sequence[tuple[str, bool, Mapping[str, object]]],
+        equipment: ActiveEquipment,
+        minimum_fit: str,
+    ) -> list[int]:
+        payload = {
+            "candidates": [
+                {
+                    "key": key,
+                    "is_planet": is_planet,
+                    "requirement": dict(requirement),
+                }
+                for key, is_planet, requirement in rows
+            ],
+            "capabilities": [dict(row) for row in equipment.engine_capabilities()],
+            "has_saved_inventory": equipment.engine_has_saved_inventory,
+            "minimum_fit": minimum_fit,
+        }
+        result = self._invoke(
+            "targets.filter_recommendations_by_equipment",
+            payload,
+            filter_recommendations_by_equipment,
+        )
+        return [int(row["index"]) for row in result["selected"]]
+
+    def match_equipment(
+        self,
+        requirement: Mapping[str, object],
+        is_planet: bool,
+        equipment: ActiveEquipment,
+    ) -> dict[str, object] | None:
+        payload = {
+            "requirement": dict(requirement),
+            "is_planet": is_planet,
+            "capabilities": [dict(row) for row in equipment.engine_capabilities()],
+        }
+        result = self._invoke("equipment.match", payload, match_equipment)
+        raw = result["match"]
+        return None if raw is None else dict(raw)
+
+    def parse_visibility_window(self, raw: Mapping[str, object]) -> VisibilityWindow:
+        return VisibilityWindow(
+            start=_instant(raw["start"]),
+            end=_instant(raw["end"]),
+            best_time=_instant(raw["best_time"]),
+            max_altitude=float(raw["max_altitude"]),
+            direction=None if raw.get("direction") is None else str(raw["direction"]),
+            azimuth=(
+                None if raw.get("azimuth") is None else float(raw["azimuth"])
+            ),
+        )
+
+    def _invoke(
+        self,
+        capability: str,
+        payload: dict[str, object],
+        fn,
+    ) -> dict[str, object]:
+        try:
+            return fn(payload)
+        except Exception as exc:
+            raise _engine_error(capability, exc) from exc
+
+
+def _hourly_scores(ratings: Sequence[HourlyRating]) -> list[dict[str, object]]:
+    return [{"time": _utc_z(row.time), "score": row.score} for row in ratings]
 
 
 def _engine_error(capability: str, error: Exception) -> EngineCallError:

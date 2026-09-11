@@ -145,3 +145,14 @@ class EquipmentNotFoundError(EquipmentStoreError):
 class InvalidEquipmentError(EquipmentStoreError):
     def __init__(self, message: str) -> None:
         super().__init__(message, code="invalid_request")
+
+
+class HostInvariantError(Exception):
+    """A complete/degraded conditions result is missing facts ranking requires."""
+
+    def __init__(
+        self, message: str, *, details: Mapping[str, object] | None = None
+    ) -> None:
+        super().__init__(message)
+        self.code = "host_failure"
+        self.details = dict(details or {})

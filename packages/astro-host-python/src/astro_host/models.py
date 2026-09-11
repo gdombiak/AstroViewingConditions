@@ -602,3 +602,120 @@ class EquipmentOverride:
     query: str | None = None
     mode: EquipmentOverrideMode | None = None
     inline: InlineEquipmentDraft | None = None
+
+
+class MinimumFit(str, Enum):
+    ANY = "any"
+    CHALLENGING_OR_BETTER = "challengingOrBetter"
+    GOOD_OR_BETTER = "goodOrBetter"
+    EXCELLENT_ONLY = "excellentOnly"
+
+
+class RecommendationFamily(str, Enum):
+    MOON = "moon"
+    PLANET = "planet"
+    DEEP_SKY = "deep_sky"
+
+
+class ScoringPath(str, Enum):
+    MOON_RECOMMENDATION = "moon_recommendation"
+    PLANET_RECOMMENDATION = "planet_recommendation"
+    TARGETS_RECOMMEND = "targets.recommend"
+
+
+class EmptyReason(str, Enum):
+    NO_VISIBLE_CANDIDATES = "no_visible_candidates"
+    NONE_MEET_EQUIPMENT_FIT = "none_meet_equipment_fit"
+
+
+@dataclass(frozen=True)
+class HostRecommendationsRequest:
+    """CLI/library input. location=None means 'use selected'."""
+
+    location: Location | None
+    reference_time: datetime
+    observing_date: date | None = None
+    force_refresh: bool = False
+    equipment: EquipmentOverride | None = None
+    minimum_fit: MinimumFit | None = None
+
+
+@dataclass(frozen=True)
+class VisibilityWindow:
+    start: datetime
+    end: datetime
+    best_time: datetime
+    max_altitude: float
+    direction: str | None = None
+    azimuth: float | None = None
+
+
+@dataclass(frozen=True)
+class EquipmentFitFacts:
+    key: str
+    level: str
+    reason: str
+    mode: str
+    other_suitable_keys: tuple[str, ...]
+    identity: EquipmentCapabilityIdentity | None = None
+
+
+@dataclass(frozen=True)
+class RecommendationRow:
+    rank: int
+    key: str
+    target_id: str
+    name: str
+    family: RecommendationFamily
+    type: str
+    object_type: str | None
+    score: int
+    scoring_path: ScoringPath
+    visibility_window: VisibilityWindow
+    reasons: tuple[str, ...]
+    requirement: Mapping[str, object]
+    is_planet: bool
+    equipment_fit: EquipmentFitFacts | None
+
+
+@dataclass(frozen=True)
+class RecommendationNightContext:
+    selection: str | None
+    state: str | None
+    observing_date: date | None
+    observing_day_start: datetime | None
+    astronomical_night_start: datetime | None
+    astronomical_night_end: datetime | None
+    best_window: TimeWindow | None
+    public_score: int | None
+    rating: str | None
+    cloud_timing: str | None
+
+
+@dataclass(frozen=True)
+class RecommendationEquipmentContext:
+    source: EquipmentSource
+    override_applied: bool
+    has_saved_inventory: bool
+    engine_has_saved_inventory: bool
+    selection: EquipmentSelection
+    identities: tuple[EquipmentCapabilityIdentity, ...]
+    minimum_fit: MinimumFit
+
+
+@dataclass(frozen=True)
+class RecommendationsResult:
+    status: ConditionsStatus
+    generated_at: datetime
+    engine_semver: str
+    location_source: LocationSource
+    location: Location
+    night: RecommendationNightContext
+    observing_quality_score: int | None
+    equipment: RecommendationEquipmentContext
+    pool_size: int
+    filtered_size: int
+    empty_reason: EmptyReason | None
+    recommendations: tuple[RecommendationRow, ...]
+    issues: tuple[HostIssue, ...]
+    acquisition: AcquisitionReport

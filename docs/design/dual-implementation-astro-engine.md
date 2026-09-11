@@ -1483,11 +1483,11 @@ package because they are runtime resources the host loads (see
 [packaging](#packaging-version-and-resource-loading)); keeping them there is what
 makes package-safe loading and the installed-wheel test meaningful.
 
-#### Implemented host slices (2026-09-08 and 2026-09-09, H11–H12 2026-09-10)
+#### Implemented host slices (2026-09-08 and 2026-09-09, H11–H13 2026-09-10)
 
-Host slices through H12 have landed: the `agent.conditions` composition (2026-09-08),
-the durable weather cache (2026-09-09), saved-location persistence (2026-09-09), place resolution plus selected-location composition (2026-09-10), and saved-equipment persistence plus `get_active` (H12, 2026-09-10). `packages/astro-host-python` now exists
-with composed `agent.conditions` / `agent.locations` / `agent.places` / `agent.equipment`, and `apps/cli/astro-host`
+Host slices through H13 have landed: the `agent.conditions` composition (2026-09-08),
+the durable weather cache (2026-09-09), saved-location persistence (2026-09-09), place resolution plus selected-location composition (2026-09-10), saved-equipment persistence plus `get_active` (H12, 2026-09-10), and target-recommendation host composition (H13, 2026-09-10). `packages/astro-host-python` now exists
+with composed `agent.conditions` / `agent.locations` / `agent.places` / `agent.equipment` / `agent.recommendations`, and `apps/cli/astro-host`
 is its thin JSON launcher. The roadmap summary of what these closed is under
 [Completed (host-side)](#required-implementation-order-after-the-audit). The
 implemented path is coordinates plus an aware reference instant → Open-Meteo →
@@ -2630,12 +2630,22 @@ readable.
   mutate the store; override `mode=item` is `invalid_request`. Path policy:
   `--equipment-path`, else `$ASTRO_HOST_STATE_DIR/equipment.json`, else
   `~/.astro-host/equipment.json`. LLM conversational memory is never this store.
-  Target-recommendation composition is still later host work.
+  Target-recommendation composition is later host work (H13).
+
+- **H13 — Target-recommendation host composition.** `agent.recommendations`
+  awaits `ConditionsService.conditions` once, walks Moon / Venus / Mars /
+  Jupiter / Saturn / 29 DSOs, ranks with `targets.compose_recommendations`
+  `limit=100`, filters that whole pool with H12 `engine_has_saved_inventory`,
+  then slices the dashboard five. Omitted `minimum_fit` is production `any`.
+  `RecommendationEngine` is the only recommendation JSON projection owner.
+  Compose/filter remap by index. Family JSON `null` omits that member;
+  recommendation-capability `EngineCallError` is CLI `engine_failure`.
 
 H5–H9 describe a **provider** cache, not user state. H10 is the first user-state
 store. H11 closes place resolution, confirmation, and selected-location wiring
 for `agent.conditions`. H12 closes selected-equipment persistence and the
-engine-shaped `get_active` seam. Row 14 still has user profile, observation
+engine-shaped `get_active` seam. H13 closes “what should I observe tonight?”
+over those facts. Row 14 still has user profile, observation
 history, and Bot onboarding dialogue copy.
 
 **Still outstanding.** Each item below carries a **provisional** engine/host
@@ -2678,14 +2688,14 @@ identity, which is exactly why the host had to resolve it.
 
 Also outstanding and unambiguously host: `agent.batch_compare` and
 `agent.forecast_horizon`; the rest of durable user state (profile, observation
-history); target-recommendation host composition over the
-existing engine facts (`targets.*` and `equipment.match`) now that H12 can
-supply authoritative equipment capabilities; the LLM/online-search
+history); the LLM/online-search
 boundary and Bot-facing presentation; and Bot skill packaging, VM installation
-and real end-to-end acceptance testing. Composed `agent.conditions` is **no
+and real end-to-end acceptance testing. Composed `agent.conditions` and
+`agent.recommendations` are **no
 longer outstanding** — see **Completed (host-side)** above. Precipitation remains
 an engine-side `weather.decode` domain extension, deliberately deferred rather
-than reclassified.
+than reclassified. The next product checkpoint is a real Astronomer Bot against
+`astro-host`, not further host product-answer accumulation.
 
 **Correction to the earlier cloud-timing reading (2026-09-06).**
 `NightQualityAnalysisRules.cloudTiming` is not a presentation concern that
@@ -3468,7 +3478,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 
 - satisfy the pre-1.0 business-logic compatibility gate below;
 - CLI/Bot-host composition — all of it lives in `packages/astro-host-python`, is delivered through `apps/cli`, and is never added to the engine CLI's public 1.0 allow-list (see [Python host boundary](#11-python-host-boundary-packagesastro-host-python)). `agent.conditions` **has landed**, together with its Open-Meteo acquisition, authoritative timezone resolution, bounded retry/backoff and durable weather cache (see [implemented host slices](#implemented-host-slices-2026-09-08-and-2026-09-09)). Still to build: `agent.batch_compare`, the longer `agent.forecast_horizon` where needed, and the broader provider lifecycle/batching/concurrency those flows require;
-- host composition of the remaining product answers over facts the engine already owns: target recommendation (`targets.*` plus `equipment.match`), the three-night / forecast-horizon outlook and its presentation, Best Nearby / location-set orchestration, and the semantic advisory prose built on `night_conditions.classify_cloud_timing`;
+- host composition of the remaining product answers over facts the engine already owns: the three-night / forecast-horizon outlook and its presentation, Best Nearby / location-set orchestration, and the semantic advisory prose built on `night_conditions.classify_cloud_timing` (`agent.recommendations` **has landed** as H13);
 - Bot onboarding dialogue copy over the H11 place-resolution / confirmation / selected-location host operations; one-off overrides already do not mutate the store;
 - **Persistent user state / observing history:** conversation/chat history may provide recent-dialogue references, temporary intent, and continuity, but is not the authoritative observation log. The Bot host owns durable user profile/preferences where appropriate (owned equipment, preferred observing locations, favorite target types, and other personalization facts) and a structured, persistent, user-confirmed observation history. Observation records support create, query, correct, and delete, and capture target identity plus observation time/date, location, equipment, notes, rating, or metadata when known. Do not persist an observation merely because a target was recommended or discussed; obtain explicit or clear user confirmation when a statement is ambiguous. Astro Engine remains stateless with respect to individual user history and authoritative for objective astronomy facts and target ranking. Grok may use host state to personalize its recommendation reasoning, but must visibly distinguish that advice from the underlying objective Astro ranking and must not silently fold history into deterministic scoring. This roadmap does not dictate a future persistence implementation.
 - production Grok Bot VM installation/deployment and real end-to-end Astronomer Bot integration;
