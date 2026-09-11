@@ -74,6 +74,48 @@ Pass `--locations-path` to override. Missing file is an empty first-run
 directory; any other unreadable or foreign-schema document is an error, not
 an empty list. Unknown v1 fields are preserved on rewrite.
 
+Saved equipment is a third host-owned store, independent of locations and the
+weather cache. Each item is a whole instrument — binoculars, visual telescope,
+or smart/EAA telescope — with a stable UUID, unique name/aliases, and
+user-entered aperture (plus magnification for binoculars). Naked Eye is a
+built-in capability and is never stored. Selection is a three-way policy:
+`all_saved` (default; Naked Eye plus every saved item), `item` (exactly one
+saved instrument), or `naked_eye_only`. The first save does not exclusive-select.
+`naked_eye_only` stays in force if inventory is deleted; it activates equipment
+filtering even when no instruments are saved. Empty `all_saved` means no
+equipment on file and does not filter.
+
+```python
+from astro_host import (
+    EquipmentApertureUnit,
+    EquipmentType,
+    MemoryEquipmentStore,
+    SavedEquipmentDraft,
+    compose_active,
+)
+
+store = MemoryEquipmentStore()
+store.save(SavedEquipmentDraft(
+    name="S30 Pro",
+    type=EquipmentType.SMART_TELESCOPE,
+    aperture=30,
+    aperture_unit=EquipmentApertureUnit.MILLIMETERS,
+    aliases=("Seestar",),
+))
+active = compose_active(store.load())
+assert active.source.value == "all_saved"
+assert active.engine_has_saved_inventory is True
+```
+
+Durable reuse is composition: construct `FileEquipmentStore(path)` or invoke
+`agent.equipment` so the CLI injects one. The default file is
+`$ASTRO_HOST_STATE_DIR/equipment.json`, else `~/.astro-host/equipment.json`.
+Pass `--equipment-path` to override. Missing file is an empty first-run
+directory; any other unreadable or foreign-schema document is an error, not
+an empty inventory. Unknown v1 fields are preserved on rewrite. An explicit
+`get_active` equipment override never mutates the store. Override `mode` is
+`all_saved` or `naked_eye_only` only; exclusive one-off use is `id` or `query`.
+
 ## Weather lifecycle
 
 The normal fresh-cache TTL is exactly 3600 seconds, matching the current
@@ -116,17 +158,21 @@ Install the engine and host packages, or use the checkout launcher:
 apps/cli/astro-host agent.conditions --input request.json --pretty
 apps/cli/astro-host agent.locations --input locations.json --pretty
 apps/cli/astro-host agent.places --input places.json --pretty
+apps/cli/astro-host agent.equipment --input equipment.json --pretty
 ```
 
 Use `--input -` for stdin. Optional `--weather-cache-path` selects the durable
 weather JSON file; otherwise `$ASTRO_HOST_STATE_DIR/weather-cache.json` or
 `~/.astro-host/weather-cache.json`. Optional `--locations-path` selects the
 saved-location file; otherwise `$ASTRO_HOST_STATE_DIR/locations.json` or
-`~/.astro-host/locations.json`. The two files are independent: `agent.locations` does not open the
-weather cache, and `agent.places` does not open either store. `agent.conditions`
-opens the location store only when `location` is omitted, to read the selected
-saved site. An explicit `location` object does not open the store. The output is
-a deterministic JSON envelope.
+`~/.astro-host/locations.json`. Optional `--equipment-path` selects the
+saved-equipment file; otherwise `$ASTRO_HOST_STATE_DIR/equipment.json` or
+`~/.astro-host/equipment.json`. The three files are independent: `agent.locations`
+does not open the weather cache or equipment store, `agent.equipment` does not
+open locations or weather, and `agent.places` does not open any of them.
+`agent.conditions` opens the location store only when `location` is omitted, to
+read the selected saved site. An explicit `location` object does not open the
+store. The output is a deterministic JSON envelope.
 Complete, degraded, and unavailable domain results are successful envelopes;
 invalid caller input and unexpected host failures have distinct nonzero exits.
 A damaged locations file is `error.code=corrupt` or `unsupported_schema`, never

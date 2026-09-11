@@ -109,3 +109,39 @@ class EngineCallError(Exception):
         self.code = code
         self.message = message
         self.details = dict(details or {})
+
+
+class EquipmentStoreError(Exception):
+    """Base for equipment-store failures. ``code`` maps to the CLI error.code."""
+
+    def __init__(self, message: str, *, code: str = "host_failure") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class EquipmentStoreCorruptError(EquipmentStoreError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="corrupt")
+
+
+class EquipmentStoreUnsupportedSchemaError(EquipmentStoreError):
+    def __init__(self, message: str, *, schema_version: object) -> None:
+        super().__init__(message, code="unsupported_schema")
+        self.schema_version = schema_version
+
+
+class EquipmentConflictError(EquipmentStoreError):
+    def __init__(self, message: str, *, normalized: str) -> None:
+        super().__init__(message, code="conflict")
+        self.normalized = normalized
+
+
+class EquipmentNotFoundError(EquipmentStoreError):
+    def __init__(self, message: str, *, query: str) -> None:
+        super().__init__(message, code="not_found")
+        self.query = query
+
+
+class InvalidEquipmentError(EquipmentStoreError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="invalid_request")

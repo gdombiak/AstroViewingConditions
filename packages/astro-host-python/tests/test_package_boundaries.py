@@ -60,3 +60,34 @@ def test_public_exports_include_location_store() -> None:
         assert name in astro_host.__all__
         assert hasattr(astro_host, name)
     assert "_encode_document" not in astro_host.__all__
+
+
+def test_public_exports_include_equipment_store() -> None:
+    import astro_host
+
+    for name in (
+        "FileEquipmentStore",
+        "MemoryEquipmentStore",
+        "SavedEquipment",
+        "SavedEquipmentDraft",
+        "InlineEquipmentDraft",
+        "EquipmentOverrideMode",
+        "EquipmentState",
+        "EquipmentSessionService",
+        "compose_active",
+        "canonicalize_equipment_id",
+        "default_equipment_path",
+    ):
+        assert name in astro_host.__all__
+        assert hasattr(astro_host, name)
+    assert "_encode_document" not in astro_host.__all__
+    source = (
+        Path(__file__).resolve().parents[1] / "src" / "astro_host" / "equipment.py"
+    ).read_text(encoding="utf-8")
+    assert "match_equipment" not in source
+    assert "filter_recommendations_by_equipment" not in source
+    session = (
+        Path(__file__).resolve().parents[1] / "src" / "astro_host" / "equipment_session.py"
+    ).read_text(encoding="utf-8")
+    assert "match_equipment" not in session
+    assert "filter_recommendations" not in session

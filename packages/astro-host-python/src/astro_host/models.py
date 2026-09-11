@@ -453,3 +453,152 @@ class ConditionsResult:
     observing_quality: ObservingQualityFacts | None
     issues: tuple[HostIssue, ...]
     engine_semver: str
+
+
+class EquipmentType(str, Enum):
+    BINOCULARS = "binoculars"
+    VISUAL_TELESCOPE = "visualTelescope"
+    SMART_TELESCOPE = "smartTelescope"
+
+
+class EquipmentApertureUnit(str, Enum):
+    MILLIMETERS = "millimeters"
+    INCHES = "inches"
+
+
+class EquipmentSelectionMode(str, Enum):
+    ALL_SAVED = "all_saved"
+    ITEM = "item"
+    NAKED_EYE_ONLY = "naked_eye_only"
+
+
+class EquipmentOverrideMode(str, Enum):
+    """Override ``mode`` only. ``item`` is not valid here; use id or query."""
+
+    ALL_SAVED = "all_saved"
+    NAKED_EYE_ONLY = "naked_eye_only"
+
+
+class EquipmentSource(str, Enum):
+    EXPLICIT_OVERRIDE = "explicit_override"
+    SELECTED_ITEM = "selected_item"
+    ALL_SAVED = "all_saved"
+    NAKED_EYE_ONLY = "naked_eye_only"
+    NO_EQUIPMENT = "no_equipment"
+
+
+@dataclass(frozen=True)
+class EquipmentCapabilityFact:
+    """Engine-legal capability row: exactly the four match/filter fields."""
+
+    key: str
+    type: str
+    aperture_mm: float | None
+    magnification: float | None
+
+    def as_engine_row(self) -> dict[str, object]:
+        return {
+            "key": self.key,
+            "type": self.type,
+            "aperture_mm": self.aperture_mm,
+            "magnification": self.magnification,
+        }
+
+
+@dataclass(frozen=True)
+class EquipmentCapabilityIdentity:
+    """Display identity for a capability row. Not engine input."""
+
+    key: str
+    id: str | None
+    name: str | None
+
+
+@dataclass(frozen=True)
+class SavedEquipment:
+    id: str
+    name: str
+    type: EquipmentType
+    aperture_mm: float
+    aperture_unit: EquipmentApertureUnit
+    aliases: tuple[str, ...] = ()
+    magnification: float | None = None
+
+    def to_capability_fact(self) -> EquipmentCapabilityFact:
+        return EquipmentCapabilityFact(
+            key="1" + self.id,
+            type=self.type.value,
+            aperture_mm=self.aperture_mm,
+            magnification=self.magnification,
+        )
+
+    def to_capability_identity(self) -> EquipmentCapabilityIdentity:
+        return EquipmentCapabilityIdentity(
+            key="1" + self.id,
+            id=self.id,
+            name=self.name,
+        )
+
+
+@dataclass(frozen=True)
+class SavedEquipmentDraft:
+    name: str
+    type: EquipmentType
+    aperture: float
+    aperture_unit: EquipmentApertureUnit
+    aliases: tuple[str, ...] = ()
+    magnification: float | None = None
+    id: str | None = None
+
+
+@dataclass(frozen=True)
+class InlineEquipmentDraft:
+    """One-off capability facts. No identity, name, or aliases."""
+
+    type: EquipmentType
+    aperture: float
+    aperture_unit: EquipmentApertureUnit
+    magnification: float | None = None
+
+
+@dataclass(frozen=True)
+class EquipmentSelection:
+    mode: EquipmentSelectionMode
+    id: str | None = None
+
+
+@dataclass(frozen=True)
+class EquipmentState:
+    items: tuple[SavedEquipment, ...]
+    selection: EquipmentSelection
+
+
+@dataclass(frozen=True)
+class EquipmentWriteResult:
+    state: EquipmentState
+    item: SavedEquipment | None = None
+
+
+@dataclass(frozen=True)
+class ActiveEquipment:
+    source: EquipmentSource
+    has_saved_inventory: bool
+    engine_has_saved_inventory: bool
+    selection: EquipmentSelection
+    capabilities: tuple[EquipmentCapabilityFact, ...]
+    identities: tuple[EquipmentCapabilityIdentity, ...]
+    override_applied: bool
+
+    def engine_capabilities(self) -> tuple[dict[str, object], ...]:
+        """Authoritative rows for equipment.match / filter_recommendations."""
+        return tuple(row.as_engine_row() for row in self.capabilities)
+
+
+@dataclass(frozen=True)
+class EquipmentOverride:
+    """Exactly one of id, query, mode, inline. ``mode`` cannot be item."""
+
+    id: str | None = None
+    query: str | None = None
+    mode: EquipmentOverrideMode | None = None
+    inline: InlineEquipmentDraft | None = None
