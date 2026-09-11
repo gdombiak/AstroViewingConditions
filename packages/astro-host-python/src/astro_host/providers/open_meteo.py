@@ -59,6 +59,14 @@ _OPTIONAL_HOURLY_FIELDS = (
 _TRANSIENT_STATUSES = frozenset({500, 502, 503, 504})
 
 
+class OpenMeteoRequestError(Exception):
+    """Shared HTTP/retry failure. Adapters wrap this in their provider error."""
+
+    def __init__(self, failure: ProviderFailure) -> None:
+        super().__init__(failure.message)
+        self.failure = failure
+
+
 @dataclass(frozen=True)
 class OpenMeteoPolicy:
     timeout_seconds: float = 15.0
@@ -128,52 +136,17 @@ class OpenMeteoWeatherProvider:
         if query.past_days:
             params["past_days"] = str(query.past_days)
 
-        last_transport_error: HttpTransportError | None = None
-        for attempt in range(1, self._policy.max_attempts + 1):
-            try:
-                response = await self._transport.get(
-                    OPEN_METEO_FORECAST_URL,
-                    params=params,
-                    timeout_seconds=self._policy.timeout_seconds,
-                )
-            except HttpTransportError as exc:
-                last_transport_error = exc
-                if attempt < self._policy.max_attempts:
-                    await self._sleep(self._backoff(attempt))
-                    continue
-                raise WeatherProviderError(ProviderFailure(
-                    kind=exc.kind,
-                    message=str(exc),
-                    attempt_count=attempt,
-                )) from exc
-
-            if response.status == 200:
-                return self._decode_response(response, attempt)
-
-            if response.status == 429:
-                if attempt < self._policy.max_attempts:
-                    await self._sleep(self._retry_after(response, attempt))
-                    continue
-                raise self._status_error(
-                    ProviderFailureKind.RATE_LIMITED, response.status, attempt
-                )
-
-            if response.status in _TRANSIENT_STATUSES:
-                if attempt < self._policy.max_attempts:
-                    await self._sleep(self._backoff(attempt))
-                    continue
-                raise self._status_error(
-                    ProviderFailureKind.HTTP, response.status, attempt
-                )
-
-            raise self._status_error(ProviderFailureKind.HTTP, response.status, attempt)
-
-        assert last_transport_error is not None  # loop is guaranteed to return or raise
-        raise WeatherProviderError(ProviderFailure(
-            kind=last_transport_error.kind,
-            message=str(last_transport_error),
-            attempt_count=self._policy.max_attempts,
-        ))
+        try:
+            response, attempt = await open_meteo_get(
+                self._transport,
+                OPEN_METEO_FORECAST_URL,
+                params,
+                self._policy,
+                self._sleep,
+            )
+        except OpenMeteoRequestError as exc:
+            raise WeatherProviderError(exc.failure) from exc
+        return self._decode_response(response, attempt)
 
     def _decode_response(
         self, response: HttpResponse, attempt: int
@@ -212,31 +185,91 @@ class OpenMeteoWeatherProvider:
             diagnostics=audit_open_meteo_payload(payload),
         )
 
-    def _status_error(
-        self, kind: ProviderFailureKind, status: int, attempt: int
-    ) -> WeatherProviderError:
-        return WeatherProviderError(ProviderFailure(
-            kind=kind,
-            message=f"Open-Meteo returned HTTP {status}",
-            attempt_count=attempt,
-            status_code=status,
-        ))
-
-    def _backoff(self, attempt: int) -> float:
-        return self._policy.backoff_seconds * (2 ** (attempt - 1))
-
-    def _retry_after(self, response: HttpResponse, attempt: int) -> float:
-        raw = next(
-            (value for key, value in response.headers.items() if key.lower() == "retry-after"),
-            None,
-        )
+async def open_meteo_get(
+    transport: HttpTransport,
+    url: str,
+    params: Mapping[str, str],
+    policy: OpenMeteoPolicy,
+    sleeper: Callable[[float], Awaitable[None]],
+) -> tuple[HttpResponse, int]:
+    """GET with the shared Open-Meteo retry policy. Returns only HTTP 200."""
+    last_transport_error: HttpTransportError | None = None
+    for attempt in range(1, policy.max_attempts + 1):
         try:
-            parsed = float(raw) if raw is not None else math.nan
-        except ValueError:
-            parsed = math.nan
-        if math.isfinite(parsed) and parsed >= 0:
-            return min(parsed, self._policy.max_retry_after_seconds)
-        return self._backoff(attempt)
+            response = await transport.get(
+                url,
+                params=params,
+                timeout_seconds=policy.timeout_seconds,
+            )
+        except HttpTransportError as exc:
+            last_transport_error = exc
+            if attempt < policy.max_attempts:
+                await sleeper(_backoff(policy, attempt))
+                continue
+            raise OpenMeteoRequestError(ProviderFailure(
+                kind=exc.kind,
+                message=str(exc),
+                attempt_count=attempt,
+            )) from exc
+
+        if response.status == 200:
+            return response, attempt
+
+        if response.status == 429:
+            if attempt < policy.max_attempts:
+                await sleeper(_retry_after(policy, response, attempt))
+                continue
+            raise _status_error(
+                ProviderFailureKind.RATE_LIMITED, response.status, attempt
+            )
+
+        if response.status in _TRANSIENT_STATUSES:
+            if attempt < policy.max_attempts:
+                await sleeper(_backoff(policy, attempt))
+                continue
+            raise _status_error(
+                ProviderFailureKind.HTTP, response.status, attempt
+            )
+
+        raise _status_error(ProviderFailureKind.HTTP, response.status, attempt)
+
+    assert last_transport_error is not None
+    raise OpenMeteoRequestError(ProviderFailure(
+        kind=last_transport_error.kind,
+        message=str(last_transport_error),
+        attempt_count=policy.max_attempts,
+    ))
+
+
+def _status_error(
+    kind: ProviderFailureKind, status: int, attempt: int
+) -> OpenMeteoRequestError:
+    return OpenMeteoRequestError(ProviderFailure(
+        kind=kind,
+        message=f"Open-Meteo returned HTTP {status}",
+        attempt_count=attempt,
+        status_code=status,
+    ))
+
+
+def _backoff(policy: OpenMeteoPolicy, attempt: int) -> float:
+    return policy.backoff_seconds * (2 ** (attempt - 1))
+
+
+def _retry_after(
+    policy: OpenMeteoPolicy, response: HttpResponse, attempt: int
+) -> float:
+    raw = next(
+        (value for key, value in response.headers.items() if key.lower() == "retry-after"),
+        None,
+    )
+    try:
+        parsed = float(raw) if raw is not None else math.nan
+    except ValueError:
+        parsed = math.nan
+    if math.isfinite(parsed) and parsed >= 0:
+        return min(parsed, policy.max_retry_after_seconds)
+    return _backoff(policy, attempt)
 
 
 def audit_open_meteo_payload(payload: Mapping[str, object]) -> PayloadDiagnostics:

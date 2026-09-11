@@ -73,6 +73,29 @@ class InvalidLocationError(LocationStoreError):
         super().__init__(message, code="invalid_request")
 
 
+class NoSelectedLocationError(LocationStoreError):
+    def __init__(self, message: str = "no selected location") -> None:
+        super().__init__(message, code="no_selected_location")
+
+
+class InvalidPlaceCandidateError(LocationStoreError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="invalid_request")
+
+
+class PlaceProviderError(Exception):
+    def __init__(self, failure: ProviderFailure) -> None:
+        super().__init__(failure.message)
+        self.failure = failure
+        self.code = "provider_failure"
+
+
+class InvalidProviderTimezoneError(Exception):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.code = "invalid_provider_timezone"
+
+
 class EngineCallError(Exception):
     def __init__(
         self,

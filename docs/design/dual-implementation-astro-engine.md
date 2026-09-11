@@ -1483,10 +1483,10 @@ package because they are runtime resources the host loads (see
 [packaging](#packaging-version-and-resource-loading)); keeping them there is what
 makes package-safe loading and the installed-wheel test meaningful.
 
-#### Implemented host slices (2026-09-08 and 2026-09-09)
+#### Implemented host slices (2026-09-08 and 2026-09-09, H11 2026-09-10)
 
-Three host slices have landed: the `agent.conditions` composition (2026-09-08),
-the durable weather cache (2026-09-09), and saved-location persistence (2026-09-09). `packages/astro-host-python` now exists
+Four host slices have landed: the `agent.conditions` composition (2026-09-08),
+the durable weather cache (2026-09-09), saved-location persistence (2026-09-09), and place resolution plus selected-location composition (2026-09-10). `packages/astro-host-python` now exists
 with the first composed operation, `agent.conditions`, and `apps/cli/astro-host`
 is its thin JSON launcher. The roadmap summary of what these closed is under
 [Completed (host-side)](#required-implementation-order-after-the-audit). The
@@ -1528,10 +1528,13 @@ state: `LocationStore` (`MemoryLocationStore` / `FileLocationStore`) and CLI
 identity, mandatory catalogue+ZoneInfo IANA timezone, unique names/aliases, and
 a fail-closed `locations.json` (`schema_version` 1). Path policy:
 `--locations-path`, else `$ASTRO_HOST_STATE_DIR/locations.json`, else
-`~/.astro-host/locations.json`. `ConditionsService` is not wired to this store;
-one-off `agent.conditions` requests still pass a `Location` explicitly.
-Geocoding, onboarding dialogue, and selected-location composition into
-`agent.conditions` remain outstanding.
+`~/.astro-host/locations.json`. `ConditionsService` still takes an explicit
+`Location`. A fourth host slice (2026-09-10) adds Open-Meteo place resolution
+(`agent.places`), confirmation-save of the shown candidate without re-geocoding
+(`agent.locations` `save_from_candidate`), and selected-location composition
+into `agent.conditions` when `location` is omitted. An explicit location remains
+a one-off override and does not open or mutate the store. Onboarding dialogue
+copy remains Bot-owned.
 
 For fresh-process active-night requests after local midnight, the initial
 current-day payload may cause `observing_night.resolve_active` to return
@@ -2604,10 +2607,21 @@ readable.
   `ConditionsService` stays unwired. Path policy: `--locations-path`, else
   `$ASTRO_HOST_STATE_DIR/locations.json`, else `~/.astro-host/locations.json`.
   LLM conversational memory is never this store.
+- **H11 — Place resolution, confirmation, and selected-location composition.**
+  Host-owned `PlaceResolver` / `OpenMeteoPlaceResolver` and
+  `ObservingLocationService` above `ConditionsService`. `agent.places` resolves
+  a human query to ranked candidates with mandatory-for-use IANA timezone;
+  ambiguous queries never auto-pick. `agent.locations` `save_from_candidate`
+  persists the shown candidate without re-geocoding. `agent.conditions` uses the
+  selected saved location when `location` is omitted, and an explicit location
+  override never opens or mutates the store. Core geocoding-row failures are
+  `INVALID_PAYLOAD`; bad timezone keeps the candidate unusable; bad optional
+  metadata becomes `None`.
 
 H5–H9 describe a **provider** cache, not user state. H10 is the first user-state
-store; it does not satisfy the rest of row 14 (place resolution, onboarding,
-confirmation, selected equipment, user profile, observation history).
+store. H11 closes place resolution, confirmation, and selected-location wiring
+for `agent.conditions`. Row 14 still has selected equipment, user profile, and
+observation history.
 
 **Still outstanding.** Each item below carries a **provisional** engine/host
 reading. Provisional is load-bearing: with the
@@ -2638,7 +2652,7 @@ not determinism alone.
 | 11 | Best Nearby / location-set composition | **Host orchestration over engine facts** | Deterministic core **complete**: `location.grid` owns candidate geometry, `location.compare` owns ranking, `location.compose_scores` owns scorable-set filtering, coherent OQ/Night Conditions mode, public-score assignment and center deltas, and `location.filter_recommendable` owns suitability eligibility. What remains is host-shaped orchestration: forecast-horizon planning, provider fan-out/batching and concurrency bounds, LP-provider lifecycle, CLGeocoder suitability checks, suitability bands and the 40-check cap, caches, cancellation/progress, final `topN`, and presentation. Per-location timezone acquisition, bounded retry/backoff and the weather cache already exist (H3–H9) and must be **reused** by that fan-out rather than re-invented. A Bot must consume the engine capabilities and must not re-derive these deterministic decisions. |
 | 12 | Multi-night forecast eligibility and composition | **Host orchestration over existing engine facts** | Archaeology **complete**. Production's only cross-night astronomy decision is the exact Three-Night Outlook: `observing_night.compose_outlook` owns the represented observing dates and structural availability, and `observing_night.select_best` owns best-night eligibility, score comparison and earliest-wins ties. Dashboard future dates and Best Nearby are single-night flows and provide no arbitrary-N production oracle. What remains is host-shaped: provider-specific horizon planning (the `agent.forecast_horizon` fetch), multi-day acquisition, scoring orchestration, lifecycle/freshness, and presentation in `astro-host`. The single-night acquisition path, timezone resolution and weather cache (H1–H9) are the pieces to extend, not to duplicate. No new engine capability is required for production compatibility. |
 | 13 | Provider availability, failure and staleness semantics | **Host-shaped; verify the edges** — **partly implemented** | Classification unchanged: fetch, retry, cache lifecycle, error surfaces and freshness/lifecycle policy are host-shaped by the [placement criterion](#placement-criterion-portable-semantics-vs-operational-policy) — deterministic TTLs and bounds do not become engine logic. Swift has its own freshness and failure policies; the Python host simply carries no parity obligation to match them. **Landed** for the single-location `agent.conditions` Open-Meteo flow: bounded retry/backoff, the 3600-second fresh TTL, configurable stale-on-error with visible `degraded` provenance, distinguishable provider attempt/failure/payload states, and the durable multi-location snapshot cache (H2, H4–H9). **Outstanding** is the same policy for the flows that do not exist yet — forecast-horizon, Best Nearby fan-out and batch compare — including provider lifecycle, batching and concurrency bounds. The standing edge-case rule still applies: a state distinction that changes an **Astro-domain answer** (for example what counts as a complete night) is engine-shaped and must not be re-derived per host. |
-| 14 | Bot host persistence: saved locations and the selected/default location, place resolution/onboarding/aliases/confirmation, selected equipment, user state, observation history | **Host** | Settled by design. The engine is stateless with respect to user history and does not own saved-location persistence. Grok may personalize over host state but must not fold it into deterministic scoring. **H10 has landed** the saved-location directory, selected/default FK, aliases, mandatory IANA, and `agent.locations` CLI. Still outstanding: place resolution/onboarding/confirmation, `ConditionsService` selected-location wiring, selected equipment, user profile, and observation history. `FileWeatherCache` (H7–H9) remains a provider snapshot cache, not this store. |
+| 14 | Bot host persistence: saved locations and the selected/default location, place resolution/onboarding/aliases/confirmation, selected equipment, user state, observation history | **Host** | Settled by design. The engine is stateless with respect to user history and does not own saved-location persistence. Grok may personalize over host state but must not fold it into deterministic scoring. **H10 has landed** the saved-location directory, selected/default FK, aliases, mandatory IANA, and `agent.locations` CLI. **H11 has landed** place resolution, confirmation-save of the shown candidate, and selected-location composition into `agent.conditions`. Still outstanding: selected equipment, user profile, observation history, and Bot onboarding dialogue copy. `FileWeatherCache` (H7–H9) remains a provider snapshot cache, not this store. |
 | 15 | Full pre-1.0 business-logic compatibility / release gate | **Both** | Not a work location. It is the gate that closes only when every row above has an explicit, tested owner. |
 
 Authoritative IANA timezone **acquisition** previously appeared here as its own
@@ -2648,8 +2662,7 @@ consumes an authoritative zone, and production's own fallback yields no IANA
 identity, which is exactly why the host had to resolve it.
 
 Also outstanding and unambiguously host: `agent.batch_compare` and
-`agent.forecast_horizon`; place resolution, onboarding, confirmation, and
-`ConditionsService` selected-location wiring; selected equipment and
+`agent.forecast_horizon`; selected equipment and
 the rest of durable user state; target-recommendation host composition over the
 existing engine facts (`targets.*` and `equipment.match`); the LLM/online-search
 boundary and Bot-facing presentation; and Bot skill packaging, VM installation
@@ -3423,8 +3436,8 @@ composition; host composition of the canonical three-night outlook, and the
 three-night outlook's own host/presentation composition — labels, verdict and
 status prose, score tone, the widget cache, persistence, freshness and timeline
 scheduling; `agent.forecast_horizon` and `agent.batch_compare`, with the provider
-lifecycle, batching and concurrency those broader flows need; place resolution,
-onboarding, confirmation, `ConditionsService` selected-location wiring,
+lifecycle, batching and concurrency those broader flows need; Bot onboarding
+dialogue copy over the H11 place-resolution operations;
 selected equipment and user state; the
 LLM/online-search boundary and Bot-facing presentation; Bot skill packaging, VM
 installation and real end-to-end acceptance testing; or precipitation in the
@@ -3439,7 +3452,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 - satisfy the pre-1.0 business-logic compatibility gate below;
 - CLI/Bot-host composition — all of it lives in `packages/astro-host-python`, is delivered through `apps/cli`, and is never added to the engine CLI's public 1.0 allow-list (see [Python host boundary](#11-python-host-boundary-packagesastro-host-python)). `agent.conditions` **has landed**, together with its Open-Meteo acquisition, authoritative timezone resolution, bounded retry/backoff and durable weather cache (see [implemented host slices](#implemented-host-slices-2026-09-08-and-2026-09-09)). Still to build: `agent.batch_compare`, the longer `agent.forecast_horizon` where needed, and the broader provider lifecycle/batching/concurrency those flows require;
 - host composition of the remaining product answers over facts the engine already owns: target recommendation (`targets.*` plus `equipment.match`), the three-night / forecast-horizon outlook and its presentation, Best Nearby / location-set orchestration, and the semantic advisory prose built on `night_conditions.classify_cloud_timing`;
-- Bot place resolution, onboarding, confirmation, geocoding, and wiring the H10 selected location into `agent.conditions`; one-off overrides already do not mutate the store;
+- Bot onboarding dialogue copy over the H11 place-resolution / confirmation / selected-location host operations; one-off overrides already do not mutate the store;
 - **Persistent user state / observing history:** conversation/chat history may provide recent-dialogue references, temporary intent, and continuity, but is not the authoritative observation log. The Bot host owns durable user profile/preferences where appropriate (owned equipment, preferred observing locations, favorite target types, and other personalization facts) and a structured, persistent, user-confirmed observation history. Observation records support create, query, correct, and delete, and capture target identity plus observation time/date, location, equipment, notes, rating, or metadata when known. Do not persist an observation merely because a target was recommended or discussed; obtain explicit or clear user confirmation when a statement is ambiguous. Astro Engine remains stateless with respect to individual user history and authoritative for objective astronomy facts and target ranking. Grok may use host state to personalize its recommendation reasoning, but must visibly distinguish that advice from the underlying objective Astro ranking and must not silently fold history into deterministic scoring. This roadmap does not dictate a future persistence implementation.
 - production Grok Bot VM installation/deployment and real end-to-end Astronomer Bot integration;
 - final release-readiness validation; and

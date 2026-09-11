@@ -84,6 +84,14 @@ def test_second_save_does_not_change_selection(store) -> None:
     assert store.get_selected().id == first.id
 
 
+def test_save_select_true_selects_among_existing(store) -> None:
+    store.save(home())
+    second = store.save(hood(), select=True)
+    assert store.get_selected() is not None
+    assert store.get_selected().id == second.id
+    assert {row.name for row in store.list()} == {"Home", "Hood"}
+
+
 def test_save_with_supplied_id_is_idempotent_replace(store) -> None:
     first = store.save(home(id=HOME_ID, aliases=("house",)))
     store.save(hood())

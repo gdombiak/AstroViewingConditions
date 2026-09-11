@@ -118,6 +118,90 @@ class LocationState:
     selected_location_id: str | None
 
 
+class PlaceResolutionStatus(str, Enum):
+    UNIQUE = "unique"
+    AMBIGUOUS = "ambiguous"
+    NOT_FOUND = "not_found"
+
+
+class LocationSource(str, Enum):
+    EXPLICIT_OVERRIDE = "explicit_override"
+    SELECTED_SAVED = "selected_saved"
+
+
+@dataclass(frozen=True)
+class PlaceProviderRecord:
+    """Wire-shaped row. Timezone is raw and unvalidated."""
+    provider_place_id: int | None
+    name: str
+    latitude: float
+    longitude: float
+    timezone: object = None
+    elevation_m: float | None = None
+    country: str | None = None
+    admin1: str | None = None
+    admin2: str | None = None
+    country_code: str | None = None
+    feature_code: str | None = None
+    population: int | None = None
+
+
+@dataclass(frozen=True)
+class PlaceProviderResult:
+    provider: str
+    records: tuple[PlaceProviderRecord, ...]
+    attempt_count: int
+
+
+@dataclass(frozen=True)
+class PlaceCandidate:
+    """Facts shown to the user. Confirm persists these, not a re-query."""
+    provider: str
+    provider_place_id: int | None
+    name: str
+    display_name: str
+    latitude: float
+    longitude: float
+    time_zone: str | None
+    usable: bool
+    unusable_reason: str | None
+    elevation_m: float | None
+    country: str | None
+    admin1: str | None
+    admin2: str | None
+    country_code: str | None
+    feature_code: str | None
+    population: int | None
+    rank: int
+
+
+@dataclass(frozen=True)
+class PlaceResolution:
+    status: PlaceResolutionStatus
+    query: str
+    candidates: tuple[PlaceCandidate, ...]
+    provider: str
+    attempt_count: int
+    attribution: Mapping[str, str]
+
+
+@dataclass(frozen=True)
+class PlaceConfirmRequest:
+    candidate: PlaceCandidate
+    name: str | None = None
+    aliases: tuple[str, ...] = ()
+    select: bool = False
+
+
+@dataclass(frozen=True)
+class HostConditionsRequest:
+    """CLI/library input. location=None means 'use selected'."""
+    location: Location | None
+    reference_time: datetime
+    observing_date: date | None = None
+    force_refresh: bool = False
+
+
 @dataclass(frozen=True)
 class ConditionsRequest:
     location: Location

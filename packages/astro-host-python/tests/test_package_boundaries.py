@@ -51,6 +51,8 @@ def test_public_exports_include_location_store() -> None:
         "SavedLocation",
         "SavedLocationDraft",
         "LocationState",
+        "ObservingLocationService",
+        "PlaceCandidate",
         "canonicalize_location_id",
         "normalize_label",
         "default_locations_path",

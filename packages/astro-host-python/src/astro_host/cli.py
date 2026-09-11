@@ -14,9 +14,25 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence, TextIO
 
 from astro_host.conditions import ConditionsService
-from astro_host.errors import InvalidRequestError, LocationStoreError
+from astro_host.errors import (
+    InvalidProviderTimezoneError,
+    InvalidRequestError,
+    LocationStoreError,
+    PlaceProviderError,
+)
 from astro_host.locations import FileLocationStore, LocationStore, default_locations_path
-from astro_host.models import ConditionsRequest, Location, SavedLocationDraft
+from astro_host.models import (
+    ConditionsRequest,
+    HostConditionsRequest,
+    Location,
+    LocationSource,
+    PlaceCandidate,
+    PlaceConfirmRequest,
+    SavedLocationDraft,
+)
+from astro_host.places import ObservingLocationService
+from astro_host.providers.open_meteo_geocoding import OpenMeteoPlaceResolver
+from astro_host.providers.place import PlaceResolver
 from astro_host.weather_cache_file import FileWeatherCache, default_weather_cache_path
 
 
@@ -28,6 +44,7 @@ EXIT_USAGE = 3
 _LOCATION_ACTIONS = frozenset({
     "list",
     "save",
+    "save_from_candidate",
     "get",
     "resolve",
     "select",
@@ -39,6 +56,28 @@ _ID_OR_QUERY_ACTIONS = frozenset({"get", "select", "delete"})
 _LOCATION_OBJECT_KEYS = frozenset({
     "name", "latitude", "longitude", "time_zone", "aliases", "elevation_m", "id",
 })
+_SAVE_FROM_CANDIDATE_KEYS = frozenset({
+    "action", "candidate", "name", "aliases", "select",
+})
+_CANDIDATE_KEYS = frozenset({
+    "provider",
+    "provider_place_id",
+    "name",
+    "display_name",
+    "latitude",
+    "longitude",
+    "time_zone",
+    "usable",
+    "unusable_reason",
+    "elevation_m",
+    "country",
+    "admin1",
+    "admin2",
+    "country_code",
+    "feature_code",
+    "population",
+    "rank",
+})
 
 
 @dataclass(frozen=True)
@@ -47,11 +86,15 @@ class LocationsRequest:
     location: SavedLocationDraft | None = None
     id: str | None = None
     query: str | None = None
+    confirm: PlaceConfirmRequest | None = None
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="astro-host")
-    parser.add_argument("operation", choices=["agent.conditions", "agent.locations"])
+    parser.add_argument(
+        "operation",
+        choices=["agent.conditions", "agent.locations", "agent.places"],
+    )
     parser.add_argument("--input", required=True, dest="input_path")
     parser.add_argument("--pretty", action="store_true")
     parser.add_argument("--atlas-path")
@@ -99,6 +142,7 @@ def main(
     *,
     service: ConditionsService | None = None,
     store: LocationStore | None = None,
+    resolver: PlaceResolver | None = None,
     stdout: TextIO = sys.stdout,
     stderr: TextIO = sys.stderr,
 ) -> int:
@@ -109,7 +153,13 @@ def main(
 
     if args.operation == "agent.locations":
         return _main_locations(args, store=store, stdout=stdout, stderr=stderr)
-    return _main_conditions(args, service=service, stdout=stdout, stderr=stderr)
+    if args.operation == "agent.places":
+        return _main_places(
+            args, resolver=resolver, stdout=stdout, stderr=stderr
+        )
+    return _main_conditions(
+        args, service=service, store=store, stdout=stdout, stderr=stderr
+    )
 
 
 def _main_locations(
@@ -159,19 +209,31 @@ def _main_conditions(
     args: argparse.Namespace,
     *,
     service: ConditionsService | None,
+    store: LocationStore | None,
     stdout: TextIO,
     stderr: TextIO,
 ) -> int:
     try:
         document = _read_json(args.input_path)
-        request = parse_conditions_request(document)
+        host_request = parse_conditions_request(document)
+        location, location_source = _compose_conditions_location(
+            args, host_request.location, store
+        )
+        request = ConditionsRequest(
+            location=location,
+            reference_time=host_request.reference_time,
+            observing_date=host_request.observing_date,
+            force_refresh=host_request.force_refresh,
+        )
         if service is None:
             service = build_default_service(args)
         result = asyncio.run(service.conditions(request))
+        payload = _json_value(result)
+        payload["location_source"] = location_source.value
         _write_json({
             "ok": True,
             "operation": "agent.conditions",
-            "result": _json_value(result),
+            "result": payload,
         }, pretty=args.pretty, stream=stdout)
         return EXIT_OK
     except (InvalidRequestError, json.JSONDecodeError, OSError) as exc:
@@ -181,6 +243,13 @@ def _main_conditions(
             "error": {"code": "invalid_request", "message": str(exc)},
         }, pretty=args.pretty, stream=stdout)
         return EXIT_INVALID_REQUEST
+    except LocationStoreError as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.conditions",
+            "error": {"code": exc.code, "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST if exc.code == "invalid_request" else EXIT_FAILURE
     except Exception as exc:
         print(f"astro-host: {exc}", file=stderr)
         _write_json({
@@ -189,6 +258,72 @@ def _main_conditions(
             "error": {"code": "host_failure", "message": str(exc)},
         }, pretty=args.pretty, stream=stdout)
         return EXIT_FAILURE
+
+
+def _main_places(
+    args: argparse.Namespace,
+    *,
+    resolver: PlaceResolver | None,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> int:
+    try:
+        document = _read_json(args.input_path)
+        query = parse_places_request(document)
+        if resolver is None:
+            resolver = OpenMeteoPlaceResolver()
+        resolution = asyncio.run(
+            ObservingLocationService(resolver=resolver).resolve_place(query)
+        )
+        payload = _json_value(resolution)
+        payload["action"] = "resolve"
+        _write_json({
+            "ok": True,
+            "operation": "agent.places",
+            "result": payload,
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_OK
+    except (InvalidRequestError, json.JSONDecodeError, OSError) as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.places",
+            "error": {"code": "invalid_request", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST
+    except PlaceProviderError as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.places",
+            "error": {"code": exc.code, "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+    except InvalidProviderTimezoneError as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.places",
+            "error": {"code": exc.code, "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+    except Exception as exc:
+        print(f"astro-host: {exc}", file=stderr)
+        _write_json({
+            "ok": False,
+            "operation": "agent.places",
+            "error": {"code": "host_failure", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+
+
+def _compose_conditions_location(
+    args: argparse.Namespace,
+    explicit: Location | None,
+    store: LocationStore | None,
+) -> tuple[Location, LocationSource]:
+    if explicit is not None:
+        return explicit, LocationSource.EXPLICIT_OVERRIDE
+    if store is None:
+        store = build_default_location_store(args)
+    return ObservingLocationService(store=store).location_for_conditions(None)
 
 
 def _dispatch_locations(store: LocationStore, request: LocationsRequest) -> dict[str, object]:
@@ -210,6 +345,15 @@ def _dispatch_locations(store: LocationStore, request: LocationsRequest) -> dict
     if action == "save":
         assert request.location is not None
         saved = store.save(request.location)
+        selected = store.get_selected()
+        return {
+            "action": action,
+            "location": saved,
+            "selected_location_id": None if selected is None else selected.id,
+        }
+    if action == "save_from_candidate":
+        assert request.confirm is not None
+        saved = ObservingLocationService(store=store).confirm_save(request.confirm)
         selected = store.get_selected()
         return {
             "action": action,
@@ -289,6 +433,13 @@ def parse_locations_request(document: object) -> LocationsRequest:
         if keys != {"action", "location"}:
             raise InvalidRequestError("request must be an object with known fields")
         return LocationsRequest(action=action, location=_parse_location_draft(document.get("location")))
+    if action == "save_from_candidate":
+        if "candidate" not in document or keys - _SAVE_FROM_CANDIDATE_KEYS:
+            raise InvalidRequestError("request must be an object with known fields")
+        return LocationsRequest(
+            action=action,
+            confirm=_parse_confirm_request(document),
+        )
     if action == "resolve":
         if keys != {"action", "query"}:
             raise InvalidRequestError("request must be an object with known fields")
@@ -364,25 +515,50 @@ def _required_query(value: object) -> str:
     return value
 
 
-def parse_conditions_request(document: object) -> ConditionsRequest:
+def parse_places_request(document: object) -> str:
+    if not isinstance(document, Mapping):
+        raise InvalidRequestError("request must be an object with known fields")
+    action = document.get("action")
+    if action != "resolve":
+        raise InvalidRequestError("action must be a supported agent.places action")
+    if set(document) != {"action", "query"}:
+        raise InvalidRequestError("request must be an object with known fields")
+    return _required_query(document.get("query"))
+
+
+def parse_conditions_request(document: object) -> HostConditionsRequest:
     if not isinstance(document, Mapping) or set(document) - {
         "location", "reference_time", "observing_date", "force_refresh"
     }:
         raise InvalidRequestError("request must be an object with known fields")
-    raw_location = document.get("location")
-    if not isinstance(raw_location, Mapping) or set(raw_location) - {
-        "latitude", "longitude", "name", "location_id", "elevation_m", "time_zone_hint"
-    }:
-        raise InvalidRequestError("location must be an object with known fields")
-    try:
-        if any(isinstance(raw_location[key], bool) for key in ("latitude", "longitude")):
-            raise TypeError
-        latitude = float(raw_location["latitude"])
-        longitude = float(raw_location["longitude"])
-    except (KeyError, OverflowError, TypeError, ValueError) as exc:
-        raise InvalidRequestError("location latitude and longitude are required numbers") from exc
-    if not math.isfinite(latitude) or not math.isfinite(longitude):
-        raise InvalidRequestError("location latitude and longitude must be finite")
+    location: Location | None
+    if "location" not in document:
+        location = None
+    else:
+        raw_location = document.get("location")
+        if raw_location is None:
+            raise InvalidRequestError("location must be an object with known fields")
+        if not isinstance(raw_location, Mapping) or set(raw_location) - {
+            "latitude", "longitude", "name", "location_id", "elevation_m", "time_zone_hint"
+        }:
+            raise InvalidRequestError("location must be an object with known fields")
+        try:
+            if any(isinstance(raw_location[key], bool) for key in ("latitude", "longitude")):
+                raise TypeError
+            latitude = float(raw_location["latitude"])
+            longitude = float(raw_location["longitude"])
+        except (KeyError, OverflowError, TypeError, ValueError) as exc:
+            raise InvalidRequestError("location latitude and longitude are required numbers") from exc
+        if not math.isfinite(latitude) or not math.isfinite(longitude):
+            raise InvalidRequestError("location latitude and longitude must be finite")
+        location = Location(
+            latitude=latitude,
+            longitude=longitude,
+            name=_optional_string(raw_location, "name"),
+            location_id=_optional_string(raw_location, "location_id"),
+            elevation_m=_optional_float(raw_location, "elevation_m"),
+            time_zone_hint=_optional_string(raw_location, "time_zone_hint"),
+        )
     reference = document.get("reference_time")
     if not isinstance(reference, str):
         raise InvalidRequestError("reference_time must be an ISO-8601 string")
@@ -398,19 +574,95 @@ def parse_conditions_request(document: object) -> ConditionsRequest:
     force_refresh = document.get("force_refresh", False)
     if not isinstance(force_refresh, bool):
         raise InvalidRequestError("force_refresh must be a boolean")
-    return ConditionsRequest(
-        location=Location(
-            latitude=latitude,
-            longitude=longitude,
-            name=_optional_string(raw_location, "name"),
-            location_id=_optional_string(raw_location, "location_id"),
-            elevation_m=_optional_float(raw_location, "elevation_m"),
-            time_zone_hint=_optional_string(raw_location, "time_zone_hint"),
-        ),
+    return HostConditionsRequest(
+        location=location,
         reference_time=reference_time,
         observing_date=observing_date,
         force_refresh=force_refresh,
     )
+
+
+def _parse_confirm_request(document: Mapping[str, object]) -> PlaceConfirmRequest:
+    name = document.get("name") if "name" in document else None
+    if name is not None and not isinstance(name, str):
+        raise InvalidRequestError("name must be a string")
+    aliases = ()
+    if "aliases" in document:
+        raw_aliases = document["aliases"]
+        if (
+            raw_aliases is None
+            or not isinstance(raw_aliases, list)
+            or any(not isinstance(item, str) for item in raw_aliases)
+        ):
+            raise InvalidRequestError("aliases must be an array of strings")
+        aliases = tuple(raw_aliases)
+    select = document.get("select", False)
+    if not isinstance(select, bool):
+        raise InvalidRequestError("select must be a boolean")
+    return PlaceConfirmRequest(
+        candidate=_parse_place_candidate(document.get("candidate")),
+        name=name,
+        aliases=aliases,
+        select=select,
+    )
+
+
+def _parse_place_candidate(value: object) -> PlaceCandidate:
+    if not isinstance(value, Mapping) or set(value) - _CANDIDATE_KEYS:
+        raise InvalidRequestError("candidate must be an object with known fields")
+    missing = {"provider", "name", "latitude", "longitude", "time_zone", "usable"} - set(value)
+    if missing:
+        raise InvalidRequestError(
+            "candidate provider, name, latitude, longitude, time_zone, and usable are required"
+        )
+    provider = value.get("provider")
+    name = value.get("name")
+    if not isinstance(provider, str):
+        raise InvalidRequestError("candidate.provider must be a string")
+    if not isinstance(name, str):
+        raise InvalidRequestError("candidate.name must be a string")
+    usable = value.get("usable")
+    if not isinstance(usable, bool):
+        raise InvalidRequestError("candidate.usable must be a boolean")
+    time_zone = value.get("time_zone")
+    if time_zone is not None and not isinstance(time_zone, str):
+        raise InvalidRequestError("candidate.time_zone must be a string or null")
+    display_name = value.get("display_name", name)
+    if not isinstance(display_name, str):
+        raise InvalidRequestError("candidate.display_name must be a string")
+    rank = value.get("rank", 1)
+    if isinstance(rank, bool) or not isinstance(rank, int):
+        raise InvalidRequestError("candidate.rank must be an integer")
+    return PlaceCandidate(
+        provider=provider,
+        provider_place_id=_optional_int_field(value, "provider_place_id"),
+        name=name,
+        display_name=display_name,
+        latitude=_required_finite(value, "latitude"),
+        longitude=_required_finite(value, "longitude"),
+        time_zone=time_zone,
+        usable=usable,
+        unusable_reason=_optional_string(value, "unusable_reason"),
+        elevation_m=_optional_float(value, "elevation_m"),
+        country=_optional_string(value, "country"),
+        admin1=_optional_string(value, "admin1"),
+        admin2=_optional_string(value, "admin2"),
+        country_code=_optional_string(value, "country_code"),
+        feature_code=_optional_string(value, "feature_code"),
+        population=_optional_int_field(value, "population"),
+        rank=rank,
+    )
+
+
+def _optional_int_field(value: Mapping[str, object], key: str) -> int | None:
+    if key not in value:
+        return None
+    raw = value[key]
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        raise InvalidRequestError(f"candidate.{key} must be an integer or null")
+    return raw
 
 
 def _optional_string(value: Mapping[str, object], key: str) -> str | None:

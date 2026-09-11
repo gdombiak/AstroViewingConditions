@@ -69,7 +69,9 @@ def default_locations_path() -> Path:
 
 class LocationStore(Protocol):
     def load(self) -> LocationState: ...
-    def save(self, location: SavedLocationDraft) -> SavedLocation: ...
+    def save(
+        self, location: SavedLocationDraft, *, select: bool = False
+    ) -> SavedLocation: ...
     def get(self, id: str) -> SavedLocation: ...
     def resolve(self, query: str) -> SavedLocation: ...
     def list(self) -> tuple[SavedLocation, ...]: ...
@@ -103,8 +105,12 @@ class MemoryLocationStore:
     def load(self) -> LocationState:
         return self._document.as_state()
 
-    def save(self, location: SavedLocationDraft) -> SavedLocation:
-        self._document, saved = _apply_save(self._document, location)
+    def save(
+        self, location: SavedLocationDraft, *, select: bool = False
+    ) -> SavedLocation:
+        self._document, saved = _apply_save(
+            self._document, location, select=select
+        )
         return saved
 
     def get(self, id: str) -> SavedLocation:
@@ -146,11 +152,15 @@ class FileLocationStore:
     def load(self) -> LocationState:
         return self._read().as_state()
 
-    def save(self, location: SavedLocationDraft) -> SavedLocation:
+    def save(
+        self, location: SavedLocationDraft, *, select: bool = False
+    ) -> SavedLocation:
         _validated_from_draft(location)
 
         def body() -> SavedLocation:
-            document, saved = _apply_save(self._load_locked(), location)
+            document, saved = _apply_save(
+                self._load_locked(), location, select=select
+            )
             self._write_locked(document)
             return saved
 
@@ -322,7 +332,7 @@ def _resolve(document: _Document, query: str) -> SavedLocation:
 
 
 def _apply_save(
-    document: _Document, draft: SavedLocationDraft
+    document: _Document, draft: SavedLocationDraft, *, select: bool = False
 ) -> tuple[_Document, SavedLocation]:
     saved = _validated_from_draft(draft)
     if draft.id is None:
@@ -350,6 +360,8 @@ def _apply_save(
         extras = dict(document.location_extras)
     selected = document.selected_location_id
     if created and len(document.locations) == 0 and len(locations) == 1:
+        selected = saved.id
+    if select:
         selected = saved.id
     return replace(
         document,

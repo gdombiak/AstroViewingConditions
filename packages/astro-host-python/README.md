@@ -43,8 +43,15 @@ structured `unavailable` result rather than invented boundaries.
 Saved observing locations are a separate host-owned store. They are not the
 weather cache and are not conversation memory. Every saved site has a stable
 UUID, coordinates, and a mandatory authoritative IANA timezone. One location
-may be selected as the default. `ConditionsService` does not read this store;
-one-off requests still pass a `Location` explicitly.
+may be selected as the default.
+
+`ConditionsService` still takes an explicit `Location`. Orchestration above it
+resolves a human place query (`agent.places`), persists a confirmed candidate
+(`agent.locations` `save_from_candidate`) without re-geocoding, and fills
+`agent.conditions` from the selected saved location when `location` is omitted.
+An explicit location on `agent.conditions` is a one-off override: it wins over
+the selected location and does not open or mutate the store. A resolved
+candidate is not saved until that confirmation path.
 
 ```python
 from astro_host import MemoryLocationStore, SavedLocationDraft
@@ -108,15 +115,18 @@ Install the engine and host packages, or use the checkout launcher:
 ```sh
 apps/cli/astro-host agent.conditions --input request.json --pretty
 apps/cli/astro-host agent.locations --input locations.json --pretty
+apps/cli/astro-host agent.places --input places.json --pretty
 ```
 
 Use `--input -` for stdin. Optional `--weather-cache-path` selects the durable
 weather JSON file; otherwise `$ASTRO_HOST_STATE_DIR/weather-cache.json` or
 `~/.astro-host/weather-cache.json`. Optional `--locations-path` selects the
 saved-location file; otherwise `$ASTRO_HOST_STATE_DIR/locations.json` or
-`~/.astro-host/locations.json`. The two files are independent: `agent.conditions`
-does not open the location store, and `agent.locations` does not open the
-weather cache. The output is a deterministic JSON envelope.
+`~/.astro-host/locations.json`. The two files are independent: `agent.locations` does not open the
+weather cache, and `agent.places` does not open either store. `agent.conditions`
+opens the location store only when `location` is omitted, to read the selected
+saved site. An explicit `location` object does not open the store. The output is
+a deterministic JSON envelope.
 Complete, degraded, and unavailable domain results are successful envelopes;
 invalid caller input and unexpected host failures have distinct nonzero exits.
 A damaged locations file is `error.code=corrupt` or `unsupported_schema`, never

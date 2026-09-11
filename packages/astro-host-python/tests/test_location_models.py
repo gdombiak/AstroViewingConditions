@@ -59,5 +59,11 @@ def test_error_codes() -> None:
         "unsupported_schema"
     )
     assert LocationStoreError("x").code == "host_failure"
-    from astro_host.errors import InvalidRequestError
+    from astro_host.errors import (
+        InvalidPlaceCandidateError,
+        InvalidRequestError,
+        NoSelectedLocationError,
+    )
+    assert NoSelectedLocationError().code == "no_selected_location"
+    assert InvalidPlaceCandidateError("x").code == "invalid_request"
     assert not issubclass(InvalidLocationError, InvalidRequestError)
