@@ -1,17 +1,44 @@
 name: iOS Tests
 
-# Incumbent full iOS XCTest. Intentionally unfiltered: adding `paths` would
-# skip this job when an Apple-relevant file was omitted from the filter.
-# Engine/package/resource changes must never bypass iOS coverage. Nightly
-# (`ios-nightly.yml`) is extra, not a substitute. Revisit after Phase 13.
+# Full iOS XCTest (macOS). Path-filtered to the inputs of `xcodegen generate`
+# + `xcodebuild test` in apps/ios (see apps/ios/project.yml):
+#   - apps/ios/**: app, widget, watch sources, resources, tests, project spec.
+#   - packages/astro-engine-swift/**: local SwiftPM dependency. The whole
+#     package is listed (not just Sources/AstroEngine) so a manifest/target
+#     change can never slip past the filter.
+#   - contracts/data/** + scripts/bundle-engine-data: the pre-build phase
+#     copies calibration and catalog JSON into every product bundle. The
+#     whole data tree is listed rather than the exact bundled files so newly
+#     bundled files are covered without editing this list.
+#   - contracts/ENGINE_VERSION: bundle-engine-data validates it exists.
+#   - THIRD_PARTY_NOTICES.md: read by TargetImageManifestTests.
+# Docs, Python packages, Tests/parity and other workflows do not affect the
+# Apple products. `workflow_call` ignores `paths`, so ios-nightly.yml still
+# runs the full job unconditionally as the safety net.
 on:
   push:
     branches:
       - main
       - feature/astro-engine-cli
+    paths:
+      - "apps/ios/**"
+      - "packages/astro-engine-swift/**"
+      - "contracts/data/**"
+      - "contracts/ENGINE_VERSION"
+      - "scripts/bundle-engine-data"
+      - "THIRD_PARTY_NOTICES.md"
+      - ".github/workflows/ios-tests.yml"
   pull_request:
     branches:
       - main
+    paths:
+      - "apps/ios/**"
+      - "packages/astro-engine-swift/**"
+      - "contracts/data/**"
+      - "contracts/ENGINE_VERSION"
+      - "scripts/bundle-engine-data"
+      - "THIRD_PARTY_NOTICES.md"
+      - ".github/workflows/ios-tests.yml"
   workflow_call:
 
 jobs:

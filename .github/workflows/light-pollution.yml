@@ -1,5 +1,14 @@
 name: Light Pollution
 
+# Harness pytest (macOS + Homebrew GDAL). Inputs:
+#   - tools/light-pollution/** except its top-level markdown docs, which no
+#     test reads.
+#   - packages/astro-engine-python/src/**: light_pollution/binary_format.py
+#     imports astro_engine.light_pollution, and astro_engine/__init__.py
+#     imports most of the engine, so any engine source file can break the
+#     import. The harness does not read contracts/; the byte identity of the
+#     lpatlas1 fixture copies is asserted by the engine tests (python.yml,
+#     swift-engine.yml), which trigger on contracts/**.
 on:
   push:
     branches:
@@ -7,16 +16,16 @@ on:
       - feature/astro-engine-cli
     paths:
       - "tools/light-pollution/**"
-      - "packages/astro-engine-python/src/astro_engine/light_pollution.py"
-      - "contracts/fixtures/providers/lpatlas1/**"
+      - "!tools/light-pollution/*.md"
+      - "packages/astro-engine-python/src/**"
       - ".github/workflows/light-pollution.yml"
   pull_request:
     branches:
       - main
     paths:
       - "tools/light-pollution/**"
-      - "packages/astro-engine-python/src/astro_engine/light_pollution.py"
-      - "contracts/fixtures/providers/lpatlas1/**"
+      - "!tools/light-pollution/*.md"
+      - "packages/astro-engine-python/src/**"
       - ".github/workflows/light-pollution.yml"
   workflow_dispatch:
 

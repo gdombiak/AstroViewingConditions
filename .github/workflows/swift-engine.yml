@@ -1,5 +1,9 @@
 name: Swift Engine
 
+# `swift test` for the engine package. Beyond the package and contracts/**,
+# the tests execute scripts/bundle-engine-data, assert byte identity with
+# tools/light-pollution/fixtures, and run `git check-ignore` on the generated
+# resource copies, so .gitignore is a genuine input.
 on:
   push:
     branches:
