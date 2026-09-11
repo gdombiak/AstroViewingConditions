@@ -9,10 +9,16 @@ import pytest
 from argparse import Namespace
 
 from astro_host.cli import (
-    EXIT_FAILURE, EXIT_INVALID_REQUEST, EXIT_OK, build_default_service, main,
+    AGENT_OPERATIONS,
+    EXIT_FAILURE,
+    EXIT_INVALID_REQUEST,
+    EXIT_OK,
+    build_default_service,
+    main,
 )
 from astro_host.conditions import ConditionsService
 from astro_host.weather_cache_file import FileWeatherCache
+from astro_host.version import HOST_SEMVER
 
 from support import FakeEngine, FakeProvider, NOW
 
@@ -22,6 +28,33 @@ def request_document() -> dict[str, object]:
         "location": {"latitude": 34.05, "longitude": -118.24},
         "reference_time": NOW.isoformat().replace("+00:00", "Z"),
     }
+
+
+def test_runtime_info_is_machine_readable_and_checks_resources() -> None:
+    stdout, stderr = io.StringIO(), io.StringIO()
+    status = main(["--runtime-info"], stdout=stdout, stderr=stderr)
+    payload = json.loads(stdout.getvalue())
+
+    assert status == EXIT_OK
+    assert stderr.getvalue() == ""
+    assert payload["ok"] is True
+    assert payload["astro_host_version"] == HOST_SEMVER == "0.1.0"
+    assert payload["astro_engine_version"] == "1.0.0"
+    assert payload["operations"] == list(AGENT_OPERATIONS)
+    assert set(payload["resources"]) == {
+        "contracts_data", "light_pollution_atlas", "skyfield_ephemeris",
+    }
+
+
+def test_runtime_info_rejects_operation_combination() -> None:
+    stdout = io.StringIO()
+    status = main(
+        ["agent.conditions", "--input", "-", "--runtime-info"],
+        stdout=stdout,
+        stderr=io.StringIO(),
+    )
+    assert status == EXIT_INVALID_REQUEST
+    assert json.loads(stdout.getvalue())["error"]["code"] == "invalid_request"
 
 
 def invoke(tmp_path, provider: FakeProvider):
@@ -166,6 +199,17 @@ def test_build_default_service_uses_state_dir_env(tmp_path, monkeypatch) -> None
     assert isinstance(service._cache, FileWeatherCache)
     assert service._cache.path == expected
     assert not expected.exists()
+
+
+def test_build_default_service_uses_packaged_or_checkout_atlas() -> None:
+    service = build_default_service(Namespace(
+        weather_cache_path=None,
+        stale_on_error_seconds=None,
+        atlas_path=None,
+    ))
+    assert service._atlas_path is not None
+    assert service._atlas_path.name == "light_pollution_global_v1.bin"
+    assert service._atlas_path.is_file()
 
 
 def test_injected_service_does_not_construct_file_cache(tmp_path) -> None:

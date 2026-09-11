@@ -133,5 +133,17 @@ def test_catalog_current_release_matches_engine_version() -> None:
 def test_no_package_local_provider_fixture_copies() -> None:
     root = Path(__file__).resolve().parents[1]
     banned = {"happy-path.json", "two-passes.json", "deep-sky.json", "solar-system.json", "target-requirements.json"}
-    found = [path for path in root.rglob("*.json") if path.name in banned]
+    found = [
+        path for path in root.rglob("*.json")
+        if path.name in banned and "build" not in path.parts
+    ]
     assert found == []
+
+
+def test_release_build_sources_runtime_resources_from_canonical_locations() -> None:
+    root = Path(__file__).resolve().parents[1]
+    hook = (root / "setup.py").read_text(encoding="utf-8")
+    assert 'repository / "contracts"' in hook
+    assert 'contracts / "data"' in hook
+    assert '"light_pollution_global_v1.bin"' in hook
+    assert 'Path(self.build_lib) / "astro_engine" / "resources"' in hook

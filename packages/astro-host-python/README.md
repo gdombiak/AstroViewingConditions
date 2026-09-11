@@ -192,7 +192,14 @@ apps/cli/astro-host agent.locations --input locations.json --pretty
 apps/cli/astro-host agent.places --input places.json --pretty
 apps/cli/astro-host agent.equipment --input equipment.json --pretty
 apps/cli/astro-host agent.recommendations --input request.json --pretty
+apps/cli/astro-host --runtime-info
 ```
+
+`--runtime-info` is a machine-readable health check. It reports Astro Host and
+Engine versions, the supported `agent.*` operations, and validates packaged
+contract data, the production light-pollution atlas, and Skyfield ephemeris.
+The default CLI composition uses the packaged or checkout production atlas when
+`--atlas-path` is omitted.
 
 Use `--input -` for stdin. Optional `--weather-cache-path` selects the durable
 weather JSON file; otherwise `$ASTRO_HOST_STATE_DIR/weather-cache.json` or

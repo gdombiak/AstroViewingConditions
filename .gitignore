@@ -44,6 +44,9 @@ packages/astro-engine-swift/Sources/AstroEngine/Resources/data/catalog/
 # IDE
 .vscode/
 .idea/
+**/__pycache__/
+packages/astro-engine-python/build/
+packages/astro-host-python/build/
 
 # OS
 .DS_Store
@@ -66,6 +69,7 @@ packages/astro-engine-swift/Sources/AstroEngine/Resources/data/catalog/
 *.ipa
 *.dSYM.zip
 *.dSYM
+/dist/
 
 # Playgrounds
 timeline.xctimeline

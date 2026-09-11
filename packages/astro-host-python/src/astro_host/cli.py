@@ -54,12 +54,25 @@ from astro_host.recommendations import DEFAULT_MINIMUM_FIT, RecommendationServic
 from astro_host.providers.open_meteo_geocoding import OpenMeteoPlaceResolver
 from astro_host.providers.place import PlaceResolver
 from astro_host.weather_cache_file import FileWeatherCache, default_weather_cache_path
+from astro_host.version import HOST_SEMVER
+
+from astro_engine.astronomy import default_ephemeris_path
+from astro_engine.contracts import contracts_root, engine_semver
+from astro_engine.runtime_resources import default_atlas_path
 
 
 EXIT_OK = 0
 EXIT_FAILURE = 1
 EXIT_INVALID_REQUEST = 2
 EXIT_USAGE = 3
+
+AGENT_OPERATIONS = (
+    "agent.conditions",
+    "agent.locations",
+    "agent.places",
+    "agent.equipment",
+    "agent.recommendations",
+)
 
 _LOCATION_ACTIONS = frozenset({
     "list",
@@ -146,15 +159,11 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="astro-host")
     parser.add_argument(
         "operation",
-        choices=[
-            "agent.conditions",
-            "agent.locations",
-            "agent.places",
-            "agent.equipment",
-            "agent.recommendations",
-        ],
+        nargs="?",
+        choices=AGENT_OPERATIONS,
     )
-    parser.add_argument("--input", required=True, dest="input_path")
+    parser.add_argument("--input", dest="input_path")
+    parser.add_argument("--runtime-info", action="store_true")
     parser.add_argument("--pretty", action="store_true")
     parser.add_argument("--atlas-path")
     parser.add_argument("--stale-on-error-seconds", type=float)
@@ -173,7 +182,7 @@ def build_default_service(args: argparse.Namespace) -> ConditionsService:
     return ConditionsService(
         cache=FileWeatherCache(cache_path),
         stale_on_error_max_age=_stale_age(args),
-        atlas_path=args.atlas_path,
+        atlas_path=args.atlas_path or default_atlas_path(),
     )
 
 
@@ -222,6 +231,21 @@ def main(
     except SystemExit as exc:
         return EXIT_OK if exc.code == 0 else EXIT_USAGE
 
+    if args.runtime_info:
+        if args.operation is not None or args.input_path is not None:
+            _write_json({
+                "ok": False,
+                "error": {
+                    "code": "invalid_request",
+                    "message": "--runtime-info cannot be combined with an operation or --input",
+                },
+            }, pretty=args.pretty, stream=stdout)
+            return EXIT_INVALID_REQUEST
+        return _main_runtime_info(pretty=args.pretty, stdout=stdout)
+    if args.operation is None or args.input_path is None:
+        print("astro-host: an operation and --input are required", file=stderr)
+        return EXIT_USAGE
+
     if args.operation == "agent.locations":
         return _main_locations(args, store=store, stdout=stdout, stderr=stderr)
     if args.operation == "agent.places":
@@ -245,6 +269,37 @@ def main(
     return _main_conditions(
         args, service=service, store=store, stdout=stdout, stderr=stderr
     )
+
+
+def _main_runtime_info(*, pretty: bool, stdout: TextIO) -> int:
+    """Report package identity and verify every immutable runtime resource."""
+    try:
+        contract_path = contracts_root()
+        atlas_path = default_atlas_path()
+        ephemeris_path = default_ephemeris_path()
+        if atlas_path is None or not atlas_path.is_file():
+            raise RuntimeError("production light-pollution atlas is not installed")
+        if not ephemeris_path.is_file():
+            raise RuntimeError("Skyfield ephemeris is not installed")
+        payload: dict[str, object] = {
+            "ok": True,
+            "astro_host_version": HOST_SEMVER,
+            "astro_engine_version": engine_semver(),
+            "operations": list(AGENT_OPERATIONS),
+            "resources": {
+                "contracts_data": str(contract_path / "data"),
+                "light_pollution_atlas": str(atlas_path),
+                "skyfield_ephemeris": str(ephemeris_path),
+            },
+        }
+        _write_json(payload, pretty=pretty, stream=stdout)
+        return EXIT_OK
+    except Exception as exc:
+        _write_json({
+            "ok": False,
+            "error": {"code": "runtime_invalid", "message": str(exc)},
+        }, pretty=pretty, stream=stdout)
+        return EXIT_FAILURE
 
 
 def _main_locations(

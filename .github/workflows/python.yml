@@ -12,6 +12,9 @@ on:
       - "Tests/parity/**"
       - "apps/cli/**"
       - "tools/light-pollution/fixtures/**"
+      - ".grok/skills/astronomer/**"
+      - "Tests/grok/**"
+      - "tools/grok/**"
       - ".github/workflows/python.yml"
   pull_request:
     branches:
@@ -23,6 +26,9 @@ on:
       - "Tests/parity/**"
       - "apps/cli/**"
       - "tools/light-pollution/fixtures/**"
+      - ".grok/skills/astronomer/**"
+      - "Tests/grok/**"
+      - "tools/grok/**"
       - ".github/workflows/python.yml"
   workflow_dispatch:
 
@@ -50,6 +56,12 @@ jobs:
           CONTRACTS_ROOT: ${{ github.workspace }}/contracts
           NO_NETWORK: "1"
         run: python -m pytest
+
+      - name: Test Grok skill and bootstrap
+        working-directory: ${{ github.workspace }}
+        env:
+          NO_NETWORK: "1"
+        run: python -m pytest Tests/grok
 
   host:
     name: host pytest and installed-wheel smoke
@@ -80,11 +92,58 @@ jobs:
 
       - name: Smoke test installed wheels outside checkout
         env:
-          CONTRACTS_ROOT: ${{ github.workspace }}/contracts
           NO_NETWORK: "1"
+          PYTHONNOUSERSITE: "1"
         run: |
           python -m venv "${RUNNER_TEMP}/astro-smoke"
           "${RUNNER_TEMP}/astro-smoke/bin/python" -m pip install --no-index --find-links "${RUNNER_TEMP}/astro-wheels" astro-host
           cd "${RUNNER_TEMP}"
-          "${RUNNER_TEMP}/astro-smoke/bin/python" -c "import astro_host; from astro_engine.contracts import engine_semver; from astro_engine.observing_quality import assess_observing_quality; assert engine_semver() == '1.0.0'; assert assess_observing_quality(80, None)['score'] == 80"
-          "${RUNNER_TEMP}/astro-smoke/bin/astro-host" --help
+          "${RUNNER_TEMP}/astro-smoke/bin/python" - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+
+          import astro_engine
+          import astro_host
+          from astro_engine.catalog import load_deep_sky_catalog
+
+          assert "CONTRACTS_ROOT" not in os.environ
+          workspace = Path(os.environ["GITHUB_WORKSPACE"]).resolve()
+          environment = Path(sys.prefix).resolve()
+          for module in (astro_engine, astro_host):
+              module_path = Path(module.__file__).resolve()
+              assert module_path.is_relative_to(environment), module_path
+              assert not module_path.is_relative_to(workspace), module_path
+
+          executable = environment / "bin" / "astro-host"
+          completed = subprocess.run(
+              [str(executable), "--runtime-info"],
+              check=True,
+              capture_output=True,
+              text=True,
+          )
+          info = json.loads(completed.stdout)
+          assert info["ok"] is True
+          assert info["astro_host_version"] == "0.1.0"
+          assert info["astro_engine_version"] == "1.0.0"
+          assert info["operations"] == [
+              "agent.conditions",
+              "agent.locations",
+              "agent.places",
+              "agent.equipment",
+              "agent.recommendations",
+          ]
+          assert set(info["resources"]) == {
+              "contracts_data",
+              "light_pollution_atlas",
+              "skyfield_ephemeris",
+          }
+          for name, value in info["resources"].items():
+              resource = Path(value).resolve()
+              assert resource.exists(), (name, resource)
+              assert resource.is_relative_to(environment), (name, resource)
+              assert not resource.is_relative_to(workspace), (name, resource)
+          assert len(load_deep_sky_catalog()) == 29
+          PY

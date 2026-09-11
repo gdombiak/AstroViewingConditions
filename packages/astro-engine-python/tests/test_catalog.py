@@ -31,6 +31,7 @@ def test_canonical_catalog_is_the_only_source() -> None:
         for path in python_root.rglob("deep-sky.json")
         if path.name == "deep-sky.json"
         and ".venv" not in path.parts
+        and "build" not in path.parts
         and "__pycache__" not in path.parts
     ]
     assert copies == []

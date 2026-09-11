@@ -3,7 +3,11 @@
 Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the
 thirty-six catalogued capabilities.
 
-Calibration and fixtures are loaded from the repo `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). Do not copy scoring constants into this package.
+In a checkout, calibration and canonical data are loaded from the repository
+`contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). The release-wheel build
+copies `ENGINE_VERSION`, `capabilities.yaml`, and `contracts/data` from that
+single canonical source into the install image. Do not hand-maintain a second
+set of scoring constants in this package.
 
 F2 tests compare OQ results with a **narrow helper** (`tests/support.py`) that reads the two OQ policy field maps from `contracts/equality-policy.yaml`. That is not the Phase 10 generic parity runner.
 
@@ -50,27 +54,21 @@ fails instead of falling through to another kernel. JSON cannot provide a path.
 Deploy the same DE421 bytes at the override if using an operational resource
 store. Alternative kernels are operator choices and require revalidation.
 
-For the Grok Bot VM, prepare the wheelhouse **on a compatible Python/platform**
-during deployment, then install without an index on the target:
+For the Grok Bot VM, build the self-contained project wheels with the release
+helper, publish those exact artifacts, and let the Astronomer skill bootstrap
+the pinned runtime:
 
 ```sh
-python -m pip wheel ./packages/astro-engine-python --wheel-dir /path/to/wheelhouse
-python -m pip freeze > /path/to/runtime-versions.txt
-# Copy the complete wheelhouse, its hashes, and the version-matched contracts tree.
-python -m pip install --no-index --find-links /path/to/wheelhouse astro-engine==1.0.0
-export CONTRACTS_ROOT=/opt/astro/contracts
-python -m astro_engine astronomy.moon_info --input request.json
+python tools/grok/build_runtime_release.py
+# Upload the two exact wheels and copy their SHA-256 values into the skill manifest.
 ```
 
-Record wheel hashes and transitive versions with the deployment image; the
-NumPy wheel is platform/Python specific. Package entry-point and contract-root
-ownership are unchanged: an installed engine still needs the matching external
-`contracts/` tree for engine identity/calibration. No real VM deployment is part
-of Phase 16. Local validation built a wheel, installed it into a separate venv
-with `--no-index`, and executed all 18 live cases with socket construction and
-Skyfield downloads blocked. Package tests also block networking and exercise
-missing/corrupt/explicit-local ephemeris paths. CI installs dependencies before
-running the offline test suite.
+The skill manifest pins transitive versions and SHA-256 verifies the two project
+wheels. NumPy still selects the wheel appropriate to the target Python/platform.
+The installed engine needs no external checkout: engine identity, canonical
+runtime data, and the production light-pollution atlas are wheel resources.
+Package tests also block networking and exercise missing/corrupt/explicit-local
+ephemeris paths. CI installs dependencies before running the offline test suite.
 
 Skyfield's bundled leap-second/UT1 prediction tables are pinned with its version.
 Update dependencies deliberately and rerun astronomy conformance when those
@@ -133,6 +131,6 @@ Target metadata is available through `targets.requirements`,
 `catalog.solar_system`, and `targets.moon_sensitivity`. For example, pass
 `{"capability":"targets.requirements","injected":{"id":"m77"}}` to the CLI;
 combine the returned `requirement` and `is_planet` with selected `capabilities`
-for `equipment.match`. Canonical catalogs remain under `contracts/data` and must
-be available through the existing contracts-root installation mechanism.
+for `equipment.match`. Canonical catalogs remain authored under `contracts/data`;
+the release-wheel build packages the required runtime copy.
 See [the metadata procedure](../../contracts/procedures/target-metadata.md).

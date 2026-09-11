@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "runtime_id": "astro-host-0.1.0_engine-1.0.0",
+  "astro_host_version": "0.1.0",
+  "astro_engine_version": "1.0.0",
+  "python_requires": {
+    "minimum": [3, 11]
+  },
+  "dependencies": [
+    "certifi==2026.7.22",
+    "jplephem==2.24",
+    "numpy==2.5.2",
+    "sgp4==2.27",
+    "skyfield==1.55",
+    "skyfield-data==7.0.0"
+  ],
+  "artifacts": [
+    {
+      "filename": "astro_engine-1.0.0-py3-none-any.whl",
+      "url": "https://github.com/gdombiak/AstroViewingConditions/releases/download/astro-runtime-v0.1.0/astro_engine-1.0.0-py3-none-any.whl",
+      "sha256": "d28b7ff7c57bd1558a5163a44bd784bbc212badd2df27b7de19127b3800712aa"
+    },
+    {
+      "filename": "astro_host-0.1.0-py3-none-any.whl",
+      "url": "https://github.com/gdombiak/AstroViewingConditions/releases/download/astro-runtime-v0.1.0/astro_host-0.1.0-py3-none-any.whl",
+      "sha256": "eeee8173c7fec7365fa885557aba85ec91e39af2c7e2e715e7aa3c1908aa94ec"
+    }
+  ]
+}

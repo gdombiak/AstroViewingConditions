@@ -50,6 +50,10 @@ from astro_engine.jsonio import JSONCodecError, STDIN_LIMIT_BYTES, dump_json, lo
 from astro_engine.light_pollution import CAPABILITY_ID as LP_ID
 from astro_engine.night_conditions import ANALYZE_CAPABILITY_ID, SCORE_CAPABILITY_ID
 from astro_engine.observing_quality import CAPABILITY_ID as OQ_ID, ObservingQualityError
+from astro_engine.runtime_resources import (
+    PRODUCTION_ATLAS_FILENAME,
+    default_atlas_path,
+)
 from astro_engine.seeing import CAPABILITY_ID as SEEING_ID
 from astro_engine.transparency import CAPABILITY_ID as TRANSPARENCY_ID
 from astro_engine.weather import CAPABILITY_ID as WEATHER_ID
@@ -109,54 +113,8 @@ _EXTRA_TOP_LEVEL = {
     ANALYZE_CAPABILITY_ID: frozenset({"clock", "time_zone", "location"}),
 }
 
-PRODUCTION_ATLAS_FILENAME = "light_pollution_global_v1.bin"
-_ATLAS_ENV = "ASTRO_ENGINE_ATLAS_PATH"
-_PACKAGE_ATLAS = Path(__file__).resolve().parent / "data" / PRODUCTION_ATLAS_FILENAME
-_REPO_ATLAS_CANDIDATES = (
-    Path("Sources/AstroViewingConditions/Resources/LightPollution")
-    / PRODUCTION_ATLAS_FILENAME,
-    Path("apps/ios/Sources/AstroViewingConditions/Resources/LightPollution")
-    / PRODUCTION_ATLAS_FILENAME,
-)
-MAX_ATLAS_WALK = 16
-
-
 class ProductionAtlasMissing(Exception):
     """Default production atlas is not installed. Maps to engine_failure."""
-
-
-def default_atlas_path(*, start: Path | None = None) -> Path | None:
-    """Resolve the production/default LPATLAS1 file. Does not load it.
-
-    Order: `ASTRO_ENGINE_ATLAS_PATH` if it names an existing file; then
-    package `astro_engine/data/light_pollution_global_v1.bin` (install
-    image, gitignored, not committed); then the existing iOS app resource
-    in a repo checkout. Never searches `contracts/fixtures`.
-    """
-    env = os.environ.get(_ATLAS_ENV)
-    if env:
-        path = Path(env)
-        if path.is_file():
-            return path
-    if _PACKAGE_ATLAS.is_file():
-        return _PACKAGE_ATLAS.resolve()
-    return _repo_checkout_atlas(start=start)
-
-
-def _repo_checkout_atlas(*, start: Path | None = None) -> Path | None:
-    here = (start or Path(__file__)).resolve()
-    if here.is_file():
-        here = here.parent
-    for _ in range(MAX_ATLAS_WALK):
-        for relative in _REPO_ATLAS_CANDIDATES:
-            candidate = here / relative
-            if candidate.is_file():
-                return candidate.resolve()
-        parent = here.parent
-        if parent == here:
-            break
-        here = parent
-    return None
 
 
 def _usage_text() -> str:

@@ -66,6 +66,7 @@ from astro_host.models import (
 )
 from astro_host.places import ObservingLocationService
 from astro_host.recommendations import RecommendationService
+from astro_host.version import HOST_SEMVER
 
 __all__ = [
     "ActiveEquipment",
@@ -89,6 +90,7 @@ __all__ = [
     "FileEquipmentStore",
     "FileLocationStore",
     "HostConditionsRequest",
+    "HOST_SEMVER",
     "HostRecommendationsRequest",
     "InlineEquipmentDraft",
     "InvalidEquipmentError",

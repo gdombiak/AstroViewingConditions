@@ -1,4 +1,4 @@
-"""Locate `contracts/` and load canonical data. No copied package data."""
+"""Locate canonical contract data in a checkout or self-contained wheel."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pathlib import Path
 from astro_engine.jsonio import load_json_bytes
 
 MAX_ANCESTOR_WALK = 16
+_PACKAGED_CONTRACTS = Path(__file__).resolve().parent / "resources" / "contracts"
 
 
 class ContractsRootError(RuntimeError):
@@ -19,7 +20,8 @@ def contracts_root(*, start: Path | None = None) -> Path:
     """Resolve the contracts directory.
 
     1. `CONTRACTS_ROOT` must contain `ENGINE_VERSION` or the lookup fails.
-    2. Otherwise walk ancestors of `start` or this file until
+    2. A release wheel's packaged runtime contracts are used when present.
+    3. Otherwise walk ancestors of `start` or this file until
        `contracts/ENGINE_VERSION` is found.
     """
     env = os.environ.get("CONTRACTS_ROOT")
@@ -30,6 +32,9 @@ def contracts_root(*, start: Path | None = None) -> Path:
                 f"CONTRACTS_ROOT={env!r} does not contain ENGINE_VERSION"
             )
         return path.resolve()
+
+    if (_PACKAGED_CONTRACTS / "ENGINE_VERSION").is_file():
+        return _PACKAGED_CONTRACTS.resolve()
 
     here = (start or Path(__file__)).resolve()
     if here.is_file():
