@@ -2630,7 +2630,7 @@ readable.
   mutate the store; override `mode=item` is `invalid_request`. Path policy:
   `--equipment-path`, else `$ASTRO_HOST_STATE_DIR/equipment.json`, else
   `~/.astro-host/equipment.json`. LLM conversational memory is never this store.
-  Target-recommendation composition is later host work (H13).
+  Target-recommendation composition is implemented in H13.
 
 - **H13 — Target-recommendation host composition.** `agent.recommendations`
   awaits `ConditionsService.conditions` once, walks Moon / Venus / Mars /
