@@ -18,12 +18,12 @@
     {
       "filename": "astro_engine-1.0.0-py3-none-any.whl",
       "url": "https://github.com/gdombiak/AstroViewingConditions/releases/download/astro-runtime-v0.1.0/astro_engine-1.0.0-py3-none-any.whl",
-      "sha256": "d28b7ff7c57bd1558a5163a44bd784bbc212badd2df27b7de19127b3800712aa"
+      "sha256": "848374c93df4abcccd4f382a99a254a3e9b1ff8b422be6eea1366dfbf1b0efad"
     },
     {
       "filename": "astro_host-0.1.0-py3-none-any.whl",
       "url": "https://github.com/gdombiak/AstroViewingConditions/releases/download/astro-runtime-v0.1.0/astro_host-0.1.0-py3-none-any.whl",
-      "sha256": "eeee8173c7fec7365fa885557aba85ec91e39af2c7e2e715e7aa3c1908aa94ec"
+      "sha256": "59df216f4ab5a7f7d03fddcd3327cba4916ace16934ede8514e73275257a74b9"
     }
   ]
 }
