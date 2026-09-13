@@ -134,6 +134,7 @@ jobs:
               "agent.places",
               "agent.equipment",
               "agent.recommendations",
+              "agent.outlook",
           ]
           assert set(info["resources"]) == {
               "contracts_data",
