@@ -7,7 +7,8 @@ Conditions, best-window, cloud-timing, and optional Observing Quality facts;
 `agent.outlook`, which composes the canonical three-night outlook over those
 same acquisition and scoring authorities; and `agent.recommendations`, which
 answers “what should I observe tonight?” from those same night facts plus H12
-equipment.
+equipment. `agent.batch_compare` compares a small caller-supplied set of named
+coordinates in one center-defined observing night.
 
 The dependency direction is one-way:
 
@@ -128,6 +129,35 @@ for the best-night index. The fetch is the production four-day three-night
 horizon, not an arbitrary-N `agent.forecast_horizon`. Widget cache, AppGroup
 persistence, and timeline scheduling are iOS-only and are not part of this
 operation.
+
+`agent.batch_compare` accepts an optional `center` (otherwise the selected saved
+location), aware `reference_time`, optional `observing_date`/`force_refresh`, and
+1–16 `candidates`. Each candidate has a stable `key`, `name`, latitude/longitude,
+and optional `source_url`, `map_url`, and opaque `metadata`. An explicit center is
+one-time. The Host does not discover places. The Astronomer Bot currently
+discovers at most eight named places through its own web/browser workflow.
+
+```json
+{"reference_time":"2026-09-12T04:00:00Z","candidates":[{"key":"site-a","name":"Named Stargazing Area","latitude":45.7,"longitude":-122.5,"source_url":"https://example.org/site-a","map_url":"https://maps.google.com/?q=45.7,-122.5"}]}
+```
+
+The center fixes the IANA zone and observing-night date, including active nights
+after midnight. Candidate weather, Sun/Moon, and LP use candidate coordinates.
+Each candidate traverses the existing cache, retry, stale-on-error, night-window,
+and scoring path, with at most three candidate acquisitions in flight. One
+prepared atlas serves the batch. Engine `location.distance` supplies great-circle
+miles, `location.compose_scores` chooses the coherent public-score mode and
+center deltas, and `location.compare` returns the destination order. The center
+does not appear in `ranked_destinations`. Failed places appear in
+`omitted_candidates`; a missing center score leaves Engine deltas null while
+scorable destinations can still rank. Names, URLs, and access metadata never
+affect Astro scoring or ranking. Distance is straight-line, not driving distance;
+the result does not establish physical or legal access.
+
+[Open-Meteo's Forecast API](https://open-meteo.com/en/docs) can return an array
+for multiple coordinates, but this Host's existing adapter and cache hold one
+location per response. Bounded individual calls preserve its per-location
+retry, stale fallback, and partial-failure reporting for this small batch.
 
 `agent.recommendations` reuses `ConditionsService.conditions` once for the same
 location/night, then composes Moon, Venus/Mars/Jupiter/Saturn, and the 29

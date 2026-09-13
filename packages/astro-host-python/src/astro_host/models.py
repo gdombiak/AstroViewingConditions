@@ -211,6 +211,16 @@ class ConditionsRequest:
 
 
 @dataclass(frozen=True)
+class BatchCandidate:
+    key: str
+    name: str
+    location: Location
+    source_url: str | None = None
+    map_url: str | None = None
+    metadata: Mapping[str, object] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class TimeZoneAttempt:
     source: TimeZoneSource
     candidate: str | None

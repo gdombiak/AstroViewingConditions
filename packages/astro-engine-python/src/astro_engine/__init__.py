@@ -13,6 +13,7 @@ from astro_engine.contracts import engine_semver
 from astro_engine.fog import score_fog
 from astro_engine.grid import generate_grid
 from astro_engine.location_compare import compare_locations
+from astro_engine.location_distance import location_distance
 from astro_engine.location_compose_scores import compose_location_scores
 from astro_engine.location_filter_recommendable import filter_recommendable
 from astro_engine.iss import decode_iss
@@ -34,6 +35,7 @@ __all__ = [
     "decode_weather",
     "derive_night_forecast_window",
     "compare_locations",
+    "location_distance",
     "compose_location_scores",
     "engine_semver",
     "filter_recommendable",

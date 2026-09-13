@@ -35,8 +35,8 @@ public struct GeographicGridContractPoint: Sendable, Hashable {
 
 public struct GeographicGridGenerator {
     
-    private static let metersPerMile: Double = 1609.344
-    private static let earthRadiusMeters: Double = 6_371_000
+    static let metersPerMile: Double = 1609.344
+    static let earthRadiusMeters: Double = 6_371_000
     /// 1.0 capability cap: result size of max iOS Best Nearby geometry (50 mi / 3 mi).
     public static let contractCapRadiusMiles: Double = 50
     public static let contractCapSpacingMiles: Double = 3

@@ -22,6 +22,7 @@ Eval allow-list (not the public Python CLI):
   weather.decode
   iss.decode
   location.grid
+  location.distance
   location.compare
   location.compose_scores
   location.filter_recommendable
@@ -61,6 +62,7 @@ private let supportedCapabilities: Set<String> = [
     "weather.decode",
     "iss.decode",
     "location.grid",
+    "location.distance",
     "location.compare",
     "location.compose_scores",
     "location.filter_recommendable",

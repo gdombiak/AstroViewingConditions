@@ -174,7 +174,8 @@ class FakeEngine:
         return NightAnalysis(
             rating="excellent",
             public_score=90,
-            details={"cloud_cover_score": 10.0},
+            details={"cloud_cover_score": 10.0, "fog_score_avg": 0.0,
+                     "wind_speed_avg": 2.0},
             hourly_ratings=ratings,
             night_start=ratings[0].time,
             night_end=ratings[-1].time,
@@ -194,6 +195,24 @@ class FakeEngine:
 
     def lookup_brightness(self, atlas_path, location):
         return 21.0
+
+    def prepare_brightness_lookup(self, atlas_path):
+        return object()
+
+    def lookup_prepared_brightness(self, artifact, location):
+        return self.lookup_brightness(None, location)
+
+    def distance_miles(self, center, candidate):
+        from astro_host.engine import ConditionsEngine
+        return ConditionsEngine().distance_miles(center, candidate)
+
+    def compose_location_scores(self, candidates):
+        from astro_host.engine import ConditionsEngine
+        return ConditionsEngine().compose_location_scores(candidates)
+
+    def compare_locations(self, candidates):
+        from astro_host.engine import ConditionsEngine
+        return ConditionsEngine().compare_locations(candidates)
 
     def assess_observing_quality(self, night_conditions_score, brightness):
         return ObservingQualityFacts(

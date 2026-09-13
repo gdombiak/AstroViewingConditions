@@ -2,13 +2,21 @@
 
 ## 1.0.0
 
+- Location distance slice (unreleased): add public parity-governed
+  `location.distance` for deterministic great-circle straight-line miles between
+  arbitrary coordinates. It uses the same Earth-radius and meters-per-mile
+  constants as `location.grid`, has Swift/Python parity, and conveys no road or
+  travel-distance semantics. The public catalog now contains 38 capabilities;
+  engine identity remains unreleased 1.0.0.
+
 - Cloud-advisory eligibility slice (unreleased): add
   `night_conditions.select_cloud_advisory` over the existing cloud-timing verdict,
   Night Conditions rating and average cloud cover. The calibrated whole-night
   heavy-cloud priority and poor-rating gate are now parity-governed Engine facts;
   Swift summary behavior is preserved. `agent.conditions` exposes the nullable
   advisory code, while English presentation remains outside parity. The public
-  catalog contains 37 capabilities; engine identity remains unreleased 1.0.0.
+  catalog reached 37 capabilities at that slice; engine identity remained
+  unreleased 1.0.0.
 
 - Three-night outlook slice (unreleased): add `observing_night.compose_outlook`
   and `observing_night.select_best`, the deterministic core of the production

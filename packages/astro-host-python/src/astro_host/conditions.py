@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta, timezone
 import math
@@ -27,6 +28,7 @@ from astro_host.errors import (
 )
 from astro_host.models import (
     AcquisitionReport,
+    BatchCandidate,
     AstronomyFacts,
     ConditionsRequest,
     ConditionsResult,
@@ -91,6 +93,20 @@ class _ForecastPreparation:
 
 
 DaysPlanner: TypeAlias = Callable[[ConditionsRequest, ZoneInfo | None], int]
+
+
+def _batch_night_summary(facts: NightConditionsFacts | None) -> dict[str, object] | None:
+    if facts is None:
+        return None
+    return {
+        "rating": facts.rating,
+        "public_score": facts.public_score,
+        "details": facts.details,
+        "trend": facts.trend,
+        "best_window": facts.best_window,
+        "cloud_timing": facts.cloud_timing,
+        "cloud_advisory": facts.cloud_advisory,
+    }
 
 # Production `SharedConditionsRepository.forecastDays`: tonight plus the next two
 # evenings, including the last night's following morning. Not an arbitrary horizon.
@@ -260,7 +276,264 @@ class ConditionsService:
         )
 
     async def conditions(self, request: ConditionsRequest) -> ConditionsResult:
-        prep = await self._prepare_forecast(request, plan_days=_conditions_plan_days)
+        return await self._score_location(request)
+
+    async def batch_compare(
+        self, request: ConditionsRequest, candidates: Sequence[BatchCandidate]
+    ) -> dict[str, object]:
+        """Score named coordinates in the center's observing calendar context."""
+        request = _validate_request(request)
+        if not 1 <= len(candidates) <= 16:
+            raise InvalidRequestError("candidates must contain 1 to 16 places")
+        seen_keys: set[str] = set()
+        seen_coordinates = {(request.location.latitude, request.location.longitude)}
+        for candidate in candidates:
+            if not isinstance(candidate, BatchCandidate):
+                raise InvalidRequestError("candidates must be named coordinate objects")
+            if not isinstance(candidate.key, str) or not candidate.key.strip():
+                raise InvalidRequestError("candidate key must be nonempty")
+            if not isinstance(candidate.name, str) or not candidate.name.strip():
+                raise InvalidRequestError("candidate name must be nonempty")
+            if candidate.key in seen_keys:
+                raise InvalidRequestError(f"duplicate candidate key: {candidate.key}")
+            seen_keys.add(candidate.key)
+            _validate_request(replace(request, location=candidate.location))
+            coordinates = (candidate.location.latitude, candidate.location.longitude)
+            if coordinates in seen_coordinates:
+                raise InvalidRequestError("candidate coordinates must differ from the center and each other")
+            seen_coordinates.add(coordinates)
+            if (candidate.source_url is not None and not isinstance(candidate.source_url, str)) or (
+                candidate.map_url is not None and not isinstance(candidate.map_url, str)
+            ):
+                raise InvalidRequestError("candidate URLs must be strings or null")
+        prepared_atlas: object | None = None
+        if self._atlas_path is not None:
+            try:
+                prepared_atlas = self._engine.prepare_brightness_lookup(self._atlas_path)
+            except EngineCallError as exc:
+                prepared_atlas = exc
+
+        center = await self._score_location(request, prepared_atlas=prepared_atlas)
+        selected_night = center.selected_night
+        center_summary: dict[str, object] = {
+            "location": request.location,
+            "status": center.status.value,
+            "timezone": center.timezone,
+            "selected_night": selected_night,
+            "night_conditions": _batch_night_summary(center.night_conditions),
+            "observing_quality": center.observing_quality,
+            "public_score": None,
+            "acquisition": center.acquisition,
+            "issues": center.issues,
+        }
+        identifier = center.timezone.iana_identifier
+        if identifier is None:
+            return {
+                "status": ConditionsStatus.UNAVAILABLE.value,
+                "center": center_summary,
+                "selected_night": selected_night,
+                "scoring_mode": None,
+                "evaluated_count": 0,
+                "ranked_destinations": [],
+                "omitted_candidates": [
+                    {"key": candidate.key, "name": candidate.name,
+                     "reason": "center_timezone_unavailable"}
+                    for candidate in candidates
+                ],
+                "engine_semver": self._engine.semver,
+            }
+        center_zone = ZoneInfo(identifier)
+        observing_date = request.observing_date
+        if observing_date is None and selected_night is not None:
+            observing_date = selected_night.observing_date
+        if observing_date is None:
+            try:
+                first_day = request.reference_time.astimezone(center_zone).date() - timedelta(days=1)
+                sun_rows = []
+                for offset in range(3):
+                    day = first_day + timedelta(days=offset)
+                    start = datetime.combine(day, time.min, tzinfo=center_zone).astimezone(timezone.utc)
+                    end = datetime.combine(day + timedelta(days=1), time.min, tzinfo=center_zone).astimezone(timezone.utc)
+                    sun_rows.append(self._engine.sun_events(request.location, day=day, start=start, end=end))
+                active = self._engine.resolve_active_night(
+                    reference_time=request.reference_time, time_zone=identifier,
+                    forecast_start_time=datetime.combine(first_day, time.min, tzinfo=center_zone),
+                    daily_sun_events=sun_rows,
+                )
+                observing_date = active.observing_date if active.state == "resolved" else None
+                if observing_date is not None:
+                    selected_night = SelectedNight(
+                        selection="active", state=active.state,
+                        observing_date=active.observing_date,
+                        observing_day_start=active.observing_day_start,
+                        astronomical_night_start=active.astronomical_night_start,
+                        astronomical_night_end=active.astronomical_night_end,
+                        forecast_window=None,
+                        day_index=active.day_index, day_offset=active.day_offset,
+                    )
+                    center_summary["selected_night"] = selected_night
+            except EngineCallError:
+                pass
+        if observing_date is None:
+            return {
+                "status": ConditionsStatus.UNAVAILABLE.value,
+                "center": center_summary, "selected_night": selected_night,
+                "scoring_mode": None, "evaluated_count": 0,
+                "ranked_destinations": [],
+                "omitted_candidates": [
+                    {"key": candidate.key, "name": candidate.name,
+                     "reason": "center_observing_night_unavailable"}
+                    for candidate in candidates
+                ],
+                "engine_semver": self._engine.semver,
+            }
+
+        # Three concurrent provider requests bound retry pressure; each request
+        # still traverses the normal cache, retry, stale, and provenance path.
+        semaphore = asyncio.Semaphore(3)
+
+        def batch_plan_days(candidate_request: ConditionsRequest, zone: ZoneInfo | None) -> int:
+            if zone is None:
+                return 2
+            # Acquisition begins on the candidate's provider-local day, while
+            # night identity and scoring still use the center's calendar.
+            offset = (observing_date - candidate_request.reference_time.astimezone(zone).date()).days
+            return max(2, offset + 2)
+
+        async def score(candidate: BatchCandidate) -> ConditionsResult:
+            async with semaphore:
+                candidate_request = ConditionsRequest(
+                    location=candidate.location,
+                    reference_time=request.reference_time,
+                    observing_date=observing_date,
+                    force_refresh=request.force_refresh,
+                )
+                return await self._score_location(
+                    candidate_request,
+                    comparison_zone=center_zone,
+                    plan_days=batch_plan_days,
+                    past_days=2,
+                    prepared_atlas=prepared_atlas,
+                )
+
+        acquired = await asyncio.gather(*(score(candidate) for candidate in candidates))
+        composed_inputs: list[dict[str, object]] = []
+        scored: list[tuple[BatchCandidate | None, ConditionsResult]] = []
+        if center.night_conditions is not None and center.observing_quality is not None:
+            scored.append((None, center))
+        omitted: list[dict[str, object]] = []
+        for candidate, result in zip(candidates, acquired):
+            if result.night_conditions is None or result.observing_quality is None:
+                omitted.append({"key": candidate.key, "name": candidate.name,
+                                "reason": "conditions_unavailable", "issues": result.issues,
+                                "acquisition": result.acquisition})
+            else:
+                scored.append((candidate, result))
+        has_destination = any(candidate is not None for candidate, _ in scored)
+        if not scored:
+            return {
+                "status": ConditionsStatus.UNAVAILABLE.value,
+                "center": center_summary, "selected_night": selected_night,
+                "scoring_mode": None, "evaluated_count": 0,
+                "ranked_destinations": [], "omitted_candidates": omitted,
+                "engine_semver": self._engine.semver,
+            }
+        if scored[0][0] is not None:
+            composed_inputs.append({
+                "is_center": True, "night_conditions_score": 0,
+                "has_nighttime_rows": False,
+                "observing_quality": {"score": 0, "has_valid_light_pollution": False},
+            })
+        for candidate, result in scored:
+            assert result.night_conditions is not None and result.observing_quality is not None
+            composed_inputs.append({
+                "is_center": candidate is None,
+                "night_conditions_score": result.night_conditions.public_score,
+                "has_nighttime_rows": True,
+                "observing_quality": {
+                    "score": result.observing_quality.score,
+                    "has_valid_light_pollution": result.observing_quality.light_pollution_available,
+                },
+            })
+        composition = self._engine.compose_location_scores(composed_inputs)
+        composition_rows = composition["candidates"]
+        if scored[0][0] is None:
+            center_summary["public_score"] = composition_rows[0]["public_score"]
+        if not has_destination:
+            return {
+                "status": ConditionsStatus.UNAVAILABLE.value,
+                "center": center_summary, "selected_night": selected_night,
+                "scoring_mode": None, "evaluated_count": 0,
+                "ranked_destinations": [], "omitted_candidates": omitted,
+                "engine_semver": self._engine.semver,
+            }
+        by_key: dict[str, dict[str, object]] = {}
+        compare_inputs: list[dict[str, object]] = []
+        for index, (candidate, result) in enumerate(scored):
+            if candidate is None:
+                continue
+            assert result.night_conditions is not None
+            composed = composition_rows[index]
+            distance = self._engine.distance_miles(request.location, candidate.location)
+            details = result.night_conditions.details
+            compare_inputs.append({
+                "key": candidate.key,
+                "public_score": composed["public_score"],
+                "night_conditions_score": result.night_conditions.public_score,
+                "avg_cloud_cover": details["cloud_cover_score"],
+                "fog_score": int(details["fog_score_avg"]),
+                "avg_wind_speed": details["wind_speed_avg"],
+                "distance_miles": distance,
+                "latitude": candidate.location.latitude,
+                "longitude": candidate.location.longitude,
+            })
+            by_key[candidate.key] = {
+                "key": candidate.key, "name": candidate.name,
+                "latitude": candidate.location.latitude,
+                "longitude": candidate.location.longitude,
+                "source_url": candidate.source_url, "map_url": candidate.map_url,
+                "metadata": candidate.metadata,
+                "distance_miles": distance,
+                "public_score": composed["public_score"],
+                "improvement_over_center": composed["improvement_over_center"],
+                "night_conditions": _batch_night_summary(result.night_conditions),
+                "observing_quality": result.observing_quality,
+                "selected_night": result.selected_night,
+                "status": result.status.value,
+                "issues": result.issues,
+                "acquisition": result.acquisition,
+            }
+        ranking = self._engine.compare_locations(compare_inputs)["ranking"]
+        degraded = (center.status is not ConditionsStatus.COMPLETE or bool(omitted) or
+                    any(row["status"] != ConditionsStatus.COMPLETE.value for row in by_key.values()) or
+                    composition["scoring_mode"] == "night_conditions_fallback")
+        return {
+            "status": (ConditionsStatus.DEGRADED if degraded else ConditionsStatus.COMPLETE).value,
+            "center": center_summary,
+            "selected_night": selected_night,
+            "observing_date": observing_date,
+            "time_zone": identifier,
+            "scoring_mode": composition["scoring_mode"],
+            "evaluated_count": len(by_key),
+            "ranked_destinations": [by_key[key] for key in ranking],
+            "omitted_candidates": omitted,
+            "engine_semver": self._engine.semver,
+        }
+
+    async def _score_location(
+        self,
+        request: ConditionsRequest,
+        *,
+        comparison_zone: ZoneInfo | None = None,
+        plan_days: DaysPlanner | None = None,
+        past_days: int = 0,
+        prepared_atlas: object | None = None,
+    ) -> ConditionsResult:
+        """Shared one-night path; a batch may supply a center-defined calendar."""
+        planner = _conditions_plan_days if plan_days is None else plan_days
+        prep = await self._prepare_forecast(
+            request, plan_days=planner, past_days=past_days
+        )
         if prep.snapshot is None or prep.zone is None:
             return self._unavailable(
                 prep.request, prep.now, prep.tz, prep.acquired.report, prep.issues
@@ -268,7 +541,7 @@ class ConditionsService:
         request, now, tz, acquired, issues = (
             prep.request, prep.now, prep.tz, prep.acquired, prep.issues
         )
-        snapshot, zone = prep.snapshot, prep.zone
+        snapshot, zone = prep.snapshot, comparison_zone or prep.zone
 
         try:
             sun_rows = self._sun_rows(snapshot, zone)
@@ -282,7 +555,7 @@ class ConditionsService:
             ):
                 later = await self._prepare_forecast(
                     request,
-                    plan_days=_conditions_plan_days,
+                    plan_days=planner,
                     past_days=1,
                     now=now,
                     acquire_catalog_error_report=prep.acquired.report,
@@ -297,7 +570,7 @@ class ConditionsService:
                 request, now, tz, acquired, issues = (
                     later.request, later.now, later.tz, later.acquired, later.issues
                 )
-                snapshot, zone = later.snapshot, later.zone
+                snapshot, zone = later.snapshot, comparison_zone or later.zone
                 sun_rows = self._sun_rows(snapshot, zone)
                 selected, sun_today, sun_tomorrow = self._select_night(
                     request, snapshot, zone, sun_rows
@@ -354,7 +627,7 @@ class ConditionsService:
                 ))
 
             night_conditions, moon_samples = self._analyze_night_window(
-                request, tz.iana_identifier, window, night_rows,
+                request, zone.key, window, night_rows,
                 include_cloud_advisory=True,
             )
             astronomy = AstronomyFacts(
@@ -369,7 +642,9 @@ class ConditionsService:
             issues.append(_engine_issue(exc))
             return self._unavailable(request, now, tz, acquired.report, issues)
 
-        brightness = self._lookup_brightness(request.location, issues)
+        brightness = self._lookup_brightness(
+            request.location, issues, prepared_atlas=prepared_atlas
+        )
         try:
             observing_quality = self._engine.assess_observing_quality(
                 night_conditions.public_score, brightness
@@ -649,7 +924,8 @@ class ConditionsService:
         ), moon_samples
 
     def _lookup_brightness(
-        self, location: Location, issues: list[HostIssue]
+        self, location: Location, issues: list[HostIssue],
+        *, prepared_atlas: object | None = None,
     ) -> float | None:
         if self._atlas_path is None:
             issues.append(HostIssue(
@@ -663,8 +939,12 @@ class ConditionsService:
             ))
             return None
         try:
-            brightness = self._engine.lookup_brightness(
-                self._atlas_path, location
+            if isinstance(prepared_atlas, EngineCallError):
+                raise prepared_atlas
+            brightness = (
+                self._engine.lookup_prepared_brightness(prepared_atlas, location)
+                if prepared_atlas is not None
+                else self._engine.lookup_brightness(self._atlas_path, location)
             )
             if brightness is None:
                 issues.append(HostIssue(
@@ -852,10 +1132,16 @@ class ConditionsService:
         self, snapshot: WeatherSnapshot, zone: ZoneInfo
     ) -> tuple[SunEventsFacts, ...]:
         first_day = snapshot.hourly[0].time.astimezone(zone).date()
+        last_day = snapshot.hourly[-1].time.astimezone(zone).date()
+        # A provider-local midnight can fall on the preceding day in the
+        # comparison zone. Cover the acquired span there, while retaining the
+        # prior provider-day minimum for sparse single-location payloads.
+        day_count = max(
+            snapshot.query.past_days + snapshot.query.forecast_days,
+            (last_day - first_day).days + 1,
+        )
         rows = []
-        for offset in range(
-            snapshot.query.past_days + snapshot.query.forecast_days
-        ):
+        for offset in range(day_count):
             day = first_day + timedelta(days=offset)
             start = datetime.combine(day, time.min, tzinfo=zone).astimezone(timezone.utc)
             end = datetime.combine(

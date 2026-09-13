@@ -38,6 +38,7 @@ from astro_host.locations import (
 )
 from astro_host.models import (
     ActiveEquipment,
+    BatchCandidate,
     ConditionsRequest,
     ConditionsResult,
     EquipmentApertureUnit,
@@ -72,6 +73,7 @@ from astro_host.version import HOST_SEMVER
 
 __all__ = [
     "ActiveEquipment",
+    "BatchCandidate",
     "ConditionsRequest",
     "ConditionsResult",
     "ConditionsService",

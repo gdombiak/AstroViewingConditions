@@ -65,6 +65,7 @@ from astro_engine.contracts import load_fixture_ref, resolve_fixture_ref
 from astro_engine.errors import AtlasInvalidError, ValidationError
 from astro_engine.fog import CAPABILITY_ID as FOG_ID, score_fog
 from astro_engine.grid import CAPABILITY_ID as GRID_ID, location_grid
+from astro_engine.location_distance import CAPABILITY_ID as DISTANCE_ID, location_distance
 from astro_engine.location_compare import (
     CAPABILITY_ID as COMPARE_ID,
     compare_locations,
@@ -285,6 +286,8 @@ def evaluate_capability(
         return decode_iss(_injected(document))
     if capability == GRID_ID:
         return location_grid(_injected(document))
+    if capability == DISTANCE_ID:
+        return location_distance(_injected(document))
     if capability == COMPARE_ID:
         return compare_locations(_injected(document))
     if capability == COMPOSE_LOCATION_SCORES_ID:

@@ -1,7 +1,7 @@
 # astro-engine (Python)
 
 Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the
-thirty-seven catalogued capabilities.
+thirty-eight catalogued capabilities.
 
 In a checkout, calibration and canonical data are loaded from the repository
 `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). The release-wheel build
@@ -128,7 +128,13 @@ the verdict are host presentation. See the
 advice code from the classifier verdict, overall rating and average cloud cover;
 see the [cloud-advisory procedure](../../contracts/procedures/cloud-advisory.md).
 
-The public catalog now contains 37 capabilities; engine/package identity remains
+`location.distance` returns deterministic great-circle straight-line miles for
+two validated coordinates using the same Earth-radius and meters-per-mile
+constants as `location.grid`. Swift and Python have parity; this is not a road
+or travel distance. See the
+[distance procedure](../../contracts/procedures/location-distance.md).
+
+The public catalog now contains 38 capabilities; engine/package identity remains
 unreleased 1.0.0.
 
 Target metadata is available through `targets.requirements`,

@@ -46,7 +46,7 @@ def _fake_host(runtime: Path, *, host="0.1.0", engine="1.0.0") -> None:
         "import json\n"
         f"print(json.dumps({{'ok': True, 'astro_host_version': '{host}', "
         f"'astro_engine_version': '{engine}', 'operations': "
-        "['agent.conditions', 'agent.locations', 'agent.places', "
+        "['agent.batch_compare', 'agent.conditions', 'agent.locations', 'agent.places', "
         "'agent.equipment', 'agent.recommendations', 'agent.outlook']}))\n",
         encoding="utf-8",
     )
@@ -154,9 +154,9 @@ def test_skill_routes_only_supported_operations_and_preserves_authority_rules() 
     for operation in (
         "agent.conditions", "agent.places", "agent.locations",
         "agent.equipment", "agent.recommendations", "agent.outlook",
+        "agent.batch_compare",
     ):
         assert operation in text
-    assert "agent.batch_compare" not in text
     assert "agent.forecast_horizon" not in text
     assert "Never invent recommended targets" in text
     assert "reorder recommendations" in text

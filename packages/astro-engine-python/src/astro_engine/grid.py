@@ -17,8 +17,8 @@ from astro_engine.validate import require_finite_number
 
 CAPABILITY_ID = "location.grid"
 
-_METERS_PER_MILE = 1609.344
-_EARTH_RADIUS_METERS = 6_371_000.0
+METERS_PER_MILE = 1609.344
+EARTH_RADIUS_METERS = 6_371_000.0
 _RADIUS_EPS = 0.000_001
 _BOUNDARY_BEARINGS = (0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0)
 
@@ -231,8 +231,8 @@ def _destination(
     distance_miles: float,
     bearing_deg: float,
 ) -> tuple[float, float]:
-    distance_meters = distance_miles * _METERS_PER_MILE
-    angular = distance_meters / _EARTH_RADIUS_METERS
+    distance_meters = distance_miles * METERS_PER_MILE
+    angular = distance_meters / EARTH_RADIUS_METERS
     lat1 = math.radians(latitude)
     lon1 = math.radians(longitude)
     bearing = math.radians(bearing_deg)

@@ -28,6 +28,7 @@ from astro_host.errors import (
 )
 from astro_host.locations import FileLocationStore, LocationStore, default_locations_path
 from astro_host.models import (
+    BatchCandidate,
     ConditionsRequest,
     EquipmentApertureUnit,
     EquipmentOverride,
@@ -67,6 +68,7 @@ EXIT_INVALID_REQUEST = 2
 EXIT_USAGE = 3
 
 AGENT_OPERATIONS = (
+    "agent.batch_compare",
     "agent.conditions",
     "agent.locations",
     "agent.places",
@@ -271,6 +273,10 @@ def main(
         return _main_outlook(
             args, service=service, store=store, stdout=stdout, stderr=stderr
         )
+    if args.operation == "agent.batch_compare":
+        return _main_batch_compare(
+            args, service=service, store=store, stdout=stdout, stderr=stderr
+        )
     return _main_conditions(
         args, service=service, store=store, stdout=stdout, stderr=stderr
     )
@@ -402,6 +408,50 @@ def _main_conditions(
             "operation": "agent.conditions",
             "error": {"code": "host_failure", "message": str(exc)},
         }, pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+
+
+def _main_batch_compare(
+    args: argparse.Namespace,
+    *,
+    service: ConditionsService | None,
+    store: LocationStore | None,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> int:
+    operation = "agent.batch_compare"
+    try:
+        document = _read_json(args.input_path)
+        host_request, candidates = parse_batch_compare_request(document)
+        center, source = _compose_conditions_location(args, host_request.location, store)
+        request = ConditionsRequest(
+            location=center,
+            reference_time=host_request.reference_time,
+            observing_date=host_request.observing_date,
+            force_refresh=host_request.force_refresh,
+        )
+        if service is None:
+            service = build_default_service(args)
+        result = asyncio.run(service.batch_compare(request, candidates))
+        result["center_source"] = source.value
+        _write_json({"ok": True, "operation": operation, "result": _json_value(result)},
+                    pretty=args.pretty, stream=stdout)
+        return EXIT_OK
+    except (InvalidRequestError, json.JSONDecodeError, OSError) as exc:
+        _write_json({"ok": False, "operation": operation,
+                     "error": {"code": "invalid_request", "message": str(exc)}},
+                    pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST
+    except LocationStoreError as exc:
+        _write_json({"ok": False, "operation": operation,
+                     "error": {"code": exc.code, "message": str(exc)}},
+                    pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST if exc.code == "invalid_request" else EXIT_FAILURE
+    except Exception as exc:
+        print(f"astro-host: {exc}", file=stderr)
+        _write_json({"ok": False, "operation": operation,
+                     "error": {"code": "host_failure", "message": str(exc)}},
+                    pretty=args.pretty, stream=stdout)
         return EXIT_FAILURE
 
 
@@ -1225,6 +1275,56 @@ def parse_conditions_request(document: object) -> HostConditionsRequest:
         observing_date=observing_date,
         force_refresh=force_refresh,
     )
+
+
+def parse_batch_compare_request(
+    document: object,
+) -> tuple[HostConditionsRequest, tuple[BatchCandidate, ...]]:
+    if not isinstance(document, Mapping) or set(document) - {
+        "center", "reference_time", "observing_date", "force_refresh", "candidates"
+    }:
+        raise InvalidRequestError("batch request must be an object with known fields")
+    raw_candidates = document.get("candidates")
+    if not isinstance(raw_candidates, list) or not 1 <= len(raw_candidates) <= 16:
+        raise InvalidRequestError("candidates must contain 1 to 16 places")
+    center_request = parse_conditions_request({
+        **({"location": document["center"]} if "center" in document else {}),
+        "reference_time": document.get("reference_time"),
+        **({"observing_date": document["observing_date"]}
+           if "observing_date" in document else {}),
+        **({"force_refresh": document["force_refresh"]}
+           if "force_refresh" in document else {}),
+    })
+    candidates: list[BatchCandidate] = []
+    for row in raw_candidates:
+        if not isinstance(row, Mapping) or set(row) - {
+            "key", "name", "latitude", "longitude", "source_url", "map_url", "metadata"
+        }:
+            raise InvalidRequestError("candidate must be an object with known fields")
+        key, name = row.get("key"), row.get("name")
+        if not isinstance(key, str) or not key.strip():
+            raise InvalidRequestError("candidate key must be nonempty")
+        if not isinstance(name, str) or not name.strip():
+            raise InvalidRequestError("candidate name must be nonempty")
+        latitude, longitude = row.get("latitude"), row.get("longitude")
+        if (isinstance(latitude, bool) or not isinstance(latitude, (int, float)) or
+            isinstance(longitude, bool) or not isinstance(longitude, (int, float)) or
+            not math.isfinite(latitude) or not math.isfinite(longitude) or
+            not -90 <= latitude <= 90 or not -180 <= longitude <= 180):
+            raise InvalidRequestError("candidate coordinates are invalid")
+        for field in ("source_url", "map_url"):
+            if row.get(field) is not None and not isinstance(row[field], str):
+                raise InvalidRequestError(f"{field} must be a string or null")
+        metadata = row.get("metadata", {})
+        if not isinstance(metadata, Mapping):
+            raise InvalidRequestError("candidate metadata must be an object")
+        candidates.append(BatchCandidate(
+            key=key, name=name,
+            location=Location(latitude=float(latitude), longitude=float(longitude), name=name),
+            source_url=row.get("source_url"), map_url=row.get("map_url"),
+            metadata=dict(metadata),
+        ))
+    return center_request, tuple(candidates)
 
 
 _RECOMMENDATIONS_KEYS = frozenset({

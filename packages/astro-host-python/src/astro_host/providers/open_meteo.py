@@ -74,7 +74,7 @@ class OpenMeteoPolicy:
     backoff_seconds: float = 0.25
     max_retry_after_seconds: float = 5.0
     max_forecast_days: int = 16
-    max_past_days: int = 1
+    max_past_days: int = 2
 
     def __post_init__(self) -> None:
         if self.timeout_seconds <= 0:

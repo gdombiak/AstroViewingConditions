@@ -85,9 +85,15 @@ def test_previous_day_parameter_is_added_only_when_requested() -> None:
     asyncio.run(provider(transport).fetch(query))
     assert transport.calls[0][1]["past_days"] == "1"
 
+    two_day_transport = FakeTransport([response()])
+    asyncio.run(provider(two_day_transport).fetch(
+        WeatherQuery(Location(34.05, -118.24), 2, past_days=2)
+    ))
+    assert two_day_transport.calls[0][1]["past_days"] == "2"
+
     with pytest.raises(WeatherProviderError) as exc:
         asyncio.run(provider(FakeTransport([])).fetch(
-            WeatherQuery(Location(0, 0), 2, past_days=2)
+            WeatherQuery(Location(0, 0), 2, past_days=3)
         ))
     assert exc.value.failure.kind is ProviderFailureKind.INVALID_PAYLOAD
     assert exc.value.failure.attempt_count == 0

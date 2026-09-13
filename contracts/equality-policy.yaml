@@ -132,6 +132,13 @@ policies:
       points[].latitude: abs_1e4
       points[].longitude: abs_1e4
 
+  location_distance:
+    description: Great-circle miles; Swift/Python floating-point tolerance.
+    fields:
+      distance_miles: abs_1e9
+      code: exact
+      message: exact
+
   location_compare:
     description: >
       Ranked candidates using the production Best Nearby total order.

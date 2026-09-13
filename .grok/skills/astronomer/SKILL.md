@@ -35,12 +35,15 @@ operations:
 - Conditions questions such as “How is tonight?” use `agent.conditions`.
 - “How do the next three nights look?” uses `agent.outlook`. Do not call
   `agent.conditions` three times or invent the three observing dates.
+- “Where are good stargazing places near me?” uses web-discovered named places
+  followed by `agent.batch_compare`.
 - “What should I observe tonight?” uses `agent.recommendations`.
 - Human place-name resolution uses `agent.places`.
 - Saving, selecting, listing, or deleting observing locations uses `agent.locations`.
 - Saving, selecting, listing, or deleting equipment uses `agent.equipment`.
 
 Use an aware current UTC `reference_time` for conditions, outlook, and recommendations.
+Use the same aware `reference_time` for `agent.batch_compare`.
 Do not add `minimum_fit` unless the user explicitly asks for a fit threshold; the
 current production default is the host's omitted-value behavior.
 
@@ -67,6 +70,47 @@ Preserve these result distinctions in the answer:
   caveat and provenance stated.
 - A successful empty recommendation list means Astro found no qualifying returned
   targets. Do not fill it with model suggestions.
+
+## Stargazing places near a center
+
+First resolve the selected or user-supplied center through the normal location
+onboarding path. For an explicit center, pass its coordinates as `center` for this
+one call; do not change the selected saved location.
+
+Use the web/browser/search capabilities actually available in the deployed Grok
+environment to find credible **named real-world stargazing destinations**. Prefer
+source-backed established stargazing areas, dark-sky sites, parks or recreation
+areas with relevant night use, observatories or public observing areas, and
+viewpoints known for night-sky use. Resolve reliable coordinates and deduplicate
+places. Current Bot discovery policy is **at most 8 destinations**; the Host's
+generic transport cap is separate. Never hard-code a city's places. If web
+discovery fails, ask for or use user-supplied named candidates; do not substitute
+arbitrary grid coordinates.
+
+Assign each place a stable `key`. Pass its name, coordinates, optional source URL,
+and optional ordinary Maps/place URL to `agent.batch_compare`. Keep any source
+or access details keyed by `key`; they are context, never Astro score inputs.
+Present `ranked_destinations` in the returned Engine order. Search popularity,
+reviews, and web prose must not rerank Astro results. If all evaluated places
+rate poorly, say that none looks worthwhile for the requested night. Describe
+the scope as “places I evaluated” or “best conditions among these destinations,”
+not an exhaustive search of nearby geography.
+If `omitted_candidates` is non-empty, say some discovered destinations could
+not be evaluated and name them briefly when useful. If `scoring_mode` is
+`night_conditions_fallback`, explain that light pollution was not consistently
+available across the set, so ranking used Night Conditions for all places.
+
+Lead with the named destination, approximate **straight-line** distance, Astro
+public score and center delta when available, one concise returned condition
+reason, and a clickable source or Maps link. Do not lead with raw coordinates or
+invent driving distance. Keep access facts (hours, parking, fees, reservations,
+roads) separate from Astro conditions. Official evidence of closure for the
+requested period must be stated before suggesting travel; good Astro conditions
+do not mean access is permitted. Unknown access remains explicitly unknown.
+Never imply guaranteed legal access, parking, or safety. A named place is not
+necessarily an official observing site. Ordinary clickable Maps URLs are the
+baseline; do not claim native map cards, multi-pin maps, or built-in Places
+integration until those features are validated in the deployed Bot.
 
 ## Location onboarding
 

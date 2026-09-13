@@ -106,6 +106,16 @@ capabilities:
       Deterministic circular-clipped square lattice around a center,
       plus eight boundary bearings at the requested radius.
 
+  - id: location.distance
+    hosts: [ios, cli]
+    equality: location_distance
+    since: "1.0.0"
+    requires_injected: [from, to]
+    summary: >
+      Great-circle straight-line distance in miles between two validated
+      coordinates, using the same spherical Earth radius and meters-per-mile
+      constants as location.grid. No road or travel-distance inference.
+
   - id: location.compare
     hosts: [ios, cli]
     equality: location_compare

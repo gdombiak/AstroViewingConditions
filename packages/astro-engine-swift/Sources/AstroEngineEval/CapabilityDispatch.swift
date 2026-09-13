@@ -29,6 +29,12 @@ enum CapabilityDispatch {
             return try issDecode(document)
         case "location.grid":
             return try locationGrid(document)
+        case "location.distance":
+            do {
+                return try LocationDistance.evaluate(injected(document))
+            } catch LocationDistanceError.invalidInput {
+                throw EvalValidationError(code: "validation", message: "invalid location.distance input")
+            }
         case "targets.requirements", "catalog.solar_system", "targets.moon_sensitivity":
             do {
                 return try TargetMetadataContract.evaluate(capability, input: injected(document))

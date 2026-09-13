@@ -49,6 +49,7 @@ REPRESENTATIVE_FIXTURES: tuple[tuple[str, str, str], ...] = (
     ("weather.decode", "fixtures/capabilities/weather-decode", "happy-path"),
     ("iss.decode", "fixtures/capabilities/iss-decode", "two-passes"),
     ("location.grid", "fixtures/capabilities/location-grid", "nyc-10-5-v1"),
+    ("location.distance", "fixtures/capabilities/location-distance", "nearby-v1"),
     ("location.compare", "fixtures/capabilities/location-compare", "public-score-wins-v1"),
     (
         "location.compose_scores",
@@ -192,7 +193,7 @@ def test_public_allow_list_matches_catalog_order() -> None:
          TRAILING_FIXTURES[4][0], TRAILING_FIXTURES[5][0], TRAILING_FIXTURES[6][0],
          TRAILING_FIXTURES[7][0], TRAILING_FIXTURES[8][0],
          TRAILING_FIXTURES[9][0])
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 37
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 38
 
 
 def test_every_public_capability_is_accepted() -> None:

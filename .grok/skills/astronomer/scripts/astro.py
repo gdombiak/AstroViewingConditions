@@ -13,11 +13,13 @@ from bootstrap import BootstrapError, ensure_runtime
 
 
 OPERATIONS = (
+    "agent.batch_compare",
     "agent.conditions",
     "agent.places",
     "agent.locations",
     "agent.equipment",
     "agent.recommendations",
+    "agent.outlook",
 )
 
 

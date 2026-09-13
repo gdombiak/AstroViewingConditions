@@ -23,6 +23,9 @@ from astro_engine.filter_recommendations_by_equipment import (
     filter_recommendations_by_equipment,
 )
 from astro_engine.light_pollution import LightPollutionArtifact, LightPollutionArtifactError
+from astro_engine.location_compose_scores import compose_location_scores
+from astro_engine.location_compare import compare_locations
+from astro_engine.location_distance import location_distance
 from astro_engine.moon_observation import evaluate_moon_observation
 from astro_engine.moon_recommendation import recommend_moon
 from astro_engine.night_conditions import analyze_night_conditions
@@ -304,6 +307,47 @@ class ConditionsEngine:
         try:
             artifact = LightPollutionArtifact.from_bytes(atlas_path.read_bytes())
             return artifact.lookup(location.latitude, location.longitude)
+        except Exception as exc:
+            raise _engine_error(capability, exc) from exc
+
+    def prepare_brightness_lookup(self, atlas_path: Path) -> LightPollutionArtifact:
+        capability = "light_pollution.lookup"
+        try:
+            return LightPollutionArtifact.from_bytes(atlas_path.read_bytes())
+        except Exception as exc:
+            raise _engine_error(capability, exc) from exc
+
+    def lookup_prepared_brightness(
+        self, artifact: LightPollutionArtifact, location: Location
+    ) -> float | None:
+        capability = "light_pollution.lookup"
+        try:
+            return artifact.lookup(location.latitude, location.longitude)
+        except Exception as exc:
+            raise _engine_error(capability, exc) from exc
+
+    def distance_miles(self, center: Location, candidate: Location) -> float:
+        capability = "location.distance"
+        try:
+            result = location_distance({
+                "from": {"latitude": center.latitude, "longitude": center.longitude},
+                "to": {"latitude": candidate.latitude, "longitude": candidate.longitude},
+            })
+            return float(result["distance_miles"])
+        except Exception as exc:
+            raise _engine_error(capability, exc) from exc
+
+    def compose_location_scores(self, candidates: list[dict[str, object]]) -> dict[str, object]:
+        capability = "location.compose_scores"
+        try:
+            return compose_location_scores({"candidates": candidates})
+        except Exception as exc:
+            raise _engine_error(capability, exc) from exc
+
+    def compare_locations(self, candidates: list[dict[str, object]]) -> dict[str, object]:
+        capability = "location.compare"
+        try:
+            return compare_locations({"candidates": candidates})
         except Exception as exc:
             raise _engine_error(capability, exc) from exc
 

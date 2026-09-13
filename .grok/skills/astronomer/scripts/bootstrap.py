@@ -20,6 +20,7 @@ SKILL_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = SKILL_ROOT / "runtime-manifest.json"
 DEFAULT_TIMEOUT_SECONDS = 300
 REQUIRED_OPERATIONS = (
+    "agent.batch_compare",
     "agent.conditions",
     "agent.locations",
     "agent.places",

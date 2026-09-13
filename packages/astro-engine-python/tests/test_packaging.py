@@ -13,6 +13,7 @@ from astro_engine import (
     derive_night_forecast_window,
     engine_semver,
     compare_locations,
+    location_distance,
     compose_location_scores,
     filter_recommendable,
     generate_grid,
@@ -26,6 +27,7 @@ from astro_engine.contracts import contracts_root
 from astro_engine.catalog import CAPABILITY_ID as CATALOG_CAPABILITY_ID
 from astro_engine.grid import CAPABILITY_ID as GRID_CAPABILITY_ID
 from astro_engine.location_compare import CAPABILITY_ID as COMPARE_CAPABILITY_ID
+from astro_engine.location_distance import CAPABILITY_ID as DISTANCE_CAPABILITY_ID
 from astro_engine.location_compose_scores import CAPABILITY_ID as COMPOSE_LOCATION_SCORES_ID
 from astro_engine.location_filter_recommendable import CAPABILITY_ID as FILTER_RECOMMENDABLE_ID
 from astro_engine.iss import CAPABILITY_ID as ISS_CAPABILITY_ID
@@ -46,6 +48,7 @@ def test_public_imports() -> None:
     assert callable(decode_iss)
     assert callable(generate_grid)
     assert callable(compare_locations)
+    assert callable(location_distance)
     assert callable(compose_location_scores)
     assert callable(filter_recommendable)
     assert callable(load_deep_sky_catalog)
@@ -57,6 +60,7 @@ def test_public_imports() -> None:
     assert ISS_CAPABILITY_ID == "iss.decode"
     assert GRID_CAPABILITY_ID == "location.grid"
     assert COMPARE_CAPABILITY_ID == "location.compare"
+    assert DISTANCE_CAPABILITY_ID == "location.distance"
     assert COMPOSE_LOCATION_SCORES_ID == "location.compose_scores"
     assert FILTER_RECOMMENDABLE_ID == "location.filter_recommendable"
     assert CATALOG_CAPABILITY_ID == "catalog.deep_sky"
@@ -78,6 +82,7 @@ def test_public_imports() -> None:
         "weather.decode",
         "iss.decode",
         "location.grid",
+        "location.distance",
         "location.compare",
         "location.compose_scores",
         "location.filter_recommendable",
@@ -125,7 +130,7 @@ def test_catalog_current_release_matches_engine_version() -> None:
     ]
     assert since_lines == (
         ['    since: "0.1.0"'] * 10
-        + ['    since: "1.0.0"'] * 3
+        + ['    since: "1.0.0"'] * 4
         + ['    since: "0.1.0"']
         + ['    since: "1.0.0"'] * 23
     )

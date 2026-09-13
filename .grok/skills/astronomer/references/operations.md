@@ -48,6 +48,38 @@ This operation is implemented in the current source-tree host. It is not present
 in the old experimental `astro-runtime-v0.1.0` wheels; the next clean Grok Bot
 acceptance cycle uses newly built wheels from this tree.
 
+## Named-place batch comparison
+
+`agent.batch_compare` compares 1–16 caller-supplied named coordinates against an
+optional `center`; omitting `center` uses the selected saved location. An explicit
+center is one-time and does not mutate selection. The Bot discovery policy is at
+most 8 destinations. The Host does not discover places. Names, URLs, and opaque
+`metadata` round-trip unchanged and do not influence Astro scoring or ranking.
+
+```json
+{"reference_time":"2026-09-12T04:00:00Z","center":{"latitude":45.52,"longitude":-122.68,"time_zone_hint":"America/Los_Angeles"},"candidates":[{"key":"site-a","name":"Named Stargazing Area","latitude":45.7,"longitude":-122.5,"source_url":"https://example.org/site-a","map_url":"https://maps.google.com/?q=45.7,-122.5","metadata":{"access":"unknown"}}]}
+```
+
+`observing_date` (`YYYY-MM-DD`) and `force_refresh` are optional. The center's
+IANA zone and requested observing night define the calendar context, including
+after-midnight previous-date selection. Each destination uses its own coordinates
+for weather, Sun/Moon, and light pollution. The Host uses cache/retry/stale
+acquisition with at most three concurrent candidate calls. Engine
+`location.compose_scores` chooses one coherent score mode and center deltas;
+`location.compare` determines destination order. `location.distance` supplies
+great-circle miles. `location.filter_recommendable` and grid suitability are not
+part of this Bot operation.
+
+In `result`, use `status`, `time_zone`, `observing_date`, `scoring_mode`,
+`evaluated_count`, `ranked_destinations`, and `omitted_candidates`. A degraded
+result may include stale weather, missing LP, or failed places; inspect each
+row's `issues` and `acquisition`. A null `improvement_over_center` means the
+center was unscorable, not zero improvement. `distance_miles` is straight-line,
+never driving distance. Present the returned ranking without reordering it.
+Access evidence remains outside Astro suitability; report official closures
+and unknown access separately. Ordinary clickable Maps URLs are the supported
+baseline. Native map cards, multi-pin maps, and built-in Places are unverified.
+
 Equipment overrides are exactly one of:
 
 ```json
