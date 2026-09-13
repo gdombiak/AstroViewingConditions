@@ -129,6 +129,7 @@ jobs:
           assert info["astro_host_version"] == "0.1.0"
           assert info["astro_engine_version"] == "1.0.0"
           assert info["operations"] == [
+              "agent.batch_compare",
               "agent.conditions",
               "agent.locations",
               "agent.places",
