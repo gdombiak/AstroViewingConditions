@@ -11,13 +11,17 @@ from astro_host.cache import MemoryWeatherCache, WeatherCache
 from astro_host.conditions import ConditionsService
 from astro_host.weather_cache_file import FileWeatherCache
 from astro_host.engine import ConditionsEngine
-from astro_host.errors import EngineCallError
+from astro_host.errors import EngineCallError, TimeZoneCatalogError, WeatherProviderError
 from astro_host.models import (
+    ActiveNightResolution,
     ConditionsRequest,
     ConditionsStatus,
     Location,
     PayloadDiagnostics,
     PayloadState,
+    ProviderFailure,
+    ProviderFailureKind,
+    TimeZoneSource,
     WeatherQuery,
     WeatherSnapshot,
 )
@@ -585,3 +589,92 @@ def test_default_cache_inverse_skew_does_not_mask_stale_entry(monkeypatch) -> No
     assert result.acquisition.snapshot is not None
     assert result.acquisition.snapshot.freshness.value == "stale"
     assert result.acquisition.snapshot.query.past_days == 0
+
+
+class RequiresPreviousOnce(FakeEngine):
+    def __init__(self) -> None:
+        super().__init__()
+        self._resolves = 0
+
+    def resolve_active_night(self, **kwargs):
+        self._resolves += 1
+        if self._resolves == 1:
+            today, tomorrow = kwargs["daily_sun_events"][:2]
+            return ActiveNightResolution(
+                state="requires_active_previous_payload",
+                observing_date=today.day,
+                observing_day_start=kwargs["forecast_start_time"],
+                astronomical_night_start=today.astronomical_twilight_end,
+                astronomical_night_end=tomorrow.astronomical_twilight_begin,
+                day_index=0,
+                day_offset=-1,
+            )
+        return super().resolve_active_night(**kwargs)
+
+
+class FailOnPastDays(FakeProvider):
+    async def fetch(self, query):
+        if query.past_days:
+            raise WeatherProviderError(ProviderFailure(
+                ProviderFailureKind.TIMEOUT, "past-day fetch timed out", 3
+            ))
+        return await super().fetch(query)
+
+
+class DecodeFailsOnSecondPayload(RequiresPreviousOnce):
+    def __init__(self) -> None:
+        super().__init__()
+        self._decodes = 0
+
+    def decode_weather(self, payload):
+        self._decodes += 1
+        if self._decodes == 2:
+            raise EngineCallError(
+                "weather.decode", "validation", "second payload rejected", {}
+            )
+        return super().decode_weather(payload)
+
+
+def test_retry_provider_failure_keeps_the_first_selected_night() -> None:
+    result = run_conditions(FailOnPastDays(), engine=RequiresPreviousOnce())
+    assert result.status is ConditionsStatus.UNAVAILABLE
+    assert "weather_provider_failure" in issue_codes(result)
+    assert result.selected_night is not None
+    assert result.selected_night.state == "requires_active_previous_payload"
+    assert result.acquisition.provider_attempt.state.value == "failed"
+    assert result.acquisition.snapshot is None
+
+
+def test_retry_decode_failure_does_not_attach_selected_night() -> None:
+    result = run_conditions(FakeProvider(), engine=DecodeFailsOnSecondPayload())
+    assert result.status is ConditionsStatus.UNAVAILABLE
+    assert "engine_error" in issue_codes(result)
+    assert result.selected_night is None
+
+
+def test_retry_timezone_catalogue_failure_keeps_first_acquisition() -> None:
+    service = ConditionsService(
+        FakeProvider(),
+        engine=RequiresPreviousOnce(),
+        atlas_path="test-atlas",
+        clock=lambda: NOW,
+    )
+    original = service._acquire
+
+    async def fail_past_days(request, forecast_days, now, *, past_days=0):
+        if past_days:
+            raise TimeZoneCatalogError(
+                TimeZoneSource.WEATHER_PROVIDER,
+                "America/Los_Angeles",
+                OSError("catalogue gone"),
+            )
+        return await original(request, forecast_days, now, past_days=past_days)
+
+    service._acquire = fail_past_days  # type: ignore[method-assign]
+    result = asyncio.run(service.conditions(ConditionsRequest(LOCATION, NOW)))
+    assert result.status is ConditionsStatus.UNAVAILABLE
+    assert issue_codes(result) == {"timezone_catalog_failure"}
+    assert result.selected_night is None
+    assert result.acquisition.snapshot is not None
+    assert result.acquisition.snapshot.query.past_days == 0
+    assert result.acquisition.provider_attempt.state.value == "succeeded"

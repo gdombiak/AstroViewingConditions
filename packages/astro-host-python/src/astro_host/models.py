@@ -455,6 +455,75 @@ class ConditionsResult:
     engine_semver: str
 
 
+@dataclass(frozen=True)
+class OutlookCompositionNight:
+    slot_index: int
+    day_offset: int
+    day_index: int | None
+    observing_date: date
+    observing_day_start: datetime
+    astronomical_night_start: datetime | None
+    astronomical_night_end: datetime | None
+    status: str
+
+
+@dataclass(frozen=True)
+class OutlookComposition:
+    state: str
+    time_zone: str
+    nights: tuple[OutlookCompositionNight, ...]
+
+
+@dataclass(frozen=True)
+class OutlookNightConditions:
+    """Night Conditions facts for one outlook slot, without hourly rows."""
+
+    rating: str
+    public_score: int
+    details: Mapping[str, object]
+    trend: str
+    first_half_score: float | None
+    second_half_score: float | None
+    best_window: TimeWindow | None
+    cloud_timing: str
+
+
+@dataclass(frozen=True)
+class OutlookNightFacts:
+    """One outlook slot.
+
+    ``status`` is structural availability from the engine. ``observing_quality``
+    may be null on an ``available`` night when host scoring cannot produce a
+    headline score; that night is ineligible for ``best_index``.
+    """
+
+    slot_index: int
+    day_offset: int
+    day_index: int | None
+    observing_date: date
+    observing_day_start: datetime
+    astronomical_night_start: datetime | None
+    astronomical_night_end: datetime | None
+    status: str
+    is_best: bool
+    observing_quality: ObservingQualityFacts | None
+    night_conditions: OutlookNightConditions | None
+
+
+@dataclass(frozen=True)
+class OutlookResult:
+    status: ConditionsStatus
+    generated_at: datetime
+    request: ConditionsRequest
+    timezone: TimeZoneResolution
+    acquisition: AcquisitionReport
+    composition_state: str
+    nights: tuple[OutlookNightFacts, ...]
+    best_index: int | None
+    issues: tuple[HostIssue, ...]
+    engine_semver: str
+
+
 class EquipmentType(str, Enum):
     BINOCULARS = "binoculars"
     VISUAL_TELESCOPE = "visualTelescope"

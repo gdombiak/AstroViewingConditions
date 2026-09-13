@@ -11,6 +11,8 @@ from astro_host.models import (
     MoonSample,
     NightAnalysis,
     ObservingQualityFacts,
+    OutlookComposition,
+    OutlookCompositionNight,
     PayloadDiagnostics,
     PayloadState,
     ProviderFailure,
@@ -199,3 +201,58 @@ class FakeEngine:
             applied_penalty=5.0 if brightness is not None else None,
             light_pollution_available=brightness is not None,
         )
+
+    def compose_outlook(
+        self, *, reference_time, time_zone, forecast_start_time, daily_sun_events,
+        hourly_times,
+    ):
+        if len(daily_sun_events) < 4:
+            start = daily_sun_events[0].day if daily_sun_events else reference_time.date()
+            return OutlookComposition(
+                state="unavailable",
+                time_zone=time_zone,
+                nights=tuple(
+                    OutlookCompositionNight(
+                        slot_index=slot,
+                        day_offset=slot,
+                        day_index=None,
+                        observing_date=start,
+                        observing_day_start=forecast_start_time or reference_time,
+                        astronomical_night_start=None,
+                        astronomical_night_end=None,
+                        status="unavailable",
+                    )
+                    for slot in range(3)
+                ),
+            )
+        nights = []
+        for slot in range(3):
+            today, tomorrow = daily_sun_events[slot], daily_sun_events[slot + 1]
+            start = today.astronomical_twilight_end
+            end = tomorrow.astronomical_twilight_begin
+            if start is None or end is None or start >= end:
+                status = "no_astronomical_night"
+            else:
+                status = "available"
+            nights.append(OutlookCompositionNight(
+                slot_index=slot,
+                day_offset=slot,
+                day_index=slot,
+                observing_date=today.day,
+                observing_day_start=datetime.combine(today.day, time.min, tzinfo=timezone.utc),
+                astronomical_night_start=start,
+                astronomical_night_end=end,
+                status=status,
+            ))
+        return OutlookComposition(
+            state="resolved", time_zone=time_zone, nights=tuple(nights)
+        )
+
+    def select_best_night(self, nights):
+        best = None
+        for index, (status, score) in enumerate(nights):
+            if status != "available" or score is None:
+                continue
+            if best is None or score > nights[best][1]:
+                best = index
+        return best

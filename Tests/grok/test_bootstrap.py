@@ -47,7 +47,7 @@ def _fake_host(runtime: Path, *, host="0.1.0", engine="1.0.0") -> None:
         f"print(json.dumps({{'ok': True, 'astro_host_version': '{host}', "
         f"'astro_engine_version': '{engine}', 'operations': "
         "['agent.conditions', 'agent.locations', 'agent.places', "
-        "'agent.equipment', 'agent.recommendations']}))\n",
+        "'agent.equipment', 'agent.recommendations', 'agent.outlook']}))\n",
         encoding="utf-8",
     )
     executable.chmod(0o755)
@@ -153,7 +153,7 @@ def test_skill_routes_only_supported_operations_and_preserves_authority_rules() 
     text = (SKILL / "SKILL.md").read_text(encoding="utf-8")
     for operation in (
         "agent.conditions", "agent.places", "agent.locations",
-        "agent.equipment", "agent.recommendations",
+        "agent.equipment", "agent.recommendations", "agent.outlook",
     ):
         assert operation in text
     assert "agent.batch_compare" not in text

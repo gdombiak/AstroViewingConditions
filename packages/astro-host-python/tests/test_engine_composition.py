@@ -6,6 +6,7 @@ from datetime import date, datetime, time, timedelta, timezone
 import json
 from zoneinfo import ZoneInfo
 
+from astro_host.cache import MemoryWeatherCache
 from astro_host.conditions import ConditionsService
 from astro_host.engine import ConditionsEngine
 from astro_host.models import (
@@ -198,6 +199,44 @@ def test_fresh_process_after_midnight_reacquires_previous_dst_day() -> None:
     assert window.end.astimezone(local_zone).utcoffset() == timedelta(hours=-7)
     assert result.weather is not None
     assert result.weather.hourly[0].time < reference
+
+
+class AdvancingClock:
+    def __init__(self, start: datetime, step: timedelta = timedelta(minutes=7)) -> None:
+        self._current = start
+        self._step = step
+        self.reads: list[datetime] = []
+
+    def __call__(self) -> datetime:
+        self.reads.append(self._current)
+        value = self._current
+        self._current = self._current + self._step
+        return value
+
+
+def test_after_midnight_reacquisition_reuses_the_request_clock() -> None:
+    reference = datetime(2026, 3, 8, 9, 30, tzinfo=timezone.utc)
+    clock = AdvancingClock(reference)
+    local_zone = ZoneInfo("America/Los_Angeles")
+    transport = LocalCalendarTransport(date(2026, 3, 8), local_zone)
+    provider = OpenMeteoWeatherProvider(
+        transport,
+        policy=OpenMeteoPolicy(max_attempts=1),
+        clock=lambda: reference,
+    )
+    service = ConditionsService(
+        provider,
+        cache=MemoryWeatherCache(clock=lambda: reference),
+        atlas_path=None,
+        clock=clock,
+    )
+    result = asyncio.run(service.conditions(
+        ConditionsRequest(Location(34.05, -118.24), reference)
+    ))
+    assert len(transport.calls) == 2
+    assert result.generated_at == reference
+    assert result.timezone.resolved_at == reference
+    assert clock.reads == [reference]
 
 
 class MissingUnrelatedTrailingSunEngine(ConditionsEngine):

@@ -1,7 +1,7 @@
 ---
 name: astronomer
 description: Authoritative astronomy observing conditions, target recommendations, observing places, saved locations, and telescope, binocular, or smart-telescope inventory through Astro Host.
-when-to-use: Use for questions about how tonight is for astronomy, what to observe, observing sites or coordinates, saved observing locations, and owned or selected observing equipment.
+when-to-use: Use for questions about how tonight is for astronomy, how the next three nights look, what to observe, observing sites or coordinates, saved observing locations, and owned or selected observing equipment.
 allowed-tools:
   - Shell
 user-invocable: true
@@ -12,9 +12,9 @@ metadata:
 
 # Astronomer
 
-Use this skill for astronomy observing conditions, tonight's recommended targets,
-place resolution, saved observing locations, and telescope, binocular, or smart-
-telescope inventory.
+Use this skill for astronomy observing conditions, the next three nights, tonight's
+recommended targets, place resolution, saved observing locations, and telescope,
+binocular, or smart-telescope inventory.
 
 ## Runtime
 
@@ -33,12 +33,14 @@ Read `references/operations.md` before forming a request. Invoke only these host
 operations:
 
 - Conditions questions such as “How is tonight?” use `agent.conditions`.
+- “How do the next three nights look?” uses `agent.outlook`. Do not call
+  `agent.conditions` three times or invent the three observing dates.
 - “What should I observe tonight?” uses `agent.recommendations`.
 - Human place-name resolution uses `agent.places`.
 - Saving, selecting, listing, or deleting observing locations uses `agent.locations`.
 - Saving, selecting, listing, or deleting equipment uses `agent.equipment`.
 
-Use an aware current UTC `reference_time` for conditions and recommendations.
+Use an aware current UTC `reference_time` for conditions, outlook, and recommendations.
 Do not add `minimum_fit` unless the user explicitly asks for a fit threshold; the
 current production default is the host's omitted-value behavior.
 
@@ -68,7 +70,7 @@ Preserve these result distinctions in the answer:
 
 ## Location onboarding
 
-When a conditions or recommendations request has no explicit location, first call
+When a conditions, outlook, or recommendations request has no explicit location, first call
 `agent.locations` with `get_selected`.
 
 If there is no selected location, ask for a place name or latitude/longitude while
@@ -83,7 +85,7 @@ For a human place name:
 3. For save confirmation, pass the exact candidate object returned by
    `agent.places` to `agent.locations` `save_from_candidate`; do not re-geocode or
    reconstruct it. Select it when the user wants it as the default.
-4. Resume the original conditions or recommendations request after confirmation.
+4. Resume the original conditions, outlook, or recommendations request after confirmation.
 
 Explicit coordinates or a candidate chosen for one use belong in the operation's
 `location` object and must not mutate saved state. Saving, selecting, renaming, or
@@ -108,6 +110,10 @@ explicitly requests one.
 ## Presentation
 
 Turn structured facts into concise, practical observing guidance. Lead with the
-overall conditions or returned target order, then the most decision-useful weather,
-Moon, darkness/window, and equipment facts. Keep optional educational context
-separate. Mention degraded, stale, unavailable, or empty status plainly.
+overall conditions, three-night outlook, or returned target order, then the most
+decision-useful weather, Moon, darkness/window, and equipment facts. Keep optional
+educational context separate. Mention degraded, stale, unavailable, or empty status
+plainly. For outlook, preserve each night's structural `available`,
+`no_astronomical_night`, or `unavailable` status from Astro Engine. A returned
+score may be absent on an `available` night; do not invent one or change the
+status. Identify the best night only from `best_index`.

@@ -26,6 +26,7 @@ from astro_engine.moon_observation import evaluate_moon_observation
 from astro_engine.moon_recommendation import recommend_moon
 from astro_engine.night_conditions import analyze_night_conditions
 from astro_engine.night_forecast import derive_night_forecast_window
+from astro_engine.night_outlook import compose_night_outlook, select_best_outlook_night
 from astro_engine.observing_night import resolve_active_observing_night
 from astro_engine.observing_quality import ObservingQualityError, assess_observing_quality
 from astro_engine.observing_window import select_observing_window
@@ -45,6 +46,8 @@ from astro_host.models import (
     MoonSample,
     NightAnalysis,
     ObservingQualityFacts,
+    OutlookComposition,
+    OutlookCompositionNight,
     SunEventsFacts,
     TimeWindow,
     VisibilityWindow,
@@ -133,7 +136,7 @@ class ConditionsEngine:
                     }
                     for row in daily_sun_events
                 ],
-                "daily_moon_count": len(daily_sun_events),
+                "daily_moon_count": _daily_moon_index_bound(daily_sun_events),
             })
             return ActiveNightResolution(
                 state=str(result["state"]),
@@ -306,6 +309,78 @@ class ConditionsEngine:
                 applied_penalty=None if light is None else float(light["applied_penalty"]),
                 light_pollution_available=light is not None,
             )
+        except Exception as exc:
+            raise _engine_error(capability, exc) from exc
+
+    def compose_outlook(
+        self,
+        *,
+        reference_time: datetime,
+        time_zone: str,
+        forecast_start_time: datetime | None,
+        daily_sun_events: Sequence[SunEventsFacts],
+        hourly_times: Sequence[datetime],
+    ) -> OutlookComposition:
+        capability = "observing_night.compose_outlook"
+        try:
+            result = compose_night_outlook({
+                "reference_time": _utc_z(reference_time),
+                "time_zone": time_zone,
+                "forecast_start_time": (
+                    None if forecast_start_time is None else _utc_z(forecast_start_time)
+                ),
+                "daily_sun_events": [
+                    {
+                        "astronomical_twilight_end": _utc_z_required(
+                            row.astronomical_twilight_end
+                        ),
+                        "astronomical_twilight_begin": _utc_z_required(
+                            row.astronomical_twilight_begin
+                        ),
+                    }
+                    for row in daily_sun_events
+                ],
+                "daily_moon_count": _daily_moon_index_bound(daily_sun_events),
+                "hourly_times": [_utc_z(value) for value in hourly_times],
+            })
+            return OutlookComposition(
+                state=str(result["state"]),
+                time_zone=str(result["time_zone"]),
+                nights=tuple(
+                    OutlookCompositionNight(
+                        slot_index=int(row["slot_index"]),
+                        day_offset=int(row["day_offset"]),
+                        day_index=(
+                            None if row["day_index"] is None else int(row["day_index"])
+                        ),
+                        observing_date=date.fromisoformat(row["observing_date"]),
+                        observing_day_start=_instant(row["observing_day_start"]),
+                        astronomical_night_start=_optional_instant(
+                            row["astronomical_night_start"]
+                        ),
+                        astronomical_night_end=_optional_instant(
+                            row["astronomical_night_end"]
+                        ),
+                        status=str(row["status"]),
+                    )
+                    for row in result["nights"]
+                ),
+            )
+        except Exception as exc:
+            raise _engine_error(capability, exc) from exc
+
+    def select_best_night(
+        self, nights: Sequence[tuple[str, int | None]]
+    ) -> int | None:
+        capability = "observing_night.select_best"
+        try:
+            result = select_best_outlook_night({
+                "nights": [
+                    {"status": status, "score": score} for status, score in nights
+                ]
+            })
+            raw = result["best_index"]
+            return None if raw is None else int(raw)
         except Exception as exc:
             raise _engine_error(capability, exc) from exc
 
@@ -649,6 +724,18 @@ class RecommendationEngine:
             return fn(payload)
         except Exception as exc:
             raise _engine_error(capability, exc) from exc
+
+
+def _daily_moon_index_bound(daily_sun_events: Sequence[SunEventsFacts]) -> int:
+    """Observing-night `daily_moon_count` is a parallel day-index bound.
+
+    Production sends `dailyMoonInfo.count`. The engine only checks
+    `day_index < count`; no Moon astronomy fact participates. This host has no
+    daily Moon payload. Scoring Moon is acquired later with `astronomy.moon_series`
+    at the night's hourly instants. Equal-to-Sun-row-count therefore means Moon
+    is not a tighter day bound than the Sun days already in hand.
+    """
+    return len(daily_sun_events)
 
 
 def _hourly_scores(ratings: Sequence[HourlyRating]) -> list[dict[str, object]]:

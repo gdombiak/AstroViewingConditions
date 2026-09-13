@@ -25,6 +25,7 @@ REQUIRED_OPERATIONS = (
     "agent.places",
     "agent.equipment",
     "agent.recommendations",
+    "agent.outlook",
 )
 
 

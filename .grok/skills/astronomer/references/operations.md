@@ -25,6 +25,23 @@ An explicit location uses latitude and longitude, with optional `name`,
 `equipment` and explicit `minimum_fit`. Do not send `minimum_fit` for the normal
 request; omission is the production `any` behavior.
 
+`agent.outlook` is the canonical three-night outlook: the active observing night
+plus the next two. It accepts `reference_time`, optional `location`, and optional
+`force_refresh`. Do not send `observing_date`. Slot 0 is the active observing
+night, including after local midnight.
+
+Per-night `available`, `no_astronomical_night`, and `unavailable` are structural
+Astro Engine statuses. Do not reinterpret them. A structurally `available` night
+may still have a null `observing_quality` when host scoring could not produce a
+headline score; that night is ineligible for best-night selection. Do not invent
+a score. `best_index` is the authoritative best night, including earliest-wins
+ties; identify “best night” only from that field. Wording such as “Tonight” or
+“Tomorrow” is presentation over slot order.
+
+This operation is implemented in the current source-tree host. It is not present
+in the old experimental `astro-runtime-v0.1.0` wheels; the next clean Grok Bot
+acceptance cycle uses newly built wheels from this tree.
+
 Equipment overrides are exactly one of:
 
 ```json

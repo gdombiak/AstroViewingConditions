@@ -93,6 +93,28 @@ def test_public_exports_include_equipment_store() -> None:
     assert "filter_recommendations" not in session
 
 
+def test_public_exports_include_outlook() -> None:
+    import astro_host
+
+    for name in (
+        "OutlookNightFacts",
+        "OutlookResult",
+    ):
+        assert name in astro_host.__all__
+        assert hasattr(astro_host, name)
+    assert "OUTLOOK_FORECAST_DAYS" not in astro_host.__all__
+    assert "ForecastPreparation" not in astro_host.__all__
+    assert "prepare_forecast" not in astro_host.__all__
+    source = (
+        Path(__file__).resolve().parents[1] / "src" / "astro_host" / "conditions.py"
+    ).read_text(encoding="utf-8")
+    assert "compose_night_outlook" not in source
+    assert "select_best_outlook_night" not in source
+    assert "from astro_engine.night_outlook" not in source
+    assert "async def prepare_forecast(" not in source
+    assert "class ForecastPreparation" not in source
+
+
 def test_public_exports_include_recommendations() -> None:
     import astro_host
 

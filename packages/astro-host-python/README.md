@@ -4,8 +4,10 @@
 operations include `agent.conditions`, which turns a location and an aware
 reference instant into typed weather, Sun/Moon, observing-night, Night
 Conditions, best-window, cloud-timing, and optional Observing Quality facts;
-and `agent.recommendations`, which answers “what should I observe tonight?”
-from those same night facts plus H12 equipment.
+`agent.outlook`, which composes the canonical three-night outlook over those
+same acquisition and scoring authorities; and `agent.recommendations`, which
+answers “what should I observe tonight?” from those same night facts plus H12
+equipment.
 
 The dependency direction is one-way:
 
@@ -118,6 +120,15 @@ an empty inventory. Unknown v1 fields are preserved on rewrite. An explicit
 `get_active` equipment override never mutates the store. Override `mode` is
 `all_saved` or `naked_eye_only` only; exclusive one-off use is `id` or `query`.
 
+`agent.outlook` reuses the same Open-Meteo acquisition, timezone resolution,
+cache, and per-night scoring path as `agent.conditions`. It asks
+`observing_night.compose_outlook` for the three observing dates and per-night
+status, scores only `available` nights, and asks `observing_night.select_best`
+for the best-night index. The fetch is the production four-day three-night
+horizon, not an arbitrary-N `agent.forecast_horizon`. Widget cache, AppGroup
+persistence, and timeline scheduling are iOS-only and are not part of this
+operation.
+
 `agent.recommendations` reuses `ConditionsService.conditions` once for the same
 location/night, then composes Moon, Venus/Mars/Jupiter/Saturn, and the 29
 deep-sky catalog objects through existing engine capabilities. Mixed ranking is
@@ -192,6 +203,7 @@ apps/cli/astro-host agent.locations --input locations.json --pretty
 apps/cli/astro-host agent.places --input places.json --pretty
 apps/cli/astro-host agent.equipment --input equipment.json --pretty
 apps/cli/astro-host agent.recommendations --input request.json --pretty
+apps/cli/astro-host agent.outlook --input request.json --pretty
 apps/cli/astro-host --runtime-info
 ```
 

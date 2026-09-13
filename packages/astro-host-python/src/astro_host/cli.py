@@ -72,6 +72,7 @@ AGENT_OPERATIONS = (
     "agent.places",
     "agent.equipment",
     "agent.recommendations",
+    "agent.outlook",
 )
 
 _LOCATION_ACTIONS = frozenset({
@@ -266,6 +267,10 @@ def main(
             stdout=stdout,
             stderr=stderr,
         )
+    if args.operation == "agent.outlook":
+        return _main_outlook(
+            args, service=service, store=store, stdout=stdout, stderr=stderr
+        )
     return _main_conditions(
         args, service=service, store=store, stdout=stdout, stderr=stderr
     )
@@ -395,6 +400,60 @@ def _main_conditions(
         _write_json({
             "ok": False,
             "operation": "agent.conditions",
+            "error": {"code": "host_failure", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+
+
+def _main_outlook(
+    args: argparse.Namespace,
+    *,
+    service: ConditionsService | None,
+    store: LocationStore | None,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> int:
+    try:
+        document = _read_json(args.input_path)
+        host_request = parse_outlook_request(document)
+        location, location_source = _compose_conditions_location(
+            args, host_request.location, store
+        )
+        request = ConditionsRequest(
+            location=location,
+            reference_time=host_request.reference_time,
+            force_refresh=host_request.force_refresh,
+        )
+        if service is None:
+            service = build_default_service(args)
+        result = asyncio.run(service.outlook(request))
+        payload = _json_value(result)
+        payload["location_source"] = location_source.value
+        _write_json({
+            "ok": True,
+            "operation": "agent.outlook",
+            "result": payload,
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_OK
+    except (InvalidRequestError, json.JSONDecodeError, OSError) as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.outlook",
+            "error": {"code": "invalid_request", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST
+    except LocationStoreError as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.outlook",
+            "error": {"code": exc.code, "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST if exc.code == "invalid_request" else EXIT_FAILURE
+    except Exception as exc:
+        print(f"astro-host: {exc}", file=stderr)
+        _write_json({
+            "ok": False,
+            "operation": "agent.outlook",
             "error": {"code": "host_failure", "message": str(exc)},
         }, pretty=args.pretty, stream=stdout)
         return EXIT_FAILURE
@@ -1097,6 +1156,19 @@ def parse_places_request(document: object) -> str:
     if set(document) != {"action", "query"}:
         raise InvalidRequestError("request must be an object with known fields")
     return _required_query(document.get("query"))
+
+
+_OUTLOOK_KEYS = frozenset({"location", "reference_time", "force_refresh"})
+
+
+def parse_outlook_request(document: object) -> HostConditionsRequest:
+    if not isinstance(document, Mapping):
+        raise InvalidRequestError("request must be an object with known fields")
+    if "observing_date" in document:
+        raise InvalidRequestError("agent.outlook does not accept observing_date")
+    if set(document) - _OUTLOOK_KEYS:
+        raise InvalidRequestError("request must be an object with known fields")
+    return parse_conditions_request(document)
 
 
 def parse_conditions_request(document: object) -> HostConditionsRequest:
