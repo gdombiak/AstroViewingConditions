@@ -15,13 +15,15 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `targets.moon_recommendation`, `astronomy.planet_observation`,
 `targets.planet_recommendation`, `targets.compose_recommendations`,
 `targets.filter_recommendations_by_equipment`, and
-`observing_night.resolve_active`, `night_forecast.derive_window`, `night_conditions.classify_cloud_timing`,
-`observing_night.compose_outlook`, and `observing_night.select_best`. Composed agent hosts remain
-later integration work. Phase 15 procedures describe
+`observing_night.resolve_active`, `night_forecast.derive_window`, `night_conditions.classify_cloud_timing`, `night_conditions.select_cloud_advisory`,
+`observing_night.compose_outlook`, and `observing_night.select_best`. `agent.conditions`,
+`agent.recommendations`, and `agent.outlook` have landed as host integration;
+`agent.*` operations remain outside the Engine parity capability catalog.
+Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those thirty-six IDs. Capability
+The public Python CLI allow-lists exactly those thirty-seven IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
 rows keep `since: "0.1.0"`; the three `location.*` Best Nearby decision rows,
 `targets.recommend`, and `equipment.match` use `since: "1.0.0"` because

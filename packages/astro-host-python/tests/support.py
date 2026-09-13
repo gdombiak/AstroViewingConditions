@@ -189,6 +189,9 @@ class FakeEngine:
     def classify_cloud_timing(self, ratings):
         return "none"
 
+    def select_cloud_advisory(self, cloud_timing, rating, average_cloud_cover):
+        return None
+
     def lookup_brightness(self, atlas_path, location):
         return 21.0
 

@@ -25,6 +25,12 @@ An explicit location uses latitude and longitude, with optional `name`,
 `equipment` and explicit `minimum_fit`. Do not send `minimum_fit` for the normal
 request; omission is the production `any` behavior.
 
+In `agent.conditions`, `result.night_conditions.cloud_timing` is the authoritative
+classification. `result.night_conditions.cloud_advisory` is the nullable
+authoritative eligibility fact for user-facing timing advice. Use the latter for
+advice; do not recreate eligibility from rating, average cloud cover, hourly
+weather, or the classification alone. Null does not assert clear skies.
+
 `agent.outlook` is the canonical three-night outlook: the active observing night
 plus the next two. It accepts `reference_time`, optional `location`, and optional
 `force_refresh`. Do not send `observing_date`. Slot 0 is the active observing

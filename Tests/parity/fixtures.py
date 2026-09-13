@@ -41,6 +41,7 @@ DETERMINISTIC_FIXTURE_DIRS = (
     "fixtures/capabilities/observing-night-resolve-active",
     "fixtures/capabilities/night-forecast-window",
     "fixtures/capabilities/cloud-timing",
+    "fixtures/capabilities/cloud-advisory",
     "fixtures/capabilities/night-outlook-compose",
     "fixtures/capabilities/night-outlook-select-best",
 )

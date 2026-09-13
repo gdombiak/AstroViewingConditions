@@ -85,6 +85,7 @@ def test_cli_complete_success_envelope(tmp_path) -> None:
     assert payload["result"]["status"] == "complete"
     assert payload["result"]["generated_at"] == "2026-02-20T05:00:00Z"
     assert payload["result"]["location_source"] == "explicit_override"
+    assert payload["result"]["night_conditions"]["cloud_advisory"] is None
 
 
 def test_cli_degraded_and_unavailable_are_structured_successes(tmp_path) -> None:

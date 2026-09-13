@@ -410,6 +410,7 @@ class NightConditionsFacts:
     second_half_score: float | None
     best_window: TimeWindow | None
     cloud_timing: str
+    cloud_advisory: str | None
 
 
 @dataclass(frozen=True)

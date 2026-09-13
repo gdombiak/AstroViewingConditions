@@ -8,6 +8,7 @@ is shared with the CLI through `_capability.evaluate_capability`.
 
 from astro_engine.catalog import load_deep_sky_catalog
 from astro_engine.cloud_timing import classify_cloud_timing
+from astro_engine.cloud_advisory import select_cloud_advisory
 from astro_engine.contracts import engine_semver
 from astro_engine.fog import score_fog
 from astro_engine.grid import generate_grid
@@ -28,6 +29,7 @@ __all__ = [
     "analyze_night_conditions",
     "assess_observing_quality",
     "classify_cloud_timing",
+    "select_cloud_advisory",
     "decode_iss",
     "decode_weather",
     "derive_night_forecast_window",

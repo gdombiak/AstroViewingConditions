@@ -123,6 +123,15 @@ def test_outlook_returns_exactly_three_slots() -> None:
     assert [night.is_best for night in result.nights] == [True, False, False]
 
 
+def test_outlook_does_not_request_conditions_only_cloud_advice() -> None:
+    class NoAdvisoryEngine(FakeEngine):
+        def select_cloud_advisory(self, cloud_timing, rating, average_cloud_cover):
+            raise AssertionError("outlook must not select Bot cloud advice")
+
+    result = run_outlook(engine=NoAdvisoryEngine())
+    assert result.status is ConditionsStatus.COMPLETE
+
+
 def test_outlook_plans_four_forecast_days() -> None:
     provider = FakeProvider()
     run_outlook(provider)

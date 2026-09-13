@@ -275,6 +275,25 @@ final class NightQualityAnalyzerTests: XCTestCase {
         XCTAssertNotEqual(result.summary, "Decent conditions, but some clouds may be present.")
     }
 
+    func testPoorNightBelowWholeNightCloudFloorOmitsTimingAdvice() {
+        let forecasts = createForecasts(hours: [
+            (hour: 20, cloudCover: 0, humidity: 40, windSpeed: 2),
+            (hour: 21, cloudCover: 100, humidity: 99, windSpeed: 30),
+            (hour: 22, cloudCover: 100, humidity: 99, windSpeed: 30),
+            (hour: 23, cloudCover: 79, humidity: 99, windSpeed: 30),
+            (hour: 24, cloudCover: 79, humidity: 99, windSpeed: 30),
+        ])
+        let result = analyze(forecasts: forecasts, moonIllumination: 100)
+
+        XCTAssertLessThan(
+            result.details.cloudCoverScore,
+            Double(EngineCalibration.current.nightQuality.cloudFloor.cloudCoverMin)
+        )
+        XCTAssertEqual(NightQualityAnalysisRules.cloudTiming(in: result.hourlyRatings), .lateHeavy)
+        XCTAssertEqual(result.rating, .poor)
+        XCTAssertEqual(result.summary, "Poor early, degrading after midnight.")
+    }
+
     func testHeavyCloudsEarlyWithClearLaterUsesImprovementSummary() {
         let result = analyze(
             forecasts: createCloudIntervalForecasts(cloudCovers: [95, 90, 20, 10, 5]),

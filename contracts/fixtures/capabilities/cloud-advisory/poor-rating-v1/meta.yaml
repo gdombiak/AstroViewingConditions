@@ -1,0 +1,5 @@
+capability: night_conditions.select_cloud_advisory
+engine_semver: ">=1.0.0 <2.0.0"
+equality: cloud_advisory
+origin: manual
+hosts: [swift, python]

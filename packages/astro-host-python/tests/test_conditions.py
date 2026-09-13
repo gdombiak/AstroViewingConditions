@@ -71,10 +71,29 @@ def test_live_complete_active_night_composes_all_required_facts() -> None:
     assert result.night_conditions.public_score == 90
     assert result.night_conditions.best_window is not None
     assert result.night_conditions.cloud_timing == "none"
+    assert result.night_conditions.cloud_advisory is None
     assert result.observing_quality is not None
     assert result.observing_quality.light_pollution_available
     assert result.astronomy is not None
     assert engine.moon_times == tuple(row.time for row in result.weather.hourly)
+
+
+def test_conditions_passes_through_engine_advisory_without_inference() -> None:
+    class AdvisoryEngine(FakeEngine):
+        def __init__(self):
+            super().__init__()
+            self.advisory_input = None
+
+        def select_cloud_advisory(self, cloud_timing, rating, average_cloud_cover):
+            self.advisory_input = (cloud_timing, rating, average_cloud_cover)
+            return "late_heavy"
+
+    engine = AdvisoryEngine()
+    result = run_conditions(FakeProvider(), engine=engine)
+    assert result.night_conditions is not None
+    assert result.night_conditions.cloud_timing == "none"
+    assert result.night_conditions.cloud_advisory == "late_heavy"
+    assert engine.advisory_input == ("none", "excellent", 10.0)
 
 
 def test_live_partial_is_degraded_and_empty_is_unavailable() -> None:

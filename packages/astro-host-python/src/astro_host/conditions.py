@@ -354,7 +354,8 @@ class ConditionsService:
                 ))
 
             night_conditions, moon_samples = self._analyze_night_window(
-                request, tz.iana_identifier, window, night_rows
+                request, tz.iana_identifier, window, night_rows,
+                include_cloud_advisory=True,
             )
             astronomy = AstronomyFacts(
                 sun_today=sun_today,
@@ -587,7 +588,8 @@ class ConditionsService:
             ))
             return None, None
         night_conditions, _ = self._analyze_night_window(
-            request, time_zone, window, night_rows
+            request, time_zone, window, night_rows,
+            include_cloud_advisory=False,
         )
         quality = self._engine.assess_observing_quality(
             night_conditions.public_score, brightness
@@ -609,6 +611,8 @@ class ConditionsService:
         time_zone: str,
         window: TimeWindow,
         night_rows: Sequence,
+        *,
+        include_cloud_advisory: bool,
     ) -> tuple[NightConditionsFacts, tuple]:
         moon_times = sorted({row.time for row in night_rows})
         moon_samples = self._engine.moon_series(request.location, moon_times)
@@ -621,6 +625,14 @@ class ConditionsService:
         )
         best_window = self._engine.select_best_window(analysis.hourly_ratings)
         cloud_timing = self._engine.classify_cloud_timing(analysis.hourly_ratings)
+        cloud_advisory = (
+            self._engine.select_cloud_advisory(
+                cloud_timing,
+                analysis.rating,
+                float(analysis.details["cloud_cover_score"]),
+            )
+            if include_cloud_advisory else None
+        )
         return NightConditionsFacts(
             rating=analysis.rating,
             public_score=analysis.public_score,
@@ -633,6 +645,7 @@ class ConditionsService:
             second_half_score=analysis.second_half_score,
             best_window=best_window,
             cloud_timing=cloud_timing,
+            cloud_advisory=cloud_advisory,
         ), moon_samples
 
     def _lookup_brightness(

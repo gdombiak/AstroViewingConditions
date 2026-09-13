@@ -13,6 +13,7 @@ from typing import Mapping, Sequence
 from astro_engine.astronomy import evaluate_astronomy
 from astro_engine.catalog import catalog_deep_sky
 from astro_engine.cloud_timing import classify_cloud_timing
+from astro_engine.cloud_advisory import select_cloud_advisory
 from astro_engine.compose_recommendations import compose_recommendations
 from astro_engine.contracts import ContractsRootError, engine_semver
 from astro_engine.deep_sky_observation import evaluate_deep_sky_observation
@@ -281,6 +282,20 @@ class ConditionsEngine:
                 ]
             })
             return str(result["cloud_timing"])
+        except Exception as exc:
+            raise _engine_error(capability, exc) from exc
+
+    def select_cloud_advisory(
+        self, cloud_timing: str, rating: str, average_cloud_cover: float
+    ) -> str | None:
+        capability = "night_conditions.select_cloud_advisory"
+        try:
+            result = select_cloud_advisory({
+                "cloud_timing": cloud_timing,
+                "rating": rating,
+                "average_cloud_cover": average_cloud_cover,
+            })
+            return result["cloud_advisory"]
         except Exception as exc:
             raise _engine_error(capability, exc) from exc
 

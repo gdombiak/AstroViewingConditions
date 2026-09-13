@@ -25,6 +25,12 @@ mapping; the Python engine does not reproduce it, no equality field covers it,
 and a Bot host is free to word the advice however it likes — as long as it does
 not invent the classification.
 
+Later item #10 archaeology found a separate deterministic *eligibility* gate in
+`NightQualityAnalyzer.generateSummary`. It is now owned by
+[`night_conditions.select_cloud_advisory`](cloud-advisory.md). Bot presentation
+uses that nullable advisory fact; it must not infer eligibility from this
+classification alone.
+
 Verified against the production source before extraction:
 
 - **The rule reads exactly three hourly facts**: `time`, `score`, `cloudCover`.

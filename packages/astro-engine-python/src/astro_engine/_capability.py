@@ -41,6 +41,10 @@ from astro_engine.cloud_timing import (
     CAPABILITY_ID as CLOUD_TIMING_ID,
     classify_cloud_timing,
 )
+from astro_engine.cloud_advisory import (
+    CAPABILITY_ID as CLOUD_ADVISORY_ID,
+    select_cloud_advisory,
+)
 from astro_engine.night_outlook import (
     BEST_NIGHT_CAPABILITY_ID,
     CAPABILITY_ID as NIGHT_OUTLOOK_ID,
@@ -250,6 +254,8 @@ def evaluate_capability(
         return derive_night_forecast_window(_injected(document))
     if capability == CLOUD_TIMING_ID:
         return classify_cloud_timing(_injected(document))
+    if capability == CLOUD_ADVISORY_ID:
+        return select_cloud_advisory(_injected(document))
     if capability == NIGHT_OUTLOOK_ID:
         return compose_night_outlook(_injected(document))
     if capability == BEST_NIGHT_CAPABILITY_ID:

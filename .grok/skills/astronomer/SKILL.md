@@ -117,3 +117,17 @@ plainly. For outlook, preserve each night's structural `available`,
 `no_astronomical_night`, or `unavailable` status from Astro Engine. A returned
 score may be absent on an `available` night; do not invent one or change the
 status. Identify the best night only from `best_index`.
+
+For `agent.conditions`, use `night_conditions.cloud_advisory` as the sole authority
+for cloud-timing advice. `early_heavy` means heavy clouds early, with a potentially
+better observing opportunity later; `late_heavy` means observing earlier may be
+better before heavier clouds arrive; `intermittent_heavy` means a heavy-cloud
+period may interrupt otherwise usable conditions, without choosing earlier or
+later. If `cloud_advisory` is null or night conditions are unavailable, do not
+infer a timing recommendation. Do not infer eligibility from `cloud_timing` alone,
+reclassify hourly cloud rows, invent the heavy-cloud interval's clock times, or
+read `none` as clear skies. Overall `trend` is not a cloud-timing classification.
+`best_window` may be reported as its own authoritative fact, never as the
+heavy-cloud interval. Preserve degraded and stale-provider caveats.
+Do not turn a `cloud_timing` field in recommendations or outlook into timing
+advice; those operations do not return the eligibility fact.

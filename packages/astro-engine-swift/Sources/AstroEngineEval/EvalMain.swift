@@ -46,6 +46,7 @@ Eval allow-list (not the public Python CLI):
   observing_night.resolve_active
   night_forecast.derive_window
   night_conditions.classify_cloud_timing
+  night_conditions.select_cloud_advisory
   observing_night.compose_outlook
   observing_night.select_best
 """
@@ -84,6 +85,7 @@ private let supportedCapabilities: Set<String> = [
     "observing_night.resolve_active",
     "night_forecast.derive_window",
     "night_conditions.classify_cloud_timing",
+    "night_conditions.select_cloud_advisory",
     "observing_night.compose_outlook",
     "observing_night.select_best",
 ]

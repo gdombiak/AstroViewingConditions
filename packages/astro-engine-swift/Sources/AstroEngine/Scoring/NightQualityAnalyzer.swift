@@ -394,8 +394,7 @@ public struct NightQualityAnalyzer {
             trend: trend,
             averageCloudCover: avgCloudCover,
             seeingScoreAvg: details.seeingScoreAvg,
-            cloudTiming: cloudTiming,
-            cloudCoverMin: night.cloudFloor.cloudCoverMin
+            cloudTiming: cloudTiming
         )
 
         let bestWindowStart = hourlyRatings.first?.time ?? emptyNightStart
@@ -444,14 +443,18 @@ public struct NightQualityAnalyzer {
         trend: NightQualityAssessment.Trend,
         averageCloudCover: Double,
         seeingScoreAvg: Double?,
-        cloudTiming: NightQualityAnalysisRules.CloudTiming,
-        cloudCoverMin: Int
+        cloudTiming: NightQualityAnalysisRules.CloudTiming
     ) -> String {
         let seeingWarning = seeingScoreAvg.map { NightQualityAssessment.Rating.from(score: $0) == .poor } == true
             ? " Poor seeing may limit fine detail."
             : ""
 
-        if averageCloudCover >= Double(cloudCoverMin) {
+        let cloudAdvisory = CloudAdvisorySelector.select(
+            cloudTiming: cloudTiming.classification,
+            rating: rating,
+            averageCloudCover: averageCloudCover
+        )
+        if cloudAdvisory.wholeNightHeavy {
             switch trend {
             case .improving:
                 return "Poor conditions early, but overall conditions improve through the night." + seeingWarning
@@ -462,8 +465,8 @@ public struct NightQualityAnalyzer {
             }
         }
 
-        if rating != .poor,
-           let summary = cloudTiming.summaryText {
+        if let advisory = cloudAdvisory.advisory,
+           let summary = NightQualityAnalysisRules.CloudTiming(advisory).summaryText {
             return summary + seeingWarning
         }
 

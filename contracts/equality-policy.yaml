@@ -446,6 +446,13 @@ policies:
       code: exact
       message: exact
 
+  cloud_advisory:
+    description: Nullable semantic advice code, without English presentation.
+    fields:
+      cloud_advisory: exact
+      code: exact
+      message: exact
+
   night_outlook:
     description: >
       Exact composed day identity, boundaries and discrete per-night status.

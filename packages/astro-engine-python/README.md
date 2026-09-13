@@ -1,7 +1,7 @@
 # astro-engine (Python)
 
 Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the
-thirty-six catalogued capabilities.
+thirty-seven catalogued capabilities.
 
 In a checkout, calibration and canonical data are loaded from the repository
 `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). The release-wheel build
@@ -124,7 +124,11 @@ sorted. It emits no English copy: the summary sentences production builds from
 the verdict are host presentation. See the
 [cloud-timing procedure](../../contracts/procedures/cloud-timing.md).
 
-The public catalog now contains 36 capabilities; engine/package identity remains
+`night_conditions.select_cloud_advisory` selects a nullable semantic timing
+advice code from the classifier verdict, overall rating and average cloud cover;
+see the [cloud-advisory procedure](../../contracts/procedures/cloud-advisory.md).
+
+The public catalog now contains 37 capabilities; engine/package identity remains
 unreleased 1.0.0.
 
 Target metadata is available through `targets.requirements`,

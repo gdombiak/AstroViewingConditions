@@ -41,6 +41,7 @@ from astro_engine.location_filter_recommendable import CAPABILITY_ID as FILTER_R
 from astro_engine.observing_night import CAPABILITY_ID as OBSERVING_NIGHT_ID
 from astro_engine.night_forecast import CAPABILITY_ID as NIGHT_FORECAST_ID
 from astro_engine.cloud_timing import CAPABILITY_ID as CLOUD_TIMING_ID
+from astro_engine.cloud_advisory import CAPABILITY_ID as CLOUD_ADVISORY_ID
 from astro_engine.night_outlook import (
     BEST_NIGHT_CAPABILITY_ID,
     CAPABILITY_ID as NIGHT_OUTLOOK_ID,
@@ -100,6 +101,7 @@ PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     OBSERVING_NIGHT_ID,
     NIGHT_FORECAST_ID,
     CLOUD_TIMING_ID,
+    CLOUD_ADVISORY_ID,
     NIGHT_OUTLOOK_ID,
     BEST_NIGHT_CAPABILITY_ID,
 )

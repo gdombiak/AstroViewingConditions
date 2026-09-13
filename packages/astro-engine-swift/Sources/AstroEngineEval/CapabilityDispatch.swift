@@ -145,6 +145,12 @@ enum CapabilityDispatch {
             } catch let error as CloudTimingInputError {
                 throw EvalValidationError(code: error.code, message: error.message)
             }
+        case "night_conditions.select_cloud_advisory":
+            do {
+                return try CloudAdvisoryContract.evaluate(injected(document))
+            } catch let error as CloudAdvisoryInputError {
+                throw EvalValidationError(code: error.code, message: error.message)
+            }
         case "location.compare":
             return try locationCompare(document)
         case "location.compose_scores":

@@ -21,6 +21,15 @@ public enum NightQualityAnalysisRules {
             }
         }
 
+        var classification: CloudTimingClassifier.Classification {
+            switch self {
+            case .none: return .none
+            case .earlyHeavy: return .earlyHeavy
+            case .lateHeavy: return .lateHeavy
+            case .intermittentHeavy: return .intermittentHeavy
+            }
+        }
+
         var summaryText: String? {
             switch self {
             case .none: return nil

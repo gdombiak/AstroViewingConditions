@@ -385,6 +385,18 @@ capabilities:
       assessment, trend, rating and forecast acquisition are all excluded. See
       contracts/procedures/cloud-timing.md.
 
+  - id: night_conditions.select_cloud_advisory
+    hosts: [ios, cli]
+    equality: cloud_advisory
+    since: "1.0.0"
+    requires_injected: [cloud_timing, rating, average_cloud_cover]
+    summary: >
+      Select a nullable semantic cloud-timing advisory from the authoritative
+      classification and Night Conditions facts. Whole-night average cloud at
+      or above the calibrated heavy floor takes priority; poor rating and none
+      classification also suppress timing advice. English wording is excluded.
+      See contracts/procedures/cloud-advisory.md.
+
   - id: observing_night.compose_outlook
     hosts: [ios, cli]
     equality: night_outlook
