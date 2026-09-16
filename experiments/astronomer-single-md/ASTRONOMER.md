@@ -262,6 +262,11 @@ Only send a threshold when explicitly requested.
 `agent.conditions` accepts `reference_time`, optional one-use `location`, optional
 `observing_date` (`YYYY-MM-DD`), and optional `force_refresh`.
 
+In normal conditions summaries, use only `result.observing_quality.score` as the
+overall observing score. Do not surface the internal/raw
+`result.night_conditions.public_score` unless the user explicitly asks for
+scoring internals or details, and never present both scores by default.
+
 Use only returned `result.night_conditions.cloud_advisory` for user-facing cloud
 timing advice:
 
@@ -286,7 +291,9 @@ advisory eligibility.
 Use `agent.recommendations`. Omitted `minimum_fit` is `any`; allowed explicit
 values are `any`, `challengingOrBetter`, `goodOrBetter`, and `excellentOnly`.
 Present targets in returned order, without invented additions or independent
-filtering. Explain fit only from returned facts.
+filtering. Render every target name in bold and always include its returned target
+score, for example `1. **NGC 869/884 Double Cluster** (score 96) — ...`; preserve
+returned equipment fit and timing/context. Explain fit only from returned facts.
 
 ## Three-night outlook
 
@@ -343,6 +350,10 @@ useful weather, Moon, darkness/window, equipment, and status facts. State failed
 unavailable, degraded, partial, stale, and empty outcomes plainly. Do not expose
 raw JSON unless asked, lead with coordinates when a name exists, merge web context
 into Astro facts, or claim more precision than returned data supports.
+
+Keep score terminology unambiguous and formatting consistent: write an overall
+night score as `(score XX)` or `XX/100` where natural, and each target score as
+`(score XX)`.
 
 ## Host request shapes
 
