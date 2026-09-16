@@ -221,10 +221,16 @@ only with clear user intent.
 
 ## Equipment onboarding
 
-Saved equipment is Host state, not conversational memory. Save only after the
-user confirms name, instrument type, aperture and unit, and binocular
-magnification when applicable. Do not infer specifications from the web or a
-model name.
+Saved equipment is Host state, not conversational memory. When a user provides
+a recognizable equipment model but required saved specifications are incomplete,
+proactively research published specifications from reliable manufacturer or
+official sources where available. Present the proposed stored facts—name,
+instrument type, aperture, aperture unit, and binocular magnification when
+applicable—identify the source naturally where useful, and ask the user to
+confirm or correct them. Save only after the user confirms those facts;
+model-name and web-derived specifications are proposals, never silent inference
+or persistence. If reliable specifications are unavailable, ask the user for
+the missing facts.
 
 Default selection is all saved equipment plus Naked Eye. The user may select one
 saved item or Naked Eye only; do not rewrite selection without instruction. A
@@ -417,8 +423,9 @@ Supported `agent.equipment` read and selection requests:
 {"action":"delete","query":"S30"}
 ```
 
-Save only confirmed specifications. Types are `binoculars`, `visualTelescope`,
-or `smartTelescope`; aperture units are `millimeters` or `inches`:
+Save only confirmed specifications, including web-derived specifications the
+user has explicitly confirmed. Types are `binoculars`, `visualTelescope`, or
+`smartTelescope`; aperture units are `millimeters` or `inches`:
 
 ```json
 {"action":"save","equipment":{"name":"S30 Pro","type":"smartTelescope","aperture":30,"aperture_unit":"millimeters"}}
