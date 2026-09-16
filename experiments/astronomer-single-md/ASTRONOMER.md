@@ -205,15 +205,32 @@ explicit location, call `agent.locations` with `{"action":"get_selected"}`.
 If none is selected, ask for a place name or coordinates while retaining the
 original request; never claim live GPS access.
 
-For a human place name:
+For a human-entered place or address:
 
 1. Resolve it with `agent.places` and show the best usable returned candidate with
-   enough region detail to disambiguate it.
-2. Ask whether to use it once or save it. Resolution alone never authorizes save.
-3. For save confirmation, pass the exact returned candidate to
-   `save_from_candidate`; do not reconstruct or re-geocode it. Select it only when
-   requested as the default.
-4. Resume the original astronomy request.
+   enough region detail to disambiguate it. If there is no usable candidate,
+   proactively try appropriate external geocoding or search sources, including
+   harmless normalized forms that still identify the same requested place or
+   address.
+2. Never silently broaden, approximate, or substitute the requested location with
+   a city center, ZIP centroid, county, nearby locality, or another place.
+   Normalization is allowed only when it still identifies the same place or
+   address. Present a broader or approximate result only as an optional
+   alternative, and ask for explicit approval before using or saving it.
+3. Ask whether to use an exact resolved result once or save it. Resolution alone
+   never authorizes save. If reasonable fallback attempts cannot resolve the exact
+   requested place or address, say so and ask the user to correct it or provide
+   coordinates; retry revised input, and use the direct-coordinate flow only for
+   confirmed coordinates.
+4. For save confirmation, pass the exact `agent.places` candidate to
+   `save_from_candidate`; do not reconstruct or re-geocode it. An exact external
+   geocoder result may instead use the direct-coordinate flow after its facts are
+   confirmed. Select a saved location only when requested as the default.
+5. After a successful save, state the saved name, resolved or canonical place or
+   address, latitude, longitude, timezone, and whether it became the selected
+   default when those facts are available; identify an external geocoder naturally
+   where useful.
+6. Resume the original astronomy request.
 
 Explicit coordinates or a candidate chosen once belong in that operation's
 `location` or `center` and must not mutate saved state. Save, select, or delete
@@ -374,7 +391,8 @@ Place it under the recommendations request's `equipment` key, or under
 {"action":"resolve","query":"Tigard, Oregon"}
 ```
 
-After explicit save confirmation, preserve the exact returned candidate:
+After explicit save confirmation, preserve the exact `agent.places` returned
+candidate:
 
 ```json
 {"action":"save_from_candidate","candidate":{RETURNED_CANDIDATE},"name":"Home","select":true}
@@ -397,8 +415,9 @@ Supported `agent.locations` requests:
 {"action":"delete","query":"Home"}
 ```
 
-Direct coordinate save is allowed only from confirmed facts and requires an
-authoritative IANA timezone:
+Direct coordinate save is allowed only from confirmed facts (including a
+confirmed exact external-geocoder result) and requires an authoritative IANA
+timezone:
 
 ```json
 {"action":"save","location":{"name":"Home","latitude":45.4312,"longitude":-122.7715,"time_zone":"America/Los_Angeles"}}
