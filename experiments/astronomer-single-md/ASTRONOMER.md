@@ -11,18 +11,17 @@ come from the installed `astro-host`; never calculate, estimate, or replace them
 
 This document and the two supplied wheels define the release:
 
-- Astro Runtime: `__ASTRO_RUNTIME_VERSION__`
-- Astro Engine: `__ASTRO_ENGINE_VERSION__`
-- Engine wheel: `__ASTRO_ENGINE_WHEEL_FILENAME__`
-- Engine SHA-256: `__ASTRO_ENGINE_WHEEL_SHA256__`
-- Astro Host: `__ASTRO_HOST_VERSION__`
-- Host wheel: `__ASTRO_HOST_WHEEL_FILENAME__`
-- Host SHA-256: `__ASTRO_HOST_WHEEL_SHA256__`
+- Astro Runtime: `0.1.0`
+- Astro Engine: `1.0.0`
+- Engine wheel: `astro_engine-1.0.0-py3-none-any.whl`
+- Engine SHA-256: `c00c982855f1c17207fd7778d809c1df9c51f4ecd1d1020544fc77b06515fd6d`
+- Astro Host: `0.1.0`
+- Host wheel: `astro_host-0.1.0-py3-none-any.whl`
+- Host SHA-256: `f7dfe81944d82aa8869f78e18f6081482cbb42129fdb69362bb387ab54e2a87e`
 
 Astro Runtime is the deployed release identity, distinct from the Host and Engine
-package versions. `__ASTRO_RUNTIME_VERSION__` is a bare semantic version such as
-`0.1.0`, with no `v`, directory prefix, or Git tag. A release tag may independently
-be named `astro-runtime-v0.1.0`. If any `__ASTRO_...__` placeholder remains during
+package versions. Astro Runtime version `0.1.0` is a bare semantic version, with no `v`, directory prefix, or Git tag. A release tag may independently
+be named `astro-runtime-v0.1.0`. If any release placeholder remains during
 installation, stop: release metadata is incomplete. Never guess it.
 
 Use Python 3.11 or newer and this layout:
@@ -30,8 +29,8 @@ Use Python 3.11 or newer and this layout:
 ```text
 /workspace/astro-viewing-conditions/
 ├── runtime/
-│   ├── current -> versions/astro-runtime-__ASTRO_RUNTIME_VERSION__
-│   └── versions/astro-runtime-__ASTRO_RUNTIME_VERSION__/.venv/
+│   ├── current -> versions/astro-runtime-0.1.0
+│   └── versions/astro-runtime-0.1.0/.venv/
 └── state/
 ```
 
@@ -65,8 +64,8 @@ a repository, build wheels, substitute another release, or download Astro wheels
 Verify both files before creating or changing the venv:
 
 ```sh
-printf '%s  %s\n' '__ASTRO_ENGINE_WHEEL_SHA256__' "$ENGINE_WHEEL" | sha256sum --check -
-printf '%s  %s\n' '__ASTRO_HOST_WHEEL_SHA256__' "$HOST_WHEEL" | sha256sum --check -
+printf '%s  %s\n' 'c00c982855f1c17207fd7778d809c1df9c51f4ecd1d1020544fc77b06515fd6d' "$ENGINE_WHEEL" | sha256sum --check -
+printf '%s  %s\n' 'f7dfe81944d82aa8869f78e18f6081482cbb42129fdb69362bb387ab54e2a87e' "$HOST_WHEEL" | sha256sum --check -
 ```
 
 Both must report `OK`. A missing file, ambiguous match, malformed checksum, or
@@ -76,8 +75,8 @@ then install at the final path:
 ```sh
 ASTRO_ROOT=/workspace/astro-viewing-conditions
 ASTRO_STATE=/workspace/astro-viewing-conditions/state
-ASTRO_VERSION_DIR=/workspace/astro-viewing-conditions/runtime/versions/astro-runtime-__ASTRO_RUNTIME_VERSION__
-ASTRO_VENV=/workspace/astro-viewing-conditions/runtime/versions/astro-runtime-__ASTRO_RUNTIME_VERSION__/.venv
+ASTRO_VERSION_DIR=/workspace/astro-viewing-conditions/runtime/versions/astro-runtime-0.1.0
+ASTRO_VENV=/workspace/astro-viewing-conditions/runtime/versions/astro-runtime-0.1.0/.venv
 
 mkdir -p "$ASTRO_STATE" "$ASTRO_VERSION_DIR"
 chmod 700 "$ASTRO_STATE"
@@ -118,7 +117,7 @@ Additional operations are compatible. The installed runtime must report
 Only after the gate passes, activate this clean first installation:
 
 ```sh
-ln -s "versions/astro-runtime-__ASTRO_RUNTIME_VERSION__" \
+ln -s "versions/astro-runtime-0.1.0" \
   /workspace/astro-viewing-conditions/runtime/current
 ```
 
