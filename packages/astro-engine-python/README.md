@@ -54,17 +54,22 @@ fails instead of falling through to another kernel. JSON cannot provide a path.
 Deploy the same DE421 bytes at the override if using an operational resource
 store. Alternative kernels are operator choices and require revalidation.
 
-For the Grok Bot VM, build the self-contained project wheels with the release
-helper, publish those exact artifacts, and let the Astronomer skill bootstrap
-the pinned runtime:
+For an Astronomer product release, build the self-contained project wheels and
+`astronomer-release.json` with the release helper, then publish those exact
+artifacts on the GitHub Release named in the manifest:
 
 ```sh
-python tools/grok/build_runtime_release.py
-# Upload the two exact wheels and copy their SHA-256 values into the skill manifest.
+python tools/astronomer/build_release.py
+python tools/astronomer/validate_release.py dist/astronomer --against-published
+# build_release.py records HEAD as source_commit only from a clean worktree.
+# --against-published is required before publishing: it is the online check
+# that a wheel filename never changes hash or size across Astronomer releases.
 ```
 
-The skill manifest pins transitive versions and SHA-256 verifies the two project
-wheels. NumPy still selects the wheel appropriate to the target Python/platform.
+The product manifest pins transitive versions and SHA-256 verifies
+`ASTRONOMER.md` plus the two project wheels. NumPy still selects the wheel
+appropriate to the target Python/platform. Generated wheels and manifests are
+not committed.
 The installed engine needs no external checkout: engine identity, canonical
 runtime data, and the production light-pollution atlas are wheel resources.
 Package tests also block networking and exercise missing/corrupt/explicit-local

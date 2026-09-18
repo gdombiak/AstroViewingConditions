@@ -12,9 +12,9 @@ on:
       - "Tests/parity/**"
       - "apps/cli/**"
       - "tools/light-pollution/fixtures/**"
-      - ".grok/skills/astronomer/**"
-      - "Tests/grok/**"
-      - "tools/grok/**"
+      - "astronomer/**"
+      - "Tests/astronomer/**"
+      - "tools/astronomer/**"
       - ".github/workflows/python.yml"
   pull_request:
     branches:
@@ -26,9 +26,9 @@ on:
       - "Tests/parity/**"
       - "apps/cli/**"
       - "tools/light-pollution/fixtures/**"
-      - ".grok/skills/astronomer/**"
-      - "Tests/grok/**"
-      - "tools/grok/**"
+      - "astronomer/**"
+      - "Tests/astronomer/**"
+      - "tools/astronomer/**"
       - ".github/workflows/python.yml"
   workflow_dispatch:
 
@@ -57,11 +57,11 @@ jobs:
           NO_NETWORK: "1"
         run: python -m pytest
 
-      - name: Test Grok skill and bootstrap
+      - name: Test Astronomer instructions and release tooling
         working-directory: ${{ github.workspace }}
         env:
           NO_NETWORK: "1"
-        run: python -m pytest Tests/grok
+        run: python -m pytest Tests/astronomer
 
   host:
     name: host pytest and installed-wheel smoke

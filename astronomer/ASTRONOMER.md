@@ -129,76 +129,151 @@ knowledge and web research.
 
 ## Runtime
 
-### Release and filesystem contract
+### Product identity and installed copy
 
-This document and the two supplied wheels define the release:
+Astronomer is one product with its own version. Engine and Host keep independent
+package versions. `astro-host --runtime-info` reports Host, Engine, operations,
+and packaged resources only; never treat it as the Astronomer product version.
+The same Host wheel may serve multiple Astronomer releases.
 
-- Astro Runtime: `0.1.0`
-- Astro Engine: `1.0.0`
-- Engine wheel: `astro_engine-1.0.0-py3-none-any.whl`
-- Engine SHA-256: `c00c982855f1c17207fd7778d809c1df9c51f4ecd1d1020544fc77b06515fd6d`
-- Astro Host: `0.1.0`
-- Host wheel: `astro_host-0.1.0-py3-none-any.whl`
-- Host SHA-256: `f7dfe81944d82aa8869f78e18f6081482cbb42129fdb69362bb387ab54e2a87e`
+This document is the stable procedure: routing, install/update rules, and
+release-channel conventions. It does not identify a specific Astronomer release.
+Mutable identity — product version, tag, source commit, Python requirement,
+runtime dependency pins, instruction hash, and Engine/Host filenames, versions,
+hashes, and sizes — lives only in `astronomer-release.json`.
 
-Astro Runtime is the deployed release identity, distinct from the Host and Engine
-package versions. Astro Runtime version `0.1.0` is a bare semantic version, with no `v`, directory prefix, or Git tag. A release tag may independently
-be named `astro-runtime-v0.1.0`. If any release placeholder remains during
-installation, stop: release metadata is incomplete. Never guess it.
+If `/workspace/astro-viewing-conditions/product/current/ASTRONOMER.md` exists,
+read that file and follow it for the rest of the request, including update
+policy. That installed copy is the last validated product. Use this embedded
+document only when no validated installed copy exists (first setup). Do not
+compare this file against the installed copy by guessed versions or hashes, and
+do not treat a republished Bot instruction paste as a product release.
 
-Use Python 3.11 or newer and this layout:
+Do not store the last update check, installed product version, or instruction
+text in conversation memory. Those facts live on disk as specified below.
+
+### Release channel and filesystem contract
+
+The official product channel is GitHub Releases on
+`gdombiak/AstroViewingConditions`. A qualifying release has `draft` false,
+`prerelease` false, and `tag_name` exactly `astronomer-vX.Y.Z` (three numeric
+semver components, no suffix). Ignore iOS app tags, `astro-runtime-v*`, drafts,
+prereleases, and any other tag. Do not use GitHub's `latest` flag as version
+order; compare Astronomer semantic versions from qualifying tags and their
+manifests.
+
+Each published release is self-contained and contains exactly:
+
+- `astronomer-release.json`
+- `ASTRONOMER.md`
+- the Engine wheel named by the manifest
+- the Host wheel named by the manifest
+
+The downloaded `astronomer-release.json` is the only authority for that
+release's identity and artifact hashes. Never reconstruct a manifest from this
+document, from `--runtime-info`, or from memory.
+
+Use this layout:
 
 ```text
 /workspace/astro-viewing-conditions/
+├── product/
+│   ├── current -> versions/<product-version>/
+│   ├── versions/<product-version>/
+│   │   ├── ASTRONOMER.md
+│   │   ├── astronomer-release.json
+│   │   └── runtime -> /workspace/astro-viewing-conditions/runtime/versions/<runtime-id>
+│   └── check.json
 ├── runtime/
-│   ├── current -> versions/astro-runtime-0.1.0
-│   └── versions/astro-runtime-0.1.0/.venv/
+│   └── versions/<runtime-id>/.venv/
 └── state/
 ```
 
-For runtime `0.1.0`, the version directory is
-`/workspace/astro-viewing-conditions/runtime/versions/astro-runtime-0.1.0/`.
-The active command is
-`/workspace/astro-viewing-conditions/runtime/current/.venv/bin/astro-host` and
-the durable state directory is `/workspace/astro-viewing-conditions/state`.
-State is outside the venv; never delete or replace it during runtime repair. Do
-not create a wrapper script or depend on a repository checkout.
+`product/current` is the only activation pointer. There is no `runtime/current`.
+If a leftover `runtime/current` exists from an older layout, ignore it; do not
+use it as authority and do not delete it as a substitute for product rollback.
 
-Exact third-party dependencies are:
+The active Host CLI is
+`/workspace/astro-viewing-conditions/product/current/runtime/.venv/bin/astro-host`.
+Durable Host state is `/workspace/astro-viewing-conditions/state`. State is
+outside every runtime venv and outside product copies; never delete or replace
+it during install, update, or repair. Do not create a wrapper script or depend
+on a repository checkout.
 
-```text
-certifi==2026.7.22
-jplephem==2.24
-numpy==2.5.2
-sgp4==2.27
-skyfield==1.55
-skyfield-data==7.0.0
-```
+`product/current/astronomer-release.json` is the exact validated manifest
+bytes from the official release, not a rewritten summary.
+`product/current/ASTRONOMER.md` is the exact validated instruction bytes from
+that same release. `product/current/runtime` is a symlink to the immutable
+runtime directory that belongs to that product version.
+`product/check.json` records only update-check timing, such as
+`last_successful_check`. It must not duplicate product or component metadata.
+
+A venv embeds absolute paths in console-script shebangs and must never be
+renamed after creation. Create each new runtime at a unique final directory,
+validate it there, and bind it into a fully staged product version directory
+before any activation. Then atomically switch only `product/current`. Keep
+previous validated product directories for rollback; they retain their own
+runtime symlinks. Never delete a runtime directory automatically: more than one
+product version may share it.
+
+`<runtime-id>` is unique per created venv, not the Astronomer product version.
+When creating a new runtime, use
+`host-<host-version>_engine-<engine-version>.<unique-suffix>` so two different
+compositions cannot share a path. Do not look up a runtime by Host/Engine
+version names. Reuse an existing runtime only by resolving
+`product/current/runtime` to its final directory after the installed and new
+manifests match on Engine hash, Host hash, and dependency pins.
+
+Honor `python_requires.minimum` from the manifest; it is never below 3.11.
+Install the exact `dependencies` pins from the manifest; do not substitute
+other versions.
 
 ### First installation
 
-Run this only for explicit initial setup or when the deterministic active runtime
-does not exist. Locate exactly one supplied file matching each wheel filename;
-use absolute paths as `ENGINE_WHEEL` and `HOST_WHEEL`. The supplied attachments
-may be copied unchanged to `/workspace/astronomer-input/`. Do not inspect or clone
-a repository, build wheels, substitute another release, or download Astro wheels.
+Run this only when no usable `product/current` exists (missing, or its
+`runtime/.venv/bin/astro-host` cannot be executed). Obtain all four release
+artifacts. Do not install from this document plus two wheels alone, and do not
+invent `astronomer-release.json`.
 
-Verify both files before creating or changing the venv:
+Sources, in order:
 
-```sh
-printf '%s  %s\n' 'c00c982855f1c17207fd7778d809c1df9c51f4ecd1d1020544fc77b06515fd6d' "$ENGINE_WHEEL" | sha256sum --check -
-printf '%s  %s\n' 'f7dfe81944d82aa8869f78e18f6081482cbb42129fdb69362bb387ab54e2a87e' "$HOST_WHEEL" | sha256sum --check -
-```
+1. Operator-supplied files (attachments, or `/workspace/astronomer-input/`):
+   `astronomer-release.json`, `ASTRONOMER.md`, and the two wheel filenames named
+   by that manifest. Copy them unchanged.
+2. Otherwise the official GitHub channel: the newest qualifying
+   `astronomer-vX.Y.Z` release, fetching `astronomer-release.json` first, then
+   the three artifacts it names from the same tag.
 
-Both must report `OK`. A missing file, ambiguous match, malformed checksum, or
-mismatch is a hard failure. Confirm `python3` is version 3.11+ and supports `venv`,
-then install at the final path:
+If neither source can supply all four files, stop and say Astronomer cannot be
+installed yet. Never clone the repository, build wheels, or guess hashes.
+
+Validate `astronomer-release.json` (`schema_version` 1, `tag` equal to
+`astronomer-v` plus `version`, basename-only filenames, SHA-256 digests of 64
+lowercase hex characters). Then verify the other three files' SHA-256 (and
+wheel byte sizes) against that manifest. A missing file, ambiguous match,
+malformed checksum, or mismatch is a hard failure.
+
+Confirm `python3` meets `python_requires.minimum` and supports `venv`. Install
+the runtime at a unique final path, then stage a complete product version
+directory that points at that runtime. If `product/versions/<manifest.version>`
+already exists and `product/current` does not point at it, remove only that
+unactivated directory and restage it. Never remove `product/current` or `state`.
 
 ```sh
 ASTRO_ROOT=/workspace/astro-viewing-conditions
-ASTRO_STATE=/workspace/astro-viewing-conditions/state
-ASTRO_VERSION_DIR=/workspace/astro-viewing-conditions/runtime/versions/astro-runtime-0.1.0
-ASTRO_VENV=/workspace/astro-viewing-conditions/runtime/versions/astro-runtime-0.1.0/.venv
+ASTRO_STATE="$ASTRO_ROOT/state"
+HOST_VER=<manifest artifacts.host.version>
+ENGINE_VER=<manifest artifacts.engine.version>
+UNIQUE=<12 hex characters>
+ASTRO_RUNTIME_ID="host-${HOST_VER}_engine-${ENGINE_VER}.${UNIQUE}"
+ASTRO_VERSION_DIR="$ASTRO_ROOT/runtime/versions/$ASTRO_RUNTIME_ID"
+ASTRO_VENV="$ASTRO_VERSION_DIR/.venv"
+PRODUCT_VER=<manifest.version>
+PRODUCT_DIR="$ASTRO_ROOT/product/versions/$PRODUCT_VER"
+MANIFEST=<path-to-validated-astronomer-release.json>
+ENGINE_WHEEL=<path-to-verified-engine-wheel>
+HOST_WHEEL=<path-to-verified-host-wheel>
+INSTRUCTIONS=<path-to-verified-ASTRONOMER.md>
 
 mkdir -p "$ASTRO_STATE" "$ASTRO_VERSION_DIR"
 chmod 700 "$ASTRO_STATE"
@@ -206,23 +281,30 @@ python3 -m venv "$ASTRO_VENV"
 
 "$ASTRO_VENV/bin/python" -m pip install \
   --isolated --no-input --only-binary=:all: --no-deps \
-  certifi==2026.7.22 jplephem==2.24 numpy==2.5.2 sgp4==2.27 \
-  skyfield==1.55 skyfield-data==7.0.0
+  <exact dependency pins from the manifest>
 
 "$ASTRO_VENV/bin/python" -m pip install \
   --isolated --no-input --no-deps "$ENGINE_WHEEL" "$HOST_WHEEL"
+
+mkdir -p "$PRODUCT_DIR"
+cp "$MANIFEST" "$PRODUCT_DIR/astronomer-release.json"
+cp "$INSTRUCTIONS" "$PRODUCT_DIR/ASTRONOMER.md"
+ln -s "$ASTRO_VERSION_DIR" "$PRODUCT_DIR/runtime"
 ```
 
-Do not install into system Python, change dependency pins, permit source builds,
-or move a created venv. Before activation, run the candidate installation gate:
+Copy exact bytes; do not rewrite the manifest. Do not install into system
+Python, change dependency pins, permit source builds, or move a created venv.
+Before activation, run the candidate installation gate through the staged
+product path that will become current:
 
 ```sh
-PYTHONNOUSERSITE=1 "$ASTRO_VENV/bin/astro-host" --runtime-info --pretty
+PYTHONNOUSERSITE=1 "$PRODUCT_DIR/runtime/.venv/bin/astro-host" --runtime-info --pretty
 ```
 
 The gate passes only when the process succeeds, output is valid JSON, `ok` is
-`true`, reported Engine and Host versions exactly equal their placeholders, and
-`operations` contains this required subset in any order:
+`true`, `astro_host_version` equals the manifest Host version,
+`astro_engine_version` equals the manifest Engine version, and `operations`
+contains this required subset in any order:
 
 - `agent.batch_compare`
 - `agent.conditions`
@@ -234,32 +316,35 @@ The gate passes only when the process succeeds, output is valid JSON, `ok` is
 
 Additional operations are compatible. The installed runtime must report
 `contracts_data`, `light_pollution_atlas`, and `skyfield_ephemeris` under
-`resources`, and each reported path must exist.
+`resources`, and each reported path must exist. `--runtime-info` must not mention
+the Astronomer product version.
 
-Only after the gate passes, activate this clean first installation:
+Only after the gate passes, atomically switch `product/current`, creating the
+replacement symlink in a temporary name and renaming it onto `current` without
+following an existing `current` directory:
 
 ```sh
-ln -s "versions/astro-runtime-0.1.0" \
-  /workspace/astro-viewing-conditions/runtime/current
+ln -s "versions/$PRODUCT_VER" "$ASTRO_ROOT/product/.current.tmp"
+mv -Tf "$ASTRO_ROOT/product/.current.tmp" "$ASTRO_ROOT/product/current"
 ```
 
-This is fresh-install behavior only: `current` must not already exist. Do not
-overwrite an active runtime or design an update procedure here.
-
-If wheel access, checksum, Python, venv, pip, runtime metadata, resources, or the
-gate fails, report the concise failing step and do not create `current`. Never
-work around setup failure by inventing deterministic astronomy facts.
+This is the only activation step. Do not also create `runtime/current`. If
+artifact access, checksum, Python, venv, pip, runtime metadata, resources, or
+the gate fails, report the concise failing step, remove only the new incomplete
+runtime directory and the unactivated product version directory, and do not
+switch `product/current`. Never work around setup failure by inventing
+deterministic astronomy facts.
 
 ### Normal invocation and reuse
 
-If the active CLI exists, attempt the requested Host operation directly. A new
-conversation is not a reason to rerun installation checks, `--runtime-info`, pip,
-or wheel verification. Invoke:
+If the active CLI exists, attempt the requested Host operation directly after the
+opportunistic update check below. A new conversation is not a reason to rerun
+installation checks, `--runtime-info`, pip, or wheel verification. Invoke:
 
 ```sh
 ASTRO_HOST_STATE_DIR=/workspace/astro-viewing-conditions/state \
 PYTHONNOUSERSITE=1 \
-/workspace/astro-viewing-conditions/runtime/current/.venv/bin/astro-host \
+/workspace/astro-viewing-conditions/product/current/runtime/.venv/bin/astro-host \
 OPERATION --input -
 ```
 
@@ -271,12 +356,83 @@ response does not by itself indicate a broken runtime and must not trigger an
 automatic reinstall. Never overwrite a working runtime or delete durable state.
 
 Do not expose Python, pip, venv, JSON, or shell mechanics during successful user
-interactions. The clean acceptance test must separately prove cross-conversation
-instruction persistence: start a fresh conversation, mention none of this file,
-the runtime, wheels, Python, or CLI, ask a normal Astronomer question, and verify
-that the Bot follows these instructions, directly reuses the installed runtime,
-and does not reinstall. Persistence is an empirical platform capability, not an
-assumption made by this document.
+interactions. After first install, later conversations must load
+`product/current/ASTRONOMER.md` rather than relying on a Bot-config paste.
+
+### Opportunistic product update
+
+The Bot owns update orchestration. Do not add self-update logic to Engine or
+Host, and do not create cron, systemd, or other background schedulers. Do not
+scan independently for newer Engine or Host packages.
+
+While Astronomer is actually handling a user request, check for a newer product
+release at most about once every 24 hours. Hold an exclusive file lock under
+`/workspace/astro-viewing-conditions/product/.update.lock` for the whole
+check-and-apply so overlapping conversations cannot interleave updates.
+
+1. Read `/workspace/astro-viewing-conditions/product/check.json` when present.
+   If `last_successful_check` is an aware UTC timestamp less than 24 hours old,
+   skip the check and continue the user request.
+2. Otherwise list published releases from
+   `https://api.github.com/repos/gdombiak/AstroViewingConditions/releases`
+   with a short timeout. Consider only releases with `draft` false,
+   `prerelease` false, and `tag_name` exactly `astronomer-vX.Y.Z`. Compare
+   **only** those Astronomer product versions with
+   `product/current/astronomer-release.json` `version`. Do not use GitHub's
+   `latest` flag. Do not decide that an update exists because Engine or Host
+   package versions differ.
+3. If no strictly newer Astronomer product version exists, write
+   `product/check.json` with the current UTC time as `last_successful_check`
+   (and no product/component metadata) and continue the user request.
+4. If a newer product version exists, tell the user clearly that a newer
+   Astronomer version is available and that it is updating before continuing.
+5. Download that release's `astronomer-release.json` from
+   `https://github.com/gdombiak/AstroViewingConditions/releases/download/<tag>/astronomer-release.json`.
+   Validate it as in first installation. Its `version` must match the tag and
+   must be strictly newer than the installed product version.
+6. Download `ASTRONOMER.md` from the same tag and verify its SHA-256 against
+   the new manifest.
+7. Compare the new manifest's Engine hash, Host hash, and `dependencies` pins
+   with the installed `product/current/astronomer-release.json`. This comparison
+   only chooses how to apply the already-detected product update.
+8. If those runtime artifacts are unchanged, do not rebuild or reinstall the
+   Python runtime. Stage `product/versions/<new-version>/` with the **exact**
+   new manifest bytes, verified `ASTRONOMER.md` bytes, and a `runtime` symlink
+   to the final directory currently referenced by `product/current/runtime`
+   (resolve that symlink; do not copy the venv). Confirm `--runtime-info` via
+   `product/versions/<new-version>/runtime/.venv/bin/astro-host` still matches
+   the new manifest's Host and Engine versions. Then perform **one** atomic
+   switch of `product/current` onto that staged directory. Keep the previous
+   product directory.
+9. If Engine hash, Host hash, or dependency pins changed, download and verify
+   the required wheels from the same tag, create a new unique immutable runtime
+   directory at its final path, install the manifest's dependency pins and the
+   verified wheels with `--no-deps` as in first installation, stage
+   `product/versions/<new-version>/` with the exact new files and a `runtime`
+   symlink to that new directory, and run `--runtime-info` through
+   `product/versions/<new-version>/runtime/.venv/bin/astro-host`. Only then
+   perform **one** atomic switch of `product/current`. Keep durable user state
+   outside the runtime. Keep the previous product directory, which still points
+   at the previous runtime.
+10. Write `product/check.json` with the successful check time. Do not copy
+    product or component versions into `check.json`.
+11. Tell the user the update succeeded, then continue the original request
+    following the newly adopted instructions.
+12. If the check cannot reach the official channel, continue the original
+    request on the current version without claiming an update was needed; do
+    not refresh `last_successful_check`, and do not retry the check again in
+    this conversation.
+13. If a newer release is found but update fails, remain on the prior validated
+    `product/current` (instructions and runtime together), tell the user the
+    update failed and that the current Astronomer version remains active, remove
+    only incomplete new runtime and unactivated product version directories,
+    continue the original request where reasonable, and do not refresh
+    `last_successful_check`.
+
+Never activate a product directory that is missing its manifest, instructions,
+or runtime symlink. Rollback is switching `product/current` back to a previous
+product version directory; that restores both instructions and the matching
+runtime in one step.
 
 ## Operation routing
 

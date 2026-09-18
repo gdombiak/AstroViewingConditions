@@ -1198,7 +1198,7 @@ flowchart TB
 |---|---|---|---|
 | `ios-tests.yml` (incumbent, keep name) | `macos-26` | `apps/ios/**`, `packages/astro-engine-swift/**`, `contracts/data/**`, `contracts/ENGINE_VERSION`, `scripts/bundle-engine-data`, `THIRD_PARTY_NOTICES.md`, workflow file (push and PR identical; `workflow_call` ignores `paths`) | Existing steps (timezone LA, XcodeGen, dynamic simulator, `xcodebuild test`) with `working-directory: apps/ios`. Also `workflow_call` so nightly reuses the same job. The filter is the input set of `xcodegen generate` + `xcodebuild test`: `apps/ios/project.yml` depends on the local Swift package and runs `scripts/bundle-engine-data` over `contracts/data/{calibration,catalog}` (the script also checks `contracts/ENGINE_VERSION` exists); `TargetImageManifestTests` reads root `THIRD_PARTY_NOTICES.md`. Deliberately broader than the exact bundled files (whole package, whole `contracts/data`) so manifest/target changes and newly bundled data cannot slip past. Docs, Python packages, `Tests/parity`, and other workflows do not affect the Apple products and do not run this job. |
 | `swift-engine.yml` | `macos-26` | Swift package, `contracts/**`, `scripts/bundle-engine-data`, Tools LP fixtures, `.gitignore`, workflow file | `swift test --package-path packages/astro-engine-swift`. No simulator, no XcodeGen, no separate eval invocation. Package tests read canonical `contracts/` (no generated copies). |
-| `python.yml` | `ubuntu-latest` | Both Python packages, `contracts/**`, `Tests/parity/**`, `apps/cli/**`, Tools LP fixtures, `.grok/skills/astronomer/**`, `Tests/grok/**`, `tools/grok/**`, workflow file | Python **3.13** (Grok Bot VM is 3.13.5; `requires-python >=3.11`). Engine and host pytest plus a dedicated Grok/bootstrap pytest step. `NO_NETWORK=1`. The installed-wheel smoke runs outside the checkout without `CONTRACTS_ROOT` and verifies versions, operations and packaged resource paths. No GDAL. |
+| `python.yml` | `ubuntu-latest` | Both Python packages, `contracts/**`, `Tests/parity/**`, `apps/cli/**`, Tools LP fixtures, `astronomer/**`, `Tests/astronomer/**`, `tools/astronomer/**`, workflow file | Python **3.13** (Grok Bot VM is 3.13.5; `requires-python >=3.11`). Engine and host pytest plus Astronomer instruction and release-manifest tests. `NO_NETWORK=1`. The installed-wheel smoke runs outside the checkout without `CONTRACTS_ROOT` and verifies versions, operations and packaged resource paths. No GDAL. |
 | `parity.yml` | `macos-26` only | `contracts/**`, both engine packages, `Tests/parity/**`, `scripts/parity`, workflow file | Thin: `scripts/parity`. Each engine vs `expected.json` independently (not Python vs Swift). Not an ubuntu+macos matrix: Linux Swift is not a supported package baseline. |
 | `light-pollution.yml` | `macos-26` | `tools/light-pollution/**` except its top-level markdown docs, `packages/astro-engine-python/src/**`, workflow file | Homebrew GDAL + Homebrew Python venv `--system-site-packages` (documented harness env) + `osgeo` import smoke + harness pytest. Synthetic tests do **not** fetch the production atlas. **Not** an engine gate. **Not** `ubuntu-latest`. The whole engine `src/` is an input because `binary_format.py` imports `astro_engine.light_pollution`, which executes `astro_engine/__init__.py` and most of the engine. The harness does not read `contracts/`; lpatlas1 fixture byte identity is asserted by the engine tests in `python.yml` / `swift-engine.yml`. |
 | `ios-nightly.yml` | `macos-26` | unconditional (no path filter) / cron `27 8 * * *` UTC + `workflow_dispatch` | Calls `ios-tests.yml` via `workflow_call`; the full XCTest safety net regardless of changed paths. `schedule` runs only from the default branch. `workflow_dispatch` becomes available once the workflow exists on the default branch; after that, a different ref/branch may be selected when dispatching. |
@@ -1480,14 +1480,14 @@ implemented path is coordinates plus an aware reference instant → Open-Meteo �
 validated authoritative IANA timezone → in-process Astro Engine weather,
 Sun/Moon, active-or-explicit observing-night, exact night-window, Night
 Conditions, best-window, cloud-timing, and optional Observing Quality facts.
-The H14 implementation adds `.grok/skills/astronomer`, the pinned self-bootstrap
-path, and source-tree runtime-resource packaging. It is ready for real Grok
-acceptance, not closed. The old experimental `astro-runtime-v0.1.0` wheels are
-not a compatibility target: before the next clean acceptance cycle, build and
-publish replacement wheels from the then-current source tree, recreate or
-otherwise test the Astronomer Bot from a clean/fresh-user state, and validate
-bootstrap and operation using that current runtime. That successful validation
-closes H14's acceptance portion.
+The H14 skill/bootstrap path at `.grok/skills/astronomer` is retired. Canonical
+Astronomer product source is `astronomer/ASTRONOMER.md`, with Engine/Host wheels
+and `tools/astronomer` release-manifest generation. `astronomer-release.json` is
+the only authority for product/component artifact identity; the instruction file
+holds stable procedure, not mutable versions or hashes. Product releases are
+GitHub Releases tagged `astronomer-vX.Y.Z`; Engine and Host keep independent
+package versions. The old experimental `astro-runtime-v0.1.0` wheels are not a
+compatibility target.
 
 Timezone remains location-derived: a valid saved-location IANA hint has
 precedence, then the validated Open-Meteo IANA timezone for those coordinates.
@@ -1538,7 +1538,8 @@ engine resolution again. This supplies the preceding evening without embedding
 a host-owned dawn cutoff or duplicating the active-night rule.
 
 Platform skill bundles remain delivery artifacts rather than host-package
-resources; the first Grok artifact now lives at `.grok/skills/astronomer`.
+resources. The Astronomer Bot instruction file now lives at
+`astronomer/ASTRONOMER.md`; it is not imported by `astro_host`.
 
 #### Resource ownership: host runtime resources vs platform delivery artifacts
 
@@ -1554,18 +1555,12 @@ Being text is not what makes something package data; **being loaded by the host
 at runtime** is. A skill definition is closer to a systemd unit or a Dockerfile
 than to a prompt.
 
-The current Grok repository artifact lives at `.grok/skills/astronomer`, matching
-the platform's folder-based discovery convention. External product documentation
-also says shared Bot configuration includes skills, but this project has not yet
-proven whether sharing Astronomer materializes the complete enabled private-skill
-folder—including scripts, manifest, and references—for a recipient without a
-separate install action. Fresh-user acceptance must first try the desired path:
-add the shared Astronomer Bot, ask an astronomy question, and observe automatic
-bootstrap. Do not claim that manual installation is required or that zero-touch
-skill transport is proven. If transport fails, decide after that experiment
-whether plugin/Marketplace packaging is needed. The ownership rule remains:
-skill bundles are deployment artifacts of a delivery surface; prompts and
-templates are host runtime resources.
+The current Astronomer product artifact is `astronomer/ASTRONOMER.md` plus the
+Engine and Host wheels named by a GitHub Release `astronomer-release.json`.
+The retired `.grok/skills/astronomer` folder-based skill is not the delivery
+path. The ownership rule remains: Bot instructions are a delivery artifact of
+one surface; prompts and templates loaded by `astro_host` are host runtime
+resources. ASTRONOMER.md invokes the host; it is not packaged inside it.
 
 Nothing here belongs in `contracts/`. That tree is the language-neutral parity
 source of truth for two engine implementations; a prompt carries no Swift-parity
@@ -2669,48 +2664,34 @@ readable.
   clone this composition. Source-tree `agent.outlook` is implemented; the old
   experimental `astro-runtime-v0.1.0` wheels are not a compatibility target.
 
-- **H14 — First production-shaped Grok skill and runtime bootstrap (2026-09-11).**
-  `.grok/skills/astronomer` is the first repository skill artifact. Its
-  frontmatter follows current Grok skill discovery, while its instructions own
-  Bot routing, onboarding confirmation, status/presentation semantics, and the
-  authority boundary over the six implemented `agent.*` operations. A small
-  standard-library runner silently ensures a pinned runtime before invoking
-  `astro-host` by absolute path. The default installation root is
-  `~/.local/share/astro-viewing-conditions`: immutable versioned venvs live under
-  `runtime/versions`, an atomic `runtime/current` symlink selects one, and
-  `state/{locations.json,equipment.json,weather-cache.json}` remains independent.
-  A venv is created at its final unique path because console-script shebangs make
-  venvs non-relocatable; only the symlink is switched after `--runtime-info`
-  validates both package versions and all immutable resources. Failed installs
-  remove only their new runtime directory and never delete or rewrite state or a
-  prior runtime. The release mechanism is SHA-256-pinned project wheels at an
-  immutable GitHub Release URL plus exact third-party version pins; no checkout,
-  root privilege, or PATH mutation is required. `astro-engine` wheel builds copy
-  `ENGINE_VERSION`, `capabilities.yaml`, `contracts/data`, and the production
-  atlas from their canonical repository sources into the install image. DE421
-  remains supplied by pinned `skyfield-data`. **Status: implementation exists and
-  H14 remains open for clean acceptance.** The old experimental
-  `astro-runtime-v0.1.0` wheels are obsolete and are not the next acceptance
-  target. Before the next clean cycle, build and publish replacement wheels from
-  the then-current source tree, then recreate or otherwise test the Astronomer
-  Bot from a clean/fresh-user state. Successful bootstrap and operation validation
-  using that current runtime closes the acceptance part of H14. Shared-template
-  validation may still eliminate the repository bootstrap/adapter scripts, so
-  this does not freeze them as permanent architecture. Plugin/Marketplace
-  packaging remains a later decision only if the sharing experiment does not
-  transport the complete skill.
+- **H14 — Astronomer product instructions and runtime (2026-09-11, updated 2026-09-17).**
+  The first Grok skill artifact at `.grok/skills/astronomer` is retired. Canonical
+  product source is `astronomer/ASTRONOMER.md`. Engine and Host remain separately
+  versioned wheels. A GitHub Release tagged `astronomer-vX.Y.Z` is the
+  authoritative product bundle: `astronomer-release.json`, `ASTRONOMER.md`, and
+  the exact Engine and Host wheels. The manifest is the only mutable identity
+  document; ASTRONOMER.md does not embed product/component versions or hashes.
+  Update detection compares only Astronomer product version; Engine/Host hashes
+  and dependency pins choose MD-only vs runtime apply. The Bot owns opportunistic
+  update checks; Engine and Host do not self-update. `--runtime-info` reports
+  Host/Engine facts, not the Astronomer product version. A venv is created at its
+  final unique path because console-script shebangs make venvs non-relocatable.
+  Each product version directory binds exact `ASTRONOMER.md`,
+  `astronomer-release.json`, and a symlink to that runtime; the only activation
+  pointer is `product/current`. Durable `state/` stays outside runtime and product
+  copies. **Status: skill bootstrap removed; first official product tag is
+  unpublished `astronomer-v0.1.0`.** Replacement wheels after the recommendation
+  mode work are still unpublished. Plugin/Marketplace packaging remains a later
+  decision.
 
 H5–H9 describe a **provider** cache, not user state. H10 is the first user-state
 store. H11 closes place resolution, confirmation, and selected-location wiring
 for `agent.conditions`. H12 closes selected-equipment persistence and the
 engine-shaped `get_active` seam. H13 closes “what should I observe tonight?”
 over those facts. Item 9 closes “how do the next three nights look?” as
-`agent.outlook` over the same acquisition path. The H14 implementation supplies
-the first Bot onboarding dialogue and deployment path, but H14 remains open
-until replacement wheels built from the then-current source tree pass clean/
-fresh-user bootstrap and operation acceptance. Shared-template validation may
-still remove the repository bootstrap/adapter scripts. Row 14 still has user
-profile and observation history.
+`agent.outlook` over the same acquisition path. H14's delivery artifact is now
+the Astronomer product file plus wheels, not a repository skill bundle. Row 14
+still has user profile and observation history.
 
 **Compatibility-audit items and current status.** Each item below carries a
 **provisional** engine/host reading. Provisional is load-bearing: with the
