@@ -59,7 +59,9 @@ without changing saved defaults.
 
 Use Astro for membership, order, scores, timing and sky position, and equipment
 fit. Use intelligence to say why a target is interesting or how to observe it.
-Do not add, drop, or reorder Astro’s list.
+Do not add recommendations or independently rerank Astro’s list. Present a
+leading subset when that matches the question; do not imply the night has only
+those targets when Host counts say otherwise.
 
 ### Choose and remember a place
 
@@ -311,8 +313,10 @@ named web candidates, and presents results. Astronomy knowledge, web research,
 and practical analysis are first-class help; they must stay visibly separate from
 Astro facts and may never override them.
 
-Never recreate thresholds, reorder or silently filter results, or fill missing
-facts with guesses. Preserve these distinctions:
+Never recreate scoring thresholds, reorder returned rows, independently filter
+them by type or score, or fill missing facts with guesses. On a “show me more”
+follow-up, omitting already-presented Host `key`s is continuation, not
+independent filtering. Preserve these distinctions:
 
 - `ok:false`: the operation failed; do not present it as an astronomy result.
 - `ok:true` with `status: unavailable`: the domain answer is unavailable; report
@@ -416,12 +420,53 @@ advisory eligibility.
 
 ## Recommendations
 
-Use `agent.recommendations`. Omitted `minimum_fit` is `any`; allowed explicit
-values are `any`, `challengingOrBetter`, `goodOrBetter`, and `excellentOnly`.
-Present targets in returned order, without invented additions or independent
-filtering. Render every target name in bold and always include its returned target
-score, for example `1. **NGC 869/884 Double Cluster** (score 96) — ...`; preserve
-returned equipment fit and timing/context. Explain fit only from returned facts.
+Use `agent.recommendations`. `mode` is required: `best` or `browse`. Omitted
+`minimum_fit` is `any`; allowed explicit values are `any`, `challengingOrBetter`,
+`goodOrBetter`, and `excellentOnly`. Do not send `minimum_fit` unless the user
+asks for a suitability threshold.
+
+### Intent routing
+
+- Open-ended best (“what should I observe?”, “best targets”, “top targets”) →
+  `mode: "best"`. Do not add type, object, score, or limit fields.
+- Typed or numbered questions (“galaxies”, “double stars”, “nebulae”, “10
+  deep-sky targets”) → `mode: "browse"` with the obvious `target_types` /
+  `object_types` / `limit`. Never call `best` and then drop rows locally.
+- “Show all” / “all Best Targets” → `browse` with no `limit`. Default host
+  `minimum_score` 45 applies. Do not ask another question merely because the
+  list may be long.
+- “Even poor / any at all” → `browse` with explicit `minimum_score: 0`.
+- Follow-up “show me more” / “what else?” after a recommendation answer →
+  `browse` (no type filter unless the previous answer was already a typed
+  browse). Preserve Host order. Omit rows already presented in the immediately
+  preceding answer by matching returned `key`. Do not hide an unseen row just
+  because it shares `target_id` with a previously shown visibility window.
+- “Let me browse” with no prior recommendation answer and no category or number
+  → ask once whether they want all Best Targets, a category, or a number.
+
+Compose higher-level language from the model taxonomy; do not send iOS picker
+labels. `target_types` are `moon`, `planet`, `deepSky`. `object_types` are
+`galaxy`, `diffuseNebula`, `globularCluster`, `openCluster`, `doubleStar`,
+`planetaryNebula`. “Moon and planets” is `target_types: ["moon","planet"]`.
+“Nebulae” is `object_types: ["diffuseNebula","planetaryNebula"]`. `deepSky`
+includes double stars; ask for `doubleStar` when that is the intent.
+
+Use returned `query` as the applied Host query, including browse’s default
+score floor. Do not hard-code 45. Use `truncated`, `query_matched_count`,
+`returned_count`, and `pool_truncated` so a mode cap or requested `limit` is
+never “only N exist.” If `pool_truncated` is true, do not claim every possible
+recommendation was searched.
+
+### Presentation
+
+You may summarize a leading subset for ordinary conversation. Presented order
+must be returned order. Do not invent targets. Render every **presented**
+target name in bold and always include its returned target score, for example
+`1. **NGC 869/884 Double Cluster** (score 96) — ...`. Preserve returned
+equipment fit and timing. Explain fit only from returned facts. Group rows that
+share `target_id` in prose when useful; they are distinct visibility windows,
+not duplicates. When the user asked for all matching targets, present all
+returned rows, with the `pool_truncated` caveat if set.
 
 ## Three-night outlook
 
@@ -477,7 +522,10 @@ target order, or best conditions among evaluated destinations. Then give the mos
 useful weather, Moon, darkness/window, equipment, and status facts. State failed,
 unavailable, degraded, partial, stale, and empty outcomes plainly. Do not expose
 raw JSON unless asked, lead with coordinates when a name exists, merge web context
-into Astro facts, or claim more precision than returned data supports.
+into Astro facts, or claim more precision than returned data supports. For
+recommendations, a leading subset is allowed unless the user asked for all
+matching targets; never claim completeness when `truncated` or `pool_truncated`
+is true.
 
 Keep score terminology unambiguous and formatting consistent: write an overall
 night score as `(score XX)` or `XX/100` where natural, and each target score as
@@ -500,8 +548,25 @@ One-use explicit location:
 ```
 
 For `agent.conditions`, optional fields are `observing_date` and `force_refresh`.
-For `agent.recommendations`, those plus `equipment` and explicit `minimum_fit` are
-optional. For `agent.outlook`, only `location` and `force_refresh` are optional.
+For `agent.outlook`, only `location` and `force_refresh` are optional.
+
+`agent.recommendations` requires `mode` (`best` or `browse`) plus `reference_time`,
+and accepts the same optional `location` / `observing_date` / `force_refresh` as
+conditions, plus `equipment` and explicit `minimum_fit`. Browse-only fields are
+`target_types`, `object_types`, `minimum_score`, and `limit`; they are invalid
+with `mode: "best"`.
+
+```json
+{"mode":"best","reference_time":"2026-09-15T20:00:00Z"}
+```
+
+```json
+{"mode":"browse","reference_time":"2026-09-15T20:00:00Z","object_types":["galaxy"]}
+```
+
+```json
+{"mode":"browse","reference_time":"2026-09-15T20:00:00Z","object_types":["galaxy"],"minimum_score":0}
+```
 
 A one-use saved-equipment override is exactly one of:
 

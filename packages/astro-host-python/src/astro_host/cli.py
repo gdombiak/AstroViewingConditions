@@ -41,6 +41,9 @@ from astro_host.models import (
     HostConditionsRequest,
     HostRecommendationsRequest,
     InlineEquipmentDraft,
+    RECOMMENDATION_OBJECT_TYPES,
+    RECOMMENDATION_TARGET_TYPES,
+    RecommendationMode,
     Location,
     LocationSource,
     MinimumFit,
@@ -537,10 +540,15 @@ def _main_recommendations(
                 location=location,
                 location_source=location_source,
                 reference_time=host_request.reference_time,
+                mode=host_request.mode,
                 observing_date=host_request.observing_date,
                 force_refresh=host_request.force_refresh,
                 equipment=active,
                 minimum_fit=host_request.minimum_fit or DEFAULT_MINIMUM_FIT,
+                target_types=host_request.target_types,
+                object_types=host_request.object_types,
+                minimum_score=host_request.minimum_score,
+                limit=host_request.limit,
             )
         )
         _write_json({
@@ -1328,19 +1336,44 @@ def parse_batch_compare_request(
 
 
 _RECOMMENDATIONS_KEYS = frozenset({
+    "mode",
     "location",
     "reference_time",
     "observing_date",
     "force_refresh",
     "equipment",
     "minimum_fit",
+    "target_types",
+    "object_types",
+    "minimum_score",
+    "limit",
+})
+_BROWSE_ONLY_KEYS = frozenset({
+    "target_types",
+    "object_types",
+    "minimum_score",
+    "limit",
 })
 _MINIMUM_FIT_VALUES = frozenset(item.value for item in MinimumFit)
+_TARGET_TYPE_VALUES = frozenset(RECOMMENDATION_TARGET_TYPES)
+_OBJECT_TYPE_VALUES = frozenset(RECOMMENDATION_OBJECT_TYPES)
 
 
 def parse_recommendations_request(document: object) -> HostRecommendationsRequest:
     if not isinstance(document, Mapping) or set(document) - _RECOMMENDATIONS_KEYS:
         raise InvalidRequestError("request must be an object with known fields")
+    raw_mode = document.get("mode")
+    if not isinstance(raw_mode, str) or raw_mode not in {
+        item.value for item in RecommendationMode
+    }:
+        raise InvalidRequestError("mode must be best or browse")
+    mode = RecommendationMode(raw_mode)
+    if mode is RecommendationMode.BEST:
+        present = sorted(_BROWSE_ONLY_KEYS & set(document))
+        if present:
+            raise InvalidRequestError(
+                "best mode does not accept " + ", ".join(present)
+            )
     base = {
         key: document[key]
         for key in ("location", "reference_time", "observing_date", "force_refresh")
@@ -1358,14 +1391,60 @@ def parse_recommendations_request(document: object) -> HostRecommendationsReques
                 "minimum_fit must be any, challengingOrBetter, goodOrBetter, or excellentOnly"
             )
         minimum_fit = MinimumFit(raw)
+    target_types = None
+    object_types = None
+    minimum_score = None
+    limit = None
+    if mode is RecommendationMode.BROWSE:
+        if "target_types" in document:
+            target_types = _parse_unique_enum_array(
+                document["target_types"], "target_types", _TARGET_TYPE_VALUES
+            )
+        if "object_types" in document:
+            object_types = _parse_unique_enum_array(
+                document["object_types"], "object_types", _OBJECT_TYPE_VALUES
+            )
+        if "minimum_score" in document:
+            minimum_score = _parse_int_in_range(
+                document["minimum_score"], "minimum_score", 0, 100
+            )
+        if "limit" in document:
+            limit = _parse_int_in_range(document["limit"], "limit", 1, 100)
     return HostRecommendationsRequest(
         location=conditions.location,
         reference_time=conditions.reference_time,
+        mode=mode,
         observing_date=conditions.observing_date,
         force_refresh=conditions.force_refresh,
         equipment=equipment,
         minimum_fit=minimum_fit,
+        target_types=target_types,
+        object_types=object_types,
+        minimum_score=minimum_score,
+        limit=limit,
     )
+
+
+def _parse_unique_enum_array(
+    value: object, field: str, allowed: frozenset[str]
+) -> tuple[str, ...]:
+    if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+        raise InvalidRequestError(f"{field} must be an array of strings")
+    if not value:
+        raise InvalidRequestError(f"{field} must be a non-empty array")
+    if len(value) != len(set(value)):
+        raise InvalidRequestError(f"{field} must not contain duplicates")
+    if any(item not in allowed for item in value):
+        raise InvalidRequestError(f"{field} contains unknown values")
+    return tuple(value)
+
+
+def _parse_int_in_range(value: object, field: str, lo: int, hi: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise InvalidRequestError(f"{field} must be an integer")
+    if value < lo or value > hi:
+        raise InvalidRequestError(f"{field} must be between {lo} and {hi}")
+    return value
 
 
 def _parse_confirm_request(document: Mapping[str, object]) -> PlaceConfirmRequest:

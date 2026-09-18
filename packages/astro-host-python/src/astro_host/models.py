@@ -697,6 +697,22 @@ class RecommendationFamily(str, Enum):
     DEEP_SKY = "deep_sky"
 
 
+class RecommendationMode(str, Enum):
+    BEST = "best"
+    BROWSE = "browse"
+
+
+RECOMMENDATION_TARGET_TYPES = ("moon", "planet", "deepSky")
+RECOMMENDATION_OBJECT_TYPES = (
+    "galaxy",
+    "diffuseNebula",
+    "globularCluster",
+    "openCluster",
+    "doubleStar",
+    "planetaryNebula",
+)
+
+
 class ScoringPath(str, Enum):
     MOON_RECOMMENDATION = "moon_recommendation"
     PLANET_RECOMMENDATION = "planet_recommendation"
@@ -706,6 +722,7 @@ class ScoringPath(str, Enum):
 class EmptyReason(str, Enum):
     NO_VISIBLE_CANDIDATES = "no_visible_candidates"
     NONE_MEET_EQUIPMENT_FIT = "none_meet_equipment_fit"
+    NONE_MATCH_QUERY = "none_match_query"
 
 
 @dataclass(frozen=True)
@@ -714,10 +731,24 @@ class HostRecommendationsRequest:
 
     location: Location | None
     reference_time: datetime
+    mode: RecommendationMode
     observing_date: date | None = None
     force_refresh: bool = False
     equipment: EquipmentOverride | None = None
     minimum_fit: MinimumFit | None = None
+    target_types: tuple[str, ...] | None = None
+    object_types: tuple[str, ...] | None = None
+    minimum_score: int | None = None
+    limit: int | None = None
+
+
+@dataclass(frozen=True)
+class RecommendationQuery:
+    mode: RecommendationMode
+    target_types: tuple[str, ...] | None
+    object_types: tuple[str, ...] | None
+    minimum_score: int | None
+    limit: int | None
 
 
 @dataclass(frozen=True)
@@ -743,18 +774,17 @@ class EquipmentFitFacts:
 @dataclass(frozen=True)
 class RecommendationRow:
     rank: int
+    overall_rank: int
     key: str
     target_id: str
     name: str
-    family: RecommendationFamily
-    type: str
+    target_type: str
     object_type: str | None
     score: int
     scoring_path: ScoringPath
     visibility_window: VisibilityWindow
     reasons: tuple[str, ...]
     requirement: Mapping[str, object]
-    is_planet: bool
     equipment_fit: EquipmentFitFacts | None
 
 
@@ -793,8 +823,14 @@ class RecommendationsResult:
     night: RecommendationNightContext
     observing_quality_score: int | None
     equipment: RecommendationEquipmentContext
+    query: RecommendationQuery
+    candidate_count: int
     pool_size: int
-    filtered_size: int
+    pool_truncated: bool
+    equipment_matched_count: int
+    query_matched_count: int
+    returned_count: int
+    truncated: bool
     empty_reason: EmptyReason | None
     recommendations: tuple[RecommendationRow, ...]
     issues: tuple[HostIssue, ...]

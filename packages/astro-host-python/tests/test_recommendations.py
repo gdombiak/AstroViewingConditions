@@ -11,7 +11,11 @@ from astro_host.conditions import ConditionsService
 from astro_host.engine import RecommendationEngine
 from astro_host.equipment import FileEquipmentStore, MemoryEquipmentStore
 from astro_host.equipment_session import compose_active
-from astro_host.errors import EngineCallError, EquipmentStoreCorruptError
+from astro_host.errors import (
+    EngineCallError,
+    EquipmentStoreCorruptError,
+    InvalidRequestError,
+)
 from astro_host.locations import FileLocationStore, MemoryLocationStore
 from astro_host.places import ObservingLocationService
 from astro_host.models import (
@@ -25,12 +29,14 @@ from astro_host.models import (
     LocationSource,
     MinimumFit,
     RecommendationFamily,
+    RecommendationMode,
 )
 from astro_host.providers.http import HttpResponse
 from astro_host.providers.open_meteo import OpenMeteoPolicy, OpenMeteoWeatherProvider
 from astro_host.recommendations import (
+    BEST_LIMIT,
+    BROWSE_DEFAULT_MINIMUM_SCORE,
     CANDIDATE_POOL_LIMIT,
-    FINAL_LIMIT,
     RecommendationService,
     _HostCandidate,
     _remap,
@@ -123,10 +129,15 @@ def _recommend(**overrides):
                 "location_source", LocationSource.EXPLICIT_OVERRIDE
             ),
             reference_time=overrides.pop("reference_time", NOW),
+            mode=overrides.pop("mode", RecommendationMode.BEST),
             observing_date=overrides.pop("observing_date", None),
             force_refresh=overrides.pop("force_refresh", False),
             equipment=equipment,
             minimum_fit=overrides.pop("minimum_fit", MinimumFit.ANY),
+            target_types=overrides.pop("target_types", None),
+            object_types=overrides.pop("object_types", None),
+            minimum_score=overrides.pop("minimum_score", None),
+            limit=overrides.pop("limit", None),
         )
     )
     return result, service, conditions, provider
@@ -138,18 +149,23 @@ def test_known_location_matches_conditions_night_and_bounds() -> None:
         conditions.conditions(ConditionsRequest(LA, NOW))
     )
     assert result.status in {ConditionsStatus.COMPLETE, ConditionsStatus.DEGRADED}
-    assert len(result.recommendations) <= FINAL_LIMIT
+    assert len(result.recommendations) <= BEST_LIMIT
+    assert result.returned_count == len(result.recommendations)
+    assert result.query.mode is RecommendationMode.BEST
+    assert result.query.minimum_score is None
     scores = [row.score for row in result.recommendations]
     assert scores == sorted(scores, reverse=True)
     assert result.night.observing_date == parallel.selected_night.observing_date
     assert result.generated_at == parallel.generated_at
     assert result.pool_size <= CANDIDATE_POOL_LIMIT
-    families = {row.family for row in result.recommendations}
-    assert families <= {
-        RecommendationFamily.MOON,
-        RecommendationFamily.PLANET,
-        RecommendationFamily.DEEP_SKY,
+    assert result.candidate_count >= result.pool_size
+    assert result.pool_truncated is (result.candidate_count > result.pool_size)
+    assert {row.target_type for row in result.recommendations} <= {
+        "moon",
+        "planet",
+        "deepSky",
     }
+    assert all(row.overall_rank >= row.rank for row in result.recommendations)
 
 
 def test_selected_saved_location_is_used_and_store_is_unchanged() -> None:
@@ -167,6 +183,7 @@ def test_selected_saved_location_is_used_and_store_is_unchanged() -> None:
             location=location,
             location_source=source,
             reference_time=NOW,
+            mode=RecommendationMode.BEST,
             equipment=_empty_equipment(),
         )
     )
@@ -290,8 +307,15 @@ def test_explicit_challenging_or_better_changes_visible_membership() -> None:
     ]
     assert [row.key for row in gated.recommendations] == ["t5"]
     assert gated.pool_size == 6
-    assert gated.filtered_size == 1
-    assert any_result.filtered_size == 6
+    assert gated.equipment_matched_count == 1
+    assert any_result.equipment_matched_count == 6
+    assert any_result.query_matched_count == 6
+    assert any_result.returned_count == 5
+    assert any_result.truncated is True
+    assert [row.overall_rank for row in any_result.recommendations] == [1, 2, 3, 4, 5]
+    assert gated.recommendations[0].rank == 1
+    assert gated.recommendations[0].overall_rank == 6
+    assert gated.truncated is False
 
 
 def test_service_sixth_row_survives_when_filter_drops_first_five() -> None:
@@ -305,7 +329,9 @@ def test_service_sixth_row_survives_when_filter_drops_first_five() -> None:
     )
     assert [row.key for row in result.recommendations] == ["t5"]
     assert result.pool_size == 6
-    assert result.filtered_size == 1
+    assert result.equipment_matched_count == 1
+    assert result.recommendations[0].overall_rank == 6
+    assert result.recommendations[0].rank == 1
 
 
 def test_explicit_threshold_on_empty_inventory_is_echoed_not_rewritten() -> None:
@@ -387,7 +413,7 @@ def test_moon_null_omits_only_moon() -> None:
             return None
 
     result, *_ = _recommend(engine=MoonNull())
-    assert all(row.family is not RecommendationFamily.MOON for row in result.recommendations)
+    assert all(row.target_type != "moon" for row in result.recommendations)
     assert result.status is not ConditionsStatus.UNAVAILABLE
 
 
@@ -450,7 +476,7 @@ def test_compose_and_filter_remap_by_index_not_key() -> None:
     pool = _remap(mixed, [5, 4, 3, 2, 1, 0][:CANDIDATE_POOL_LIMIT])
     assert pool[0] is mixed[5]
     filtered = _remap(pool, [0])
-    visible = filtered[:FINAL_LIMIT]
+    visible = filtered[:BEST_LIMIT]
     assert [row.key for row in visible] == [mixed[5].key]
 
 
@@ -480,39 +506,42 @@ def test_sixth_row_can_enter_final_five_when_filter_drops_first_five() -> None:
     ]
     pool = _remap(mixed, list(range(6)))
     filtered = _remap(pool, [5])
-    visible = filtered[:FINAL_LIMIT]
+    visible = filtered[:BEST_LIMIT]
     assert [row.key for row in visible] == ["row5"]
 
 
+class ScoreThirty(RecommendationEngine):
+    def moon_recommendation(self, observation, **kwargs):
+        raw = super().moon_recommendation(observation, **kwargs)
+        if raw is None:
+            return {
+                "score": 30,
+                "visibility_window": {
+                    "start": "2026-02-20T04:00:00Z",
+                    "end": "2026-02-20T08:00:00Z",
+                    "best_time": "2026-02-20T06:00:00Z",
+                    "max_altitude": 40.0,
+                    "direction": "S",
+                    "azimuth": 180.0,
+                },
+                "reasons": ["moonVisibleUsefulWindow"],
+            }
+        return {**raw, "score": 30}
+
+    def planet_observation(self, target_id, location, night_start, night_end):
+        return None
+
+    def deep_sky(self):
+        return []
+
+
 def test_score_30_is_eligible() -> None:
-    class ScoreThirty(RecommendationEngine):
-        def moon_recommendation(self, observation, **kwargs):
-            raw = super().moon_recommendation(observation, **kwargs)
-            if raw is None:
-                return {
-                    "score": 30,
-                    "visibility_window": {
-                        "start": "2026-02-20T04:00:00Z",
-                        "end": "2026-02-20T08:00:00Z",
-                        "best_time": "2026-02-20T06:00:00Z",
-                        "max_altitude": 40.0,
-                        "direction": "S",
-                        "azimuth": 180.0,
-                    },
-                    "reasons": ["moonVisibleUsefulWindow"],
-                }
-            return {**raw, "score": 30}
-
-        def planet_observation(self, target_id, location, night_start, night_end):
-            return None
-
-        def deep_sky(self):
-            return []
-
     result, *_ = _recommend(engine=ScoreThirty())
     assert result.recommendations
     assert result.recommendations[0].score == 30
     assert all(row.score >= 0 for row in result.recommendations)
+    assert result.query.mode is RecommendationMode.BEST
+    assert result.query.minimum_score is None
 
 
 def test_degraded_conditions_still_rank() -> None:
@@ -555,6 +584,7 @@ def test_after_midnight_shares_observing_date_and_moon_info_instant() -> None:
             location=LA,
             location_source=LocationSource.EXPLICIT_OVERRIDE,
             reference_time=reference,
+            mode=RecommendationMode.BEST,
             equipment=_empty_equipment(),
         )
     )
@@ -591,6 +621,7 @@ def test_explicit_observing_date_vs_active_night() -> None:
             location=LA,
             location_source=LocationSource.EXPLICIT_OVERRIDE,
             reference_time=reference,
+            mode=RecommendationMode.BEST,
             equipment=_empty_equipment(),
         )
     )
@@ -599,6 +630,7 @@ def test_explicit_observing_date_vs_active_night() -> None:
             location=LA,
             location_source=LocationSource.EXPLICIT_OVERRIDE,
             reference_time=reference,
+            mode=RecommendationMode.BEST,
             observing_date=date(2026, 3, 8),
             equipment=_empty_equipment(),
         )
@@ -676,12 +708,12 @@ def test_targets_recommend_is_deep_sky_only() -> None:
         assert all(
             row.scoring_path is ScoringPath.TARGETS_RECOMMEND
             for row in result.recommendations
-            if row.family is RecommendationFamily.DEEP_SKY
+            if row.target_type == "deepSky"
         )
         assert all(
             row.scoring_path is not ScoringPath.TARGETS_RECOMMEND
             for row in result.recommendations
-            if row.family is not RecommendationFamily.DEEP_SKY
+            if row.target_type != "deepSky"
         )
 
 
@@ -701,4 +733,190 @@ def test_excellent_only_can_empty_with_reason() -> None:
     )
     if result.pool_size and not result.recommendations:
         assert result.empty_reason is EmptyReason.NONE_MEET_EQUIPMENT_FIT
-        assert result.filtered_size == 0
+        assert result.equipment_matched_count == 0
+
+
+class MixedCatalogEngine(RecommendationEngine):
+    """Six planets scoring 90-85, then Albireo 80 and M31 40."""
+
+    def solar_system(self):
+        return [{"id": f"p{index}", "type": "planet"} for index in range(6)]
+
+    def deep_sky(self):
+        return [
+            {
+                "id": "m31",
+                "common_name": "Andromeda",
+                "object_type": "galaxy",
+                "difficulty": 0.4,
+                "surface_brightness": 13.5,
+            },
+            {
+                "id": "albireo",
+                "common_name": "Albireo",
+                "object_type": "double_star",
+                "difficulty": 0.2,
+                "surface_brightness": None,
+            },
+        ]
+
+    def moon_info(self, location, instant):
+        return {"altitude": 0.0, "illumination": 0}
+
+    def moon_recommendation(self, observation, **kwargs):
+        return None
+
+    def planet_observation(self, target_id, location, night_start, night_end):
+        return {"samples": list(_PLANET_SAMPLES)}
+
+    def planet_recommendation(self, target_id, samples, **kwargs):
+        return _specialized_row(90 - int(str(target_id)[1:]))
+
+    def deep_sky_windows(self, target_id, location, night_start, night_end):
+        return [dict(_SPECIALIZED_WINDOW)]
+
+    def recommend_deep_sky(self, *, rows, **kwargs):
+        scores = {"m31": 40, "albireo": 80}
+        return {key: scores[key.split("@")[0]] for key, *_rest in rows}
+
+    def filter_recommendations(self, rows, equipment, minimum_fit):
+        return list(range(len(rows)))
+
+    def requirements(self, target_id):
+        return {
+            "requirement": dict(_STUB_REQUIREMENT),
+            "is_planet": str(target_id).startswith("p"),
+        }
+
+    def match_equipment(self, requirement, is_planet, equipment):
+        return None
+
+
+def test_best_rejects_browse_fields() -> None:
+    with pytest.raises(InvalidRequestError, match="best mode"):
+        _recommend(
+            engine=MixedCatalogEngine(),
+            mode=RecommendationMode.BEST,
+            object_types=("galaxy",),
+        )
+
+
+def test_best_does_not_apply_score_floor() -> None:
+    result, *_ = _recommend(
+        engine=MixedCatalogEngine(), mode=RecommendationMode.BEST
+    )
+    assert [row.target_id for row in result.recommendations] == [
+        "p0", "p1", "p2", "p3", "p4",
+    ]
+    assert result.query.mode is RecommendationMode.BEST
+    assert result.query.minimum_score is None
+    assert result.query.limit is None
+    assert result.truncated is True
+    assert result.equipment_matched_count == 8
+    assert result.query_matched_count == 8
+    assert result.returned_count == 5
+    assert "family" not in result.recommendations[0].__dataclass_fields__
+    assert "is_planet" not in result.recommendations[0].__dataclass_fields__
+
+
+def test_browse_default_score_floor_and_query_echo() -> None:
+    result, *_ = _recommend(
+        engine=MixedCatalogEngine(), mode=RecommendationMode.BROWSE
+    )
+    assert result.query.mode is RecommendationMode.BROWSE
+    assert result.query.minimum_score == BROWSE_DEFAULT_MINIMUM_SCORE
+    assert result.query.limit is None
+    assert all(row.score >= 45 for row in result.recommendations)
+    assert [row.target_id for row in result.recommendations] == [
+        "p0", "p1", "p2", "p3", "p4", "p5", "albireo",
+    ]
+    assert "m31" not in {row.target_id for row in result.recommendations}
+    assert result.equipment_matched_count == 8
+    assert result.query_matched_count == 7
+    assert result.returned_count == 7
+    assert result.truncated is False
+
+
+def test_browse_minimum_score_zero_includes_poor_targets() -> None:
+    result, *_ = _recommend(
+        engine=MixedCatalogEngine(),
+        mode=RecommendationMode.BROWSE,
+        minimum_score=0,
+    )
+    assert result.query.minimum_score == 0
+    assert [row.target_id for row in result.recommendations][-1] == "m31"
+    assert result.recommendations[-1].score == 40
+    assert result.returned_count == 8
+    assert result.truncated is False
+
+
+def test_browse_object_type_searches_beyond_best_five() -> None:
+    result, *_ = _recommend(
+        engine=MixedCatalogEngine(),
+        mode=RecommendationMode.BROWSE,
+        object_types=("galaxy",),
+        minimum_score=0,
+    )
+    assert [row.target_id for row in result.recommendations] == ["m31"]
+    assert result.recommendations[0].rank == 1
+    assert result.recommendations[0].overall_rank == 8
+    assert result.recommendations[0].target_type == "deepSky"
+    assert result.recommendations[0].object_type == "galaxy"
+    assert result.query.object_types == ("galaxy",)
+    assert result.query_matched_count == 1
+    assert result.truncated is False
+
+
+def test_browse_filters_before_limit() -> None:
+    result, *_ = _recommend(
+        engine=MixedCatalogEngine(),
+        mode=RecommendationMode.BROWSE,
+        target_types=("deepSky",),
+        minimum_score=0,
+        limit=1,
+    )
+    assert [row.target_id for row in result.recommendations] == ["albireo"]
+    assert result.query_matched_count == 2
+    assert result.returned_count == 1
+    assert result.truncated is True
+    assert result.query.limit == 1
+    assert result.recommendations[0].overall_rank == 7
+
+
+def test_browse_deep_sky_includes_double_stars() -> None:
+    result, *_ = _recommend(
+        engine=MixedCatalogEngine(),
+        mode=RecommendationMode.BROWSE,
+        target_types=("deepSky",),
+        minimum_score=0,
+    )
+    assert [row.target_id for row in result.recommendations] == ["albireo", "m31"]
+    assert {row.object_type for row in result.recommendations} == {
+        "doubleStar",
+        "galaxy",
+    }
+
+
+def test_browse_planet_and_galaxy_filters_are_valid_empty() -> None:
+    result, *_ = _recommend(
+        engine=MixedCatalogEngine(),
+        mode=RecommendationMode.BROWSE,
+        target_types=("planet",),
+        object_types=("galaxy",),
+        minimum_score=0,
+    )
+    assert result.recommendations == ()
+    assert result.equipment_matched_count == 8
+    assert result.query_matched_count == 0
+    assert result.empty_reason is EmptyReason.NONE_MATCH_QUERY
+
+
+def test_browse_default_floor_can_empty_low_scores() -> None:
+    result, *_ = _recommend(
+        engine=ScoreThirty(), mode=RecommendationMode.BROWSE
+    )
+    assert result.query.minimum_score == 45
+    assert result.equipment_matched_count >= 1
+    assert result.recommendations == ()
+    assert result.query_matched_count == 0
+    assert result.empty_reason is EmptyReason.NONE_MATCH_QUERY

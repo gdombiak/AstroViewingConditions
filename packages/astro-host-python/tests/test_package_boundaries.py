@@ -124,6 +124,7 @@ def test_public_exports_include_recommendations() -> None:
         "RecommendationsResult",
         "HostRecommendationsRequest",
         "MinimumFit",
+        "RecommendationMode",
     ):
         assert name in astro_host.__all__
         assert hasattr(astro_host, name)

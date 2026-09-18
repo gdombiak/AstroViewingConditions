@@ -163,11 +163,14 @@ retry, stale fallback, and partial-failure reporting for this small batch.
 location/night, then composes Moon, Venus/Mars/Jupiter/Saturn, and the 29
 deep-sky catalog objects through existing engine capabilities. Mixed ranking is
 `targets.compose_recommendations` with production limit 100. Equipment filtering
-sees that whole pool, then the host slices the dashboard five. Omitted
-`minimum_fit` is production `any`: selected equipment annotates `equipment_fit`
-and does not change membership. Explicit `challengingOrBetter` / `goodOrBetter`
-/ `excellentOnly` are echoed unchanged. The host does not rank, match, or
-resolve requirements itself.
+sees that whole pool. Required `mode` then selects the product surface: `best`
+returns at most five equipment-matched rows with no score floor; `browse` applies
+optional `target_types` / `object_types`, default `minimum_score` 45 (overridable
+`0…100`), and optional `limit` after those filters. Omitted `minimum_fit` is
+production `any`: selected equipment annotates `equipment_fit` and does not
+change membership. Explicit `challengingOrBetter` / `goodOrBetter` /
+`excellentOnly` are echoed unchanged. The host does not rank, match, or
+resolve requirements itself. Browse-only query fields are invalid in `best`.
 
 ```python
 from datetime import datetime, timezone
@@ -177,6 +180,7 @@ from astro_host import (
     Location,
     LocationSource,
     MemoryEquipmentStore,
+    RecommendationMode,
     RecommendationService,
     compose_active,
 )
@@ -185,6 +189,7 @@ result = await RecommendationService(ConditionsService()).recommend(
     location=Location(latitude=34.05, longitude=-118.24),
     location_source=LocationSource.EXPLICIT_OVERRIDE,
     reference_time=datetime.now(timezone.utc).replace(microsecond=0),
+    mode=RecommendationMode.BEST,
     equipment=compose_active(MemoryEquipmentStore().load()),
 )
 ```

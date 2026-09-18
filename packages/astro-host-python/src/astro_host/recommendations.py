@@ -8,7 +8,7 @@ from typing import Mapping
 
 from astro_host.conditions import ConditionsService
 from astro_host.engine import RecommendationEngine
-from astro_host.errors import HostInvariantError
+from astro_host.errors import HostInvariantError, InvalidRequestError
 from astro_host.models import (
     ActiveEquipment,
     ConditionsRequest,
@@ -21,7 +21,9 @@ from astro_host.models import (
     MinimumFit,
     RecommendationEquipmentContext,
     RecommendationFamily,
+    RecommendationMode,
     RecommendationNightContext,
+    RecommendationQuery,
     RecommendationRow,
     RecommendationsResult,
     ScoringPath,
@@ -30,7 +32,8 @@ from astro_host.models import (
 
 
 CANDIDATE_POOL_LIMIT = 100
-FINAL_LIMIT = 5
+BEST_LIMIT = 5
+BROWSE_DEFAULT_MINIMUM_SCORE = 45
 DEFAULT_MINIMUM_FIT = MinimumFit.ANY
 
 SOLAR_SYSTEM_DISPLAY_NAMES = {
@@ -56,6 +59,7 @@ class _HostCandidate:
     reasons: tuple[str, ...]
     requirement: Mapping[str, object] | None = None
     is_planet: bool = False
+    overall_rank: int | None = None
 
 
 class RecommendationService:
@@ -74,11 +78,30 @@ class RecommendationService:
         location: Location,
         location_source: LocationSource,
         reference_time: datetime,
+        mode: RecommendationMode,
         observing_date=None,
         force_refresh: bool = False,
         equipment: ActiveEquipment,
         minimum_fit: MinimumFit = DEFAULT_MINIMUM_FIT,
+        target_types: tuple[str, ...] | None = None,
+        object_types: tuple[str, ...] | None = None,
+        minimum_score: int | None = None,
+        limit: int | None = None,
     ) -> RecommendationsResult:
+        _require_mode_fields(
+            mode,
+            target_types=target_types,
+            object_types=object_types,
+            minimum_score=minimum_score,
+            limit=limit,
+        )
+        query = _applied_query(
+            mode,
+            target_types=target_types,
+            object_types=object_types,
+            minimum_score=minimum_score,
+            limit=limit,
+        )
         conditions = await self._conditions.conditions(
             ConditionsRequest(
                 location=location,
@@ -90,10 +113,11 @@ class RecommendationService:
         equipment_context = _equipment_context(equipment, minimum_fit)
         if conditions.status is ConditionsStatus.UNAVAILABLE:
             return _unavailable_result(
-                conditions, location, location_source, equipment_context
+                conditions, location, location_source, equipment_context, query
             )
         _require_ranking_facts(conditions)
         mixed = self._mixed_candidates(conditions, location)
+        candidate_count = len(mixed)
         compose_rows = [
             (row.key, row.score, row.visibility_window.best_time) for row in mixed
         ]
@@ -101,6 +125,8 @@ class RecommendationService:
             compose_rows, limit=CANDIDATE_POOL_LIMIT
         )
         pool = _remap(mixed, compose_indices)
+        for overall_rank, row in enumerate(pool, start=1):
+            row.overall_rank = overall_rank
         self._attach_requirements(pool)
         filter_indices = self._engine.filter_recommendations(
             [
@@ -111,13 +137,36 @@ class RecommendationService:
             minimum_fit.value,
         )
         filtered = _remap(pool, filter_indices)
-        visible = filtered[:FINAL_LIMIT]
+        if mode is RecommendationMode.BEST:
+            query_matched = filtered
+            visible = query_matched[:BEST_LIMIT]
+        else:
+            assert query.minimum_score is not None
+            query_matched = [
+                row
+                for row in filtered
+                if _matches_query(
+                    row,
+                    target_types=query.target_types,
+                    object_types=query.object_types,
+                    minimum_score=query.minimum_score,
+                )
+            ]
+            visible = (
+                query_matched
+                if query.limit is None
+                else query_matched[: query.limit]
+            )
         rows = tuple(
             self._visible_row(index, row, equipment)
             for index, row in enumerate(visible, start=1)
         )
         empty_reason = _empty_reason(
-            conditions.status, len(pool), len(filtered), len(rows)
+            conditions.status,
+            candidate_count,
+            len(filtered),
+            len(query_matched),
+            len(rows),
         )
         return RecommendationsResult(
             status=conditions.status,
@@ -132,8 +181,14 @@ class RecommendationService:
                 else conditions.observing_quality.score
             ),
             equipment=equipment_context,
+            query=query,
+            candidate_count=candidate_count,
             pool_size=len(pool),
-            filtered_size=len(filtered),
+            pool_truncated=candidate_count > len(pool),
+            equipment_matched_count=len(filtered),
+            query_matched_count=len(query_matched),
+            returned_count=len(rows),
+            truncated=len(rows) < len(query_matched),
             empty_reason=empty_reason,
             recommendations=rows,
             issues=conditions.issues,
@@ -307,20 +362,20 @@ class RecommendationService:
                     ),
                     identity=identities.get(str(match["key"])),
                 )
+        assert row.overall_rank is not None
         return RecommendationRow(
             rank=rank,
+            overall_rank=row.overall_rank,
             key=row.key,
             target_id=row.target_id,
             name=row.name,
-            family=row.family,
-            type=row.type,
+            target_type=row.type,
             object_type=row.object_type,
             score=row.score,
             scoring_path=row.scoring_path,
             visibility_window=row.visibility_window,
             reasons=row.reasons,
             requirement=row.requirement,
-            is_planet=row.is_planet,
             equipment_fit=fit,
         )
 
@@ -419,6 +474,7 @@ def _unavailable_result(
     location: Location,
     location_source: LocationSource,
     equipment: RecommendationEquipmentContext,
+    query: RecommendationQuery,
 ) -> RecommendationsResult:
     return RecommendationsResult(
         status=conditions.status,
@@ -433,8 +489,14 @@ def _unavailable_result(
             else conditions.observing_quality.score
         ),
         equipment=equipment,
+        query=query,
+        candidate_count=0,
         pool_size=0,
-        filtered_size=0,
+        pool_truncated=False,
+        equipment_matched_count=0,
+        query_matched_count=0,
+        returned_count=0,
+        truncated=False,
         empty_reason=None,
         recommendations=(),
         issues=conditions.issues,
@@ -443,15 +505,92 @@ def _unavailable_result(
 
 
 def _empty_reason(
-    status: ConditionsStatus, pool_size: int, filtered_size: int, visible: int
+    status: ConditionsStatus,
+    candidate_count: int,
+    equipment_matched_count: int,
+    query_matched_count: int,
+    returned_count: int,
 ) -> EmptyReason | None:
-    if status is ConditionsStatus.UNAVAILABLE or visible:
+    if status is ConditionsStatus.UNAVAILABLE or returned_count:
         return None
-    if pool_size == 0:
+    if candidate_count == 0:
         return EmptyReason.NO_VISIBLE_CANDIDATES
-    if filtered_size == 0:
+    if equipment_matched_count == 0:
         return EmptyReason.NONE_MEET_EQUIPMENT_FIT
+    if query_matched_count == 0:
+        return EmptyReason.NONE_MATCH_QUERY
     return None
+
+
+def _require_mode_fields(
+    mode: RecommendationMode,
+    *,
+    target_types: tuple[str, ...] | None,
+    object_types: tuple[str, ...] | None,
+    minimum_score: int | None,
+    limit: int | None,
+) -> None:
+    if mode is RecommendationMode.BEST:
+        present = [
+            name
+            for name, value in (
+                ("target_types", target_types),
+                ("object_types", object_types),
+                ("minimum_score", minimum_score),
+                ("limit", limit),
+            )
+            if value is not None
+        ]
+        if present:
+            raise InvalidRequestError(
+                "best mode does not accept " + ", ".join(present)
+            )
+        return
+    if mode is not RecommendationMode.BROWSE:
+        raise InvalidRequestError("mode must be best or browse")
+
+
+def _applied_query(
+    mode: RecommendationMode,
+    *,
+    target_types: tuple[str, ...] | None,
+    object_types: tuple[str, ...] | None,
+    minimum_score: int | None,
+    limit: int | None,
+) -> RecommendationQuery:
+    if mode is RecommendationMode.BEST:
+        return RecommendationQuery(
+            mode=mode,
+            target_types=None,
+            object_types=None,
+            minimum_score=None,
+            limit=None,
+        )
+    return RecommendationQuery(
+        mode=mode,
+        target_types=target_types,
+        object_types=object_types,
+        minimum_score=(
+            BROWSE_DEFAULT_MINIMUM_SCORE if minimum_score is None else minimum_score
+        ),
+        limit=limit,
+    )
+
+
+def _matches_query(
+    row: _HostCandidate,
+    *,
+    target_types: tuple[str, ...] | None,
+    object_types: tuple[str, ...] | None,
+    minimum_score: int,
+) -> bool:
+    if target_types is not None and row.type not in target_types:
+        return False
+    if object_types is not None and (
+        row.object_type is None or row.object_type not in object_types
+    ):
+        return False
+    return row.score >= minimum_score
 
 
 def _instant_key(value: datetime) -> str:
