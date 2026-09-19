@@ -45,17 +45,17 @@ jobs:
   test:
     name: Run Tests
     runs-on: macos-26
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      
+
       - name: Set timezone
         run: sudo systemsetup -settimezone "America/Los_Angeles"
-      
+
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-      
+
       - name: Show Xcode version
         run: xcodebuild -version
 
@@ -126,14 +126,14 @@ jobs:
 
           echo "id=${simulator_id}" >> "$GITHUB_OUTPUT"
           echo "Selected simulator ${simulator_id}"
-      
+
       - name: Install XcodeGen
         run: brew install xcodegen
-      
+
       - name: Generate Xcode Project
         working-directory: apps/ios
         run: xcodegen generate
-      
+
       - name: Build and Test
         working-directory: apps/ios
         run: |
@@ -142,7 +142,82 @@ jobs:
             -configuration Debug \
             -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' \
             test
-      
+
+      - name: Archive Release build
+        working-directory: apps/ios
+        run: |
+          set -euo pipefail
+
+          archive_path="${RUNNER_TEMP}/AstroViewingConditions.xcarchive"
+
+          xcodebuild \
+            -project AstroViewingConditions.xcodeproj \
+            -scheme AstroViewingConditions \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "${archive_path}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            archive
+
+      - name: Verify engine data in Release archive
+        working-directory: apps/ios
+        run: |
+          set -euo pipefail
+
+          archive_path="${RUNNER_TEMP}/AstroViewingConditions.xcarchive"
+          app="${archive_path}/Products/Applications/AstroViewingConditions.app"
+
+          hosts=(
+            "${app}"
+            "${app}/Frameworks/SharedCode.framework"
+            "${app}/PlugIns/NightConditionsWidget.appex"
+            "${app}/Watch/AstroViewingConditionsWatch.app"
+            "${app}/Watch/AstroViewingConditionsWatch.app/Frameworks/SharedCode.framework"
+            "${app}/Watch/AstroViewingConditionsWatch.app/PlugIns/AstroViewingConditionsWatchWidget.appex"
+          )
+
+          resources=(
+            "calibration/fog.json"
+            "calibration/night-quality.json"
+            "calibration/observing-quality.json"
+            "calibration/seeing.json"
+            "calibration/transparency.json"
+            "calibration/target-scoring.json"
+            "calibration/moon-recommendation.json"
+            "calibration/planet-recommendation.json"
+            "calibration/equipment-matching.json"
+            "catalog/deep-sky.json"
+            "catalog/target-requirements.json"
+            "catalog/solar-system.json"
+          )
+
+          repo_root="$(cd ../.. && pwd)"
+
+          for host in "${hosts[@]}"; do
+            if [[ ! -d "${host}" ]]; then
+              echo "::error::Expected Release host is missing: ${host}"
+              exit 1
+            fi
+
+            for resource in "${resources[@]}"; do
+              bundled="${host}/data/${resource}"
+              canonical="${repo_root}/contracts/data/${resource}"
+
+              if [[ ! -f "${bundled}" ]]; then
+                echo "::error::Missing engine data: ${bundled}"
+                exit 1
+              fi
+
+              if ! cmp -s "${canonical}" "${bundled}"; then
+                echo "::error::Bundled engine data differs from canonical source: ${bundled}"
+                exit 1
+              fi
+            done
+          done
+
+          echo "Verified ${#resources[@]} engine data files in ${#hosts[@]} Release hosts."
+
       - name: Upload Test Results
         uses: actions/upload-artifact@v6
         if: always()
