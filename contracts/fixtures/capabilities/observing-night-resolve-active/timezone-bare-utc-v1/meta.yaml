@@ -1,0 +1,6 @@
+capability: observing_night.resolve_active
+engine_semver: ">=1.0.0 <2.0.0"
+equality: observing_night
+origin: manual
+hosts: [swift, python]
+notes: The public set contains catalogued shared location-style identifiers, so bare UTC and Etc/* are deliberately excluded; an observing night is a property of a place.

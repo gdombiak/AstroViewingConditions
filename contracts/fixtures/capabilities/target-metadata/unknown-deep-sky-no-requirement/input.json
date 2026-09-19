@@ -1,0 +1,7 @@
+{
+  "capability": "targets.requirements",
+  "injected": {
+    "id": "uncataloged",
+    "type": "deepSky"
+  }
+}

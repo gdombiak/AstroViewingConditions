@@ -1,0 +1,8 @@
+{
+  "capability": "targets.planet_recommendation",
+  "ok": false,
+  "error": {
+    "code": "sample_cap",
+    "message": "targets.planet_recommendation exceeds the 1.0 row cap (1440 rows)"
+  }
+}

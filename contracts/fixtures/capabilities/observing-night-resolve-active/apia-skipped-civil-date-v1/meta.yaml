@@ -1,0 +1,6 @@
+capability: observing_night.resolve_active
+engine_semver: ">=1.0.0 <2.0.0"
+equality: observing_night
+origin: manual
+hosts: [swift, python]
+notes: Pacific/Apia dropped 2011-12-30 entirely. Foundation's day arithmetic is not reproducible portably there, so the window is refused on both hosts rather than answered differently.

@@ -1,0 +1,9 @@
+capability: iss.decode
+engine_semver: ">=0.1.0 <2.0.0"
+equality: iss_decode
+hosts: [swift, python]
+origin: transcribed
+notes: >
+  Named N2YO provider fixture providers/n2yo/visualpasses/two-passes.json.
+  IDs are Swift ISSPass.stableID (IEEE-754 bitPattern of rise unix seconds and
+  duration). Provider azimuth degrees and magnitude are not domain fields.

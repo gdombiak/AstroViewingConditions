@@ -1,0 +1,14 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {},
+    "capabilities": [
+      {
+        "key": "scope",
+        "type": "camera",
+        "aperture_mm": 100,
+        "magnification": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "capability": "targets.recommend",
+  "injected": {
+    "darkness_window": {
+      "start": "2026-03-01T21:00:00Z",
+      "end": "2026-03-01T23:00:00Z"
+    },
+    "moon": {
+      "altitude": 90,
+      "illumination": 100
+    },
+    "hourly_ratings": [],
+    "cloud_cover_score": 0,
+    "candidates": [
+      {
+        "key": "galaxy",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "object_type": "galaxy"
+      },
+      {
+        "key": "diffuseNebula",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "object_type": "diffuseNebula"
+      },
+      {
+        "key": "globularCluster",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "object_type": "globularCluster"
+      },
+      {
+        "key": "openCluster",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "object_type": "openCluster"
+      },
+      {
+        "key": "doubleStar",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "object_type": "doubleStar"
+      },
+      {
+        "key": "planetaryNebula",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        },
+        "object_type": "planetaryNebula"
+      },
+      {
+        "key": "unknown",
+        "type": "deepSky",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        }
+      },
+      {
+        "key": "meteorShower",
+        "type": "meteorShower",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        }
+      },
+      {
+        "key": "planet",
+        "type": "planet",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        }
+      },
+      {
+        "key": "satellite",
+        "type": "satellite",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        }
+      },
+      {
+        "key": "moon",
+        "type": "moon",
+        "difficulty": 0,
+        "window": {
+          "start": "2026-03-01T21:00:00Z",
+          "end": "2026-03-01T23:00:00Z",
+          "best_time": "2026-03-01T22:00:00Z",
+          "max_altitude": 80
+        }
+      }
+    ],
+    "limit": 100
+  }
+}

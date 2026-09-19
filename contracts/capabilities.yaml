@@ -1,0 +1,441 @@
+# Astro Engine capability catalog.
+# Current contract release 1.0.0 (unreleased; identity only until the
+# intended production set is complete).
+#
+# `since` is the contract release in which this specification was introduced,
+# not the current engine release and not "already implemented on every host".
+# Capabilities that originated in the 0.1.0 slice keep `since: "0.1.0"`.
+# `location.compare` is introduced under the unreleased 1.0.0 identity, so
+# its `since` is `"1.0.0"`. Do not invent a second semantic release. Roadmap
+# sequencing labels are not published engine versions. `hosts` is the target host/parity
+# requirement. The public Python CLI allow-lists every catalogued row below.
+# `light_pollution.validity` is not a catalogued capability.
+#
+# Live astronomy accumulates as later phases implement it.
+# `astronomy.horizontal_position` is the exception in that namespace: it is a
+# deterministic closed-form conversion with no ephemeris provider. LP identity
+# lives under contracts/data. Target scoring and equipment matching are
+# deterministic Phase 15 capabilities. Catalog JSON is the catalog.deep_sky source.
+
+engine_semver: "1.0.0"
+
+capabilities:
+  - id: observing_quality.assess
+    hosts: [ios, cli]
+    equality: observing_quality
+    since: "0.1.0"
+    summary: >
+      Adjust a night-conditions integer score for modeled zenith sky
+      brightness. Invalid or missing brightness falls back to the night
+      score exactly; there is no second Moon term.
+
+  - id: night_conditions.analyze
+    hosts: [ios, cli]
+    equality: night_conditions
+    since: "0.1.0"
+    requires_injected: [night_window, moon_series, clock, time_zone]
+    summary: >
+      Score an astronomical night from injected hourly forecasts, moon
+      samples, and a night window. Does not call SunCalc or NightForecastFilter.
+      hourly_ratings is Bot-facing objective hourly data, not just an
+      aggregate-score input. English summary and best_window are out of equality.
+
+  - id: night_conditions.score
+    hosts: [ios, cli]
+    equality: night_conditions_score
+    since: "0.1.0"
+    summary: >
+      Map a night rating plus hourly 0–2 scores to the public 0–100 integer.
+
+  - id: fog.score
+    hosts: [ios, cli]
+    equality: fog_score
+    since: "0.1.0"
+    summary: Integer fog risk 0–100 and factor id set from one hourly forecast.
+
+  - id: seeing.penalty
+    hosts: [ios, cli]
+    equality: seeing_penalty
+    since: "0.1.0"
+    summary: >
+      Optional 0–2 seeing penalty from temperature change and/or 200 hPa wind.
+      Null when both components are missing.
+
+  - id: transparency.penalty
+    hosts: [ios, cli]
+    equality: transparency_penalty
+    since: "0.1.0"
+    summary: >
+      0–2 transparency penalty from total/layered cloud and optional visibility.
+      Never null; missing layers fall back to total cloud.
+
+  - id: light_pollution.lookup
+    hosts: [ios, cli]
+    equality: light_pollution_lookup
+    since: "0.1.0"
+    summary: >
+      Sample modeled zenith sky brightness from a validated LPATLAS1
+      artifact. Malformed artifacts fail at load; geographic NoData and
+      out-of-coverage queries return null. Public CLI uses the production
+      bundled atlas by default, `--atlas-path` as an operator override, or
+      a confined injected.artifact.$ref under contracts/fixtures for tests.
+
+  - id: weather.decode
+    hosts: [ios, cli]
+    equality: weather_decode
+    since: "0.1.0"
+    summary: >
+      Normalize a raw Open-Meteo forecast envelope into hourly weather
+      DTOs plus timezone/offset metadata. HourlyForecast.id is omitted.
+      Precipitation is requested by the host but is not a domain field.
+
+  - id: iss.decode
+    hosts: [ios, cli]
+    equality: iss_decode
+    since: "0.1.0"
+    summary: >
+      Normalize a raw N2YO visualpasses envelope into ISSPass DTOs
+      including the deterministic stableID. Empty and missing passes
+      both become an empty collection.
+
+  - id: location.grid
+    hosts: [ios, cli]
+    equality: grid
+    since: "0.1.0"
+    summary: >
+      Deterministic circular-clipped square lattice around a center,
+      plus eight boundary bearings at the requested radius.
+
+  - id: location.distance
+    hosts: [ios, cli]
+    equality: location_distance
+    since: "1.0.0"
+    requires_injected: [from, to]
+    summary: >
+      Great-circle straight-line distance in miles between two validated
+      coordinates, using the same spherical Earth radius and meters-per-mile
+      constants as location.grid. No road or travel-distance inference.
+
+  - id: location.compare
+    hosts: [ios, cli]
+    equality: location_compare
+    since: "1.0.0"
+    summary: >
+      Rank already-scored location candidates with the production Best Nearby
+      total order. Suitability is an injected overlay array of {key, suitability}
+      entries; omitted overlay defaults every candidate to unchecked.
+      night_conditions_score is required and is not a ranking key. Does not
+      geocode, fetch weather, generate grids, or compute live astronomy.
+
+  - id: location.compose_scores
+    hosts: [ios, cli]
+    equality: location_compose_scores
+    since: "1.0.0"
+    requires_injected: [candidates]
+    summary: >
+      Compose an ordered set of already-analyzed Best Nearby candidate score
+      facts. Rows without nighttime data are excluded; all surviving rows use
+      Observing Quality only when every survivor has valid light-pollution
+      participation, otherwise all use Night Conditions. Returns original input
+      indices, public scores, and score-only deltas from a scorable center in
+      survivor order. No weather acquisition, scoring, ranking, suitability,
+      coordinates, truncation, or English copy. No scorable rows is the
+      no_scorable_locations domain error. See
+      contracts/procedures/location-compose-scores.md.
+
+  - id: location.filter_recommendable
+    hosts: [ios, cli]
+    equality: location_filter_recommendable
+    since: "1.0.0"
+    requires_injected: [suitability]
+    summary: >
+      Stable suitability-only filtering over the four portable Best Nearby
+      states. Suitable and unknown rows survive; unchecked and unsuitable rows
+      do not. Returns original zero-based indices only, without geocoding,
+      reasons, ranking, score inspection, candidate-check caps, or truncation.
+      See contracts/procedures/location-filter-recommendable.md.
+
+  - id: catalog.deep_sky
+    hosts: [ios, cli]
+    equality: catalog_deep_sky
+    since: "0.1.0"
+    summary: >
+      Curated deep-sky catalog from contracts/data/catalog/deep-sky.json.
+
+  - id: targets.recommend
+    hosts: [ios, cli]
+    equality: targets_recommend
+    since: "1.0.0"
+    summary: >
+      Score and rank generic targets from frozen windows and injected weather/Moon
+      facts. Specialized Moon/planet providers and live astronomy are excluded.
+
+  - id: equipment.match
+    hosts: [ios, cli]
+    equality: equipment_match
+    since: "1.0.0"
+    summary: >
+      Match selected instruments against resolved target requirements. Exact
+      best key, other suitable keys, level, reason and mode; no English copy.
+
+  - id: observing_window.select
+    hosts: [ios, cli]
+    equality: observing_window
+    since: "1.0.0"
+    summary: >
+      Select the production best conditions window from already-included scored
+      hourly rows and an optional good-rating threshold. Exact endpoints, null
+      when empty; no live astronomy or calendar composition.
+
+  - id: targets.requirements
+    hosts: [ios, cli]
+    equality: target_requirements
+    since: "1.0.0"
+    summary: >
+      Resolve production equipment requirements for a canonical target identity
+      or an explicitly typed injected target; resolution does not imply
+      recommendation-catalog support.
+
+  - id: catalog.solar_system
+    hosts: [ios, cli]
+    equality: solar_system_catalog
+    since: "1.0.0"
+    summary: Ordered objective metadata for the five production solar-system candidates; no live astronomy.
+
+  - id: targets.moon_sensitivity
+    hosts: [ios, cli]
+    equality: target_moon_sensitivity
+    since: "1.0.0"
+    summary: Derive deep-sky Moon sensitivity from object type and optional surface brightness.
+
+  - id: astronomy.horizontal_position
+    hosts: [ios, cli]
+    equality: astronomy_horizontal_position
+    since: "1.0.0"
+    summary: >
+      Closed-form geometric equatorial-to-horizontal conversion for fixed catalog
+      coordinates at one UTC instant. Deterministic despite the astronomy
+      namespace: no ephemeris provider, no catalog, no refraction.
+
+  - id: targets.deep_sky_windows
+    hosts: [ios, cli]
+    equality: deep_sky_windows
+    since: "1.0.0"
+    summary: >
+      Deep-sky visible-run windows over an explicit UTC interval from canonical
+      catalog coordinates or an explicit RA/Dec pair. Inclusive altitude
+      threshold, interpolated interior crossings, per-run best sample. Moon,
+      planet and mixed-target composition are excluded.
+
+  - id: astronomy.sun_events
+    hosts: [ios, cli]
+    equality: astronomy_sun_events
+    since: "1.0.0"
+    summary: Bounded live solar crossings in an explicit UTC interval; missing events are null, with no host approximation.
+
+  - id: astronomy.moon_info
+    hosts: [ios, cli]
+    equality: astronomy_moon_info
+    since: "1.0.0"
+    summary: Live geocentric refracted Moon altitude and integer illuminated percent at one UTC instant.
+
+  - id: astronomy.moon_series
+    hosts: [ios, cli]
+    equality: astronomy_moon_series
+    since: "1.0.0"
+    summary: Live Moon facts at explicit ordered caller UTC instants; no interpolation or scoring.
+
+  - id: astronomy.moon_observation
+    hosts: [ios, cli]
+    equality: astronomy_moon_observation
+    since: "1.0.0"
+    summary: >
+      Live lunar observation facts for one bounded UTC interval: continuous phase
+      and integer illuminated percent at the interval midpoint, rise/set and
+      always-up/always-down over max(span, cadence), and geocentric refracted
+      altitude/azimuth samples at the production 1800 s cadence plus an explicit
+      interval-end sample. No scoring, no windows, no presentation phase name.
+
+  - id: targets.moon_recommendation
+    hosts: [ios, cli]
+    equality: moon_recommendation
+    since: "1.0.0"
+    requires_injected: [moon_observation, best_window, hourly_ratings, cloud_cover_score]
+    summary: >
+      Dedicated deterministic lunar recommendation from an injected
+      astronomy.moon_observation bundle, an optional already-selected best
+      conditions window, hourly ratings and a cloud-cover score. Emits the
+      visibility window, integer score and objective reason codes; null when no
+      sample inside the useful window is above the horizon. No live astronomy,
+      no mixed-target composition, no English copy. Exact parity is conditioned
+      on the injected facts, as it is for night_conditions.analyze: the lunar
+      observation is an external provider fact, and two hosts that each derive
+      it from their own ephemeris can land on opposite sides of the strict
+      thresholds below. See contracts/procedures/moon-recommendation.md.
+
+  - id: astronomy.planet_observation
+    hosts: [ios, cli]
+    equality: astronomy_planet_observation
+    since: "1.0.0"
+    summary: >
+      Live planet observation facts for one bounded UTC night: geometric
+      altitude/azimuth and geocentric solar elongation for Venus, Mars, Jupiter
+      or Saturn at the production 900 s cadence, sampled by repeated addition from
+      two hours before night start while the instant stays at or before one hour
+      after night end. The lead endpoint is always sampled; the trailing endpoint
+      only when the cadence lands on it, and there is no explicit end sample. Uses
+      the production low-precision Schlyter orbital-element model with the
+      JD - 2451543.5 day number, not an ephemeris. Earth is internal to the
+      geocentric Sun vector and is not a target. Null observation when the night
+      interval is inverted by more than the lead plus trail. No scoring, no
+      windows, no presentation copy.
+
+  - id: targets.planet_recommendation
+    hosts: [ios, cli]
+    equality: planet_recommendation
+    since: "1.0.0"
+    requires_injected: [planet_observation, hourly_ratings, cloud_cover_score]
+    summary: >
+      Dedicated deterministic planet recommendation from injected
+      astronomy.planet_observation samples, hourly ratings and a cloud-cover
+      score. Emits the visibility window, integer score and objective reason
+      codes; null when no sample reaches the visible altitude. Injected sample and
+      rating instants carry a bounded spill around the night range, derived from
+      the observation lead/trail and the rating hour, so a valid
+      astronomy.planet_observation bundle is consumable verbatim. Venus alone adds
+      twilight suitability to the darkness-overlap visibility term. No live
+      astronomy, no mixed-target composition, no English copy; planets never
+      route through targets.recommend. Exact parity is conditioned on the
+      injected facts, as it is for targets.moon_recommendation: the planet
+      observation is a provider fact, and two hosts that each derive it
+      independently can land on opposite sides of the strict thresholds below.
+      See contracts/procedures/planet-recommendation.md.
+
+  - id: targets.compose_recommendations
+    hosts: [ios, cli]
+    equality: compose_recommendations
+    since: "1.0.0"
+    requires_injected: [candidates, limit]
+    summary: >
+      Compose already-scored recommendation candidates into the production
+      global ranking: score descending, best time ascending, original caller
+      index ascending, truncated to max(0, limit). The only mixed-target
+      capability, and the only decision it makes is ordering and count. It never
+      scores, rescores, renormalizes or reweights: each row arrives already
+      scored by whichever path the host applied to it, specialized
+      (targets.moon_recommendation, targets.planet_recommendation) or generic
+      (targets.recommend, including the production fall-through when a
+      specialized provider returns nothing). An existing specialized Moon or
+      planet score is never rescored, and no target type has priority
+      independent of its score and best time. Candidate rows carry only
+      key, score and best_time; the selection echoes the caller index and key so
+      the host reuses its own recommendation objects. Duplicate keys are
+      accepted and never deduplicated. No astronomy, no weather, no catalog, no
+      equipment filtering, no English copy. See
+      contracts/procedures/compose-recommendations.md.
+
+  - id: targets.filter_recommendations_by_equipment
+    hosts: [ios, cli]
+    equality: filter_recommendations_by_equipment
+    since: "1.0.0"
+    requires_injected: [candidates, capabilities, has_saved_inventory, minimum_fit]
+    summary: >
+      Filter an already conditions-ranked recommendation list by the best fit
+      from the user's currently selected equipment capabilities. Empty saved
+      inventory and minimum_fit any bypass matching; active filtering excludes
+      a row with no best fit. Survivors retain caller order and are returned as
+      original index plus echoed key. Resolved requirements and selected
+      capability facts reuse equipment.match semantics. Duplicate candidate
+      keys are accepted; scores, windows, reasons, summaries, UI session state,
+      English copy and result-count truncation are absent. See
+      contracts/procedures/filter-recommendations-by-equipment.md.
+
+  - id: observing_night.resolve_active
+    hosts: [ios, cli]
+    equality: observing_night
+    since: "1.0.0"
+    requires_injected: [reference_time, time_zone, forecast_start_time, daily_sun_events, daily_moon_count]
+    summary: >
+      Choose which local observing night is active for a reference instant and
+      report its identity and authoritative boundaries. The preceding civil date
+      wins while its astronomical night is still running; both of those
+      comparisons and the morning twilight-begin comparison are inclusive.
+      Three states stay distinct: resolved, requires_active_previous_payload
+      (an earlier night may be running but this payload cannot resolve it) and
+      unavailable. The IANA zone is supplied by the host; this capability never
+      geocodes and never approximates a zone from longitude. Daily Moon data is
+      transported only as a row count because the decision only bounds-checks
+      it. No Moon facts, no forecasts, no scoring, no English copy. See
+      contracts/procedures/observing-night.md.
+
+  - id: night_forecast.derive_window
+    hosts: [ios, cli]
+    equality: night_forecast_window
+    since: "1.0.0"
+    requires_injected: [observing_time, time_zone, astronomical_twilight_end, astronomical_twilight_begin, tomorrow_astronomical_twilight_begin]
+    summary: >
+      Project astronomical-twilight wall-clock hour/minute onto an observing
+      local day and its following calendar day using the authoritative injected
+      timezone. Sun-event acquisition and forecast filtering remain composition.
+
+  - id: night_conditions.classify_cloud_timing
+    hosts: [ios, cli]
+    equality: cloud_timing
+    since: "1.0.0"
+    requires_injected: [hourly_ratings]
+    summary: >
+      Classify when sustained heavy cloud interrupts an observing night from
+      ordered hourly rows of time, score and cloud cover. A run is two or more
+      calibrated-heavy rows exactly 3600 s apart in caller order; a run with no
+      usable-score row anywhere before or after it is ineligible; the preferred
+      run is longest, then greatest average cloud, then earliest start index.
+      The verdict is one of none / early_heavy / late_heavy / intermittent_heavy.
+      Caller order is semantics and is never sorted. Semantics only: the English
+      advice production builds from the verdict, the rest of the night
+      assessment, trend, rating and forecast acquisition are all excluded. See
+      contracts/procedures/cloud-timing.md.
+
+  - id: night_conditions.select_cloud_advisory
+    hosts: [ios, cli]
+    equality: cloud_advisory
+    since: "1.0.0"
+    requires_injected: [cloud_timing, rating, average_cloud_cover]
+    summary: >
+      Select a nullable semantic cloud-timing advisory from the authoritative
+      classification and Night Conditions facts. Whole-night average cloud at
+      or above the calibrated heavy floor takes priority; poor rating and none
+      classification also suppress timing advice. English wording is excluded.
+      See contracts/procedures/cloud-advisory.md.
+
+  - id: observing_night.compose_outlook
+    hosts: [ios, cli]
+    equality: night_outlook
+    since: "1.0.0"
+    requires_injected: [reference_time, time_zone, forecast_start_time, daily_sun_events, daily_moon_count, hourly_times]
+    summary: >
+      Compose the three consecutive observing nights an outlook shows and
+      classify each one's semantic availability. Slot 0 is the active observing
+      night from observing_night.resolve_active, reused rather than
+      reimplemented, and slots 1 and 2 are the next two local civil days. A
+      night is no_astronomical_night when its window is empty or inverted,
+      unavailable when the hourly stream does not continuously cover that
+      window, and otherwise available. Composition is all-or-nothing: when the
+      active night cannot resolve or any slot falls outside the daily arrays,
+      the state is unavailable (or requires_active_previous_payload) and the
+      three rows carry only the local reference day and the two days after it.
+      Only hourly timestamps are transported. No scores, no best window, no
+      labels, verdicts or tone, and no cache, persistence or timeline policy.
+      See contracts/procedures/night-outlook.md.
+
+  - id: observing_night.select_best
+    hosts: [ios, cli]
+    equality: night_outlook_best
+    since: "1.0.0"
+    requires_injected: [nights]
+    summary: >
+      Choose an outlook's best night from already-composed statuses and the
+      host's headline score for each row. Only an available row that carries a
+      score is eligible; the highest score wins and a tie keeps the earliest
+      eligible row. No eligible row means no best night. Caller order is
+      semantics and is never sorted; scoring, statuses and presentation are the
+      caller's. See contracts/procedures/night-outlook.md.

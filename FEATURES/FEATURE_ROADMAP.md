@@ -175,7 +175,7 @@ As a small polish item, make the distinction among the numeric target suitabilit
 
 The offline David Lorenz 2025 atlas and environmental Observing Quality are implemented; this is the completed light-pollution feature. Target score intentionally does not use the light-pollution atlas and remains separate from environmental Observing Quality and equipment suitability. Target-specific or equipment-aware light-pollution scoring is intentionally out of scope because selectively modeled adjustments would make catalog scores less consistently comparable. Reconsider it only if user feedback demonstrates a real recommendation problem and a reliable catalog-wide approach can be developed.
 
-Preserve the atlas's modeled zenith-sky-brightness semantics and do not present values as direct Bortle classifications. Follow the canonical atlas update, permission, packaging, and validation procedure in `Tools/LightPollution/VALIDATION_RESULTS.md` rather than reopening the completed feasibility experiment.
+Preserve the atlas's modeled zenith-sky-brightness semantics and do not present values as direct Bortle classifications. Follow the canonical atlas update, permission, packaging, and validation procedure in `tools/light-pollution/VALIDATION_RESULTS.md` rather than reopening the completed feasibility experiment.
 
 ## Later Product Backlog
 

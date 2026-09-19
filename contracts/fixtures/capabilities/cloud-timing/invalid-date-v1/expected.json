@@ -1,0 +1,8 @@
+{
+  "capability": "night_conditions.classify_cloud_timing",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid night_conditions.classify_cloud_timing input"
+  }
+}

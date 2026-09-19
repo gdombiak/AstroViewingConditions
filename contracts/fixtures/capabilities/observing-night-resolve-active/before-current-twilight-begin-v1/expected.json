@@ -1,0 +1,1 @@
+{"capability":"observing_night.resolve_active","ok":true,"result":{"state":"requires_active_previous_payload","time_zone":"America/Los_Angeles","day_offset":null,"day_index":null,"observing_date":null,"observing_day_start":null,"astronomical_night_start":null,"astronomical_night_end":null}}

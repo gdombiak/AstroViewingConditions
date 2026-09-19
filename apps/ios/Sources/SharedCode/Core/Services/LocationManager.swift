@@ -1,0 +1,274 @@
+import AstroEngine
+//
+//  LocationManager.swift
+//  SharedCode
+//
+//  Created by Gaston on 11/17/24.
+//
+
+import Foundation
+import CoreLocation
+#if os(iOS)
+import SwiftUI
+#endif
+
+public enum LocationError: Error, LocalizedError {
+    case notAuthorized
+    case timeout
+    case locationUnavailable
+    
+    public var errorDescription: String? {
+        switch self {
+        case .notAuthorized:
+            return "Location access not authorized. Please enable location services in Settings."
+        case .timeout:
+            return "Location request timed out. Please try again."
+        case .locationUnavailable:
+            return "Unable to determine location. Please check your device settings."
+        }
+    }
+}
+
+#if os(iOS)
+
+@Observable
+@MainActor
+public class LocationManager: NSObject {
+    private let manager = CLLocationManager()
+    private var timeoutTask: Task<Void, Never>?
+    
+    public var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    public var currentLocation: CLLocation?
+    public var locationError: Error?
+    public var isAuthorized: Bool {
+        authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways
+    }
+    
+    public override init() {
+        super.init()
+        manager.delegate = self
+        authorizationStatus = manager.authorizationStatus
+    }
+    
+    public func requestAuthorization() {
+        manager.requestWhenInUseAuthorization()
+    }
+    
+    public func getCurrentLocation() async throws -> CLLocationCoordinate2D {
+        guard isAuthorized else {
+            throw LocationError.notAuthorized
+        }
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            self.locationContinuation = continuation
+            manager.requestLocation()
+            timeoutTask = Task { @MainActor [weak self] in
+                do { try await Task.sleep(for: .seconds(10)) } catch { return }
+                self?.finishLocationRequest(.failure(LocationError.timeout))
+            }
+        }
+    }
+    
+    private var locationContinuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
+
+    private func finishLocationRequest(_ result: Result<CLLocationCoordinate2D, Error>) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        guard let continuation = locationContinuation else { return }
+        locationContinuation = nil
+        continuation.resume(with: result)
+    }
+    
+    public func reverseGeocode(coordinate: CLLocationCoordinate2D) async throws -> CLPlacemark? {
+        let geocoder = CLGeocoder()
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let placemarks = try await geocoder.reverseGeocodeLocation(location)
+        return placemarks.first
+    }
+    
+    func userLocationName() async -> String {
+        guard let location = currentLocation else { return "Unknown Location" }
+        
+        let geocoder = CLGeocoder()
+        do {
+            let placemarks = try await geocoder.reverseGeocodeLocation(location)
+            if let placemark = placemarks.first {
+                return placemark.locality ?? placemark.administrativeArea ?? placemark.country ?? "Unknown Location"
+            }
+        } catch {
+            print("Geocoding error: \(error)")
+        }
+        
+        return "Lat: \(String(format: "%.2f", location.coordinate.latitude)), Lon: \(String(format: "%.2f", location.coordinate.longitude))"
+    }
+}
+
+extension LocationManager: CLLocationManagerDelegate {
+    nonisolated public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let authorizationStatus = manager.authorizationStatus
+        Task { @MainActor in
+            self.authorizationStatus = authorizationStatus
+        }
+    }
+    
+    nonisolated public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        Task { @MainActor in
+            self.currentLocation = location
+            
+            self.finishLocationRequest(.success(location.coordinate))
+        }
+    }
+    
+    nonisolated public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in
+            self.locationError = error
+            
+            self.finishLocationRequest(.failure(error))
+        }
+    }
+}
+
+#elseif os(watchOS)
+
+@MainActor
+public class LocationManager: NSObject {
+    private let manager = CLLocationManager()
+    private var locationContinuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
+    private var timeoutTask: Task<Void, Never>?
+    private var authContinuation: CheckedContinuation<Void, Error>?
+    
+    public var authorizationStatus: CLAuthorizationStatus = .notDetermined
+    public var currentLocation: CLLocation?
+    public var locationError: Error?
+    
+    public var isAuthorized: Bool {
+        authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways
+    }
+    
+    public override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = kCLDistanceFilterNone
+        manager.activityType = .fitness
+        manager.allowsBackgroundLocationUpdates = false
+        authorizationStatus = manager.authorizationStatus
+    }
+    
+    public func requestAuthorization() {
+        manager.requestWhenInUseAuthorization()
+    }
+    
+    public func waitForAuthorization() async throws {
+        guard authorizationStatus == .notDetermined else { return }
+        
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                self.authContinuation = continuation
+                
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 20_000_000_000)
+                    if let cont = self.authContinuation {
+                        self.authContinuation = nil
+                        cont.resume(throwing: LocationError.timeout)
+                    }
+                }
+            }
+        } catch {
+            if authorizationStatus != .notDetermined {
+                return
+            }
+            throw error
+        }
+    }
+    
+    public func getCurrentLocation() async throws -> CLLocationCoordinate2D {
+        guard isAuthorized else {
+            throw LocationError.notAuthorized
+        }
+        
+        if let cachedLocation = manager.location {
+            return cachedLocation.coordinate
+        }
+        
+        return try await withCheckedThrowingContinuation { continuation in
+            self.locationContinuation = continuation
+            self.manager.startUpdatingLocation()
+            
+            self.timeoutTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(10))
+                guard let self = self else { return }
+                
+                self.manager.stopUpdatingLocation()
+                if let cont = self.locationContinuation {
+                    self.locationContinuation = nil
+                    cont.resume(throwing: LocationError.timeout)
+                }
+            }
+        }
+    }
+    
+    @available(watchOS, deprecated: 26.0, message: "Use MapKit geocoding instead")
+    public func geocodeAddress(_ address: String) async throws -> [CLPlacemark] {
+        let geocoder = CLGeocoder()
+        return try await geocoder.geocodeAddressString(address)
+    }
+    
+    @available(watchOS, deprecated: 26.0, message: "Use MapKit reverse geocoding instead")
+    public func reverseGeocode(coordinate: CLLocationCoordinate2D) async throws -> CLPlacemark? {
+        let geocoder = CLGeocoder()
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let placemarks = try await geocoder.reverseGeocodeLocation(location)
+        return placemarks.first
+    }
+    
+    private func completeLocationRequest(with location: CLLocation) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        if let continuation = locationContinuation {
+            locationContinuation = nil
+            continuation.resume(returning: location.coordinate)
+        }
+    }
+    
+    private func failLocationRequest(with error: Error) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        if let continuation = locationContinuation {
+            locationContinuation = nil
+            continuation.resume(throwing: error)
+        }
+    }
+}
+
+extension LocationManager: CLLocationManagerDelegate {
+    nonisolated public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let authorizationStatus = manager.authorizationStatus
+        Task { @MainActor in
+            self.authorizationStatus = authorizationStatus
+            
+            if let cont = self.authContinuation, self.isAuthorized {
+                self.authContinuation = nil
+                cont.resume()
+            }
+        }
+    }
+    
+    nonisolated public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        Task { @MainActor in
+            self.currentLocation = location
+            self.completeLocationRequest(with: location)
+        }
+    }
+    
+    nonisolated public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in
+            self.locationError = error
+            self.failLocationRequest(with: error)
+        }
+    }
+}
+
+#endif

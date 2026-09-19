@@ -1,0 +1,7 @@
+{
+  "capability": "iss.decode",
+  "ok": true,
+  "result": {
+    "passes": []
+  }
+}

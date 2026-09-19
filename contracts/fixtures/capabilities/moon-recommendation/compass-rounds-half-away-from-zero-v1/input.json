@@ -1,0 +1,30 @@
+{
+  "capability": "targets.moon_recommendation",
+  "injected": {
+    "night_start": "2026-08-29T02:00:00Z",
+    "night_end": "2026-08-29T02:30:00Z",
+    "best_window": null,
+    "moon": {
+      "phase": 0.5,
+      "illumination": 60,
+      "rise": null,
+      "set": null,
+      "always_up": false,
+      "always_down": false,
+      "samples": [
+        {
+          "time": "2026-08-29T02:00:00Z",
+          "altitude": 40.0,
+          "azimuth": 348.75
+        },
+        {
+          "time": "2026-08-29T02:30:00Z",
+          "altitude": 5.0,
+          "azimuth": 10.0
+        }
+      ]
+    },
+    "cloud_cover_score": 0.0,
+    "hourly_ratings": []
+  }
+}

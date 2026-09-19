@@ -1,0 +1,13 @@
+{
+  "capability": "equipment.match",
+  "ok": true,
+  "result": {
+    "match": {
+      "key": "scope",
+      "level": "challenging",
+      "reason": "apertureLimited",
+      "mode": "visual",
+      "other_suitable_keys": []
+    }
+  }
+}

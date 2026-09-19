@@ -1,0 +1,10 @@
+{
+  "capability": "fog.score",
+  "ok": true,
+  "result": {
+    "score": 22,
+    "factors": [
+      "low_temp_dew_diff"
+    ]
+  }
+}

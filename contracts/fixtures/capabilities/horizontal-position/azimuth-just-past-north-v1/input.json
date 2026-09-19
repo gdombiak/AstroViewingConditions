@@ -1,0 +1,10 @@
+{
+  "capability": "astronomy.horizontal_position",
+  "injected": {
+    "right_ascension": 9.9259,
+    "declination": 69.0653,
+    "latitude": 60.0,
+    "longitude": 0.0,
+    "time": "2026-09-06T23:00:00Z"
+  }
+}

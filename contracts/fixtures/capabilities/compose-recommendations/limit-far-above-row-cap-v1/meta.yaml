@@ -1,0 +1,9 @@
+capability: targets.compose_recommendations
+engine_semver: ">=1.0.0 <2.0.0"
+equality: compose_recommendations
+hosts: [swift, python]
+origin: manual
+notes: >
+  A limit far above the 1440 candidate row cap selects every available
+  candidate. The row cap already bounds the work, so there is no semantic
+  upper bound on limit.

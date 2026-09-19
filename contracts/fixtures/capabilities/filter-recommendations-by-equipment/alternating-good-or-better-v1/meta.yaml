@@ -1,0 +1,8 @@
+capability: targets.filter_recommendations_by_equipment
+engine_semver: ">=1.0.0 <2.0.0"
+equality: filter_recommendations_by_equipment
+origin: manual
+hosts: [swift, python]
+notes: >
+  Mixed target kinds alternate passing and failing rows. Good-or-better keeps
+  excellent and good only, in the original conditions order.

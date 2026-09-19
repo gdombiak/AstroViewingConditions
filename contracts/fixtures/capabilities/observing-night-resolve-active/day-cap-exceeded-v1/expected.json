@@ -1,0 +1,1 @@
+{"capability":"observing_night.resolve_active","ok":false,"error":{"code":"sample_cap","message":"observing_night.resolve_active exceeds the 1.0 day cap (16 days)"}}

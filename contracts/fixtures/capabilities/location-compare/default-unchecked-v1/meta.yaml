@@ -1,0 +1,9 @@
+capability: location.compare
+engine_semver: ">=1.0.0 <2.0.0"
+equality: location_compare
+hosts: [swift, python]
+origin: manual
+notes: >
+  No suitability overlay. Every candidate is unchecked, so suitability does
+  not change relative order. All production keys tie; ranking is candidate
+  key ascending. Input array is not key order.

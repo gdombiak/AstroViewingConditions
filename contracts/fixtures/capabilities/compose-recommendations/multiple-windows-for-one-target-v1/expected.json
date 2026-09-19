@@ -1,0 +1,20 @@
+{
+  "capability": "targets.compose_recommendations",
+  "ok": true,
+  "result": {
+    "selected": [
+      {
+        "index": 1,
+        "key": "m31-w2"
+      },
+      {
+        "index": 0,
+        "key": "m31-w1"
+      },
+      {
+        "index": 2,
+        "key": "jupiter"
+      }
+    ]
+  }
+}

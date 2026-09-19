@@ -1,0 +1,13 @@
+{
+  "capability": "equipment.match",
+  "ok": true,
+  "result": {
+    "match": {
+      "key": "scope",
+      "level": "excellent",
+      "reason": "electronicAssistance",
+      "mode": "electronicallyAssisted",
+      "other_suitable_keys": []
+    }
+  }
+}

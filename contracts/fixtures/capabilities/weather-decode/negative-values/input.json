@@ -1,0 +1,6 @@
+{
+  "capability": "weather.decode",
+  "injected": {
+    "$ref": "providers/open-meteo/forecast/negative-values.json"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {
+      "binocular_suitability": "preferred",
+      "preferred_binocular_magnification": [
+        7,
+        12
+      ],
+      "practical_binocular_aperture_mm": 35,
+      "preferred_binocular_aperture_mm": 50
+    },
+    "capabilities": [
+      {
+        "key": "low",
+        "type": "binoculars",
+        "aperture_mm": 50,
+        "magnification": 7
+      },
+      {
+        "key": "large",
+        "type": "binoculars",
+        "aperture_mm": 70,
+        "magnification": 7
+      },
+      {
+        "key": "high",
+        "type": "binoculars",
+        "aperture_mm": 50,
+        "magnification": 12
+      }
+    ]
+  }
+}

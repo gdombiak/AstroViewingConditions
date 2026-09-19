@@ -1,0 +1,11 @@
+{
+  "capability": "targets.deep_sky_windows",
+  "injected": {
+    "right_ascension": 16.6949,
+    "declination": 36.4613,
+    "latitude": 40.7,
+    "longitude": -74.0,
+    "night_start": "2026-09-06T01:00:00Z",
+    "night_end": "2026-09-06T09:00:00Z"
+  }
+}

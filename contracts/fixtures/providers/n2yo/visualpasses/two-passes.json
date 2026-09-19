@@ -1,0 +1,42 @@
+{
+  "info": {
+    "satid": 25544,
+    "satname": "ISS (ZARYA)",
+    "transactionscount": 10,
+    "passescount": 3
+  },
+  "passes": [
+    {
+      "startAz": 45.0,
+      "startAzCompass": "NE",
+      "startEl": 10,
+      "startUTC": 1700000000,
+      "maxAz": 90.0,
+      "maxAzCompass": "E",
+      "maxEl": 45.0,
+      "maxUTC": 1700000300,
+      "endAz": 135.0,
+      "endAzCompass": "SE",
+      "endEl": 10,
+      "endUTC": 1700000600,
+      "mag": -2.0,
+      "duration": 300
+    },
+    {
+      "startAz": 180.0,
+      "startAzCompass": "S",
+      "startEl": 5,
+      "startUTC": 1700086400,
+      "maxAz": 270.0,
+      "maxAzCompass": "W",
+      "maxEl": 30.0,
+      "maxUTC": 1700086700,
+      "endAz": 360.0,
+      "endAzCompass": "N",
+      "endEl": 5,
+      "endUTC": 1700087200,
+      "mag": -1.5,
+      "duration": 420
+    }
+  ]
+}

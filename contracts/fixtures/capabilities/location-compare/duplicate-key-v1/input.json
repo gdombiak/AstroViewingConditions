@@ -1,0 +1,29 @@
+{
+  "capability": "location.compare",
+  "injected": {
+    "candidates": [
+      {
+        "key": "same",
+        "public_score": 80,
+        "night_conditions_score": 80,
+        "avg_cloud_cover": 1,
+        "fog_score": 1,
+        "avg_wind_speed": 1,
+        "distance_miles": 1,
+        "latitude": 1,
+        "longitude": 1
+      },
+      {
+        "key": "same",
+        "public_score": 90,
+        "night_conditions_score": 90,
+        "avg_cloud_cover": 2,
+        "fog_score": 2,
+        "avg_wind_speed": 2,
+        "distance_miles": 2,
+        "latitude": 2,
+        "longitude": 2
+      }
+    ]
+  }
+}

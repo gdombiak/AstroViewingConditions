@@ -1,0 +1,23 @@
+{
+  "capability": "targets.compose_recommendations",
+  "injected": {
+    "candidates": [
+      {
+        "key": "saturn",
+        "score": 70,
+        "best_time": "2026-03-01T23:45:00Z"
+      },
+      {
+        "key": "m42-w1",
+        "score": 70,
+        "best_time": "2026-03-01T20:15:00Z"
+      },
+      {
+        "key": "moon",
+        "score": 70,
+        "best_time": "2026-03-01T22:00:00Z"
+      }
+    ],
+    "limit": 5
+  }
+}

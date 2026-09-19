@@ -1,0 +1,7 @@
+{
+  "capability": "targets.recommend",
+  "ok": true,
+  "result": {
+    "recommendations": []
+  }
+}

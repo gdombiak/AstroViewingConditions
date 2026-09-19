@@ -1,0 +1,24 @@
+{
+  "capability": "targets.requirements",
+  "ok": true,
+  "result": {
+    "requirement": {
+      "naked_eye_suitability": "preferred",
+      "binocular_suitability": "practical",
+      "preferred_binocular_magnification": [
+        7,
+        12
+      ],
+      "practical_binocular_aperture_mm": 35,
+      "preferred_binocular_aperture_mm": 50,
+      "practical_visual_aperture_mm": 60,
+      "preferred_visual_aperture_mm": 100,
+      "practical_smart_eaa_aperture_mm": 30,
+      "preferred_smart_eaa_aperture_mm": 50,
+      "framing": "medium",
+      "magnification_benefit": true,
+      "smart_eaa_suitability": "supported"
+    },
+    "is_planet": false
+  }
+}

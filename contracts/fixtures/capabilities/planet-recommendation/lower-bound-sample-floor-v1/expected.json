@@ -1,0 +1,22 @@
+{
+  "capability": "targets.planet_recommendation",
+  "result": {
+    "recommendation": {
+      "reasons": [
+        "convenientPlanetWindow",
+        "goodNightQuality",
+        "planetMoonlightResistant"
+      ],
+      "score": 59,
+      "visibility_window": {
+        "azimuth": 170,
+        "best_time": "1999-12-31T22:00:00Z",
+        "direction": "S",
+        "end": "1999-12-31T22:15:00Z",
+        "max_altitude": 30,
+        "start": "1999-12-31T22:00:00Z"
+      }
+    }
+  },
+  "ok": true
+}

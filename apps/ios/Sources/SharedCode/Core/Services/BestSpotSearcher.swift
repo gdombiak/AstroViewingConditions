@@ -1,0 +1,717 @@
+import Foundation
+import CoreLocation
+import AstroEngine
+
+/// Errors that can occur during best nearby area search
+public enum BestSpotSearchError: Error, LocalizedError {
+    case noLocationsFound
+    case noWeatherData
+    case invalidDate
+    case unsupportedForecastDate(maxDays: Int)
+    case noScorableLocations
+    case noRecommendableLocations
+    
+    public var errorDescription: String? {
+        switch self {
+        case .noLocationsFound:
+            return "No locations found in the search area."
+        case .noWeatherData:
+            return "Unable to retrieve weather data for the search area."
+        case .invalidDate:
+            return "Invalid search date."
+        case .unsupportedForecastDate(let maxDays):
+            return "Forecasts are only available for the next \(maxDays) days. Choose a nearer night."
+        case .noScorableLocations:
+            return "Weather data was available, but no night conditions could be scored for the selected date."
+        case .noRecommendableLocations:
+            return "No recommendable nearby areas found. The best-scoring candidates appear to be water or could not be verified. Try a different starting location, search radius, or date."
+        }
+    }
+}
+
+public protocol BestSpotSearching: Sendable {
+    func findBestSpots(
+        around center: CachedLocation,
+        radiusMiles: Double,
+        spacingMiles: Double,
+        for date: Date,
+        topN: Int,
+        progressHandler: (@Sendable (Double) -> Void)?
+    ) async throws -> BestSpotResult
+}
+
+public protocol LocationSuitabilityProviding: Sendable {
+    func suitability(for point: GridPoint) async throws -> LocationSuitabilityStatus
+    func suitability(for points: [GridPoint]) async throws -> [GridPoint: LocationSuitabilityStatus]
+    func makeSearchSession() -> any LocationSuitabilityProviding
+}
+
+public extension LocationSuitabilityProviding {
+    /// Providers without mutable cache state can safely serve as their own session.
+    func makeSearchSession() -> any LocationSuitabilityProviding {
+        self
+    }
+}
+
+public protocol LocationSuitabilityResolving: Sendable {
+    func resolveSuitability(for coordinate: Coordinate) async throws -> LocationSuitabilityStatus
+}
+
+public actor CoreLocationSuitabilityResolver: LocationSuitabilityResolving {
+    public init() {}
+
+    public func resolveSuitability(for coordinate: Coordinate) async throws -> LocationSuitabilityStatus {
+        try Task.checkCancellation()
+        let geocoder = CLGeocoder()
+        let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+
+        // Do not capture CLGeocoder in a task cancellation handler.
+        // It is non-Sendable under Swift 6 strict concurrency.
+        // Structured cancellation stops queued work and propagates
+        // CancellationError; active geocoder requests unwind through
+        // Core Location's async API.
+        do {
+            let placemarks = try await geocoder.reverseGeocodeLocation(location)
+            guard let placemark = placemarks.first else {
+                return .unknown(reason: .geocodingFailed)
+            }
+
+            if placemark.ocean != nil || placemark.inlandWater != nil {
+                return .unsuitable(reason: "Water area")
+            }
+
+            if placemark.country != nil || placemark.administrativeArea != nil || placemark.locality != nil {
+                return .suitable
+            }
+
+            return .unknown(reason: .notChecked)
+        } catch {
+            if error is CancellationError || Task.isCancelled {
+                throw CancellationError()
+            }
+            return Self.suitabilityStatus(for: error)
+        }
+    }
+
+    public static func suitabilityStatus(for error: Error) -> LocationSuitabilityStatus {
+        if let error = error as? CLError, error.code == .network {
+            return .unknown(reason: .temporarilyUnavailable)
+        }
+
+        let nsError = error as NSError
+        if nsError.domain == "GEOErrorDomain", nsError.code == -3 {
+            return .unknown(reason: .temporarilyUnavailable)
+        }
+
+        return .unknown(reason: .geocodingFailed)
+    }
+}
+
+public final class LocationSuitabilityService: LocationSuitabilityProviding {
+    public struct CacheKey: Sendable, Hashable {
+        public let roundedLatitude: Double
+        public let roundedLongitude: Double
+    }
+
+    /// Rounds to 0.001 degrees by default, roughly 110 meters of latitude.
+    public static let defaultCoordinatePrecision: Double = 0.001
+    public static let defaultMaxConcurrentLookups = 4
+
+    private let resolver: any LocationSuitabilityResolving
+    private let coordinatePrecision: Double
+    private let maxConcurrentLookups: Int
+
+    public init(
+        resolver: any LocationSuitabilityResolving = CoreLocationSuitabilityResolver(),
+        coordinatePrecision: Double = defaultCoordinatePrecision,
+        maxConcurrentLookups: Int = defaultMaxConcurrentLookups
+    ) {
+        self.resolver = resolver
+        self.coordinatePrecision = coordinatePrecision
+        self.maxConcurrentLookups = max(maxConcurrentLookups, 1)
+    }
+
+    /// Creates the short-lived cache used by one Best Nearby Area search.
+    public func makeSearchSession() -> any LocationSuitabilityProviding {
+        LocationSuitabilitySession(
+            resolver: resolver,
+            coordinatePrecision: coordinatePrecision,
+            maxConcurrentLookups: maxConcurrentLookups
+        )
+    }
+
+    /// Direct callers get an isolated one-call session. Searches should create one
+    /// session and reuse it across their candidate bands.
+    public func suitability(for point: GridPoint) async throws -> LocationSuitabilityStatus {
+        let session = makeSearchSession()
+        return try await session.suitability(for: point)
+    }
+
+    public func suitability(for points: [GridPoint]) async throws -> [GridPoint: LocationSuitabilityStatus] {
+        let session = makeSearchSession()
+        return try await session.suitability(for: points)
+    }
+
+    public static func cacheKey(for coordinate: Coordinate, precision: Double = defaultCoordinatePrecision) -> CacheKey {
+        CacheKey(
+            roundedLatitude: (coordinate.latitude / precision).rounded() * precision,
+            roundedLongitude: (coordinate.longitude / precision).rounded() * precision
+        )
+    }
+}
+
+/// Mutable suitability state owned by one Best Nearby Area search operation.
+private actor LocationSuitabilitySession: LocationSuitabilityProviding {
+    private let resolver: any LocationSuitabilityResolving
+    private let coordinatePrecision: Double
+    private let maxConcurrentLookups: Int
+    private var cache: [LocationSuitabilityService.CacheKey: LocationSuitabilityStatus] = [:]
+
+    init(
+        resolver: any LocationSuitabilityResolving,
+        coordinatePrecision: Double,
+        maxConcurrentLookups: Int
+    ) {
+        self.resolver = resolver
+        self.coordinatePrecision = coordinatePrecision
+        self.maxConcurrentLookups = maxConcurrentLookups
+    }
+
+    func suitability(for point: GridPoint) async throws -> LocationSuitabilityStatus {
+        try Task.checkCancellation()
+        let key = LocationSuitabilityService.cacheKey(for: point.coordinate, precision: coordinatePrecision)
+        if let cached = cache[key] {
+            return cached
+        }
+
+        let status = try await resolver.resolveSuitability(for: point.coordinate)
+        cache[key] = status
+        return status
+    }
+
+    func suitability(for points: [GridPoint]) async throws -> [GridPoint: LocationSuitabilityStatus] {
+        try Task.checkCancellation()
+        guard !points.isEmpty else { return [:] }
+
+        var representativeByKey: [LocationSuitabilityService.CacheKey: GridPoint] = [:]
+
+        for point in points {
+            let key = LocationSuitabilityService.cacheKey(for: point.coordinate, precision: coordinatePrecision)
+            if representativeByKey[key] == nil {
+                representativeByKey[key] = point
+            }
+        }
+
+        var results: [GridPoint: LocationSuitabilityStatus] = [:]
+        var missing: [(key: LocationSuitabilityService.CacheKey, value: GridPoint)] = []
+
+        for (key, representative) in representativeByKey {
+            if let cached = cache[key] {
+                results[representative] = cached
+            } else {
+                missing.append((key, representative))
+            }
+        }
+
+        let resolved = try await resolveMissingSuitability(missing)
+        for (key, status) in resolved {
+            cache[key] = status
+        }
+
+        for point in points {
+            let key = LocationSuitabilityService.cacheKey(for: point.coordinate, precision: coordinatePrecision)
+            results[point] = results[point] ?? cache[key] ?? .unknown(reason: .geocodingFailed)
+        }
+
+        return results
+    }
+
+    private func resolveMissingSuitability(
+        _ missing: [(key: LocationSuitabilityService.CacheKey, value: GridPoint)]
+    ) async throws -> [LocationSuitabilityService.CacheKey: LocationSuitabilityStatus] {
+        guard !missing.isEmpty else { return [:] }
+
+        return try await withThrowingTaskGroup(of: (LocationSuitabilityService.CacheKey, LocationSuitabilityStatus).self) { group in
+            var nextIndex = 0
+            var resolved: [LocationSuitabilityService.CacheKey: LocationSuitabilityStatus] = [:]
+
+            func addNextTask() throws {
+                try Task.checkCancellation()
+                guard nextIndex < missing.count else { return }
+                let entry = missing[nextIndex]
+                nextIndex += 1
+                group.addTask { [resolver] in
+                    try Task.checkCancellation()
+                    return (entry.key, try await resolver.resolveSuitability(for: entry.value.coordinate))
+                }
+            }
+
+            for _ in 0..<min(maxConcurrentLookups, missing.count) {
+                try addNextTask()
+            }
+
+            while let (key, status) = try await group.next() {
+                try Task.checkCancellation()
+                resolved[key] = status
+                cache[key] = status
+                try addNextTask()
+            }
+
+            return resolved
+        }
+    }
+}
+
+/// Prepares a **Sendable** observing-quality assessor once per Best Nearby search.
+///
+/// Main app injects a preparer that reuses process-owned LP bootstrap; SharedCode never
+/// loads `Bundle.main` or the atlas binary.
+public typealias BestSpotObservingQualityPreparer =
+    @Sendable () async -> any ObservingQualityAssessing
+
+/// Orchestrates the search for the best nearby area based on viewing conditions.
+public final class BestSpotSearcher: BestSpotSearching {
+    public static let maxForecastDays = 16
+    public static let minimumSuitabilityCandidateCount = 20
+    // Keep below the observed iOS/CoreLocation reverse-geocoding throttling threshold.
+    // Coastal searches can otherwise trigger many checks; 40 allows ranked expansion
+    // bands without the real-device slowdowns seen at higher caps.
+    public static let maxSuitabilityCandidateChecks = 40
+
+    private let weatherService: any WeatherForecastProviding
+    private let astronomyService: any AstronomyProviding
+    private let suitabilityService: any LocationSuitabilityProviding
+    private let fogScoreCalculator: @Sendable (HourlyForecast) -> FogScore
+    /// Optional preparer (once per search). `nil` → night-only assessor (exact prior behavior).
+    private let observingQualityPreparer: BestSpotObservingQualityPreparer?
+    
+    public init(
+        weatherService: any WeatherForecastProviding = WeatherService(),
+        astronomyService: any AstronomyProviding = AstronomyService(),
+        suitabilityService: any LocationSuitabilityProviding = LocationSuitabilityService(),
+        fogScoreCalculator: @escaping @Sendable (HourlyForecast) -> FogScore = FogCalculator.calculate,
+        observingQualityPreparer: BestSpotObservingQualityPreparer? = nil
+    ) {
+        self.weatherService = weatherService
+        self.astronomyService = astronomyService
+        self.suitabilityService = suitabilityService
+        self.fogScoreCalculator = fogScoreCalculator
+        self.observingQualityPreparer = observingQualityPreparer
+    }
+    
+#if os(iOS)
+    /// Finds nearby areas with the best viewing conditions within a radius of a center location.
+    /// - Parameters:
+    ///   - center: The center location to search around
+    ///   - radiusMiles: Search radius in miles (default 30)
+    ///   - spacingMiles: Grid spacing in miles (default 5)
+    ///   - date: The date to search for (tonight/tomorrow night)
+    ///   - topN: Number of top results to return (default 5)
+    ///   - progressHandler: Called with progress updates (0.0 to 1.0)
+    /// - Returns: BestSpotResult containing scored areas sorted by score
+    public func findBestSpots(
+        around center: SavedLocation,
+        radiusMiles: Double = 30,
+        spacingMiles: Double = 5,
+        for date: Date,
+        topN: Int = 5,
+        progressHandler: (@Sendable (Double) -> Void)? = nil
+    ) async throws -> BestSpotResult {
+        let cachedLocation = CachedLocation(from: center)
+        return try await findBestSpots(
+            around: cachedLocation,
+            radiusMiles: radiusMiles,
+            spacingMiles: spacingMiles,
+            for: date,
+            topN: topN,
+            progressHandler: progressHandler
+        )
+    }
+#endif
+
+    public func findBestSpots(
+        around center: CachedLocation,
+        radiusMiles: Double = 30,
+        spacingMiles: Double = 5,
+        for date: Date,
+        topN: Int = 5,
+        progressHandler: (@Sendable (Double) -> Void)? = nil
+    ) async throws -> BestSpotResult {
+        let startTime = Date()
+        try Task.checkCancellation()
+        // A search owns its suitability cache, including all expansion bands.
+        // Letting this local session go releases cached state on success, failure,
+        // or cancellation.
+        let suitabilitySession = suitabilityService.makeSearchSession()
+        
+        // Generate grid points
+        progressHandler?(0.1)
+        let gridPoints = GeographicGridGenerator.generateGrid(
+            around: center.coordinate,
+            radiusMiles: radiusMiles,
+            spacingMiles: spacingMiles
+        )
+        
+        guard !gridPoints.isEmpty else {
+            throw BestSpotSearchError.noLocationsFound
+        }
+        
+        let tz = await LocationTimeZoneResolver.resolve(latitude: center.latitude, longitude: center.longitude)
+        try Task.checkCancellation()
+        let calendar = LocationTimeZoneResolver.calendar(for: tz)
+        let forecastDays = Self.forecastDaysNeeded(for: date, calendar: calendar)
+        guard forecastDays <= Self.maxForecastDays else {
+            throw BestSpotSearchError.unsupportedForecastDate(maxDays: Self.maxForecastDays)
+        }
+        
+        // Weather fetch and assessor preparation in parallel (atlas is local after bootstrap).
+        progressHandler?(0.2)
+        let coordinates = gridPoints.map { $0.coordinate }
+        async let weatherTask = weatherService.fetchForecastForMultipleLocations(
+            coordinates: coordinates,
+            days: forecastDays
+        )
+        async let assessorTask = prepareObservingQualityAssessor()
+        let weatherData = try await weatherTask
+        try Task.checkCancellation()
+        let observingQualityAssessor = await assessorTask
+        try Task.checkCancellation()
+        
+        guard !weatherData.isEmpty else {
+            throw BestSpotSearchError.noWeatherData
+        }
+        
+        progressHandler?(0.4)
+        
+        // Calculate sun and moon data for the date (same for all points in the area)
+        let startOfDay = calendar.startOfDay(for: date)
+        
+        let sunEventsToday = await astronomyService.calculateSunEvents(
+            latitude: center.latitude,
+            longitude: center.longitude,
+            on: startOfDay
+        )
+        
+        guard let nextDay = calendar.date(byAdding: Calendar.Component.day, value: 1, to: startOfDay) else {
+            throw BestSpotSearchError.invalidDate
+        }
+        let sunEventsTomorrow = await astronomyService.calculateSunEvents(
+            latitude: center.latitude,
+            longitude: center.longitude,
+            on: nextDay
+        )
+        try Task.checkCancellation()
+        
+        let moonInfo = await astronomyService.calculateMoonInfo(
+            latitude: center.latitude,
+            longitude: center.longitude,
+            on: startOfDay
+        )
+        try Task.checkCancellation()
+        
+        progressHandler?(0.5)
+        
+        // Score each location: night quality first, then one canonical OQ assess per candidate.
+        // Retain both until the full set is known so ranking uses one coherent mode.
+        var intermediate: [ScoredLocationDraft] = []
+        let totalPoints = gridPoints.count
+        let moonCalculationCache = NightQualityAnalyzer.MoonCalculationCache()
+        
+        for (index, gridPoint) in gridPoints.enumerated() {
+            try Task.checkCancellation()
+            guard let forecasts = weatherData[gridPoint.coordinate] else { continue }
+            
+            let draft = scoreLocationDraft(
+                gridPoint: gridPoint,
+                forecasts: forecasts,
+                sunEventsToday: sunEventsToday,
+                sunEventsTomorrow: sunEventsTomorrow,
+                moonInfo: moonInfo,
+                date: date,
+                calendar: calendar,
+                moonCalculationCache: moonCalculationCache,
+                observingQualityAssessor: observingQualityAssessor
+            )
+            intermediate.append(draft)
+            
+            // Update progress (50% to 90%)
+            let progress = 0.5 + (Double(index + 1) / Double(totalPoints)) * 0.4
+            progressHandler?(progress)
+        }
+        
+        let composition: LocationScoreCompositionResult
+        do {
+            composition = try LocationScoreComposition.compose(
+                intermediate.map(\.compositionCandidate)
+            )
+        } catch LocationScoreCompositionError.noScorableLocations {
+            throw BestSpotSearchError.noScorableLocations
+        }
+
+        try Task.checkCancellation()
+
+        let scoringMode = composition.scoringMode
+        let scoredLocations = composition.candidates.map { candidate in
+            intermediate[candidate.inputIndex].makeLocationScore(
+                publicScore: candidate.publicScore,
+                improvementOverCenter: candidate.improvementOverCenter
+            )
+        }
+        let rankedWeatherLocations = scoredLocations
+            .sorted(by: Self.isHigherRanked(_:than:))
+        var checkedCandidates: [LocationScore] = []
+        var checkedIDs = Set<LocationScore.ID>()
+        var recommendableLocations: [LocationScore] = []
+        let candidateBandSize = Self.suitabilityCandidateCount(topN: topN)
+        var bandStartIndex = 0
+
+        while recommendableLocations.count < topN &&
+            bandStartIndex < rankedWeatherLocations.count &&
+            checkedCandidates.count < Self.maxSuitabilityCandidateChecks {
+            try Task.checkCancellation()
+            let remainingCheckCapacity = Self.maxSuitabilityCandidateChecks - checkedCandidates.count
+            let bandEndIndex = min(
+                bandStartIndex + min(candidateBandSize, remainingCheckCapacity),
+                rankedWeatherLocations.count
+            )
+            let uncheckedBand = rankedWeatherLocations[bandStartIndex..<bandEndIndex]
+                .filter { checkedIDs.insert($0.id).inserted }
+            bandStartIndex = bandEndIndex
+
+            guard !uncheckedBand.isEmpty else { continue }
+
+            let suitabilityByPoint = try await suitabilitySession.suitability(for: uncheckedBand.map(\.point))
+            try Task.checkCancellation()
+            let checkedBand = uncheckedBand.map { location in
+                location.with(suitability: suitabilityByPoint[location.point] ?? .unknown(reason: .geocodingFailed))
+            }
+            checkedCandidates.append(contentsOf: checkedBand)
+            let recommendableIndices = LocationRecommendabilityFilter
+                .recommendableInputIndices(for: checkedCandidates.map(\.suitability))
+            recommendableLocations = recommendableIndices
+                .map { checkedCandidates[$0] }
+                .sorted(by: Self.isHigherRanked(_:than:))
+        }
+
+        recommendableLocations = Array(recommendableLocations.prefix(topN))
+        let checkedByID = Dictionary(uniqueKeysWithValues: checkedCandidates.map { ($0.id, $0) })
+        let allScoredLocations = rankedWeatherLocations.map { checkedByID[$0.id] ?? $0 }
+        let topLocations = recommendableLocations
+
+        guard !topLocations.isEmpty else {
+            throw BestSpotSearchError.noRecommendableLocations
+        }
+
+        let failedChecks = checkedCandidates.filter { $0.suitability.indicatesIncompleteVerification }.count
+        let suitabilityWarning = failedChecks > checkedCandidates.count / 2
+            ? "Area verification was incomplete for many candidates. Confirm access and avoid water before traveling."
+            : nil
+        
+        progressHandler?(1.0)
+        
+        let searchDuration = Date().timeIntervalSince(startTime)
+        
+        return BestSpotResult(
+            centerLocation: center,
+            searchRadiusMiles: radiusMiles,
+            gridSpacingMiles: spacingMiles,
+            allScoredLocations: allScoredLocations,
+            topLocations: topLocations,
+            moonInfo: moonInfo,
+            searchDate: date,
+            searchDuration: searchDuration,
+            suitabilityWarning: suitabilityWarning,
+            scoringMode: scoringMode
+        )
+    }
+
+    private func prepareObservingQualityAssessor() async -> any ObservingQualityAssessing {
+        if let observingQualityPreparer {
+            return await observingQualityPreparer()
+        }
+        // Night-only assessor: every assess has lightPollution == nil → search-wide fallback
+        // to night scores (preserves prior Best Nearby behavior when no preparer is injected).
+        return ObservingQualityService(lightPollutionProvider: nil)
+    }
+
+    /// Intermediate analysis retained until the engine composes the scorable set.
+    private struct ScoredLocationDraft: Sendable {
+        struct ScorableDetails: Sendable {
+            let fogScore: FogScore
+            let avgCloudCover: Double
+            let avgWindSpeed: Double
+            let summary: String
+        }
+
+        let point: GridPoint
+        let nightConditionsScore: Int
+        let observingQuality: ObservingQualityAssessment
+        let nightQuality: NightQualityAssessment
+        let scorableDetails: ScorableDetails?
+
+        var compositionCandidate: LocationScoreCompositionCandidate {
+            LocationScoreCompositionCandidate(
+                isCenter: point.isCenter,
+                nightConditionsScore: nightConditionsScore,
+                hasNighttimeRows: !nightQuality.hourlyRatings.isEmpty,
+                observingQuality: ObservingQualityCompositionInput(
+                    score: observingQuality.score,
+                    hasValidLightPollution: observingQuality.lightPollution != nil
+                )
+            )
+        }
+
+        func makeLocationScore(
+            publicScore: Int,
+            improvementOverCenter: Int?
+        ) -> LocationScore {
+            guard let scorableDetails else {
+                preconditionFailure("composition returned an unscorable location")
+            }
+            return LocationScore(
+                point: point,
+                score: publicScore,
+                nightConditionsScore: nightConditionsScore,
+                nightQuality: nightQuality,
+                fogScore: scorableDetails.fogScore,
+                avgCloudCover: scorableDetails.avgCloudCover,
+                avgWindSpeed: scorableDetails.avgWindSpeed,
+                improvementOverCenter: improvementOverCenter,
+                summary: scorableDetails.summary
+            )
+        }
+    }
+    
+    /// Scores a single location: night quality + one canonical OQ assess (before mode selection).
+    private func scoreLocationDraft(
+        gridPoint: GridPoint,
+        forecasts: [HourlyForecast],
+        sunEventsToday: SunEvents,
+        sunEventsTomorrow: SunEvents,
+        moonInfo: MoonInfo,
+        date: Date,
+        calendar: Calendar,
+        moonCalculationCache: NightQualityAnalyzer.MoonCalculationCache,
+        observingQualityAssessor: any ObservingQualityAssessing
+    ) -> ScoredLocationDraft {
+        // Calculate night quality using the existing analyzer
+        let nightQuality = NightQualityAnalyzer.analyzeNight(
+            forecasts: forecasts,
+            sunEventsToday: sunEventsToday,
+            sunEventsTomorrow: sunEventsTomorrow,
+            moonInfo: moonInfo,
+            latitude: gridPoint.coordinate.latitude,
+            longitude: gridPoint.coordinate.longitude,
+            for: date,
+            calendar: calendar,
+            moonCalculationCache: moonCalculationCache
+        )
+        
+        // Convert night quality to 0-100 score (existing weather/sky formula)
+        let nightConditionsScore = Self.calculateScore(nightQuality)
+
+        // Canonical observing quality (Moon not applied again; service handles invalid LP).
+        let observingQuality = observingQualityAssessor.assess(
+            nightConditionsScore: nightConditionsScore,
+            latitude: gridPoint.coordinate.latitude,
+            longitude: gridPoint.coordinate.longitude
+        )
+        
+        let scorableDetails: ScoredLocationDraft.ScorableDetails?
+        if nightQuality.hourlyRatings.isEmpty {
+            scorableDetails = nil
+        } else {
+            // This is the same half-open window the analyzer used. Forecasts are
+            // retained here only for Best Nearby's host-owned aggregate fields.
+            let nightForecasts = NightForecastFilter.filterToNighttime(
+                forecasts: forecasts,
+                sunEventsToday: sunEventsToday,
+                sunEventsTomorrow: sunEventsTomorrow,
+                for: date,
+                calendar: calendar
+            )
+            precondition(!nightForecasts.isEmpty, "night analyzer/filter window mismatch")
+            let avgCloudCover = Double(nightForecasts.map { $0.cloudCover }.reduce(0, +))
+                / Double(nightForecasts.count)
+            let avgWindSpeed = nightForecasts.map { $0.windSpeed }.reduce(0, +)
+                / Double(nightForecasts.count)
+            scorableDetails = ScoredLocationDraft.ScorableDetails(
+                fogScore: averageFogScore(for: nightForecasts),
+                avgCloudCover: avgCloudCover,
+                avgWindSpeed: avgWindSpeed,
+                summary: generateSummary(nightQuality: nightQuality, score: nightConditionsScore)
+            )
+        }
+        
+        return ScoredLocationDraft(
+            point: gridPoint,
+            nightConditionsScore: nightConditionsScore,
+            observingQuality: observingQuality,
+            nightQuality: nightQuality,
+            scorableDetails: scorableDetails
+        )
+    }
+
+    private func averageFogScore(for forecasts: [HourlyForecast]) -> FogScore {
+        let fogScores = forecasts.map(fogScoreCalculator)
+        guard !fogScores.isEmpty else { return FogScore(score: 0, factors: []) }
+
+        let averageScore = fogScores.map(\.score).reduce(0, +) / fogScores.count
+        let factors = FogScore.FogFactor.allCases.filter { factor in
+            fogScores.contains { $0.factors.contains(factor) }
+        }
+
+        return FogScore(score: averageScore, factors: factors)
+    }
+    
+    /// Generates a human-readable summary of the conditions
+    private func generateSummary(nightQuality: NightQualityAssessment, score: Int) -> String {
+        let cloudCover = Int(nightQuality.details.cloudCoverScore)
+        let windSpeed = nightQuality.details.windSpeedAvg
+        
+        var parts: [String] = []
+        
+        // Cloud cover description
+        if cloudCover < 10 {
+            parts.append("Crystal clear skies")
+        } else if cloudCover < 30 {
+            parts.append("Mostly clear")
+        } else if cloudCover < 60 {
+            parts.append("Partly cloudy")
+        } else {
+            parts.append("Cloudy")
+        }
+        
+        // Wind description
+        if windSpeed < 5 {
+            parts.append("calm winds")
+        } else if windSpeed < 15 {
+            parts.append("light winds")
+        } else {
+            parts.append("breezy")
+        }
+        
+        return parts.joined(separator: ", ")
+    }
+    
+    static func forecastDaysNeeded(for date: Date, calendar: Calendar, referenceDate: Date = Date()) -> Int {
+        let referenceStart = calendar.startOfDay(for: referenceDate)
+        let searchStart = calendar.startOfDay(for: date)
+        let dayOffset = calendar.dateComponents([.day], from: referenceStart, to: searchStart).day ?? 0
+        
+        return max(2, dayOffset + 2)
+    }
+    
+    /// Production Best Nearby total order; implemented by AstroEngine.
+    nonisolated public static func isHigherRanked(_ lhs: LocationScore, than rhs: LocationScore) -> Bool {
+        LocationCompare.isHigherRanked(lhs, than: rhs)
+    }
+
+    nonisolated public static func suitabilityCandidateCount(topN: Int) -> Int {
+        max(topN * 4, minimumSuitabilityCandidateCount)
+    }
+
+    nonisolated static func calculateScore(_ assessment: NightQualityAssessment) -> Int {
+        NightConditionsScoring.publicScore(assessment)
+    }
+}

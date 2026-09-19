@@ -1,0 +1,18 @@
+{
+  "penalty_min": 0.0,
+  "penalty_max": 2.0,
+  "temperature_delta_celsius": [
+    { "max": 1, "score": 0.0 },
+    { "max": 2, "score": 0.5 },
+    { "max": 3, "score": 1.0 },
+    { "max": 5, "score": 1.5 },
+    { "max": null, "score": 2.0 }
+  ],
+  "upper_wind_200hpa": [
+    { "max": 50, "score": 0.0 },
+    { "max": 100, "score": 0.5 },
+    { "max": 150, "score": 1.0 },
+    { "max": 200, "score": 1.5 },
+    { "max": null, "score": 2.0 }
+  ]
+}

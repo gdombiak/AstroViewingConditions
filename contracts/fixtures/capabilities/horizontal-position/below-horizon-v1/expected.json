@@ -1,0 +1,8 @@
+{
+  "capability": "astronomy.horizontal_position",
+  "result": {
+    "altitude": -30.190209599623973,
+    "azimuth": 340.8877879070248
+  },
+  "ok": true
+}

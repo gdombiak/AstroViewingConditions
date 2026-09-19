@@ -1,0 +1,8 @@
+{
+  "capability": "fog.score",
+  "ok": true,
+  "result": {
+    "score": 0,
+    "factors": []
+  }
+}

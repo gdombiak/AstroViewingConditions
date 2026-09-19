@@ -1,0 +1,7 @@
+capability: targets.requirements
+engine_semver: ">=1.0.0 <2.0.0"
+equality: target_requirements
+hosts: [swift, python]
+origin: manual
+notes: >
+  m13-explicit-nil-subtype

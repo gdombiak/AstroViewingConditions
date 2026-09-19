@@ -1,0 +1,23 @@
+{
+  "score_min": 0,
+  "score_max": 100,
+  "plausible_brightness": {
+    "min": 13.0,
+    "max": 22.5,
+    "unit": "mag/arcsec2"
+  },
+  "base_penalty_anchors": [
+    { "brightness": 17.5, "penalty": 8.0 },
+    { "brightness": 18.5, "penalty": 7.0 },
+    { "brightness": 19.5, "penalty": 5.0 },
+    { "brightness": 20.5, "penalty": 3.0 },
+    { "brightness": 21.3, "penalty": 1.0 },
+    { "brightness": 21.75, "penalty": 0.0 }
+  ],
+  "usability_weight_anchors": [
+    { "score": 35, "weight": 0.0 },
+    { "score": 45, "weight": 0.25 },
+    { "score": 65, "weight": 0.75 },
+    { "score": 80, "weight": 1.0 }
+  ]
+}

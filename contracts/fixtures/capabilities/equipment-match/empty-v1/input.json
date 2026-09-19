@@ -1,0 +1,7 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {},
+    "capabilities": []
+  }
+}

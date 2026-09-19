@@ -1,0 +1,6 @@
+capability: observing_night.resolve_active
+engine_semver: ">=1.0.0 <2.0.0"
+equality: observing_night
+origin: manual
+hosts: [swift, python]
+notes: Night start is inclusive; a summer twilight end after local midnight is the only way the reference instant can equal it.

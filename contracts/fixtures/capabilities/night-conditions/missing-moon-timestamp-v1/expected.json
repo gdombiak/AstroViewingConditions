@@ -1,0 +1,8 @@
+{
+  "capability": "night_conditions.analyze",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "moon_series missing timestamp 2026-03-02T00:00:00Z"
+  }
+}

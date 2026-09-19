@@ -1,0 +1,7 @@
+{
+  "capability": "night_conditions.select_cloud_advisory",
+  "ok": true,
+  "result": {
+    "cloud_advisory": "late_heavy"
+  }
+}

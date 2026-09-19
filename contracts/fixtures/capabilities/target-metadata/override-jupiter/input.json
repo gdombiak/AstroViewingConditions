@@ -1,0 +1,6 @@
+{
+  "capability": "targets.requirements",
+  "injected": {
+    "id": "jupiter"
+  }
+}

@@ -124,9 +124,9 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
 ### Project Structure
 ```
 AstroViewingConditions/
-├── AstroViewingConditions.xcodeproj/           # Checked-in Xcode project
-├── project.yml                                 # XcodeGen source configuration
-├── Sources/
+├── apps/ios/AstroViewingConditions.xcodeproj/           # Checked-in Xcode project
+├── apps/ios/project.yml                                 # XcodeGen source configuration
+├── apps/ios/Sources/
 │   ├── App/                                    # iOS app plist, entitlements, privacy manifest
 │   ├── AstroViewingConditions/
 │   │   ├── App/                                # iOS app entry point and tab container
@@ -149,7 +149,7 @@ AstroViewingConditions/
 │   ├── WatchApp/                               # watchOS app, views, managers, assets
 │   └── WatchWidget/                            # watchOS complication extension
 │
-├── Tests/AstroViewingConditionsTests/          # Unit tests
+├── apps/ios/Tests/AstroViewingConditionsTests/          # Unit tests
 ├── README.md
 ├── LICENSE
 ├── build.sh
@@ -157,7 +157,7 @@ AstroViewingConditions/
 ```
 
 ### Targets
-Defined in `project.yml`:
+Defined in `apps/ios/project.yml`:
 
 - `SharedCode`: Cross-platform framework for iOS and watchOS
 - `AstroViewingConditions`: Main iOS app
@@ -341,7 +341,7 @@ Important services:
 - [x] Dashboard, Best Nearby, Home Screen conditions/outlook widgets, Apple Watch dashboard, and score-bearing complications
 - [x] Separate saved-location and Current Location derived companion state with dataset, identity, coordinate, and compatibility validation
 - [x] Saved-location modeled light-pollution presentation with category, mag/arcsec² value, explanatory footer, and adaptive Dynamic Type layout
-- [x] Python generation, format validation, regional/global fidelity analysis, and release/adoption procedure under `Tools/LightPollution`
+- [x] Python generation, format validation, regional/global fidelity analysis, and release/adoption procedure under `tools/light-pollution`
 
 Best Targets only received terminology/presentation clarification. Its Target score intentionally remains separate from environmental Observing Quality; equipment affects suitability guidance and filtering rather than Target score or ranking. Target-specific light-pollution scoring is intentionally out of current product scope.
 
@@ -448,7 +448,7 @@ Parameters:
 3. Open the checked-in Xcode project:
    ```bash
    cd /Users/gaston/repo/AstroViewingConditions
-   open AstroViewingConditions.xcodeproj
+   open apps/ios/AstroViewingConditions.xcodeproj
    ```
 4. Build the `AstroViewingConditions` scheme on an iOS simulator.
 5. Build the `AstroViewingConditionsWatch` scheme on a watchOS simulator.
@@ -458,41 +458,41 @@ Parameters:
 ```bash
 cd /Users/gaston/repo/AstroViewingConditions
 ./build.sh
-xcodebuild -project AstroViewingConditions.xcodeproj -scheme AstroViewingConditions -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' test
+xcodebuild -project apps/ios/AstroViewingConditions.xcodeproj -scheme AstroViewingConditions -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' test
 ```
 
-If `project.yml` changes, regenerate the Xcode project with XcodeGen before committing the project file changes.
+If `apps/ios/project.yml` changes, regenerate the Xcode project with `(cd apps/ios && xcodegen generate)` from the repository root before committing the project file changes.
 
 ### Key Files to Understand
-- `Sources/AstroViewingConditions/Features/Dashboard/DashboardView.swift` - Main iOS conditions UI
-- `Sources/AstroViewingConditions/Features/Dashboard/DashboardViewModel.swift` - iOS dashboard state and loading flow
-- `Sources/AstroViewingConditions/Features/Dashboard/TonightsBestTargetsCard.swift` - Dashboard target recommendations
-- `Sources/AstroViewingConditions/Features/Dashboard/TargetDetailContentBuilder.swift` - Observer-facing target guidance
-- `Sources/AstroViewingConditions/Features/BestSpot/BestSpotView.swift` - Best Nearby Area UI, map annotations, and selected-area presentation
-- `Sources/AstroViewingConditions/Features/BestSpot/BestSpotViewModel.swift` - Best Nearby Area state, search flow, and guarded Maps actions
-- `Sources/AstroViewingConditions/Services/WatchConnectivityService.swift` - iPhone-side watch communication
-- `Sources/WatchApp/Features/Dashboard/WatchDashboardView.swift` - Main watchOS UI
-- `Sources/WatchApp/Services/WatchConnectivityManager.swift` - Watch-side communication
-- `Sources/SharedCode/Core/Services/WeatherService.swift` - Weather API integration
-- `Sources/SharedCode/Core/Services/SharedConditionsRepository.swift` - Shared conditions cache, provenance validation, freshness, and refresh flow
-- `Sources/SharedCode/Core/Services/LocationStorageService.swift` - Shared selected/saved location snapshots
-- `Sources/SharedCode/Core/Services/TargetRecommendationService.swift` - Deep-sky ranking and visibility windows
-- `Sources/SharedCode/Core/Services/BestSpotSearcher.swift` - Nearby-area weather scoring, reverse-geocoded suitability checks, suitability expansion, and recommendation selection
-- `Sources/SharedCode/Core/Utilities/ObservingQualityCalculator.swift` - Canonical Night Conditions plus modeled-light-pollution score
-- `Sources/SharedCode/Core/Services/LightPollutionProviderBootstrap.swift` - Main-app LPATLAS1 process bootstrap
-- `Sources/SharedCode/Core/Services/SavedLocationModeledBrightnessCoordinator.swift` - Saved-location derived companion-state writer
-- `Sources/SharedCode/Core/Services/CurrentLocationModeledBrightnessCoordinator.swift` - Current Location derived companion-state writer
-- `Sources/SharedCode/Core/Services/WatchObservingQualityCanonicalizer.swift` - Watch payload validation and canonical recomputation
-- `Sources/Widgets/NightConditionsWidget.swift` - Adaptive Tonight at a Glance Home Screen widget
-- `Sources/Widgets/TonightTargetsWidget.swift` - Tonight’s Targets Home Screen widget
-- `Sources/Widgets/ThreeNightOutlookWidget.swift` - Three-Night Outlook Home Screen widget
-- `Sources/SharedCode/Core/Services/MoonRecommendationService.swift` - Moon visibility and recommendation logic
-- `Sources/SharedCode/Core/Services/PlanetRecommendationService.swift` - Local planet position and recommendation logic
-- `Sources/SharedCode/Core/Services/DeepSkyCatalogService.swift` - Curated target catalog
-- `Sources/SharedCode/Core/Models/SavedLocation.swift` - Saved location model
-- `Tools/LightPollution/VALIDATION_RESULTS.md` - Canonical atlas validation record and future release-adoption procedure
-- `Tools/LightPollution/CROSS_SURFACE_ARCHITECTURE.md` - Current Observing Quality transport, persistence, and fallback architecture
-- `project.yml` - Target and scheme definitions
+- `apps/ios/Sources/AstroViewingConditions/Features/Dashboard/DashboardView.swift` - Main iOS conditions UI
+- `apps/ios/Sources/AstroViewingConditions/Features/Dashboard/DashboardViewModel.swift` - iOS dashboard state and loading flow
+- `apps/ios/Sources/AstroViewingConditions/Features/Dashboard/TonightsBestTargetsCard.swift` - Dashboard target recommendations
+- `apps/ios/Sources/AstroViewingConditions/Features/Dashboard/TargetDetailContentBuilder.swift` - Observer-facing target guidance
+- `apps/ios/Sources/AstroViewingConditions/Features/BestSpot/BestSpotView.swift` - Best Nearby Area UI, map annotations, and selected-area presentation
+- `apps/ios/Sources/AstroViewingConditions/Features/BestSpot/BestSpotViewModel.swift` - Best Nearby Area state, search flow, and guarded Maps actions
+- `apps/ios/Sources/AstroViewingConditions/Services/WatchConnectivityService.swift` - iPhone-side watch communication
+- `apps/ios/Sources/WatchApp/Features/Dashboard/WatchDashboardView.swift` - Main watchOS UI
+- `apps/ios/Sources/WatchApp/Services/WatchConnectivityManager.swift` - Watch-side communication
+- `apps/ios/Sources/SharedCode/Core/Services/WeatherService.swift` - Weather API integration
+- `apps/ios/Sources/SharedCode/Core/Services/SharedConditionsRepository.swift` - Shared conditions cache, provenance validation, freshness, and refresh flow
+- `apps/ios/Sources/SharedCode/Core/Services/LocationStorageService.swift` - Shared selected/saved location snapshots
+- `apps/ios/Sources/SharedCode/Core/Services/TargetRecommendationService.swift` - Deep-sky ranking and visibility windows
+- `apps/ios/Sources/SharedCode/Core/Services/BestSpotSearcher.swift` - Nearby-area weather scoring, reverse-geocoded suitability checks, suitability expansion, and recommendation selection
+- `apps/ios/Sources/SharedCode/Core/Utilities/ObservingQualityCalculator.swift` - Canonical Night Conditions plus modeled-light-pollution score
+- `apps/ios/Sources/SharedCode/Core/Services/LightPollutionProviderBootstrap.swift` - Main-app LPATLAS1 process bootstrap
+- `apps/ios/Sources/SharedCode/Core/Services/SavedLocationModeledBrightnessCoordinator.swift` - Saved-location derived companion-state writer
+- `apps/ios/Sources/SharedCode/Core/Services/CurrentLocationModeledBrightnessCoordinator.swift` - Current Location derived companion-state writer
+- `apps/ios/Sources/SharedCode/Core/Services/WatchObservingQualityCanonicalizer.swift` - Watch payload validation and canonical recomputation
+- `apps/ios/Sources/Widgets/NightConditionsWidget.swift` - Adaptive Tonight at a Glance Home Screen widget
+- `apps/ios/Sources/Widgets/TonightTargetsWidget.swift` - Tonight’s Targets Home Screen widget
+- `apps/ios/Sources/Widgets/ThreeNightOutlookWidget.swift` - Three-Night Outlook Home Screen widget
+- `apps/ios/Sources/SharedCode/Core/Services/MoonRecommendationService.swift` - Moon visibility and recommendation logic
+- `apps/ios/Sources/SharedCode/Core/Services/PlanetRecommendationService.swift` - Local planet position and recommendation logic
+- `apps/ios/Sources/SharedCode/Core/Services/DeepSkyCatalogService.swift` - Curated target catalog
+- `apps/ios/Sources/SharedCode/Core/Models/SavedLocation.swift` - Saved location model
+- `tools/light-pollution/VALIDATION_RESULTS.md` - Canonical atlas validation record and future release-adoption procedure
+- `tools/light-pollution/CROSS_SURFACE_ARCHITECTURE.md` - Current Observing Quality transport, persistence, and fallback architecture
+- `apps/ios/project.yml` - Target and scheme definitions
 
 ---
 

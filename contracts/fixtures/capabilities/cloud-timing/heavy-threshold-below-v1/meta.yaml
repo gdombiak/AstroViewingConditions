@@ -1,0 +1,6 @@
+capability: night_conditions.classify_cloud_timing
+engine_semver: ">=1.0.0 <2.0.0"
+equality: cloud_timing
+origin: manual
+hosts: [swift, python]
+notes: Cloud cover one below the floor is not heavy.

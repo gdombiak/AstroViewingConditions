@@ -1,0 +1,27 @@
+{
+  "capability": "observing_window.select",
+  "injected": {
+    "hourly_ratings": [
+      {
+        "time": "2026-09-06T00:00:00Z",
+        "score": 2
+      },
+      {
+        "time": "2026-09-06T01:00:00Z",
+        "score": 0
+      },
+      {
+        "time": "2026-09-06T05:00:00Z",
+        "score": 0
+      },
+      {
+        "time": "2026-09-06T06:00:00Z",
+        "score": 2
+      },
+      {
+        "time": "2026-09-06T09:00:00Z",
+        "score": 2
+      }
+    ]
+  }
+}

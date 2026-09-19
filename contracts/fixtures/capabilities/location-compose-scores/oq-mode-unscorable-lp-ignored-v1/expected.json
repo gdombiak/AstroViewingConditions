@@ -1,0 +1,12 @@
+{
+  "capability": "location.compose_scores",
+  "ok": true,
+  "result": {
+    "scoring_mode": "observing_quality",
+    "candidates": [
+      {"input_index": 0, "public_score": 60, "improvement_over_center": -6},
+      {"input_index": 2, "public_score": 66, "improvement_over_center": 0},
+      {"input_index": 3, "public_score": 66, "improvement_over_center": 0}
+    ]
+  }
+}

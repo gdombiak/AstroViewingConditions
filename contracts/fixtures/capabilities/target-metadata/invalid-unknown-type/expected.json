@@ -1,0 +1,8 @@
+{
+  "capability": "targets.requirements",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid targets.requirements input"
+  }
+}

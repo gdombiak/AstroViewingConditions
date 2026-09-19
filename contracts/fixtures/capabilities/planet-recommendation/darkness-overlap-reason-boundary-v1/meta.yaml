@@ -1,0 +1,7 @@
+capability: targets.planet_recommendation
+engine_semver: ">=1.0.0 <2.0.0"
+equality: planet_recommendation
+hosts: [swift, python]
+origin: manual
+notes: >
+  The 900 s window straddles night start so that exactly 405 of its seconds, or 0.45, fall in astronomical darkness. The reason threshold is inclusive.

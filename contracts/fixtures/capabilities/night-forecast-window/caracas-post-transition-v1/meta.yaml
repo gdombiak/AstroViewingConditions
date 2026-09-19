@@ -1,0 +1,6 @@
+capability: night_forecast.derive_window
+engine_semver: ">=1.0.0 <2.0.0"
+equality: night_forecast_window
+origin: manual
+hosts: [swift, python]
+notes: Caracas 03:15 exists after the jump, but Foundation's hierarchical field search enters hour 03 at minute 30 and finds 03:15 the next day.

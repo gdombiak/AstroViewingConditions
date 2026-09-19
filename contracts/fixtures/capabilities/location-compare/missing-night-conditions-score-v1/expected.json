@@ -1,0 +1,8 @@
+{
+  "capability": "location.compare",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "night_conditions_score must be a finite JSON number"
+  }
+}

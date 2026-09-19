@@ -1,0 +1,7 @@
+capability: targets.deep_sky_windows
+engine_semver: ">=1.0.0 <2.0.0"
+equality: deep_sky_windows
+hosts: [swift, python]
+origin: manual
+notes: >
+  Every sample is above the threshold, so the window is exactly the injected interval.

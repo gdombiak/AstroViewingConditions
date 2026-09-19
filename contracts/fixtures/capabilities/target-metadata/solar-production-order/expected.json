@@ -1,0 +1,43 @@
+{
+  "capability": "catalog.solar_system",
+  "ok": true,
+  "result": {
+    "entries": [
+      {
+        "id": "moon",
+        "type": "moon",
+        "preferred_equipment": "nakedEye",
+        "difficulty": 0.1,
+        "observing_intent": "easy"
+      },
+      {
+        "id": "venus",
+        "type": "planet",
+        "preferred_equipment": "nakedEye",
+        "difficulty": 0.1,
+        "observing_intent": "easy"
+      },
+      {
+        "id": "mars",
+        "type": "planet",
+        "preferred_equipment": "nakedEye",
+        "difficulty": 0.2,
+        "observing_intent": "standard"
+      },
+      {
+        "id": "jupiter",
+        "type": "planet",
+        "preferred_equipment": "smallTelescope",
+        "difficulty": 0.25,
+        "observing_intent": "easy"
+      },
+      {
+        "id": "saturn",
+        "type": "planet",
+        "preferred_equipment": "smallTelescope",
+        "difficulty": 0.35,
+        "observing_intent": "easy"
+      }
+    ]
+  }
+}

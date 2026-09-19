@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Cross-language parity: each engine independently against expected.json.
+# Usage (from any cwd): scripts/parity [pytest args...]
+set -euo pipefail
+
+script_path=$0
+case "$script_path" in
+    /*) ;;
+    *) script_path=$(pwd)/$script_path ;;
+esac
+script_dir=$(cd "$(dirname "$script_path")" && pwd)
+repo_root=$(cd "$script_dir/.." && pwd)
+
+cd "$repo_root"
+
+if [ ! -f "$repo_root/contracts/ENGINE_VERSION" ]; then
+    echo "error: repo root '$repo_root' does not contain contracts/ENGINE_VERSION" >&2
+    exit 1
+fi
+
+parity_dir="$repo_root/Tests/parity"
+if [ ! -d "$parity_dir" ]; then
+    echo "error: missing Tests/parity at $parity_dir" >&2
+    exit 1
+fi
+
+export CONTRACTS_ROOT="${CONTRACTS_ROOT:-$repo_root/contracts}"
+if [ ! -f "$CONTRACTS_ROOT/ENGINE_VERSION" ]; then
+    echo "error: CONTRACTS_ROOT '$CONTRACTS_ROOT' is not a contracts directory" >&2
+    exit 1
+fi
+
+if ! command -v swift >/dev/null 2>&1; then
+    echo "error: swift is required for parity (Swift eval vs expected.json)" >&2
+    exit 1
+fi
+
+PYTHON="${PYTHON:-python3}"
+if ! command -v "$PYTHON" >/dev/null 2>&1 && [ ! -x "$PYTHON" ]; then
+    echo "error: python interpreter not found: $PYTHON" >&2
+    exit 1
+fi
+
+if ! "$PYTHON" -c "import pytest" >/dev/null 2>&1; then
+    echo "error: pytest is required. From packages/astro-engine-python: pip install -e '.[dev]'" >&2
+    exit 1
+fi
+
+# Prefer the checkout package over any globally installed astro_engine.
+export PYTHONPATH="$repo_root/packages/astro-engine-python/src${PYTHONPATH:+:$PYTHONPATH}"
+
+exec "$PYTHON" -m pytest "$parity_dir" "$@"

@@ -1,0 +1,9 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: >
+  Hours 1-2 overcast then clear. first=1.05 second=0 → improving.
+  avg 0.525 good; public 70+Int(4.75)=74.

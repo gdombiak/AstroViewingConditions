@@ -1,0 +1,14 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {},
+    "capabilities": [
+      {
+        "key": "scope",
+        "type": "visualTelescope",
+        "aperture_mm": true,
+        "magnification": null
+      }
+    ]
+  }
+}

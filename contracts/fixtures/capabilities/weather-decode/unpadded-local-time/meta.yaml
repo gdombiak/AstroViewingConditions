@@ -1,0 +1,9 @@
+capability: weather.decode
+engine_semver: ">=0.1.0 <2.0.0"
+equality: weather_decode
+hosts: [swift, python]
+origin: manual
+notes: >
+  OpenMeteoForecastDecoder / POSIX DateFormatter accepts 1-2 digit month, day,
+  hour, and minute. Trailing seconds (2026-02-19T00:00:00) are skipped without
+  shifting later rows. 2026-2-9T0:0 is 9 February, not a parse failure.

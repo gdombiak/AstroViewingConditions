@@ -1,0 +1,7 @@
+{
+  "capability": "night_conditions.score",
+  "ok": true,
+  "result": {
+    "score": 20
+  }
+}

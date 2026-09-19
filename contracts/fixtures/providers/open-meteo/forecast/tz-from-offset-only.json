@@ -1,0 +1,11 @@
+{
+  "utc_offset_seconds": -28800,
+  "hourly": {
+    "time": ["2026-02-19T00:00", "2026-02-19T01:00"],
+    "cloudcover": [50, 75],
+    "relativehumidity_2m": [80, 85],
+    "windspeed_10m": [5.5, 6.2],
+    "winddirection_10m": [180, 190],
+    "temperature_2m": [12.5, 12.3]
+  }
+}

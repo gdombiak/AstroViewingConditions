@@ -1,0 +1,21 @@
+{
+  "capability": "targets.planet_recommendation",
+  "result": {
+    "recommendation": {
+      "reasons": [
+        "goodNightQuality",
+        "planetMoonlightResistant"
+      ],
+      "score": 53,
+      "visibility_window": {
+        "azimuth": 250,
+        "best_time": "2026-03-01T15:00:00Z",
+        "direction": "WSW",
+        "end": "2026-03-01T16:17:08Z",
+        "max_altitude": 22,
+        "start": "2026-03-01T15:00:00Z"
+      }
+    }
+  },
+  "ok": true
+}

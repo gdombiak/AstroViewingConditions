@@ -1,0 +1,7 @@
+capability: equipment.match
+engine_semver: ">=1.0.0 <2.0.0"
+equality: equipment_match
+hosts: [swift, python]
+origin: manual
+notes: >
+  visual practical.

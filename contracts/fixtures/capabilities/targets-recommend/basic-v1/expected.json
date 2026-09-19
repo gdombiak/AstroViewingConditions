@@ -1,0 +1,16 @@
+{
+  "capability": "targets.recommend",
+  "ok": true,
+  "result": {
+    "recommendations": [
+      {
+        "key": "easy",
+        "score": 100
+      },
+      {
+        "key": "difficult",
+        "score": 96
+      }
+    ]
+  }
+}

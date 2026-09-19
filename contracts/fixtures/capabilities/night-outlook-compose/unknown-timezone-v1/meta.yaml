@@ -1,0 +1,6 @@
+capability: observing_night.compose_outlook
+engine_semver: ">=1.0.0 <2.0.0"
+equality: night_outlook
+origin: manual
+hosts: [swift, python]
+notes: An identifier outside the catalogued shared set is refused.

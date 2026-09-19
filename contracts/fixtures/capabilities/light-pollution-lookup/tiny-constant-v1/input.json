@@ -1,0 +1,10 @@
+{
+  "capability": "light_pollution.lookup",
+  "injected": {
+    "latitude": 74.9125,
+    "longitude": -179.9125,
+    "artifact": {
+      "$ref": "providers/lpatlas1/lpatlas1_tiny_constant.bin"
+    }
+  }
+}

@@ -21,13 +21,32 @@ DerivedData/
 
 # Swift Package Manager
 .build/
-Packages/
+# SPM clones into ./Packages. On case-insensitive volumes that pattern also
+# matches ./packages (our engine tree), so re-include the lowercase path.
+/Packages/
+!/packages/
+!/packages/**
+# The re-include above would otherwise track SwiftPM build products.
+packages/astro-engine-swift/.build/
+packages/astro-engine-swift/.swiftpm/
+packages/astro-engine-swift/Package.resolved
 Package.resolved
 .swiftpm/
+
+# Generated AstroEngine calibration and catalog copied at build time.
+# Canonical source is contracts/data/. The parent directory is tracked via
+# .gitkeep so SwiftPM can evaluate `.copy("Resources/data")` on a clean
+# checkout; package tests do not read this copy.
+packages/astro-engine-swift/Sources/AstroEngine/Resources/data/calibration/
+packages/astro-engine-swift/Sources/AstroEngine/Resources/data/catalog/
+
 
 # IDE
 .vscode/
 .idea/
+**/__pycache__/
+packages/astro-engine-python/build/
+packages/astro-host-python/build/
 
 # OS
 .DS_Store
@@ -50,6 +69,7 @@ Package.resolved
 *.ipa
 *.dSYM.zip
 *.dSYM
+/dist/
 
 # Playgrounds
 timeline.xctimeline
@@ -61,24 +81,24 @@ playground.xcworkspace
 # Kilo
 .kilo/
 
-# Light-pollution validation harness (Tools/LightPollution)
-Tools/LightPollution/cache/
-Tools/LightPollution/output/
-Tools/LightPollution/.venv/
-Tools/LightPollution/**/__pycache__/
-Tools/LightPollution/**/*.pyc
-Tools/LightPollution/**/.pytest_cache/
-Tools/LightPollution/**/*.tiff
-Tools/LightPollution/**/*.tif
-Tools/LightPollution/**/*.npy
-Tools/LightPollution/**/*.npz
-Tools/LightPollution/**/*.f32
+# Light-pollution validation harness (tools/light-pollution)
+tools/light-pollution/cache/
+tools/light-pollution/output/
+tools/light-pollution/.venv/
+tools/light-pollution/**/__pycache__/
+tools/light-pollution/**/*.pyc
+tools/light-pollution/**/.pytest_cache/
+tools/light-pollution/**/*.tiff
+tools/light-pollution/**/*.tif
+tools/light-pollution/**/*.npy
+tools/light-pollution/**/*.npz
+tools/light-pollution/**/*.f32
 
 # Light-pollution generated binaries and local fixtures (large)
-Tools/LightPollution/output/artifacts/
-Tools/LightPollution/**/*.bin
+tools/light-pollution/output/artifacts/
+tools/light-pollution/**/*.bin
 # Tiny checked-in LPATLAS1 fixtures for cross-language tests
-!Tools/LightPollution/fixtures/
-!Tools/LightPollution/fixtures/**
-Tools/LightPollution/**/hierarchical_census_checkpoint/
-Tools/LightPollution/**/hierarchical_bench_ckpt/
+!tools/light-pollution/fixtures/
+!tools/light-pollution/fixtures/**
+tools/light-pollution/**/hierarchical_census_checkpoint/
+tools/light-pollution/**/hierarchical_bench_ckpt/

@@ -1,0 +1,14 @@
+{
+  "capability": "fog.score",
+  "ok": true,
+  "result": {
+    "score": 100,
+    "factors": [
+      "high_humidity",
+      "low_temp_dew_diff",
+      "low_visibility",
+      "high_low_cloud",
+      "low_wind"
+    ]
+  }
+}

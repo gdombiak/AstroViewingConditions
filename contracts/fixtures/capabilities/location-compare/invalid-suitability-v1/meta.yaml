@@ -1,0 +1,6 @@
+capability: location.compare
+engine_semver: ">=1.0.0 <2.0.0"
+equality: engine_error
+hosts: [swift, python]
+origin: manual
+notes: Overlay values are the four ranking states. Host copy such as Water area is rejected.

@@ -1,0 +1,7 @@
+{
+  "capability": "observing_window.select",
+  "result": {
+    "best_window": null
+  },
+  "ok": true
+}

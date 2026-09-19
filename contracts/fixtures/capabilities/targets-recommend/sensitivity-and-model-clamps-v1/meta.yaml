@@ -1,0 +1,7 @@
+capability: targets.recommend
+engine_semver: ">=1.0.0 <2.0.0"
+equality: targets_recommend
+hosts: [swift, python]
+origin: manual
+notes: >
+  Sensitivity clamps to 0...1.5 and difficulty to 0...1. Bright nebula penalty is 22 * .65 = 14.3; galaxy score 17.5 rounds to 18.

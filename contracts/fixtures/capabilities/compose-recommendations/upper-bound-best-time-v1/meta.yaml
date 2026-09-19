@@ -1,0 +1,8 @@
+capability: targets.compose_recommendations
+engine_semver: ">=1.0.0 <2.0.0"
+equality: compose_recommendations
+hosts: [swift, python]
+origin: manual
+notes: >
+  The latest accepted best time is the planet window spill above the latest
+  supported night.

@@ -1,0 +1,7 @@
+{
+  "capability": "targets.moon_sensitivity",
+  "injected": {
+    "object_type": "planetaryNebula",
+    "surface_brightness": 10
+  }
+}

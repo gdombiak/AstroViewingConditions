@@ -1,0 +1,9 @@
+{
+  "capability": "targets.compose_recommendations",
+  "injected": {
+    "candidates": {
+      "key": "moon"
+    },
+    "limit": 5
+  }
+}

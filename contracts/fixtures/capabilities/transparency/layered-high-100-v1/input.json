@@ -1,0 +1,9 @@
+{
+  "capability": "transparency.penalty",
+  "injected": {
+    "total_cloud_cover": 0,
+    "low_cloud_cover": 0,
+    "mid_cloud_cover": 0,
+    "high_cloud_cover": 100
+  }
+}

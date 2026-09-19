@@ -1,0 +1,17 @@
+{
+  "capability": "equipment.match",
+  "ok": true,
+  "result": {
+    "match": {
+      "key": "smart",
+      "level": "excellent",
+      "reason": "electronicAssistance",
+      "mode": "electronicallyAssisted",
+      "other_suitable_keys": [
+        "a",
+        "b",
+        "visual"
+      ]
+    }
+  }
+}

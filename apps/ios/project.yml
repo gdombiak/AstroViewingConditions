@@ -1,0 +1,243 @@
+name: AstroViewingConditions
+options:
+  bundleIdPrefix: com.astroviewing
+  deploymentTarget:
+    iOS: "18.0"
+    watchOS: "11.0"
+  xcodeVersion: "26.5"
+
+settings:
+  base:
+    REPO_ROOT: "$(SRCROOT)/../.."
+    SWIFT_VERSION: "6.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    SUPPORTS_MACCATALYST: NO
+    CODE_SIGN_IDENTITY: "iPhone Developer"
+    DEVELOPMENT_TEAM: ALV53VY374
+
+packages:
+  AstroEngine:
+    path: ../../packages/astro-engine-swift
+
+targetTemplates:
+  BundleEngineCalibration:
+    preBuildScripts:
+      - name: Bundle Engine Calibration
+        script: '"${REPO_ROOT}/scripts/bundle-engine-data" --repo-root "${REPO_ROOT}" --host-only'
+        basedOnDependencyAnalysis: true
+        showEnvVars: false
+        inputFiles:
+          - $(REPO_ROOT)/contracts/data/calibration/fog.json
+          - $(REPO_ROOT)/contracts/data/calibration/night-quality.json
+          - $(REPO_ROOT)/contracts/data/calibration/observing-quality.json
+          - $(REPO_ROOT)/contracts/data/calibration/seeing.json
+          - $(REPO_ROOT)/contracts/data/calibration/transparency.json
+          - $(REPO_ROOT)/contracts/data/calibration/target-scoring.json
+          - $(REPO_ROOT)/contracts/data/calibration/moon-recommendation.json
+          - $(REPO_ROOT)/contracts/data/calibration/planet-recommendation.json
+          - $(REPO_ROOT)/contracts/data/calibration/equipment-matching.json
+          - $(REPO_ROOT)/contracts/data/catalog/deep-sky.json
+          - $(REPO_ROOT)/contracts/data/catalog/target-requirements.json
+          - $(REPO_ROOT)/contracts/data/catalog/solar-system.json
+          - $(REPO_ROOT)/scripts/bundle-engine-data
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/fog.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/night-quality.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/observing-quality.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/seeing.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/transparency.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/target-scoring.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/moon-recommendation.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/planet-recommendation.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/calibration/equipment-matching.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/deep-sky.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/target-requirements.json
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/data/catalog/solar-system.json
+
+targets:
+  SharedCode:
+    templates:
+      - BundleEngineCalibration
+    type: framework
+    platform: [iOS, watchOS]
+    sources:
+      - Sources/SharedCode
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.astroviewing.conditions.SharedCode
+        GENERATE_INFOPLIST_FILE: YES
+        MARKETING_VERSION: "2.3.1"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_IDENTITY: "iPhone Developer"
+        CODE_SIGNING_ALLOWED: YES
+    dependencies:
+      - package: AstroEngine
+        product: AstroEngine
+
+  AstroViewingConditions:
+    templates:
+      - BundleEngineCalibration
+    type: application
+    platform: iOS
+    sources:
+      - Sources/AstroViewingConditions
+      - Sources/App
+    resources:
+      - Sources/AstroViewingConditions/Resources/Assets.xcassets
+      - path: Sources/AstroViewingConditions/Resources/LightPollution
+        type: folder
+      - Sources/App/PrivacyInfo.xcprivacy
+    settings:
+      base:
+        INFOPLIST_FILE: Sources/App/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.astroviewing.conditions
+        MARKETING_VERSION: "2.3.1"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
+        CODE_SIGN_ENTITLEMENTS: Sources/App/AstroViewingConditions.entitlements
+        DEVELOPMENT_TEAM: ALV53VY374
+    dependencies:
+      - target: SharedCode_iOS
+        embed: true
+        codeSignOnCopy: true
+      - target: NightConditionsWidget
+        embed: true
+        codeSignOnCopy: true
+      - target: AstroViewingConditionsWatch
+        embed: true
+        codeSignOnCopy: true
+
+  NightConditionsWidget:
+    templates:
+      - BundleEngineCalibration
+    type: app-extension
+    platform: iOS
+    sources:
+      - Sources/Widgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.astroviewing.conditions.NightConditionsWidget
+        INFOPLIST_FILE: Sources/Widgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/Widgets/NightConditionsWidget.entitlements
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "2.3.1"
+        SWIFT_ENABLE_EXPLICIT_MODULES: NO
+        DEVELOPMENT_TEAM: ALV53VY374
+    dependencies:
+      - target: SharedCode_iOS
+
+  AstroViewingConditionsTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/AstroViewingConditionsTests
+      - Sources/Widgets/WidgetTonightPresentation.swift
+      - Sources/Widgets/WidgetTonightTargetsPresentation.swift
+      - Sources/Widgets/WidgetThreeNightOutlookPresentation.swift
+      - Sources/Widgets/ThreeNightOutlookEntryResolver.swift
+      - Sources/Widgets/WidgetAppIdentity.swift
+      - Sources/Widgets/WidgetDataAsOfPresentation.swift
+      - Sources/Widgets/NightConditionsEntry.swift
+      - Sources/Widgets/TonightTargetsEntry.swift
+      - Sources/Widgets/ThreeNightOutlookEntry.swift
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: Tests/AstroViewingConditionsTests/AstroViewingConditionsTests.entitlements
+    dependencies:
+      - target: AstroViewingConditions
+
+  AstroViewingConditionsWatch:
+    templates:
+      - BundleEngineCalibration
+    type: application
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - Sources/WatchApp
+    resources:
+      - Sources/WatchApp/Resources/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.astroviewing.conditions.watch
+        INFOPLIST_FILE: Sources/WatchApp/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: Sources/WatchApp/AstroViewingConditionsWatch.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        MARKETING_VERSION: "2.3.1"
+        CURRENT_PROJECT_VERSION: "1"
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+        DEVELOPMENT_TEAM: ALV53VY374
+    dependencies:
+      - target: SharedCode_watchOS
+        embed: true
+        codeSignOnCopy: true
+      - target: AstroViewingConditionsWatchWidget
+        embed: true
+        codeSignOnCopy: true
+
+  AstroViewingConditionsWatchWidget:
+    templates:
+      - BundleEngineCalibration
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - Sources/WatchWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.astroviewing.conditions.watch.widget
+        INFOPLIST_FILE: Sources/WatchWidget/Info.plist
+        GENERATE_INFOPLIST_FILE: YES
+        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "2.3.1"
+        CODE_SIGN_ENTITLEMENTS: Sources/WatchWidget/AstroViewingConditionsWatchWidget.entitlements
+        DEVELOPMENT_TEAM: ALV53VY374
+    dependencies:
+      - target: SharedCode_watchOS
+
+schemes:
+  AstroViewingConditions:
+    build:
+      targets:
+        AstroViewingConditions: all
+      preActions:
+        - name: Bundle Engine Calibration
+          script: '"${REPO_ROOT}/scripts/bundle-engine-data" --repo-root "${REPO_ROOT}"'
+          settingsTarget: AstroViewingConditions
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - AstroViewingConditionsTests
+      preActions:
+        - name: Bundle Engine Calibration
+          script: '"${REPO_ROOT}/scripts/bundle-engine-data" --repo-root "${REPO_ROOT}"'
+          settingsTarget: AstroViewingConditions
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+  AstroViewingConditionsWatch:
+    build:
+      targets:
+        AstroViewingConditionsWatch: all
+      preActions:
+        - name: Bundle Engine Calibration
+          script: '"${REPO_ROOT}/scripts/bundle-engine-data" --repo-root "${REPO_ROOT}"'
+          settingsTarget: AstroViewingConditionsWatch
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

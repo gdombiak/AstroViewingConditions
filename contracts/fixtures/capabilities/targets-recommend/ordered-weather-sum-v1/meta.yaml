@@ -1,0 +1,10 @@
+capability: targets.recommend
+engine_semver: ">=1.0.0 <2.0.0"
+equality: targets_recommend
+hosts: [swift, python]
+origin: manual
+notes: >
+  Ordered binary64 sum of [1e9, 1e-7, -1e9] is 2^-23, not 1e-7.
+  Weather is 34.99999930461248; altitude is 1.500000675. Raw score
+  36.49999997961248 rounds to 36. Compensated summation would incorrectly
+  cross the integer half boundary. Duplicate hour timestamps are retained.

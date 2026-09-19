@@ -1,0 +1,8 @@
+capability: targets.compose_recommendations
+engine_semver: ">=1.0.0 <2.0.0"
+equality: compose_recommendations
+hosts: [swift, python]
+origin: manual
+notes: >
+  A large negative limit selects nothing, exactly as production's
+  prefix(max(0, limit)) does.

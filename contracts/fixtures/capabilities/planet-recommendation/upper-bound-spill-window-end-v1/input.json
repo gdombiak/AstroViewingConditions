@@ -1,0 +1,29 @@
+{
+  "capability": "targets.planet_recommendation",
+  "injected": {
+    "target_id": "saturn",
+    "night_start": "2499-12-31T15:00:00Z",
+    "night_end": "2499-12-31T23:59:59Z",
+    "samples": [
+      {
+        "time": "2500-01-01T00:00:00Z",
+        "altitude": 35.0,
+        "azimuth": 170.0,
+        "solar_elongation": 45.0
+      },
+      {
+        "time": "2500-01-01T00:59:59Z",
+        "altitude": 42.0,
+        "azimuth": 185.0,
+        "solar_elongation": 45.0
+      }
+    ],
+    "cloud_cover_score": 10.0,
+    "hourly_ratings": [
+      {
+        "time": "2500-01-01T00:30:00Z",
+        "score": 0.4
+      }
+    ]
+  }
+}

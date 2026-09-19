@@ -1,0 +1,6 @@
+capability: night_forecast.derive_window
+engine_semver: ">=1.0.0 <2.0.0"
+equality: night_forecast_window
+origin: manual
+hosts: [swift, python]
+notes: Kathmandu's +05:45 offset is applied to both projected local days.

@@ -1,0 +1,18 @@
+{
+  "capability": "weather.decode",
+  "ok": true,
+  "result": {
+    "hourly": [
+      {
+        "cloud_cover": 1,
+        "humidity": 1,
+        "temperature": 1.0,
+        "time": "2026-02-19T00:00:00Z",
+        "wind_direction": 1,
+        "wind_speed": 1.0
+      }
+    ],
+    "timezone": null,
+    "utc_offset_seconds": 64801
+  }
+}

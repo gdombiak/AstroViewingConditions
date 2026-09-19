@@ -1,0 +1,6 @@
+capability: night_forecast.derive_window
+engine_semver: ">=1.0.0 <2.0.0"
+equality: night_forecast_window
+origin: manual
+hosts: [swift, python]
+notes: Apia's skipped 2011-12-30 remains representable here because only one Foundation day-add is required.

@@ -1,0 +1,10 @@
+capability: weather.decode
+engine_semver: ">=0.1.0 <2.0.0"
+equality: weather_decode
+hosts: [swift, python]
+origin: transcribed
+notes: >
+  Named Open-Meteo provider fixture
+  providers/open-meteo/forecast/malformed-time-skipped.json.
+  The middle "not-a-timestamp" row is skipped. Surviving rows keep values from
+  their original provider indices (10/30 cloud cover, not 10/20).

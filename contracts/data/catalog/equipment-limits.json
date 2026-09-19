@@ -1,0 +1,6 @@
+{
+  "millimeters_per_inch": 25.4,
+  "maximum_binocular_magnification": 100.0,
+  "maximum_binocular_aperture_millimeters": 300.0,
+  "maximum_telescope_aperture_millimeters": 2000.0
+}

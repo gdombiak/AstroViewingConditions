@@ -1,0 +1,492 @@
+# Field-level comparators for parity. Fixtures set equality: <policy-id>.
+# Unknown fields fail closed. Numbers compare numerically (72 equals 72.0).
+#
+# What is compared
+# - Policy fields apply to expected.json "result" (the capability DTO).
+# - expected.json "ok" is exact. "capability" must match meta.capability.
+# - Runtime envelope "engine_semver" is NOT a golden. The runner checks that
+#   the running engine version satisfies meta.engine_semver (a range).
+#   Do not put engine_semver in expected.json.
+version: 1
+default:
+  extra_keys: fail
+  missing_keys: fail
+  arrays: ordered
+  null_vs_omitted: distinct
+
+policies:
+  observing_quality:
+    description: Observing-quality DTO; interpolated penalties use 1e-9
+    fields:
+      score: exact
+      night_conditions_score: exact
+      light_pollution: null_or_object
+      light_pollution.modeled_zenith_sky_brightness: abs_1e9
+      light_pollution.base_penalty: abs_1e9
+      light_pollution.applied_penalty: abs_1e9
+
+  observing_quality_anchor:
+    description: Exact-anchor penalties; 1e-12 on base and applied
+    fields:
+      score: exact
+      night_conditions_score: exact
+      light_pollution.modeled_zenith_sky_brightness: exact
+      light_pollution.base_penalty: abs_1e12
+      light_pollution.applied_penalty: abs_1e12
+
+  night_conditions:
+    description: Injected-window night analysis DTO
+    fields:
+      rating: exact
+      night_start: exact
+      night_end: exact
+      trend: exact
+      first_half_score: null_or_abs_1e9
+      second_half_score: null_or_abs_1e9
+      details.cloud_cover_score: abs_1e9
+      details.fog_score_avg: abs_1e9
+      details.moon_illumination_avg: exact
+      details.wind_speed_avg: abs_1e9
+      details.seeing_score_avg: optional_abs_1e9
+      details.transparency_score_avg: optional_abs_1e9
+      hourly_ratings[].time: exact
+      hourly_ratings[].score: abs_1e9
+      hourly_ratings[].cloud_cover: exact
+      hourly_ratings[].fog_score: exact
+      hourly_ratings[].moon_illumination: exact
+      hourly_ratings[].moon_altitude: abs_1e9
+      hourly_ratings[].wind_speed: abs_1e9
+      hourly_ratings[].seeing_score: optional_abs_1e9
+      hourly_ratings[].transparency_score: optional_abs_1e9
+      public_score: exact
+
+  night_conditions_score:
+    description: Public 0–100 integer from rating plus hourly scores
+    fields:
+      score: exact
+
+  fog_score:
+    description: Integer fog score and ordered factor ids
+    fields:
+      score: exact
+      factors: exact
+
+  seeing_penalty:
+    description: Optional discrete 0–2 seeing penalty
+    fields:
+      penalty: null_or_abs_1e12
+
+  transparency_penalty:
+    description: Discrete/combined 0–2 transparency penalty
+    fields:
+      penalty: abs_1e12
+
+  light_pollution_lookup:
+    description: Dequantized zenith sky brightness for fixture coordinates
+    fields:
+      modeled_zenith_sky_brightness: abs_1e9
+
+  weather_decode:
+    description: Normalized Open-Meteo hourly DTO; omit HourlyForecast.id
+    fields:
+      timezone: exact
+      utc_offset_seconds: exact
+      hourly[].time: exact
+      hourly[].cloud_cover: exact
+      hourly[].humidity: exact
+      hourly[].wind_speed: abs_1e12
+      hourly[].wind_direction: exact
+      hourly[].temperature: abs_1e12
+      hourly[].dew_point: abs_1e12
+      hourly[].visibility: abs_1e12
+      hourly[].low_cloud_cover: exact
+      hourly[].mid_cloud_cover: exact
+      hourly[].high_cloud_cover: exact
+      hourly[].wind_speed_200hpa: abs_1e12
+
+  iss_decode:
+    description: Exact ISSPass DTO including deterministic id
+    fields:
+      passes[].id: exact
+      passes[].rise_time: exact
+      passes[].duration: exact
+      passes[].max_elevation: exact
+      passes[].max_time: exact
+      passes[].end_time: exact
+      passes[].start_direction: exact
+      passes[].max_direction: exact
+      passes[].end_direction: exact
+      passes[].start_elevation: exact
+      passes[].end_elevation: exact
+
+  grid:
+    description: >
+      Ordered lattice plus center/boundary bearings. Lat/lon use the
+      GeographicGridGeneratorTests 1e-4 deg tolerance (~11 m), not 1e-9.
+    fields:
+      points[].north_step: exact
+      points[].east_step: exact
+      points[].is_center: exact
+      points[].bearing_deg: abs_1e9
+      points[].distance_miles: abs_1e9
+      points[].latitude: abs_1e4
+      points[].longitude: abs_1e4
+
+  location_distance:
+    description: Great-circle miles; Swift/Python floating-point tolerance.
+    fields:
+      distance_miles: abs_1e9
+      code: exact
+      message: exact
+
+  location_compare:
+    description: >
+      Ranked candidates using the production Best Nearby total order.
+      ranking is stable candidate keys, not UUIDs. Suitability is the four
+      ranking states. Distance/lat/lon are ordering inputs echoed from
+      the request. Omitted: LocationScore.id, English summary, scoring_mode.
+    fields:
+      ranking: ordered_ids
+      locations[].key: exact
+      locations[].public_score: exact
+      locations[].night_conditions_score: exact
+      locations[].avg_cloud_cover: abs_1e9
+      locations[].fog_score: exact
+      locations[].avg_wind_speed: abs_1e9
+      locations[].suitability: exact
+      locations[].distance_miles: abs_1e9
+      locations[].latitude: abs_1e9
+      locations[].longitude: abs_1e9
+
+  location_compose_scores:
+    description: >
+      Exact coherent score mode, stable survivor indices, public scores and
+      score-only center deltas. Null is distinct from zero for a missing
+      scorable center. Domain and transport errors compare exactly.
+    fields:
+      scoring_mode: exact
+      candidates: exact
+      candidates[].input_index: exact
+      candidates[].public_score: exact
+      candidates[].improvement_over_center: exact
+      code: exact
+      message: exact
+
+  location_filter_recommendable:
+    description: Exact stable subset of original suitability-row indices.
+    fields:
+      recommendable_input_indices: exact
+      code: exact
+      message: exact
+
+  catalog_deep_sky:
+    description: Exact curated catalog entries in canonical file order
+    fields:
+      entries[].id: exact
+      entries[].common_name: exact
+      entries[].catalog_name: exact
+      entries[].object_type: exact
+      entries[].constellation: exact
+      entries[].right_ascension: exact
+      entries[].declination: exact
+      entries[].magnitude: exact
+      entries[].apparent_size: exact
+      entries[].surface_brightness: exact
+      entries[].difficulty: exact
+      entries[].recommended_equipment: exact
+      entries[].observing_intent: exact
+      entries[].notes: exact
+      entries[].display_type_name_override: exact
+
+  engine_error:
+    description: Validation/engine failure envelope (no result)
+    fields:
+      code: exact
+      message: exact
+
+  targets_recommend:
+    description: Exact integer scores and ordered recommendations; keys identify frozen candidates.
+    fields:
+      recommendations[].key: exact
+      recommendations[].score: exact
+
+  equipment_match:
+    description: Exact selected matching facts; explanation and inventory identities are host-only.
+    fields:
+      match: null_or_object
+      match.key: exact
+      match.level: exact
+      match.reason: exact
+      match.mode: exact
+      match.other_suitable_keys: ordered_ids
+
+  astronomy_sun_events:
+    description: Symmetric live solar event comparison; null matches only null. Never used for product scoring integers.
+    fields:
+      start: exact
+      end: exact
+      sunrise: null_or_seconds_60
+      sunset: null_or_seconds_60
+      civil_twilight_begin: null_or_seconds_60
+      civil_twilight_end: null_or_seconds_60
+      nautical_twilight_begin: null_or_seconds_60
+      nautical_twilight_end: null_or_seconds_60
+      astronomical_twilight_begin: null_or_seconds_60
+      astronomical_twilight_end: null_or_seconds_60
+      astronomical_night_start: null_or_seconds_60
+      astronomical_night_end: null_or_seconds_60
+
+  astronomy_moon_info:
+    description: Product geocentric refracted altitude and truncated illuminated percent; no name or emoji.
+    fields:
+      time: exact
+      altitude: abs_0_5
+      illumination: integer_abs_1
+
+  astronomy_moon_series:
+    description: Ordered explicit samples; timestamps and structure exact, per-field numeric tolerances.
+    fields:
+      samples[].time: exact
+      samples[].altitude: abs_0_5
+      samples[].illumination: integer_abs_1
+
+  observing_window:
+    fields:
+      best_window: null_or_object
+      best_window.start: exact
+      best_window.end: exact
+      code: exact
+      message: exact
+
+  target_requirements:
+    fields:
+      requirement: exact
+      is_planet: exact
+      code: exact
+      message: exact
+
+  solar_system_catalog:
+    fields:
+      entries: exact
+      code: exact
+      message: exact
+
+  target_moon_sensitivity:
+    fields:
+      sensitivity: exact
+      code: exact
+      message: exact
+
+  astronomy_horizontal_position:
+    description: >
+      One closed-form geometric instant. Both hosts run the same binary64
+      operations, so 1e-9 deg bounds libm ULP noise only. Not the Phase 16
+      abs_0_5 live-model tolerance.
+    fields:
+      altitude: abs_1e9
+      azimuth: abs_1e9
+      code: exact
+      message: exact
+
+  deep_sky_windows:
+    description: >
+      Ordered deep-sky visible-run windows. Timestamps are floored to whole
+      seconds and compare exactly; direction is an objective 8-point code.
+    fields:
+      windows[].start: exact
+      windows[].end: exact
+      windows[].best_time: exact
+      windows[].max_altitude: abs_1e9
+      windows[].azimuth: abs_1e9
+      windows[].direction: exact
+      code: exact
+      message: exact
+
+  astronomy_moon_observation:
+    description: >
+      Live night-scoped lunar facts from the same production SunCalc model in
+      Swift and Python. Public ceilings remain conservative; adversarial port
+      regressions enforce much tighter numerical agreement. Phase and azimuth
+      compare cyclically. Moon events may extend up to one bounded cadence past
+      the final accepted input instant. Null/event presence and always flags are
+      exact. The rejected Skyfield model is retained only as test evidence.
+    fields:
+      night_start: exact
+      night_end: exact
+      phase: cyclic_phase_abs_0_002
+      illumination: integer_abs_1
+      rise: null_or_moon_seconds_60
+      set: null_or_moon_seconds_60
+      always_up: boolean_exact
+      always_down: boolean_exact
+      samples[].time: exact
+      samples[].altitude: abs_0_5
+      samples[].azimuth: cyclic_azimuth_abs_2
+
+  moon_recommendation:
+    description: >
+      Deterministic lunar recommendation. The whole result is null when no sample
+      inside the useful window is above the horizon. Window instants are injected
+      instants plus whole-second offsets and compare exactly; altitude/azimuth are
+      echoed from the injected sample, so 1e-12 bounds transport rounding only.
+      direction is the objective sixteen-point code, not presentation copy.
+    fields:
+      recommendation: null_or_object
+      recommendation.score: exact
+      recommendation.visibility_window.start: exact
+      recommendation.visibility_window.end: exact
+      recommendation.visibility_window.best_time: exact
+      recommendation.visibility_window.max_altitude: null_or_abs_1e12
+      recommendation.visibility_window.direction: exact
+      recommendation.visibility_window.azimuth: null_or_abs_1e12
+      recommendation.reasons: exact
+      code: exact
+      message: exact
+
+  astronomy_planet_observation:
+    description: >
+      Live night-scoped planet facts from the same production low-precision
+      orbital-element model in Swift and Python. Measured agreement on the
+      reference platform is bit-exact across the adversarial sweep; the public
+      ceilings leave room only for libm ULP differences between platforms, not
+      for a different astronomy model. Azimuth compares cyclically. The whole
+      observation is null when the night interval is inverted past the sampling
+      lead plus trail, and null presence is exact.
+    fields:
+      target_id: exact
+      night_start: exact
+      night_end: exact
+      observation: null_or_object
+      observation.sample_start: exact
+      observation.sample_end: exact
+      observation.samples[].time: exact
+      observation.samples[].altitude: abs_1e4
+      observation.samples[].azimuth: cyclic_azimuth_abs_0_01
+      observation.samples[].solar_elongation: abs_1e4
+      code: exact
+      message: exact
+
+  planet_recommendation:
+    description: >
+      Deterministic planet recommendation. The whole result is null when no
+      injected sample reaches the visible altitude. Window instants are injected
+      instants plus interpolated offsets floored to whole seconds and compare
+      exactly; altitude/azimuth are echoed from the injected best sample, so
+      1e-12 bounds transport rounding only. direction is the objective
+      sixteen-point code, not presentation copy.
+    fields:
+      recommendation: null_or_object
+      recommendation.score: exact
+      recommendation.visibility_window.start: exact
+      recommendation.visibility_window.end: exact
+      recommendation.visibility_window.best_time: exact
+      recommendation.visibility_window.max_altitude: abs_1e12
+      recommendation.visibility_window.direction: exact
+      recommendation.visibility_window.azimuth: abs_1e12
+      recommendation.reasons: exact
+      code: exact
+      message: exact
+
+  compose_recommendations:
+    description: >
+      Deterministic final composition. `selected` is the ordered production
+      result: every element is exact, and the array order is the ranking, so
+      `arrays: ordered` is the whole comparison. Nothing here is a float, so no
+      tolerance applies. An empty selection is a valid result, not an error.
+    fields:
+      selected: exact
+      selected[].index: exact
+      selected[].key: exact
+      code: exact
+      message: exact
+
+  filter_recommendations_by_equipment:
+    description: >
+      Deterministic stable subset selection. The selected array and every
+      original index/key identity compare exactly. Empty selection is success.
+    fields:
+      selected: exact
+      selected[].index: exact
+      selected[].key: exact
+      code: exact
+      message: exact
+
+  observing_night:
+    description: >
+      Discrete state, day identity and authoritative boundaries. Everything is
+      exact: the three states must never be collapsed into one another, and the
+      boundaries are the instants a host publishes. Fields a state does not
+      carry are JSON null, which `null_vs_omitted: distinct` keeps separate from
+      an omitted key.
+    fields:
+      state: exact
+      time_zone: exact
+      day_offset: exact
+      day_index: exact
+      observing_date: exact
+      observing_day_start: exact
+      astronomical_night_start: exact
+      astronomical_night_end: exact
+      code: exact
+      message: exact
+
+  night_forecast_window:
+    description: >
+      Exact location-zone identity and Foundation-compatible projected window.
+      Source seconds are discarded and every calendar/DST quirk is part of the
+      result, so no timestamp tolerance is permitted.
+    fields:
+      time_zone: exact
+      start: exact
+      end: exact
+      code: exact
+      message: exact
+
+  cloud_timing:
+    description: >
+      One discrete semantic verdict. The four classes must never be collapsed
+      into one another, and nothing here is a float, so no tolerance applies.
+      The English summary production builds from the verdict is host
+      presentation and is deliberately outside this policy.
+    fields:
+      cloud_timing: exact
+      code: exact
+      message: exact
+
+  cloud_advisory:
+    description: Nullable semantic advice code, without English presentation.
+    fields:
+      cloud_advisory: exact
+      code: exact
+      message: exact
+
+  night_outlook:
+    description: >
+      Exact composed day identity, boundaries and discrete per-night status.
+      Every value is a discrete state, an integer index or a Foundation-derived
+      instant, so no tolerance applies anywhere. Labels, verdicts, tone, best
+      windows and scores are host presentation and are deliberately outside this
+      policy.
+    fields:
+      state: exact
+      time_zone: exact
+      nights: exact
+      nights[].slot_index: exact
+      nights[].day_offset: exact
+      nights[].day_index: exact
+      nights[].observing_date: exact
+      nights[].observing_day_start: exact
+      nights[].astronomical_night_start: exact
+      nights[].astronomical_night_end: exact
+      nights[].status: exact
+      code: exact
+      message: exact
+
+  night_outlook_best:
+    description: >
+      One index or null. The tie rule and the eligibility rule must never be
+      collapsed, and nothing here is a float, so no tolerance applies.
+    fields:
+      best_index: exact
+      code: exact
+      message: exact

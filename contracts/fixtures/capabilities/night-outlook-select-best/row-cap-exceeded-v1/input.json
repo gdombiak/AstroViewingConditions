@@ -1,0 +1,23 @@
+{
+  "capability": "observing_night.select_best",
+  "injected": {
+    "nights": [
+      {
+        "status": "available",
+        "score": 10
+      },
+      {
+        "status": "available",
+        "score": 20
+      },
+      {
+        "status": "available",
+        "score": 30
+      },
+      {
+        "status": "available",
+        "score": 40
+      }
+    ]
+  }
+}

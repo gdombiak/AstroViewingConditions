@@ -1,0 +1,280 @@
+from __future__ import annotations
+
+from datetime import datetime, time, timedelta, timezone
+
+from astro_host.engine import RecommendationEngine
+from astro_host.errors import WeatherProviderError
+from astro_host.models import (
+    ActiveNightResolution,
+    HourlyRating,
+    HourlyWeather,
+    MoonSample,
+    NightAnalysis,
+    ObservingQualityFacts,
+    OutlookComposition,
+    OutlookCompositionNight,
+    PayloadDiagnostics,
+    PayloadState,
+    ProviderFailure,
+    ProviderFailureKind,
+    SunEventsFacts,
+    TimeWindow,
+    WeatherProviderResponse,
+)
+
+NOW = datetime(2026, 2, 20, 5, tzinfo=timezone.utc)
+
+
+def hourly_rows(days: int = 2) -> tuple[HourlyWeather, ...]:
+    start = datetime(2026, 2, 19, 8, tzinfo=timezone.utc)
+    return tuple(
+        HourlyWeather(
+            time=start + timedelta(hours=index),
+            cloud_cover=10,
+            humidity=40,
+            wind_speed=2,
+            wind_direction=180,
+            temperature=10,
+            dew_point=4,
+            visibility=10_000,
+            low_cloud_cover=5,
+            mid_cloud_cover=3,
+            high_cloud_cover=2,
+            wind_speed_200hpa=30,
+        )
+        for index in range(days * 24)
+    )
+
+
+class FakeProvider:
+    name = "open_meteo"
+
+    def __init__(
+        self,
+        *,
+        timezone_name: str | None = "America/Los_Angeles",
+        partial: bool = False,
+        empty: bool = False,
+        failure: bool = False,
+    ) -> None:
+        self.timezone_name = timezone_name
+        self.partial = partial
+        self.empty = empty
+        self.failure = failure
+        self.calls = []
+
+    async def fetch(self, query):
+        self.calls.append(query)
+        if self.failure:
+            raise WeatherProviderError(ProviderFailure(
+                ProviderFailureKind.TIMEOUT, "weather timed out", 3
+            ))
+        messages = ("missing_optional_series:visibility",) if self.partial else ()
+        state = PayloadState.EMPTY if self.empty else (
+            PayloadState.PARTIAL if self.partial else PayloadState.COMPLETE
+        )
+        return WeatherProviderResponse(
+            provider=self.name,
+            fetched_at=NOW,
+            raw_payload={
+                "days": query.forecast_days,
+                "empty": self.empty,
+                "timezone": self.timezone_name,
+            },
+            provider_timezone=self.timezone_name,
+            utc_offset_seconds=-28_800,
+            attempt_count=1,
+            diagnostics=PayloadDiagnostics(
+                state, messages, 0 if self.empty else query.forecast_days * 24
+            ),
+        )
+
+
+class RecordingRecommendationEngine(RecommendationEngine):
+    """Test-only observer. Production RecommendationEngine has no call history."""
+
+    def __init__(self) -> None:
+        self.recorded: list[tuple[str, dict[str, object]]] = []
+
+    def _invoke(self, capability, payload, fn):
+        self.recorded.append((capability, payload))
+        return super()._invoke(capability, payload, fn)
+
+
+class FakeEngine:
+    def __init__(self, *, window_shift_days: int = 0) -> None:
+        self.window_shift_days = window_shift_days
+        self.moon_times: tuple[datetime, ...] = ()
+
+    @property
+    def semver(self) -> str:
+        return "1.0.0"
+
+    def decode_weather(self, payload):
+        if payload.get("empty"):
+            return (), payload.get("timezone"), -28_800
+        return hourly_rows(int(payload["days"])), payload.get("timezone"), -28_800
+
+    def sun_events(self, location, *, day, start, end):
+        midnight = datetime.combine(day, time.min, tzinfo=timezone.utc)
+        return SunEventsFacts(
+            day=day,
+            sunrise=midnight + timedelta(hours=14),
+            sunset=midnight + timedelta(days=1, hours=2),
+            civil_twilight_begin=midnight + timedelta(hours=13, minutes=30),
+            civil_twilight_end=midnight + timedelta(days=1, hours=2, minutes=30),
+            nautical_twilight_begin=midnight + timedelta(hours=13),
+            nautical_twilight_end=midnight + timedelta(days=1, hours=3),
+            astronomical_twilight_begin=midnight + timedelta(hours=13),
+            astronomical_twilight_end=midnight + timedelta(days=1, hours=3),
+        )
+
+    def resolve_active_night(
+        self, *, reference_time, time_zone, forecast_start_time, daily_sun_events
+    ):
+        today, tomorrow = daily_sun_events[:2]
+        return ActiveNightResolution(
+            state="resolved",
+            observing_date=today.day,
+            observing_day_start=forecast_start_time,
+            astronomical_night_start=today.astronomical_twilight_end,
+            astronomical_night_end=tomorrow.astronomical_twilight_begin,
+            day_index=0,
+            day_offset=0,
+        )
+
+    def derive_window(self, *, observing_time, time_zone, sun_today, sun_tomorrow):
+        shift = timedelta(days=self.window_shift_days)
+        return TimeWindow(
+            sun_today.astronomical_twilight_end + shift,
+            sun_tomorrow.astronomical_twilight_begin + shift,
+        )
+
+    def moon_series(self, location, times):
+        self.moon_times = tuple(times)
+        return tuple(MoonSample(value, 20.0, 25) for value in times)
+
+    def analyze_night(
+        self, *, reference_time, time_zone, window, forecasts, moon_samples
+    ):
+        ratings = tuple(
+            HourlyRating(
+                time=row.time,
+                score=0.2,
+                cloud_cover=row.cloud_cover,
+                fog_score=0,
+                moon_illumination=25,
+                moon_altitude=20,
+                wind_speed=row.wind_speed,
+                seeing_score=0.1,
+                transparency_score=0.1,
+            )
+            for row in forecasts
+        )
+        return NightAnalysis(
+            rating="excellent",
+            public_score=90,
+            details={"cloud_cover_score": 10.0, "fog_score_avg": 0.0,
+                     "wind_speed_avg": 2.0},
+            hourly_ratings=ratings,
+            night_start=ratings[0].time,
+            night_end=ratings[-1].time,
+            trend="stable",
+            first_half_score=0.2,
+            second_half_score=0.2,
+        )
+
+    def select_best_window(self, ratings):
+        return TimeWindow(ratings[0].time, ratings[-1].time)
+
+    def classify_cloud_timing(self, ratings):
+        return "none"
+
+    def select_cloud_advisory(self, cloud_timing, rating, average_cloud_cover):
+        return None
+
+    def lookup_brightness(self, atlas_path, location):
+        return 21.0
+
+    def prepare_brightness_lookup(self, atlas_path):
+        return object()
+
+    def lookup_prepared_brightness(self, artifact, location):
+        return self.lookup_brightness(None, location)
+
+    def distance_miles(self, center, candidate):
+        from astro_host.engine import ConditionsEngine
+        return ConditionsEngine().distance_miles(center, candidate)
+
+    def compose_location_scores(self, candidates):
+        from astro_host.engine import ConditionsEngine
+        return ConditionsEngine().compose_location_scores(candidates)
+
+    def compare_locations(self, candidates):
+        from astro_host.engine import ConditionsEngine
+        return ConditionsEngine().compare_locations(candidates)
+
+    def assess_observing_quality(self, night_conditions_score, brightness):
+        return ObservingQualityFacts(
+            score=85 if brightness is not None else night_conditions_score,
+            night_conditions_score=night_conditions_score,
+            modeled_zenith_sky_brightness=brightness,
+            base_penalty=5.0 if brightness is not None else None,
+            applied_penalty=5.0 if brightness is not None else None,
+            light_pollution_available=brightness is not None,
+        )
+
+    def compose_outlook(
+        self, *, reference_time, time_zone, forecast_start_time, daily_sun_events,
+        hourly_times,
+    ):
+        if len(daily_sun_events) < 4:
+            start = daily_sun_events[0].day if daily_sun_events else reference_time.date()
+            return OutlookComposition(
+                state="unavailable",
+                time_zone=time_zone,
+                nights=tuple(
+                    OutlookCompositionNight(
+                        slot_index=slot,
+                        day_offset=slot,
+                        day_index=None,
+                        observing_date=start,
+                        observing_day_start=forecast_start_time or reference_time,
+                        astronomical_night_start=None,
+                        astronomical_night_end=None,
+                        status="unavailable",
+                    )
+                    for slot in range(3)
+                ),
+            )
+        nights = []
+        for slot in range(3):
+            today, tomorrow = daily_sun_events[slot], daily_sun_events[slot + 1]
+            start = today.astronomical_twilight_end
+            end = tomorrow.astronomical_twilight_begin
+            if start is None or end is None or start >= end:
+                status = "no_astronomical_night"
+            else:
+                status = "available"
+            nights.append(OutlookCompositionNight(
+                slot_index=slot,
+                day_offset=slot,
+                day_index=slot,
+                observing_date=today.day,
+                observing_day_start=datetime.combine(today.day, time.min, tzinfo=timezone.utc),
+                astronomical_night_start=start,
+                astronomical_night_end=end,
+                status=status,
+            ))
+        return OutlookComposition(
+            state="resolved", time_zone=time_zone, nights=tuple(nights)
+        )
+
+    def select_best_night(self, nights):
+        best = None
+        for index, (status, score) in enumerate(nights):
+            if status != "available" or score is None:
+                continue
+            if best is None or score > nights[best][1]:
+                best = index
+        return best

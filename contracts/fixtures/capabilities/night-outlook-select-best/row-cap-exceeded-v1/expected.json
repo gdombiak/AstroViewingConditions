@@ -1,0 +1,8 @@
+{
+  "capability": "observing_night.select_best",
+  "ok": false,
+  "error": {
+    "code": "sample_cap",
+    "message": "observing_night.select_best exceeds the 1.0 row cap (3 rows)"
+  }
+}

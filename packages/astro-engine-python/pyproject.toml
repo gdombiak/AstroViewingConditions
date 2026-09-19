@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astro-engine"
+version = "1.0.0"
+description = "Astro Engine Python library and JSON CLI (1.0 contract allow-list)"
+requires-python = ">=3.11"
+dependencies = ["skyfield==1.55", "skyfield-data==7.0.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+astro-engine = "astro_engine.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,7 @@
+capability: targets.deep_sky_windows
+engine_semver: ">=1.0.0 <2.0.0"
+equality: deep_sky_windows
+hosts: [swift, python]
+origin: manual
+notes: >
+  A higher threshold delays the interpolated start again; interpolation is linear in the sample pair.

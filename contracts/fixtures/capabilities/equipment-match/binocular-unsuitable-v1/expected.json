@@ -1,0 +1,13 @@
+{
+  "capability": "equipment.match",
+  "ok": true,
+  "result": {
+    "match": {
+      "key": "scope",
+      "level": "poor",
+      "reason": "modeMismatch",
+      "mode": "visual",
+      "other_suitable_keys": []
+    }
+  }
+}

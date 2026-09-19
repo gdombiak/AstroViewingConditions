@@ -1,0 +1,8 @@
+capability: location.compose_scores
+engine_semver: ">=1.0.0 <2.0.0"
+equality: location_compose_scores
+hosts: [swift, python]
+origin: manual
+notes: >
+  A non-scorable missing-LP row is omitted and cannot force fallback. Survivor
+  order, negative/zero deltas, and a center after the first row are pinned.

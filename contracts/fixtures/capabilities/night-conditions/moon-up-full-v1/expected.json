@@ -1,0 +1,61 @@
+{
+  "capability": "night_conditions.analyze",
+  "ok": true,
+  "result": {
+    "rating": "good",
+    "details": {
+      "cloud_cover_score": 0.0,
+      "fog_score_avg": 0.0,
+      "moon_illumination_avg": 100,
+      "wind_speed_avg": 3.0,
+      "seeing_score_avg": 0.0
+    },
+    "hourly_ratings": [
+      {
+        "cloud_cover": 0,
+        "fog_score": 0,
+        "moon_altitude": 90.0,
+        "moon_illumination": 100,
+        "score": 0.3,
+        "time": "2026-03-01T21:00:00Z",
+        "wind_speed": 3.0
+      },
+      {
+        "cloud_cover": 0,
+        "fog_score": 0,
+        "moon_altitude": 90.0,
+        "moon_illumination": 100,
+        "score": 0.3,
+        "time": "2026-03-01T22:00:00Z",
+        "wind_speed": 3.0,
+        "seeing_score": 0.0
+      },
+      {
+        "cloud_cover": 0,
+        "fog_score": 0,
+        "moon_altitude": 90.0,
+        "moon_illumination": 100,
+        "score": 0.3,
+        "time": "2026-03-01T23:00:00Z",
+        "wind_speed": 3.0,
+        "seeing_score": 0.0
+      },
+      {
+        "cloud_cover": 0,
+        "fog_score": 0,
+        "moon_altitude": 90.0,
+        "moon_illumination": 100,
+        "score": 0.3,
+        "time": "2026-03-02T00:00:00Z",
+        "wind_speed": 3.0,
+        "seeing_score": 0.0
+      }
+    ],
+    "night_start": "2026-03-01T21:00:00Z",
+    "night_end": "2026-03-02T00:00:00Z",
+    "trend": "stable",
+    "first_half_score": 0.3,
+    "second_half_score": 0.3,
+    "public_score": 77
+  }
+}

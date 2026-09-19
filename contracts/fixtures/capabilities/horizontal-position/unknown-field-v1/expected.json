@@ -1,0 +1,8 @@
+{
+  "capability": "astronomy.horizontal_position",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid astronomy.horizontal_position input"
+  }
+}

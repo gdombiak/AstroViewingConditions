@@ -1,0 +1,7 @@
+capability: targets.recommend
+engine_semver: ">=1.0.0 <2.0.0"
+equality: targets_recommend
+hosts: [swift, python]
+origin: manual
+notes: >
+  Touching hours are excluded; a one-second overlap counts equally. Altitude 15 + darkness 17.5 + weather 17.5 = 50, despite fallback cloud 100.

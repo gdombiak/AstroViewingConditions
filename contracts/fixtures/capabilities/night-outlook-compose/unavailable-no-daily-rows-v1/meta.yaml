@@ -1,0 +1,6 @@
+capability: observing_night.compose_outlook
+engine_semver: ">=1.0.0 <2.0.0"
+equality: night_outlook
+origin: manual
+hosts: [swift, python]
+notes: No daily rows at all: fallback rows carry the reference day and the two after it.

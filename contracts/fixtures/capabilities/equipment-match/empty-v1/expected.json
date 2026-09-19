@@ -1,0 +1,7 @@
+{
+  "capability": "equipment.match",
+  "ok": true,
+  "result": {
+    "match": null
+  }
+}

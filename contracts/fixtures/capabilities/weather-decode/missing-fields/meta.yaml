@@ -1,0 +1,8 @@
+capability: weather.decode
+engine_semver: ">=0.1.0 <2.0.0"
+equality: weather_decode
+hosts: [swift, python]
+origin: transcribed
+notes: >
+  Named Open-Meteo provider fixture providers/open-meteo/forecast/missing-fields.json.
+  Optional dew_point, visibility, layered clouds, and 200 hPa wind are omitted.

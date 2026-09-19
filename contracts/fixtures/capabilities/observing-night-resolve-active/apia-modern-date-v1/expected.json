@@ -1,0 +1,1 @@
+{"capability":"observing_night.resolve_active","ok":true,"result":{"state":"resolved","time_zone":"Pacific/Apia","day_offset":0,"day_index":1,"observing_date":"2026-06-16","observing_day_start":"2026-06-15T11:00:00Z","astronomical_night_start":"2026-06-16T07:11:00Z","astronomical_night_end":"2026-06-16T15:32:00Z"}}

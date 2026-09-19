@@ -1,0 +1,7 @@
+{
+  "capability": "observing_quality.assess",
+  "injected": {
+    "night_conditions_score": -5,
+    "modeled_zenith_sky_brightness": null
+  }
+}

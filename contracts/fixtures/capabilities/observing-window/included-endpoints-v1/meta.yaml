@@ -1,0 +1,7 @@
+capability: observing_window.select
+engine_semver: ">=1.0.0 <2.0.0"
+equality: observing_window
+hosts: [swift, python]
+origin: manual
+notes: >
+  Already clipped rows within upstream 00Z-10Z bounds return 02Z-08Z, not dusk/dawn or last plus one hour.

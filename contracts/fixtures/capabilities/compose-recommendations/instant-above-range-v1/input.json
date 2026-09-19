@@ -1,0 +1,13 @@
+{
+  "capability": "targets.compose_recommendations",
+  "injected": {
+    "candidates": [
+      {
+        "key": "moon",
+        "score": 84,
+        "best_time": "2500-01-01T01:15:00Z"
+      }
+    ],
+    "limit": 5
+  }
+}

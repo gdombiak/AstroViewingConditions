@@ -1,0 +1,7 @@
+{
+  "capability": "observing_night.select_best",
+  "ok": true,
+  "result": {
+    "best_index": 0
+  }
+}

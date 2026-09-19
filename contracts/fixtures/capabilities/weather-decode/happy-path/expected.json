@@ -1,0 +1,30 @@
+{
+  "capability": "weather.decode",
+  "ok": true,
+  "result": {
+    "hourly": [
+      {
+        "cloud_cover": 50,
+        "dew_point": 8.5,
+        "humidity": 80,
+        "temperature": 12.5,
+        "time": "2026-02-19T08:00:00Z",
+        "visibility": 10000.0,
+        "wind_direction": 180,
+        "wind_speed": 5.5
+      },
+      {
+        "cloud_cover": 75,
+        "dew_point": 8.3,
+        "humidity": 85,
+        "temperature": 12.3,
+        "time": "2026-02-19T09:00:00Z",
+        "visibility": 9500.0,
+        "wind_direction": 190,
+        "wind_speed": 6.2
+      }
+    ],
+    "timezone": null,
+    "utc_offset_seconds": -28800
+  }
+}

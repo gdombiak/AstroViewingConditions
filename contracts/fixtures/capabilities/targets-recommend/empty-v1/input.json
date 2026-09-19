@@ -1,0 +1,17 @@
+{
+  "capability": "targets.recommend",
+  "injected": {
+    "darkness_window": {
+      "start": "2026-03-01T21:00:00Z",
+      "end": "2026-03-01T23:00:00Z"
+    },
+    "moon": {
+      "altitude": 0,
+      "illumination": 100
+    },
+    "hourly_ratings": [],
+    "cloud_cover_score": 0,
+    "candidates": [],
+    "limit": 100
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "score_min": 0,
+  "score_max": 100,
+  "humidity": {
+    "min_percent": 80,
+    "span_percent": 20,
+    "max_points": 40
+  },
+  "dew_spread": {
+    "max_celsius": 2.0,
+    "max_points": 30
+  },
+  "visibility": {
+    "max_meters": 1000,
+    "max_points": 20
+  },
+  "low_cloud": {
+    "min_percent": 70,
+    "span_percent": 30,
+    "max_points": 10
+  },
+  "wind": {
+    "max_meters_per_second": 3.0,
+    "max_points": 15
+  }
+}

@@ -1,0 +1,7 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: Same as four-clear-hours-v1 plus extra moon samples outside the included hours; extras ignored.

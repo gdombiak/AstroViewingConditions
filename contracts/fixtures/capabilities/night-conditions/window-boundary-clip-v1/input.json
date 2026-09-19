@@ -1,0 +1,79 @@
+{
+  "capability": "night_conditions.analyze",
+  "clock": "2026-03-01T12:00:00Z",
+  "time_zone": "UTC",
+  "location": {
+    "lat": 45.0,
+    "lon": -122.0
+  },
+  "injected": {
+    "night_window": {
+      "start": "2026-03-01T21:00:00Z",
+      "end": "2026-03-02T00:00:00Z"
+    },
+    "forecasts": [
+      {
+        "time": "2026-03-02T00:00:00Z",
+        "cloud_cover": 0,
+        "humidity": 0,
+        "wind_speed": 3.0,
+        "wind_direction": 0,
+        "temperature": 15.0
+      },
+      {
+        "time": "2026-03-01T21:00:00Z",
+        "cloud_cover": 0,
+        "humidity": 0,
+        "wind_speed": 3.0,
+        "wind_direction": 0,
+        "temperature": 15.0
+      },
+      {
+        "time": "2026-03-01T20:00:00Z",
+        "cloud_cover": 100,
+        "humidity": 0,
+        "wind_speed": 3.0,
+        "wind_direction": 0,
+        "temperature": 15.0
+      },
+      {
+        "time": "2026-03-02T01:00:00Z",
+        "cloud_cover": 100,
+        "humidity": 0,
+        "wind_speed": 3.0,
+        "wind_direction": 0,
+        "temperature": 15.0
+      },
+      {
+        "time": "2026-03-01T23:00:00Z",
+        "cloud_cover": 0,
+        "humidity": 0,
+        "wind_speed": 3.0,
+        "wind_direction": 0,
+        "temperature": 15.0
+      }
+    ],
+    "moon_series": [
+      {
+        "time": "2026-03-01T20:00:00Z",
+        "altitude_deg": 45.0,
+        "illumination_pct": 100
+      },
+      {
+        "time": "2026-03-01T21:00:00Z",
+        "altitude_deg": -10.0,
+        "illumination_pct": 0
+      },
+      {
+        "time": "2026-03-01T23:00:00Z",
+        "altitude_deg": -10.0,
+        "illumination_pct": 0
+      },
+      {
+        "time": "2026-03-02T00:00:00Z",
+        "altitude_deg": 45.0,
+        "illumination_pct": 100
+      }
+    ]
+  }
+}

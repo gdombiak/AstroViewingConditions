@@ -1,0 +1,13 @@
+{
+  "capability": "equipment.match",
+  "ok": true,
+  "result": {
+    "match": {
+      "key": "scope",
+      "level": "good",
+      "reason": "nakedEyePreferred",
+      "mode": "nakedEye",
+      "other_suitable_keys": []
+    }
+  }
+}

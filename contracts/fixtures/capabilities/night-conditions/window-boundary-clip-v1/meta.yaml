@@ -1,0 +1,10 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: >
+  Half-open [21:00, 00:00). Unsorted forecasts at 20:00/21:00/23:00/00:00/01:00.
+  Only 21:00 (inclusive) and 23:00 remain; 00:00 excluded. Previous temp is the
+  previous included hour. Extra moon rows for clipped hours ignored.

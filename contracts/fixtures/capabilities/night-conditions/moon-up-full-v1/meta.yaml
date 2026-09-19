@@ -1,0 +1,7 @@
+capability: night_conditions.analyze
+engine_semver: ">=0.1.0 <2.0.0"
+equality: night_conditions
+hosts: [swift, python]
+origin: manual
+procedure: contracts/procedures/night-conditions.md
+notes: Moon alt 90, illum 100 → penalty 2. Hourly 0.3 → rating good (not <0.3). public 77.

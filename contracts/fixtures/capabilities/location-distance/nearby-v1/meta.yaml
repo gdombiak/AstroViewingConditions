@@ -1,0 +1,6 @@
+capability: location.distance
+engine_semver: ">=1.0.0 <2.0.0"
+equality: location_distance
+hosts: [swift, python]
+origin: manual
+notes: One degree along the equator with the shared spherical Earth constants.

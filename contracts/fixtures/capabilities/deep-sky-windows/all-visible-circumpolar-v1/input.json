@@ -1,0 +1,10 @@
+{
+  "capability": "targets.deep_sky_windows",
+  "injected": {
+    "target_id": "m81",
+    "latitude": 60.0,
+    "longitude": 10.0,
+    "night_start": "2026-01-15T18:00:00Z",
+    "night_end": "2026-01-16T04:00:00Z"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "capability": "observing_window.select",
+  "injected": {
+    "hourly_ratings": null
+  }
+}

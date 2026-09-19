@@ -1,0 +1,8 @@
+capability: targets.compose_recommendations
+engine_semver: ">=1.0.0 <2.0.0"
+equality: compose_recommendations
+hosts: [swift, python]
+origin: manual
+notes: >
+  The shared engine integer-transport magnitude is the only ceiling, and it
+  is accepted.

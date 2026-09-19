@@ -1,0 +1,15 @@
+{
+  "capability": "equipment.match",
+  "ok": true,
+  "result": {
+    "match": {
+      "key": "é",
+      "level": "excellent",
+      "reason": "preferredAperture",
+      "mode": "visual",
+      "other_suitable_keys": [
+        "é"
+      ]
+    }
+  }
+}

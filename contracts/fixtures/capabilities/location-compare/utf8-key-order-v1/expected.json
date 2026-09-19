@@ -1,0 +1,81 @@
+{
+  "capability": "location.compare",
+  "ok": true,
+  "result": {
+    "ranking": ["A\u030a", "ss", "z", "\u00c5", "\u00df", "\u00e4"],
+    "locations": [
+      {
+        "key": "A\u030a",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "unchecked",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      },
+      {
+        "key": "ss",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "unchecked",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      },
+      {
+        "key": "z",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "unchecked",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      },
+      {
+        "key": "\u00c5",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "unchecked",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      },
+      {
+        "key": "\u00df",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "unchecked",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      },
+      {
+        "key": "\u00e4",
+        "public_score": 70,
+        "night_conditions_score": 70,
+        "avg_cloud_cover": 5,
+        "fog_score": 5,
+        "avg_wind_speed": 5,
+        "suitability": "unchecked",
+        "distance_miles": 8,
+        "latitude": 40.0,
+        "longitude": -74.0
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "capability": "targets.recommend",
+  "ok": true,
+  "result": {
+    "recommendations": [
+      {
+        "key": "ordered-sum",
+        "score": 36
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "capability": "night_conditions.classify_cloud_timing",
+  "ok": true,
+  "result": {
+    "cloud_timing": "none"
+  }
+}

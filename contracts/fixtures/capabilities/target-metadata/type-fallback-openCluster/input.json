@@ -1,0 +1,8 @@
+{
+  "capability": "targets.requirements",
+  "injected": {
+    "id": "uncataloged",
+    "type": "deepSky",
+    "object_type": "openCluster"
+  }
+}

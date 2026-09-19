@@ -1,0 +1,61 @@
+{
+  "comment": "Unreleased 1.0 dedicated planet recommendation scoring. See contracts/procedures/planet-recommendation.md. These are the production DefaultPlanetTargetRecommendationProvider constants; the generic target scorer in target-scoring.json never runs for a planet. The observation cadence and the two-hour lead / one-hour trail are sampling structure, not scoring calibration, and live with the sampler.",
+  "score": {
+    "min": 0,
+    "max": 100,
+    "round": "half_away_from_zero"
+  },
+  "weights": {
+    "altitude": 45,
+    "weather": 30,
+    "visibility": 12,
+    "convenience": 13
+  },
+  "visibility": {
+    "minimum_altitude_degrees": 8,
+    "altitude_normalization_degrees": 70,
+    "window_extension_seconds": 900
+  },
+  "low_altitude": {
+    "below_degrees": 15,
+    "penalty": 18
+  },
+  "best_sample": {
+    "altitude_weight": 0.7,
+    "darkness_weight": 0.15,
+    "convenience_weight": 0.15,
+    "outside_darkness_quality": 0.55
+  },
+  "convenience": {
+    "evening_lead_seconds": 7200,
+    "evening_trail_seconds": 14400,
+    "evening": 1,
+    "late_night_lead_seconds": 10800,
+    "late_night": 0.35,
+    "otherwise": 0.65
+  },
+  "weather": {
+    "hourly_rating_seconds": 3600,
+    "overlap_score_divisor": 2,
+    "cloud_cover_percent_divisor": 100
+  },
+  "venus_twilight": {
+    "eligibility_window_seconds": 7200,
+    "useful_duration_seconds": 2700,
+    "altitude_span_degrees": 12,
+    "elongation_offset_degrees": 15,
+    "elongation_span_degrees": 30,
+    "altitude_weight": 0.45,
+    "duration_weight": 0.3,
+    "elongation_weight": 0.25
+  },
+  "reasons": {
+    "high_altitude_at_or_above_degrees": 45,
+    "low_altitude_below_degrees": 20,
+    "darkness_overlap_at_or_above": 0.45,
+    "convenient_at_or_above": 0.72,
+    "late_or_early_at_or_below": 0.35,
+    "good_weather_at_or_above": 0.7,
+    "poor_weather_below": 0.45
+  }
+}

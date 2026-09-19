@@ -1,0 +1,7 @@
+{
+  "capability": "targets.moon_sensitivity",
+  "injected": {
+    "object_type": "doubleStar",
+    "surface_brightness": 1
+  }
+}

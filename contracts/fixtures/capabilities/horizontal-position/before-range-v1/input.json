@@ -1,0 +1,10 @@
+{
+  "capability": "astronomy.horizontal_position",
+  "injected": {
+    "right_ascension": 16.6949,
+    "declination": 36.4613,
+    "latitude": 40.7,
+    "longitude": -74.0,
+    "time": "1999-12-31T23:59:59Z"
+  }
+}

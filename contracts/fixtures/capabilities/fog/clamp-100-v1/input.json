@@ -1,0 +1,11 @@
+{
+  "capability": "fog.score",
+  "injected": {
+    "humidity": 100,
+    "temperature": 10.0,
+    "dew_point": 10.0,
+    "visibility": 0,
+    "low_cloud_cover": 100,
+    "wind_speed": 0.0
+  }
+}

@@ -1,0 +1,7 @@
+capability: targets.recommend
+engine_semver: ">=1.0.0 <2.0.0"
+equality: targets_recommend
+hosts: [swift, python]
+origin: manual
+notes: >
+  Full overhead Moon locks every generic target-type ceiling and stable complete ties. Moon/planet scores here are generic fallback scores, not specialized provider scores.

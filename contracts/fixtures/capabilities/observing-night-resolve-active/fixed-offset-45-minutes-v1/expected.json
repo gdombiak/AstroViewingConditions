@@ -1,0 +1,1 @@
+{"capability":"observing_night.resolve_active","ok":true,"result":{"state":"resolved","time_zone":"Asia/Kathmandu","day_offset":-1,"day_index":0,"observing_date":"2026-04-10","observing_day_start":"2026-04-09T18:15:00Z","astronomical_night_start":"2026-04-10T14:10:00Z","astronomical_night_end":"2026-04-10T22:49:00Z"}}

@@ -1,0 +1,16 @@
+{
+  "capability": "equipment.match",
+  "injected": {
+    "requirement": {
+      "naked_eye_suitability": "preferred"
+    },
+    "capabilities": [
+      {
+        "key": "scope",
+        "type": "nakedEye",
+        "aperture_mm": null,
+        "magnification": null
+      }
+    ]
+  }
+}

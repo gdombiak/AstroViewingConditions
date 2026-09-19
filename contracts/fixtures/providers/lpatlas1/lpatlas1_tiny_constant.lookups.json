@@ -1,0 +1,79 @@
+{
+  "format": "LPATLAS1",
+  "description": "Synthetic: root(0,0) is children of 4 constants 18/19/20/21; all other roots all_nodata",
+  "constant_values_by_quadrant": {
+    "TL": 18.0,
+    "TR": 19.0,
+    "BL": 20.0,
+    "BR": 21.0
+  },
+  "dequantized": {
+    "TL": 18.016535433070867,
+    "TR": 18.98795275590551,
+    "BL": 19.996732283464567,
+    "BR": 21.005511811023624
+  },
+  "artifact_bytes": 16438,
+  "lookups": [
+    {
+      "lat": 74.9125,
+      "lon": -179.9125,
+      "value": 18.016535541204018
+    },
+    {
+      "lat": 74.9125,
+      "lon": -176.6625,
+      "value": 18.987952840609815
+    },
+    {
+      "lat": 71.6625,
+      "lon": -179.9125,
+      "value": 19.996732343838907
+    },
+    {
+      "lat": 71.6625,
+      "lon": -176.6625,
+      "value": 21.005511847068007
+    },
+    {
+      "lat": 74.99583333333334,
+      "lon": -179.99583333333334,
+      "value": 18.016535541204018
+    },
+    {
+      "lat": 74.99,
+      "lon": -179.99,
+      "value": 18.016535541204018
+    },
+    {
+      "lat": 0.0,
+      "lon": 0.0,
+      "value": null
+    },
+    {
+      "lat": 45.0,
+      "lon": -122.0,
+      "value": null
+    },
+    {
+      "lat": 90.0,
+      "lon": 0.0,
+      "value": null
+    },
+    {
+      "lat": -90.0,
+      "lon": 0.0,
+      "value": null
+    },
+    {
+      "lat": 45.0,
+      "lon": 179.999,
+      "value": null
+    },
+    {
+      "lat": 45.0,
+      "lon": -180.0,
+      "value": null
+    }
+  ]
+}

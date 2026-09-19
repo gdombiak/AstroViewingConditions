@@ -1,0 +1,52 @@
+{
+  "capability": "targets.recommend",
+  "ok": true,
+  "result": {
+    "recommendations": [
+      {
+        "key": "doubleStar",
+        "score": 95
+      },
+      {
+        "key": "moon",
+        "score": 93
+      },
+      {
+        "key": "planet",
+        "score": 87
+      },
+      {
+        "key": "satellite",
+        "score": 81
+      },
+      {
+        "key": "planetaryNebula",
+        "score": 78
+      },
+      {
+        "key": "globularCluster",
+        "score": 72
+      },
+      {
+        "key": "openCluster",
+        "score": 72
+      },
+      {
+        "key": "unknown",
+        "score": 72
+      },
+      {
+        "key": "meteorShower",
+        "score": 72
+      },
+      {
+        "key": "galaxy",
+        "score": 45
+      },
+      {
+        "key": "diffuseNebula",
+        "score": 45
+      }
+    ]
+  }
+}

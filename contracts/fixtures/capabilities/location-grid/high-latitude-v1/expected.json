@@ -1,0 +1,161 @@
+{
+  "capability": "location.grid",
+  "ok": true,
+  "result": {
+    "points": [
+      {
+        "north_step": 0,
+        "east_step": 0,
+        "is_center": true,
+        "bearing_deg": 0.0,
+        "distance_miles": 0.0,
+        "latitude": 70.0,
+        "longitude": 0.0
+      },
+      {
+        "north_step": -2,
+        "east_step": 0,
+        "is_center": false,
+        "bearing_deg": 180.0,
+        "distance_miles": 20.0,
+        "latitude": 69.71053643388886,
+        "longitude": 1.0222801905143974e-16
+      },
+      {
+        "north_step": -1,
+        "east_step": -1,
+        "is_center": false,
+        "bearing_deg": 225.0,
+        "distance_miles": 14.142135623730951,
+        "latitude": 69.85476959884086,
+        "longitude": -0.42024501593407076
+      },
+      {
+        "north_step": -1,
+        "east_step": 0,
+        "is_center": false,
+        "bearing_deg": 180.0,
+        "distance_miles": 10.0,
+        "latitude": 69.85526821694441,
+        "longitude": 5.146598556376415e-17
+      },
+      {
+        "north_step": -1,
+        "east_step": 1,
+        "is_center": false,
+        "bearing_deg": 135.0,
+        "distance_miles": 14.142135623730951,
+        "latitude": 69.85476959884086,
+        "longitude": 0.42024501593407076
+      },
+      {
+        "north_step": 0,
+        "east_step": -2,
+        "is_center": false,
+        "bearing_deg": 270.0,
+        "distance_miles": 20.0,
+        "latitude": 69.99799115013907,
+        "longitude": -0.8462805008082563
+      },
+      {
+        "north_step": 0,
+        "east_step": -1,
+        "is_center": false,
+        "bearing_deg": 270.0,
+        "distance_miles": 10.0,
+        "latitude": 69.99949776859243,
+        "longitude": -0.42316063009205
+      },
+      {
+        "north_step": 0,
+        "east_step": 1,
+        "is_center": false,
+        "bearing_deg": 90.0,
+        "distance_miles": 10.0,
+        "latitude": 69.99949776859243,
+        "longitude": 0.42316063009205
+      },
+      {
+        "north_step": 0,
+        "east_step": 2,
+        "is_center": false,
+        "bearing_deg": 90.0,
+        "distance_miles": 20.0,
+        "latitude": 69.99799115013907,
+        "longitude": 0.8462805008082563
+      },
+      {
+        "north_step": 1,
+        "east_step": -1,
+        "is_center": false,
+        "bearing_deg": 315.0,
+        "distance_miles": 14.142135623730951,
+        "latitude": 70.14422588568956,
+        "longitude": -0.42611880785624345
+      },
+      {
+        "north_step": 1,
+        "east_step": 0,
+        "is_center": false,
+        "bearing_deg": 0.0,
+        "distance_miles": 10.0,
+        "latitude": 70.14473178305555,
+        "longitude": 0.0
+      },
+      {
+        "north_step": 1,
+        "east_step": 1,
+        "is_center": false,
+        "bearing_deg": 45.0,
+        "distance_miles": 14.142135623730951,
+        "latitude": 70.14422588568956,
+        "longitude": 0.42611880785624334
+      },
+      {
+        "north_step": 2,
+        "east_step": 0,
+        "is_center": false,
+        "bearing_deg": 0.0,
+        "distance_miles": 20.0,
+        "latitude": 70.28946356611112,
+        "longitude": 0.0
+      },
+      {
+        "north_step": null,
+        "east_step": null,
+        "is_center": false,
+        "bearing_deg": 45.0,
+        "distance_miles": 20,
+        "latitude": 70.20366680042808,
+        "longitude": 0.6043638899678171
+      },
+      {
+        "north_step": null,
+        "east_step": null,
+        "is_center": false,
+        "bearing_deg": 135.0,
+        "distance_miles": 20,
+        "latitude": 69.79432408858635,
+        "longitude": 0.5926162812604595
+      },
+      {
+        "north_step": null,
+        "east_step": null,
+        "is_center": false,
+        "bearing_deg": 225.0,
+        "distance_miles": 20,
+        "latitude": 69.79432408858635,
+        "longitude": -0.5926162812604595
+      },
+      {
+        "north_step": null,
+        "east_step": null,
+        "is_center": false,
+        "bearing_deg": 315.0,
+        "distance_miles": 20,
+        "latitude": 70.20366680042808,
+        "longitude": -0.6043638899678172
+      }
+    ]
+  }
+}

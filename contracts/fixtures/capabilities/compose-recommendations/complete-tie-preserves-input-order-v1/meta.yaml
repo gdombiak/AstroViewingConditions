@@ -1,0 +1,8 @@
+capability: targets.compose_recommendations
+engine_semver: ">=1.0.0 <2.0.0"
+equality: compose_recommendations
+hosts: [swift, python]
+origin: manual
+notes: >
+  Equal score and equal best time keep the original candidate order, so the
+  composition is stable and never falls back to key or type ordering.

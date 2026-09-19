@@ -1,0 +1,7 @@
+{
+  "capability": "targets.requirements",
+  "injected": {
+    "id": "m13",
+    "type": "moon"
+  }
+}

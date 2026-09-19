@@ -1,0 +1,8 @@
+{
+  "capability": "night_conditions.select_cloud_advisory",
+  "injected": {
+    "cloud_timing": "intermittent_heavy",
+    "rating": "excellent",
+    "average_cloud_cover": 10
+  }
+}

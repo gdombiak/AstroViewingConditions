@@ -1,0 +1,19 @@
+{
+  "capability": "observing_night.select_best",
+  "injected": {
+    "nights": [
+      {
+        "status": "no_astronomical_night",
+        "score": 99
+      },
+      {
+        "status": "available",
+        "score": 10
+      },
+      {
+        "status": "unavailable",
+        "score": 100
+      }
+    ]
+  }
+}

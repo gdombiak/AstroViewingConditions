@@ -1,0 +1,13 @@
+{
+  "capability": "equipment.match",
+  "ok": true,
+  "result": {
+    "match": {
+      "key": "scope",
+      "level": "challenging",
+      "reason": "binocularMagnificationUnknown",
+      "mode": "visual",
+      "other_suitable_keys": []
+    }
+  }
+}

@@ -1,0 +1,8 @@
+capability: catalog.deep_sky
+engine_semver: ">=0.1.0 <2.0.0"
+equality: catalog_deep_sky
+hosts: [swift, python]
+origin: canonical-data
+notes: >
+  Expected result is contracts/data/catalog/deep-sky.json expanded at load
+  time. Not a second hand-authored catalog copy.

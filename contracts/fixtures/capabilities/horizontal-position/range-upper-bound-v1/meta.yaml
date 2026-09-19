@@ -1,0 +1,7 @@
+capability: astronomy.horizontal_position
+engine_semver: ">=1.0.0 <2.0.0"
+equality: astronomy_horizontal_position
+hosts: [swift, python]
+origin: manual
+notes: >
+  2499-12-31T23:59:59Z is the inclusive end of the supported modern product range.

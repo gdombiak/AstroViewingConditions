@@ -1,0 +1,7 @@
+capability: targets.moon_recommendation
+engine_semver: ">=1.0.0 <2.0.0"
+equality: moon_recommendation
+hosts: [swift, python]
+origin: manual
+notes: >
+  rise and always_up are accepted for composability with astronomy.moon_observation and must not change the result; compare with always-down-with-visible-samples-v1.
