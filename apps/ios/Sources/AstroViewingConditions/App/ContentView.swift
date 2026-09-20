@@ -1,5 +1,6 @@
 import SharedCode
 import SwiftUI
+import SwiftData
 
 struct ContentView: View {
     fileprivate enum AppTab: String, Hashable, CaseIterable {

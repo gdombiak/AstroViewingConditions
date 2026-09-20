@@ -365,9 +365,12 @@ struct LocationRow: View {
                 }
 
                 if let elevation = location.elevation {
-                    Text("Elevation: \(unitConverter.formatElevation(elevation))")
-                        .font(.caption)
-                        .appTertiaryForeground()
+                    let formatted = unitConverter.formatElevation(elevation)
+                    LocationMetricLabelValueRow(
+                        label: "Elevation",
+                        value: formatted,
+                        accessibilityLabel: "Elevation, \(formatted)"
+                    )
                 }
             }
             

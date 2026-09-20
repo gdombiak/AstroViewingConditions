@@ -31,10 +31,12 @@ final class UnitSystemEnvironmentTests: XCTestCase {
         window.makeKeyAndVisible()
         host.view.layoutIfNeeded()
 
+        let imperialText = visibleText(in: host.view)
         XCTAssertTrue(
-            visibleText(in: host.view).contains("Elevation: 3822 ft"),
-            "Imperial environment should format 1165 m as feet"
+            imperialText.contains("Elevation, 3822 ft"),
+            "Imperial accessibility label should include the metric name and feet value; got \(imperialText)"
         )
+        XCTAssertFalse(imperialText.contains("Elevation: 3822 ft"))
 
         probe.unitSystem = .metric
         host.view.setNeedsLayout()
@@ -43,10 +45,11 @@ final class UnitSystemEnvironmentTests: XCTestCase {
 
         let metricText = visibleText(in: host.view)
         XCTAssertTrue(
-            metricText.contains("Elevation: 1165 m"),
-            "Metric environment should format 1165 m as meters; got \(metricText)"
+            metricText.contains("Elevation, 1165 m"),
+            "Metric accessibility label should include the metric name and meter value; got \(metricText)"
         )
-        XCTAssertFalse(metricText.contains("3822 ft"))
+        XCTAssertFalse(metricText.contains("Elevation, 3822 ft"))
+        XCTAssertFalse(metricText.contains("Elevation: 1165 m"))
     }
 }
 
