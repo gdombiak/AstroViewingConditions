@@ -21,9 +21,11 @@ from release_manifest import (  # noqa: E402
 from wheel_immutability import (  # noqa: E402
     check_product_version_monotonicity,
     check_wheel_immutability,
+    fetch_published_asset,
     fetch_published_manifests,
     qualifying_release_tags,
     require_manifest_matches_release_tag,
+    select_published_wheel,
 )
 
 
@@ -214,6 +216,129 @@ def test_fetch_published_manifests_respects_no_network(monkeypatch: pytest.Monke
     monkeypatch.setenv("NO_NETWORK", "1")
     with pytest.raises(ReleaseManifestError, match="NO_NETWORK"):
         fetch_published_manifests()
+
+
+def test_select_published_wheel_returns_none_without_priors() -> None:
+    assert (
+        select_published_wheel(
+            role="engine",
+            version="1.0.0",
+            filename="astro_engine-1.0.0-py3-none-any.whl",
+            priors=[],
+        )
+        is None
+    )
+
+
+def test_select_published_wheel_uses_newest_matching_release() -> None:
+    selected = select_published_wheel(
+        role="engine",
+        version="1.0.0",
+        filename="astro_engine-1.0.0-py3-none-any.whl",
+        priors=[_manifest(version="0.1.0"), _manifest(version="0.1.1")],
+    )
+    assert selected is not None
+    assert selected["tag"] == "astronomer-v0.1.1"
+    assert selected["sha256"] == ENGINE_SHA
+    assert selected["bytes"] == 12
+
+
+def test_select_published_wheel_searches_older_than_newest_product() -> None:
+    oldest = _manifest(version="0.1.0")
+    newest = _manifest(
+        version="0.2.0",
+        engine_version="1.1.0",
+        engine_sha=OTHER_SHA,
+        engine_bytes=99,
+    )
+    selected = select_published_wheel(
+        role="engine",
+        version="1.0.0",
+        filename="astro_engine-1.0.0-py3-none-any.whl",
+        priors=[oldest, newest],
+    )
+    assert selected is not None
+    assert selected["tag"] == "astronomer-v0.1.0"
+    assert selected["filename"] == "astro_engine-1.0.0-py3-none-any.whl"
+
+
+def test_select_published_wheel_rejects_hash_disagreement() -> None:
+    with pytest.raises(ReleaseManifestError, match="disagrees"):
+        select_published_wheel(
+            role="engine",
+            version="1.0.0",
+            filename="astro_engine-1.0.0-py3-none-any.whl",
+            priors=[
+                _manifest(version="0.1.0"),
+                _manifest(version="0.1.1", engine_sha=OTHER_SHA),
+            ],
+        )
+
+
+def test_select_published_wheel_rejects_filename_version_mismatch() -> None:
+    prior = _manifest(version="0.1.0")
+    artifacts = prior["artifacts"]
+    assert isinstance(artifacts, dict)
+    engine = artifacts["engine"]
+    assert isinstance(engine, dict)
+    engine["version"] = "9.9.9"
+    with pytest.raises(ReleaseManifestError, match="filename/version mismatch"):
+        select_published_wheel(
+            role="engine",
+            version="1.0.0",
+            filename="astro_engine-1.0.0-py3-none-any.whl",
+            priors=[prior],
+        )
+
+
+def test_fetch_published_asset_respects_no_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("NO_NETWORK", "1")
+    with pytest.raises(ReleaseManifestError, match="NO_NETWORK"):
+        fetch_published_asset(
+            "astronomer-v0.1.0", "astro_engine-1.0.0-py3-none-any.whl"
+        )
+
+
+def test_fetch_published_asset_rejects_path_filename(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("NO_NETWORK", raising=False)
+    with pytest.raises(ReleaseManifestError, match="basename"):
+        fetch_published_asset(
+            "astronomer-v0.1.0", "../astro_engine-1.0.0-py3-none-any.whl"
+        )
+
+
+def test_fetch_published_asset_returns_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("NO_NETWORK", raising=False)
+
+    class _BytesResponse:
+        def __init__(self, body: bytes) -> None:
+            self._body = body
+
+        def read(self) -> bytes:
+            return self._body
+
+        def __enter__(self) -> "_BytesResponse":
+            return self
+
+        def __exit__(self, *args: object) -> bool:
+            return False
+
+    def opener(request, timeout=60):
+        assert request.full_url.endswith(
+            "/astronomer-v0.1.0/astro_engine-1.0.0-py3-none-any.whl"
+        )
+        return _BytesResponse(b"wheel-bytes")
+
+    assert (
+        fetch_published_asset(
+            "astronomer-v0.1.0",
+            "astro_engine-1.0.0-py3-none-any.whl",
+            opener=opener,
+        )
+        == b"wheel-bytes"
+    )
 
 
 def test_against_published_accepts_unchanged_wheels(
