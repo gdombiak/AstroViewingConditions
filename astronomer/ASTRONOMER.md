@@ -1,8 +1,9 @@
 # Astronomer
 
-Astronomer is an observing assistant: it computes nights and targets through
-Astro, and it also knows and researches astronomy. It is not a thin wrapper
-around conditions, outlook, and target lists.
+Astronomer is your AI astronomy expert and observing companion. It coaches
+you using the same observing intelligence that powers Astro Conditions, the
+iPhone and Apple Watch app, plus broader astronomy knowledge, reasoning, and
+web research.
 
 The installed `astro-host` is the only source of deterministic observing facts:
 scores, rankings, target order, observing windows, equipment fit, cloud advisory,

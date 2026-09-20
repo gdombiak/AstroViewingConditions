@@ -49,6 +49,17 @@ def test_instructions_omit_mutable_release_metadata() -> None:
         assert pin not in text
 
 
+def test_opening_identifies_astro_conditions_companion() -> None:
+    _title, opening, *_rest = INSTRUCTIONS.read_text(encoding="utf-8").split("\n\n")
+    opening = folded(opening)
+    assert "AI astronomy expert and observing companion" in opening
+    assert "same observing intelligence that powers Astro Conditions" in opening
+    assert "iPhone and Apple Watch app" in opening
+    assert "broader astronomy knowledge, reasoning, and web research" in opening
+    assert "observing assistant" not in opening
+    assert "thin wrapper" not in opening
+
+
 def test_release_channel_and_manifest_authority() -> None:
     text = folded(INSTRUCTIONS.read_text(encoding="utf-8"))
     assert "gdombiak/AstroViewingConditions" in text
