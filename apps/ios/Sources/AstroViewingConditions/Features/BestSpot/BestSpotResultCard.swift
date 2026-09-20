@@ -3,6 +3,7 @@ import SwiftUI
 
 struct BestSpotResultCard: View {
     @Environment(\.appPalette) private var palette
+    @Environment(\.unitSystem) private var unitSystem
     let locationScore: LocationScore
     let rank: Int
     let scoringMode: BestSpotScoringMode
@@ -28,7 +29,7 @@ struct BestSpotResultCard: View {
     }
     
     private var unitConverter: AstroUnitConverter {
-        AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
+        AstroUnitConverter(unitSystem: unitSystem)
     }
     
     var body: some View {

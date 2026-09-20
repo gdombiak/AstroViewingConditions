@@ -3,10 +3,15 @@ import SwiftUI
 
 struct LocationPickerView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.unitSystem) private var unitSystem
     let selectedLocation: SelectedLocation
     let onSelect: (SelectedLocation) -> Void
     let currentLocation: CachedLocation?
     let savedLocations: [SavedLocation]
+
+    private var unitConverter: AstroUnitConverter {
+        AstroUnitConverter(unitSystem: unitSystem)
+    }
     
     var body: some View {
         NavigationStack {
@@ -54,7 +59,7 @@ struct LocationPickerView: View {
                                             .foregroundStyle(.secondary)
                                         
                                         if let elevation = location.elevation {
-                                            Text("Elevation: \(Int(elevation))m")
+                                            Text("Elevation: \(unitConverter.formatElevation(elevation))")
                                                 .font(.caption)
                                                 .foregroundStyle(.secondary)
                                         }

@@ -337,6 +337,11 @@ private struct FieldRenameLocationDialog: View {
 struct LocationRow: View {
     let location: SavedLocation
     var lightPollution: LightPollutionRowDisplayState = .unresolved
+    @Environment(\.unitSystem) private var unitSystem
+
+    private var unitConverter: AstroUnitConverter {
+        AstroUnitConverter(unitSystem: unitSystem)
+    }
     
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -360,7 +365,7 @@ struct LocationRow: View {
                 }
 
                 if let elevation = location.elevation {
-                    Text("Elevation: \(Int(elevation))m")
+                    Text("Elevation: \(unitConverter.formatElevation(elevation))")
                         .font(.caption)
                         .appTertiaryForeground()
                 }

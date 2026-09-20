@@ -87,6 +87,16 @@ public struct AstroUnitConverter {
             return String(format: "%.1f mi", miles)
         }
     }
+
+    public func formatElevation(_ meters: Double) -> String {
+        switch unitSystem {
+        case .metric:
+            return String(format: "%.0f m", meters)
+        case .imperial:
+            let feet = meters * 3.28084
+            return String(format: "%.0f ft", feet)
+        }
+    }
 }
 
 private let unitLogger = Logger(subsystem: "com.astroviewing.conditions", category: "UnitSystemStorage")

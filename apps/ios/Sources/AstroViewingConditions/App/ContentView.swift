@@ -32,6 +32,7 @@ struct ContentView: View {
     @State private var observingQualitySession: ObservingQualitySession
     @State private var dashboardViewModel: DashboardViewModel
     @State private var didStartObservingQualityBootstrap = false
+    @State private var unitSystem = UnitSystemStorage.loadSelectedUnitSystem()
 
     init() {
         let session = ObservingQualitySession()
@@ -101,9 +102,10 @@ struct ContentView: View {
             }
 
             tabContent(.settings) {
-                SettingsView()
+                SettingsView(unitSystem: $unitSystem)
             }
         }
+        .environment(\.unitSystem, unitSystem)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             AppTabBar(
                 tabs: AppTab.allCases,

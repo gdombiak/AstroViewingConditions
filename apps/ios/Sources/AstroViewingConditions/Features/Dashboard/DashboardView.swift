@@ -17,6 +17,7 @@ public struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.appPalette) private var palette
+    @Environment(\.unitSystem) private var unitSystem
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
     @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
     @SceneStorage("dashboardSelectedDay") private var storedSelectedDayRawValue: Int = DashboardViewModel.DaySelection.today.rawValue
@@ -58,7 +59,7 @@ public struct DashboardView: View {
     }
     
     private var unitConverter: AstroUnitConverter {
-        AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
+        AstroUnitConverter(unitSystem: unitSystem)
     }
     
     private var selectedLocation: SelectedLocation {

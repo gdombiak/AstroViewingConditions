@@ -5,6 +5,7 @@ struct NightQualityCard: View {
     @Environment(\.appPalette) private var palette
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.unitSystem) private var unitSystem
     /// Weather/Moon/darkness assessment (details, early/late, factor pills).
     let assessment: NightQualityAssessment
     /// Headline observing-quality presentation (number, band, a11y) — not night rating bands.
@@ -21,7 +22,7 @@ struct NightQualityCard: View {
     }
     
     private var unitConverter: AstroUnitConverter {
-        AstroUnitConverter(unitSystem: UnitSystemStorage.loadSelectedUnitSystem())
+        AstroUnitConverter(unitSystem: unitSystem)
     }
     
     var body: some View {

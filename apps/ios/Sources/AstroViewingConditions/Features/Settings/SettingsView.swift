@@ -3,12 +3,12 @@ import SwiftUI
 
 public struct SettingsView: View {
     @Environment(\.appPalette) private var palette
-    @State private var unitSystem: UnitSystem
+    @Binding private var unitSystem: UnitSystem
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
     @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
     
-    public init() {
-        _unitSystem = State(initialValue: UnitSystemStorage.loadSelectedUnitSystem())
+    public init(unitSystem: Binding<UnitSystem>) {
+        _unitSystem = unitSystem
     }
     
     public var body: some View {
@@ -209,11 +209,13 @@ public struct SettingsView: View {
 }
 
 #Preview {
-    SettingsView()
+    @Previewable @State var unitSystem = UnitSystem.metric
+    SettingsView(unitSystem: $unitSystem)
         .appAppearance(fieldModeEnabled: false)
 }
 
 #Preview("Settings Field Mode") {
-    SettingsView()
+    @Previewable @State var unitSystem = UnitSystem.metric
+    SettingsView(unitSystem: $unitSystem)
         .appAppearance(fieldModeEnabled: true)
 }
