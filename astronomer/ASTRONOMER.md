@@ -46,9 +46,12 @@ best window, and light pollution; which of those nights Astro marked best; and
 why conditions look good or poor.
 
 Use Astro for the score, outlook, best night, window, cloud advisory, and
-returned condition facts. Use intelligence to explain those facts, including why
-observing quality can look worse than the weather. “How do moon phases work?” is
-intelligence-only; “How is the Moon tonight from my site?” is Astro.
+returned condition facts. Light pollution, astronomical night, Sun events, and
+Moon geometry at a site are Astro even when weather is unavailable; route those
+through `agent.sky_facts`, not a weather conditions
+call. Use intelligence to explain those facts, including why observing quality
+can look worse than the weather. “How do moon phases work?” is intelligence-only;
+“How is the Moon tonight from my site?” is Astro.
 
 ### Choose what to observe
 
@@ -313,6 +316,7 @@ contains this required subset in any order:
 - `agent.equipment`
 - `agent.recommendations`
 - `agent.outlook`
+- `agent.sky_facts`
 
 Additional operations are compatible. The installed runtime must report
 `contracts_data`, `light_pollution_atlas`, and `skyfield_ephemeris` under
@@ -442,8 +446,10 @@ may use more than one operation plus labeled outside research. “What can you d
 walks that model in user language; do not recite these operations.
 
 Use an aware whole-second ISO-8601 UTC `reference_time` for conditions,
-recommendations, outlook, and batch comparison.
+recommendations, outlook, sky facts, and batch comparison.
 
+- Weather-independent local sky facts (light pollution, astronomical night, Sun
+  events, Moon phase/rise/set): `agent.sky_facts`.
 - Current or requested-night conditions: `agent.conditions`.
 - Canonical active-night-plus-two outlook: `agent.outlook`; never synthesize it
   by calling conditions three times.
@@ -488,8 +494,9 @@ recommendations, or equipment fit.
 
 ## Location onboarding
 
-When conditions, outlook, recommendations, or a center-based comparison has no
-explicit location, call `agent.locations` with `{"action":"get_selected"}`.
+When conditions, outlook, recommendations, sky facts, or a center-based
+comparison has no explicit location, call `agent.locations` with
+`{"action":"get_selected"}`.
 If none is selected, ask for a place name or coordinates while retaining the
 original request; never claim live GPS access.
 
@@ -544,6 +551,46 @@ override without mutating selection. It does not imply any minimum-fit threshold
 
 For normal recommendations, omit `minimum_fit`; omission is production `any`.
 Only send a threshold when explicitly requested.
+
+## Local sky facts
+
+`agent.sky_facts` answers weather-independent local sky questions from Engine
+Sun, Moon, observing-night, and light-pollution facts. It makes no
+weather-provider calls and no Open-Meteo calls. It returns no observing-quality
+score, Night Conditions rating, cloud advisory, or “is tonight good?” answer.
+
+Use it when the user asks for facts that do not depend on live weather:
+
+- “How dark is Home?” / “What is the light pollution here?”
+- “When does astronomical night start or end?”
+- “When is sunset / sunrise?”
+- “How is the Moon tonight from my site?”
+- “What phase is the Moon / when does it rise or set tonight?”
+
+Do not use it for clouds, seeing, transparency, wind, fog, the observing-quality
+score, or whether tonight is good to observe. Those remain `agent.conditions`.
+Three-night planning remains `agent.outlook`. Target lists remain
+`agent.recommendations`.
+
+Returned `modeled_zenith_sky_brightness` is mag/arcsec² (larger means darker).
+It is not a Bortle class and not a qualitative pollution band. Preserve
+`selected_night.night_status`: `available` is a resolved night with an
+astronomical window; `no_astronomical_night` is a resolved night with no
+astronomical darkness; `unavailable` means the observing night was not
+resolved. Do not treat a failed resolution as “no astronomical night.” Do not
+invent an IANA timezone when the Host reports none.
+
+`status: degraded` does not mean discard the result. Present every returned
+fact group — light pollution, night identity, Sun events, Moon — and explain
+the returned issues. Light pollution can be usable when timezone-dependent
+calendar, Sun, or Moon facts are missing. `status: unavailable` means no
+usable sky facts were produced.
+
+`agent.sky_facts` accepts `reference_time`, optional one-use `location`, and
+optional `observing_date`. It does not accept `force_refresh`. Omitted location
+uses the selected saved site. An authoritative IANA timezone is required for
+night identity, Sun events, and Moon facts; saved locations carry one. Explicit
+coordinates without `time_zone_hint` can still return light pollution.
 
 ## Conditions and cloud advisory
 
@@ -689,7 +736,7 @@ night score as `(score XX)` or `XX/100` where natural, and each target score as
 
 ## Host request shapes
 
-### Conditions, recommendations, and outlook
+### Conditions, sky facts, recommendations, and outlook
 
 Selected-location minimal requests:
 
@@ -704,6 +751,8 @@ One-use explicit location:
 ```
 
 For `agent.conditions`, optional fields are `observing_date` and `force_refresh`.
+For `agent.sky_facts`, optional fields are `location` and `observing_date`; do
+not send `force_refresh`.
 For `agent.outlook`, only `location` and `force_refresh` are optional.
 
 `agent.recommendations` requires `mode` (`best` or `browse`) plus `reference_time`,

@@ -140,7 +140,7 @@ def test_qualifying_tags_ignore_drafts_prereleases_and_other_prefixes() -> None:
         {"tag_name": "astronomer-v1.0.0", "draft": False, "prerelease": False},
     ])
     assert tags == ["astronomer-v0.2.0", "astronomer-v1.0.0"]
-    assert product_tag(product_version()) == "astronomer-v0.1.0"
+    assert product_tag(product_version()) == "astronomer-v0.1.1"
 
 
 def test_manifest_matching_github_tag_is_accepted() -> None:

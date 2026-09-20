@@ -40,6 +40,7 @@ from astro_host.models import (
     EquipmentWriteResult,
     HostConditionsRequest,
     HostRecommendationsRequest,
+    HostSkyFactsRequest,
     InlineEquipmentDraft,
     RECOMMENDATION_OBJECT_TYPES,
     RECOMMENDATION_TARGET_TYPES,
@@ -52,6 +53,7 @@ from astro_host.models import (
     SavedEquipment,
     SavedEquipmentDraft,
     SavedLocationDraft,
+    SkyFactsRequest,
 )
 from astro_host.places import ObservingLocationService
 from astro_host.recommendations import DEFAULT_MINIMUM_FIT, RecommendationService
@@ -78,6 +80,7 @@ AGENT_OPERATIONS = (
     "agent.equipment",
     "agent.recommendations",
     "agent.outlook",
+    "agent.sky_facts",
 )
 
 _LOCATION_ACTIONS = frozenset({
@@ -280,6 +283,10 @@ def main(
         return _main_batch_compare(
             args, service=service, store=store, stdout=stdout, stderr=stderr
         )
+    if args.operation == "agent.sky_facts":
+        return _main_sky_facts(
+            args, service=service, store=store, stdout=stdout, stderr=stderr
+        )
     return _main_conditions(
         args, service=service, store=store, stdout=stdout, stderr=stderr
     )
@@ -455,6 +462,60 @@ def _main_batch_compare(
         _write_json({"ok": False, "operation": operation,
                      "error": {"code": "host_failure", "message": str(exc)}},
                     pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+
+
+def _main_sky_facts(
+    args: argparse.Namespace,
+    *,
+    service: ConditionsService | None,
+    store: LocationStore | None,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> int:
+    try:
+        document = _read_json(args.input_path)
+        host_request = parse_sky_facts_request(document)
+        location, location_source = _compose_conditions_location(
+            args, host_request.location, store
+        )
+        request = SkyFactsRequest(
+            location=location,
+            reference_time=host_request.reference_time,
+            observing_date=host_request.observing_date,
+        )
+        if service is None:
+            service = build_default_service(args)
+        result = service.sky_facts(request)
+        payload = _json_value(result)
+        payload["location_source"] = location_source.value
+        _write_json({
+            "ok": True,
+            "operation": "agent.sky_facts",
+            "result": payload,
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_OK
+    except (InvalidRequestError, json.JSONDecodeError, OSError) as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.sky_facts",
+            "error": {"code": "invalid_request", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST
+    except LocationStoreError as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.sky_facts",
+            "error": {"code": exc.code, "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST if exc.code == "invalid_request" else EXIT_FAILURE
+    except Exception as exc:
+        print(f"astro-host: {exc}", file=stderr)
+        _write_json({
+            "ok": False,
+            "operation": "agent.sky_facts",
+            "error": {"code": "host_failure", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
         return EXIT_FAILURE
 
 
@@ -1216,7 +1277,23 @@ def parse_places_request(document: object) -> str:
     return _required_query(document.get("query"))
 
 
+_SKY_FACTS_KEYS = frozenset({"location", "reference_time", "observing_date"})
 _OUTLOOK_KEYS = frozenset({"location", "reference_time", "force_refresh"})
+
+
+def parse_sky_facts_request(document: object) -> HostSkyFactsRequest:
+    if not isinstance(document, Mapping):
+        raise InvalidRequestError("request must be an object with known fields")
+    if "force_refresh" in document:
+        raise InvalidRequestError("agent.sky_facts does not accept force_refresh")
+    if set(document) - _SKY_FACTS_KEYS:
+        raise InvalidRequestError("request must be an object with known fields")
+    parsed = parse_conditions_request(document)
+    return HostSkyFactsRequest(
+        location=parsed.location,
+        reference_time=parsed.reference_time,
+        observing_date=parsed.observing_date,
+    )
 
 
 def parse_outlook_request(document: object) -> HostConditionsRequest:

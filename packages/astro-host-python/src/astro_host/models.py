@@ -203,6 +203,22 @@ class HostConditionsRequest:
 
 
 @dataclass(frozen=True)
+class HostSkyFactsRequest:
+    """CLI/library input for weather-independent local sky facts."""
+
+    location: Location | None
+    reference_time: datetime
+    observing_date: date | None = None
+
+
+@dataclass(frozen=True)
+class SkyFactsRequest:
+    location: Location
+    reference_time: datetime
+    observing_date: date | None = None
+
+
+@dataclass(frozen=True)
 class ConditionsRequest:
     location: Location
     reference_time: datetime
@@ -361,6 +377,61 @@ class MoonSample:
     time: datetime
     altitude_deg: float
     illumination_pct: int
+
+
+@dataclass(frozen=True)
+class MoonPositionSample:
+    time: datetime
+    altitude: float
+    azimuth: float | None
+
+
+@dataclass(frozen=True)
+class MoonObservationFacts:
+    phase: float
+    illumination: int
+    rise: datetime | None
+    set: datetime | None
+    always_up: bool
+    always_down: bool
+    samples: tuple[MoonPositionSample, ...]
+
+
+@dataclass(frozen=True)
+class LightPollutionFacts:
+    modeled_zenith_sky_brightness: float | None
+    available: bool
+
+
+@dataclass(frozen=True)
+class SkyFactsNight:
+    """Observing-night identity without a weather forecast window."""
+
+    selection: str
+    state: str
+    night_status: str
+    observing_date: date | None
+    observing_day_start: datetime | None
+    astronomical_night_start: datetime | None
+    astronomical_night_end: datetime | None
+    astronomical_night_duration_seconds: int | None
+    day_index: int | None = None
+    day_offset: int | None = None
+
+
+@dataclass(frozen=True)
+class SkyFactsResult:
+    status: ConditionsStatus
+    generated_at: datetime
+    request: SkyFactsRequest
+    timezone: TimeZoneResolution
+    selected_night: SkyFactsNight | None
+    sun_today: SunEventsFacts | None
+    sun_tomorrow: SunEventsFacts | None
+    moon: MoonObservationFacts | None
+    light_pollution: LightPollutionFacts
+    issues: tuple[HostIssue, ...]
+    engine_semver: str
 
 
 @dataclass(frozen=True)

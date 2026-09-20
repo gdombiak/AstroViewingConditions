@@ -8,6 +8,7 @@ from astro_host.models import (
     ActiveNightResolution,
     HourlyRating,
     HourlyWeather,
+    MoonObservationFacts,
     MoonSample,
     NightAnalysis,
     ObservingQualityFacts,
@@ -153,6 +154,17 @@ class FakeEngine:
     def moon_series(self, location, times):
         self.moon_times = tuple(times)
         return tuple(MoonSample(value, 20.0, 25) for value in times)
+
+    def moon_observation(self, location, night_start, night_end):
+        return MoonObservationFacts(
+            phase=0.25,
+            illumination=50,
+            rise=night_start,
+            set=night_end,
+            always_up=False,
+            always_down=False,
+            samples=(),
+        )
 
     def analyze_night(
         self, *, reference_time, time_zone, window, forecasts, moon_samples

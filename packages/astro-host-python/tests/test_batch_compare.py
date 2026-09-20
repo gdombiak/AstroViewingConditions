@@ -13,7 +13,7 @@ from astro_host.cache import MemoryWeatherCache
 from astro_host.cli import EXIT_OK, main, parse_batch_compare_request
 from astro_host.conditions import ConditionsService
 from astro_host.engine import ConditionsEngine
-from astro_host.errors import InvalidRequestError, WeatherProviderError
+from astro_host.errors import EngineCallError, InvalidRequestError, WeatherProviderError
 from astro_host.locations import MemoryLocationStore
 from astro_host.models import (
     BatchCandidate, ConditionsRequest, Location, ProviderFailure, ProviderFailureKind,
@@ -461,6 +461,63 @@ def test_center_weather_failure_still_resolves_active_night_from_sun_events():
     assert result["evaluated_count"] == 2
     assert all(row["improvement_over_center"] is None
                for row in result["ranked_destinations"])
+
+
+def test_weather_free_fallback_passes_all_sun_rows_to_resolve_active_night():
+    """Incomplete later Sun days must fail like pre-sky_facts batch_compare.
+
+    The weather-free path used to pass every generated Sun row into
+    ``resolve_active_night``. Prefixing complete twilight would skip a later
+    incomplete day and could still resolve an observing date.
+    """
+
+    class PartialTwilightEngine(RecordingEngine):
+        def __init__(self):
+            super().__init__()
+            self.resolve_sun_counts = []
+
+        def sun_events(self, location, *, day, start, end):
+            facts = super().sun_events(location, day=day, start=start, end=end)
+            first_day = NOW.astimezone(ZoneInfo("America/Los_Angeles")).date() - timedelta(days=1)
+            if day == first_day + timedelta(days=2):
+                return replace(
+                    facts,
+                    astronomical_twilight_begin=None,
+                    astronomical_twilight_end=None,
+                )
+            return facts
+
+        def resolve_active_night(self, *, reference_time, time_zone,
+                                 forecast_start_time, daily_sun_events):
+            self.resolve_sun_counts.append(len(daily_sun_events))
+            for row in daily_sun_events:
+                if (
+                    row.astronomical_twilight_begin is None
+                    or row.astronomical_twilight_end is None
+                ):
+                    raise EngineCallError(
+                        "observing_night.resolve_active",
+                        "engine_failure",
+                        "required astronomical twilight event is missing",
+                    )
+            return super().resolve_active_night(
+                reference_time=reference_time, time_zone=time_zone,
+                forecast_start_time=forecast_start_time,
+                daily_sun_events=daily_sun_events,
+            )
+
+    result, _, engine = run(
+        provider=SelectiveProvider(fail_latitudes={CENTER.latitude}),
+        engine=PartialTwilightEngine(),
+    )
+    assert engine.resolve_sun_counts == [3]
+    assert result["status"] == "unavailable"
+    assert "observing_date" not in result
+    assert result["selected_night"] is None
+    assert all(
+        row["reason"] == "center_observing_night_unavailable"
+        for row in result["omitted_candidates"]
+    )
 
 
 def test_batch_reuses_cache_and_stale_on_error():

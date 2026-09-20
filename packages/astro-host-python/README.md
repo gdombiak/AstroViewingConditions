@@ -8,7 +8,10 @@ Conditions, best-window, cloud-timing, and optional Observing Quality facts;
 same acquisition and scoring authorities; and `agent.recommendations`, which
 answers “what should I observe tonight?” from those same night facts plus H12
 equipment. `agent.batch_compare` compares a small caller-supplied set of named
-coordinates in one center-defined observing night.
+coordinates in one center-defined observing night. `agent.sky_facts` answers
+weather-independent local sky questions — light pollution, observing-night
+identity, Sun events, and Moon phase/rise/set — without calling Open-Meteo or
+returning an observing-quality score.
 
 The dependency direction is one-way:
 
@@ -159,6 +162,17 @@ for multiple coordinates, but this Host's existing adapter and cache hold one
 location per response. Bounded individual calls preserve its per-location
 retry, stale fallback, and partial-failure reporting for this small batch.
 
+`agent.sky_facts` reuses the same selected-location rule, IANA timezone
+authority, light-pollution atlas lookup, local Sun-event acquisition, and
+Engine active-night capability used by the weather-free `agent.batch_compare`
+fallback. Each operation preserves its own handling of incomplete Sun-event
+rows. `agent.sky_facts` never fetches weather. Saved locations supply an
+authoritative timezone; explicit coordinates without `time_zone_hint` still
+return light pollution and do not invent a zone for calendar facts. A resolved
+night with no valid astronomical-darkness window is returned as structural
+`no_astronomical_night`; an unresolved night remains `unavailable`. The
+operation does not accept `force_refresh`.
+
 `agent.recommendations` reuses `ConditionsService.conditions` once for the same
 location/night, then composes Moon, Venus/Mars/Jupiter/Saturn, and the 29
 deep-sky catalog objects through existing engine capabilities. Mixed ranking is
@@ -239,6 +253,7 @@ apps/cli/astro-host agent.places --input places.json --pretty
 apps/cli/astro-host agent.equipment --input equipment.json --pretty
 apps/cli/astro-host agent.recommendations --input request.json --pretty
 apps/cli/astro-host agent.outlook --input request.json --pretty
+apps/cli/astro-host agent.sky_facts --input request.json --pretty
 apps/cli/astro-host --runtime-info
 ```
 
@@ -257,9 +272,9 @@ saved-equipment file; otherwise `$ASTRO_HOST_STATE_DIR/equipment.json` or
 `~/.astro-host/equipment.json`. The three files are independent: `agent.locations`
 does not open the weather cache or equipment store, `agent.equipment` does not
 open locations or weather, and `agent.places` does not open any of them.
-`agent.conditions` opens the location store only when `location` is omitted, to
-read the selected saved site. An explicit `location` object does not open the
-store. `agent.recommendations` uses the same location rule, always opens the
+`agent.conditions` and `agent.sky_facts` open the location store only when
+`location` is omitted, to read the selected saved site. An explicit `location`
+object does not open the store. `agent.recommendations` uses the same location rule, always opens the
 equipment store for `get_active` projection, and shares one `ConditionsService`
 (one weather acquisition) with `agent.conditions`. Compose remaps by index into
 the mixed catalog array; filter remaps by index into compose survivors. The

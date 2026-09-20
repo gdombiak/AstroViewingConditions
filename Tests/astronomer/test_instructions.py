@@ -29,8 +29,8 @@ def test_legacy_skill_and_experiment_paths_are_absent() -> None:
     assert not (REPOSITORY / "tools" / "grok").exists()
 
 
-def test_product_version_is_first_unpublished_identity() -> None:
-    assert product_version() == "0.1.0"
+def test_product_version_is_committed_identity() -> None:
+    assert product_version() == "0.1.1"
 
 
 def test_instructions_omit_mutable_release_metadata() -> None:
@@ -106,6 +106,7 @@ def test_routes_supported_operations_and_preserves_authority_rules() -> None:
         "agent.recommendations",
         "agent.outlook",
         "agent.batch_compare",
+        "agent.sky_facts",
     ):
         assert operation in text
     assert "agent.forecast_horizon" not in text
@@ -135,6 +136,21 @@ def test_cloud_advisory_is_authoritative_and_forbids_recalculation() -> None:
     assert "never invent a heavy-cloud interval's clock times" in text
     assert "`best_window` may be reported independently as its own authoritative fact" in text
     assert "A `cloud_timing` field in recommendations or outlook is not" in text
+
+
+def test_sky_facts_routing_is_weather_independent() -> None:
+    text = folded(INSTRUCTIONS.read_text(encoding="utf-8"))
+    assert "agent.sky_facts" in text
+    assert "does not accept `force_refresh`" in text
+    assert "How dark is Home" in text
+    assert "When does astronomical night start or end" in text
+    assert "How is the Moon tonight from my site" in text
+    assert "whether tonight is good to observe" in text
+    assert "Those remain `agent.conditions`" in text
+    assert "not a Bortle class" in text
+    assert "`status: degraded` does not mean discard the result" in text
+    assert "`status: unavailable` means no usable sky facts were produced" in text
+    assert "Do not treat a failed resolution as “no astronomical night.”" in text
 
 
 def test_named_place_workflow_and_presentation_boundaries() -> None:

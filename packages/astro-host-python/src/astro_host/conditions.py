@@ -1,4 +1,4 @@
-"""Host composition for ``agent.conditions`` and ``agent.outlook``."""
+"""Host composition for ``agent.conditions``, ``agent.outlook``, and ``agent.sky_facts``."""
 
 from __future__ import annotations
 
@@ -37,7 +37,9 @@ from astro_host.models import (
     FreshnessState,
     HostIssue,
     IssueSeverity,
+    LightPollutionFacts,
     Location,
+    MoonObservationFacts,
     NightConditionsFacts,
     ObservingQualityFacts,
     OutlookNightConditions,
@@ -49,6 +51,9 @@ from astro_host.models import (
     ProviderAttemptState,
     ProviderFailure,
     SelectedNight,
+    SkyFactsNight,
+    SkyFactsRequest,
+    SkyFactsResult,
     SnapshotProvenance,
     SunEventsFacts,
     TimeZoneAttempt,
@@ -278,6 +283,64 @@ class ConditionsService:
     async def conditions(self, request: ConditionsRequest) -> ConditionsResult:
         return await self._score_location(request)
 
+    def sky_facts(self, request: SkyFactsRequest) -> SkyFactsResult:
+        """Local sky facts that do not call a weather provider."""
+        validated = _validate_request(ConditionsRequest(
+            location=request.location,
+            reference_time=request.reference_time,
+            observing_date=request.observing_date,
+            force_refresh=False,
+        ))
+        request = SkyFactsRequest(
+            location=validated.location,
+            reference_time=validated.reference_time,
+            observing_date=validated.observing_date,
+        )
+        now = _as_utc(self._clock())
+        issues: list[HostIssue] = []
+        try:
+            tz, timezone_issues = resolve_timezone(
+                request.location, provider_identifier=None, resolved_at=now
+            )
+        except TimeZoneCatalogError as exc:
+            failed = self._timezone_catalog_unavailable(
+                ConditionsRequest(
+                    request.location, request.reference_time, request.observing_date
+                ),
+                now,
+                _empty_report(self._weather.name),
+                exc,
+            )
+            catalog_issues = list(failed.issues)
+            brightness = self._lookup_brightness(request.location, catalog_issues)
+            return self._sky_facts_result(
+                request, now, failed.timezone, None, None, None, None,
+                brightness, catalog_issues,
+            )
+        issues.extend(timezone_issues)
+
+        selected_night: SkyFactsNight | None = None
+        sun_today: SunEventsFacts | None = None
+        sun_tomorrow: SunEventsFacts | None = None
+        moon: MoonObservationFacts | None = None
+        if tz.authority is TimeZoneAuthority.AUTHORITATIVE:
+            assert tz.iana_identifier is not None
+            zone = ZoneInfo(tz.iana_identifier)
+            try:
+                selected_night, sun_today, sun_tomorrow, moon = self._compose_sky_calendar(
+                    request, zone, issues
+                )
+            except EngineCallError as exc:
+                issues.append(_engine_issue(exc))
+        else:
+            issues.append(_authoritative_timezone_issue(tz))
+
+        brightness = self._lookup_brightness(request.location, issues)
+        return self._sky_facts_result(
+            request, now, tz, selected_night, sun_today, sun_tomorrow, moon,
+            brightness, issues,
+        )
+
     async def batch_compare(
         self, request: ConditionsRequest, candidates: Sequence[BatchCandidate]
     ) -> dict[str, object]:
@@ -348,28 +411,29 @@ class ConditionsService:
             observing_date = selected_night.observing_date
         if observing_date is None:
             try:
-                first_day = request.reference_time.astimezone(center_zone).date() - timedelta(days=1)
-                sun_rows = []
-                for offset in range(3):
-                    day = first_day + timedelta(days=offset)
-                    start = datetime.combine(day, time.min, tzinfo=center_zone).astimezone(timezone.utc)
-                    end = datetime.combine(day + timedelta(days=1), time.min, tzinfo=center_zone).astimezone(timezone.utc)
-                    sun_rows.append(self._engine.sun_events(request.location, day=day, start=start, end=end))
+                sun_rows, forecast_start = self._weather_free_sun_window(
+                    request.location, request.reference_time, center_zone
+                )
                 active = self._engine.resolve_active_night(
-                    reference_time=request.reference_time, time_zone=identifier,
-                    forecast_start_time=datetime.combine(first_day, time.min, tzinfo=center_zone),
+                    reference_time=request.reference_time,
+                    time_zone=identifier,
+                    forecast_start_time=forecast_start,
                     daily_sun_events=sun_rows,
                 )
-                observing_date = active.observing_date if active.state == "resolved" else None
+                observing_date = (
+                    active.observing_date if active.state == "resolved" else None
+                )
                 if observing_date is not None:
                     selected_night = SelectedNight(
-                        selection="active", state=active.state,
+                        selection="active",
+                        state=active.state,
                         observing_date=active.observing_date,
                         observing_day_start=active.observing_day_start,
                         astronomical_night_start=active.astronomical_night_start,
                         astronomical_night_end=active.astronomical_night_end,
                         forecast_window=None,
-                        day_index=active.day_index, day_offset=active.day_offset,
+                        day_index=active.day_index,
+                        day_offset=active.day_offset,
                     )
                     center_summary["selected_night"] = selected_night
             except EngineCallError:
@@ -968,6 +1032,184 @@ class ConditionsService:
             ))
             return None
 
+    def _local_day_sun_events(
+        self,
+        location: Location,
+        first_day: date,
+        day_count: int,
+        zone: ZoneInfo,
+    ) -> tuple[SunEventsFacts, ...]:
+        rows = []
+        for offset in range(day_count):
+            day = first_day + timedelta(days=offset)
+            start = datetime.combine(day, time.min, tzinfo=zone).astimezone(timezone.utc)
+            end = datetime.combine(
+                day + timedelta(days=1), time.min, tzinfo=zone
+            ).astimezone(timezone.utc)
+            rows.append(self._engine.sun_events(
+                location, day=day, start=start, end=end
+            ))
+        return tuple(rows)
+
+    def _weather_free_sun_window(
+        self,
+        location: Location,
+        reference_time: datetime,
+        zone: ZoneInfo,
+    ) -> tuple[tuple[SunEventsFacts, ...], datetime]:
+        first_day = reference_time.astimezone(zone).date() - timedelta(days=1)
+        sun_rows = self._local_day_sun_events(location, first_day, 3, zone)
+        forecast_start = datetime.combine(first_day, time.min, tzinfo=zone)
+        return sun_rows, forecast_start
+
+    def _weather_free_active_night(
+        self,
+        location: Location,
+        reference_time: datetime,
+        zone: ZoneInfo,
+    ) -> tuple[SelectedNight, tuple[SunEventsFacts, ...]]:
+        sun_rows, forecast_start = self._weather_free_sun_window(
+            location, reference_time, zone
+        )
+        complete_rows = _complete_twilight_prefix(sun_rows)
+        if not complete_rows:
+            selected = SelectedNight(
+                selection="active",
+                state="unavailable",
+                observing_date=None,
+                observing_day_start=None,
+                astronomical_night_start=None,
+                astronomical_night_end=None,
+                forecast_window=None,
+            )
+            return selected, sun_rows
+        active = self._engine.resolve_active_night(
+            reference_time=reference_time,
+            time_zone=zone.key,
+            forecast_start_time=forecast_start,
+            daily_sun_events=complete_rows,
+        )
+        selected = SelectedNight(
+            selection="active",
+            state=active.state,
+            observing_date=active.observing_date,
+            observing_day_start=active.observing_day_start,
+            astronomical_night_start=active.astronomical_night_start,
+            astronomical_night_end=active.astronomical_night_end,
+            forecast_window=None,
+            day_index=active.day_index,
+            day_offset=active.day_offset,
+        )
+        return selected, sun_rows
+
+    def _compose_sky_calendar(
+        self,
+        request: SkyFactsRequest,
+        zone: ZoneInfo,
+        issues: list[HostIssue],
+    ) -> tuple[
+        SkyFactsNight,
+        SunEventsFacts | None,
+        SunEventsFacts | None,
+        MoonObservationFacts | None,
+    ]:
+        if request.observing_date is None:
+            core, sun_rows = self._weather_free_active_night(
+                request.location, request.reference_time, zone
+            )
+            selected = _sky_facts_night(
+                selection=core.selection,
+                state=core.state,
+                observing_date=core.observing_date,
+                observing_day_start=core.observing_day_start,
+                astronomical_night_start=core.astronomical_night_start,
+                astronomical_night_end=core.astronomical_night_end,
+                day_index=core.day_index,
+                day_offset=core.day_offset,
+            )
+        else:
+            sun_rows = self._local_day_sun_events(
+                request.location, request.observing_date, 2, zone
+            )
+            day_start = datetime.combine(
+                request.observing_date, time.min, tzinfo=zone
+            ).astimezone(timezone.utc)
+            today = sun_rows[0]
+            tomorrow = sun_rows[1]
+            selected = _sky_facts_night(
+                selection="explicit_date",
+                state="resolved",
+                observing_date=request.observing_date,
+                observing_day_start=day_start,
+                astronomical_night_start=today.astronomical_twilight_end,
+                astronomical_night_end=tomorrow.astronomical_twilight_begin,
+                day_index=0,
+                day_offset=None,
+            )
+        sun_today, sun_tomorrow = _sun_pair_for_night(sun_rows, selected)
+        moon = None
+        start = selected.astronomical_night_start
+        end = selected.astronomical_night_end
+        if start is not None and end is not None:
+            try:
+                moon = self._engine.moon_observation(request.location, start, end)
+            except EngineCallError as exc:
+                issues.append(_engine_issue(exc))
+        return selected, sun_today, sun_tomorrow, moon
+
+    def _sky_facts_result(
+        self,
+        request: SkyFactsRequest,
+        now: datetime,
+        tz: TimeZoneResolution,
+        selected_night: SkyFactsNight | None,
+        sun_today: SunEventsFacts | None,
+        sun_tomorrow: SunEventsFacts | None,
+        moon: MoonObservationFacts | None,
+        brightness: float | None,
+        issues: list[HostIssue],
+    ) -> SkyFactsResult:
+        light_pollution = LightPollutionFacts(
+            modeled_zenith_sky_brightness=brightness,
+            available=brightness is not None,
+        )
+        night_unresolved = (
+            selected_night is not None
+            and selected_night.night_status == "unavailable"
+        )
+        has_structural_night = (
+            selected_night is not None
+            and selected_night.night_status in {
+                "available", "no_astronomical_night"
+            }
+        )
+        has_facts = (
+            light_pollution.available
+            or sun_today is not None
+            or sun_tomorrow is not None
+            or moon is not None
+            or has_structural_night
+        )
+        if not has_facts:
+            status = ConditionsStatus.UNAVAILABLE
+        elif any(issue.degrades_result for issue in issues) or night_unresolved:
+            status = ConditionsStatus.DEGRADED
+        else:
+            status = ConditionsStatus.COMPLETE
+        return SkyFactsResult(
+            status=status,
+            generated_at=now,
+            request=request,
+            timezone=tz,
+            selected_night=selected_night,
+            sun_today=sun_today,
+            sun_tomorrow=sun_tomorrow,
+            moon=moon,
+            light_pollution=light_pollution,
+            issues=tuple(issues),
+            engine_semver=self._engine.semver,
+        )
+
     def _unavailable_outlook(
         self,
         prep: _ForecastPreparation,
@@ -1418,6 +1660,59 @@ def _retry_failure_selected_night(
     if later.snapshot is None:
         return selected
     return None
+
+
+def _sky_facts_night(
+    *,
+    selection: str,
+    state: str,
+    observing_date: date | None,
+    observing_day_start: datetime | None,
+    astronomical_night_start: datetime | None,
+    astronomical_night_end: datetime | None,
+    day_index: int | None = None,
+    day_offset: int | None = None,
+) -> SkyFactsNight:
+    start, end = astronomical_night_start, astronomical_night_end
+    duration = None
+    if start is not None and end is not None and start < end:
+        duration = int((end - start).total_seconds())
+    if state != "resolved":
+        night_status = "unavailable"
+    elif start is None or end is None or not start < end:
+        night_status = "no_astronomical_night"
+    else:
+        night_status = "available"
+    return SkyFactsNight(
+        selection=selection,
+        state=state,
+        night_status=night_status,
+        observing_date=observing_date,
+        observing_day_start=observing_day_start,
+        astronomical_night_start=start,
+        astronomical_night_end=end,
+        astronomical_night_duration_seconds=duration,
+        day_index=day_index,
+        day_offset=day_offset,
+    )
+
+
+def _sun_pair_for_night(
+    sun_rows: Sequence[SunEventsFacts], selected: SkyFactsNight
+) -> tuple[SunEventsFacts | None, SunEventsFacts | None]:
+    by_day = {row.day: row for row in sun_rows}
+    if selected.observing_date is not None:
+        return (
+            by_day.get(selected.observing_date),
+            by_day.get(selected.observing_date + timedelta(days=1)),
+        )
+    if len(sun_rows) >= 3:
+        return sun_rows[1], sun_rows[2]
+    if len(sun_rows) >= 2:
+        return sun_rows[0], sun_rows[1]
+    if sun_rows:
+        return sun_rows[0], None
+    return None, None
 
 
 def _complete_twilight_prefix(

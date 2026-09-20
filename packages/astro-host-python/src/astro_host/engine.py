@@ -47,6 +47,8 @@ from astro_host.models import (
     HourlyRating,
     HourlyWeather,
     Location,
+    MoonObservationFacts,
+    MoonPositionSample,
     MoonSample,
     NightAnalysis,
     ObservingQualityFacts,
@@ -208,6 +210,19 @@ class ConditionsEngine:
                     illumination_pct=int(row["illumination"]),
                 )
                 for row in result["samples"]
+            )
+        except Exception as exc:
+            raise _engine_error(capability, exc) from exc
+
+    def moon_observation(
+        self, location: Location, night_start: datetime, night_end: datetime
+    ) -> MoonObservationFacts:
+        capability = "astronomy.moon_observation"
+        try:
+            return _moon_observation_facts(
+                evaluate_moon_observation(
+                    _moon_observation_input(location, night_start, night_end)
+                )
             )
         except Exception as exc:
             raise _engine_error(capability, exc) from exc
@@ -527,14 +542,10 @@ class RecommendationEngine:
     def moon_observation(
         self, location: Location, night_start: datetime, night_end: datetime
     ) -> dict[str, object]:
-        payload = {
-            "latitude": location.latitude,
-            "longitude": location.longitude,
-            "night_start": _utc_z(night_start),
-            "night_end": _utc_z(night_end),
-        }
         return self._invoke(
-            "astronomy.moon_observation", payload, evaluate_moon_observation
+            "astronomy.moon_observation",
+            _moon_observation_input(location, night_start, night_end),
+            evaluate_moon_observation,
         )
 
     def moon_recommendation(
@@ -799,6 +810,36 @@ def _daily_moon_index_bound(daily_sun_events: Sequence[SunEventsFacts]) -> int:
 
 def _hourly_scores(ratings: Sequence[HourlyRating]) -> list[dict[str, object]]:
     return [{"time": _utc_z(row.time), "score": row.score} for row in ratings]
+
+
+def _moon_observation_input(
+    location: Location, night_start: datetime, night_end: datetime
+) -> dict[str, object]:
+    return {
+        "latitude": location.latitude,
+        "longitude": location.longitude,
+        "night_start": _utc_z(night_start),
+        "night_end": _utc_z(night_end),
+    }
+
+
+def _moon_observation_facts(result: Mapping[str, object]) -> MoonObservationFacts:
+    return MoonObservationFacts(
+        phase=float(result["phase"]),
+        illumination=int(result["illumination"]),
+        rise=_optional_instant(result["rise"]),
+        set=_optional_instant(result["set"]),
+        always_up=bool(result["always_up"]),
+        always_down=bool(result["always_down"]),
+        samples=tuple(
+            MoonPositionSample(
+                time=_instant(row["time"]),
+                altitude=float(row["altitude"]),
+                azimuth=None if row.get("azimuth") is None else float(row["azimuth"]),
+            )
+            for row in result["samples"]
+        ),
+    )
 
 
 def _engine_error(capability: str, error: Exception) -> EngineCallError:
