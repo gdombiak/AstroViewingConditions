@@ -373,11 +373,23 @@ final class WatchBackgroundRefreshPolicyTests: XCTestCase {
         XCTAssertTrue(widget.contains("WatchComplicationCompanionDisplayPolicy"))
 
         let app = try sourceText("Sources/WatchApp/AstroViewingConditionsWatchApp.swift")
-        XCTAssertTrue(app.contains("backgroundTask(.appRefresh)"))
+        XCTAssertTrue(
+            app.contains(
+                "backgroundTask(.appRefresh(WatchBackgroundRefreshScheduler.appRefreshIdentifier))"
+            )
+        )
         XCTAssertTrue(app.contains("backgroundTask(.watchConnectivity)"))
         XCTAssertTrue(app.contains("WatchAppRuntime.bootstrap()"))
         XCTAssertFalse(app.contains("scheduleNext"))
         XCTAssertFalse(app.contains("scheduleBackgroundRefresh"))
+
+        let scheduler = try sourceText(
+            "Sources/WatchApp/Services/WatchBackgroundRefreshScheduler.swift"
+        )
+        XCTAssertTrue(scheduler.contains("static let appRefreshIdentifier"))
+        XCTAssertTrue(
+            scheduler.contains("userInfo: appRefreshIdentifier as NSSecureCoding & NSObjectProtocol")
+        )
 
         let runtime = try sourceText("Sources/WatchApp/Services/WatchAppRuntime.swift")
         XCTAssertTrue(runtime.contains("refreshIfNeeded()"))

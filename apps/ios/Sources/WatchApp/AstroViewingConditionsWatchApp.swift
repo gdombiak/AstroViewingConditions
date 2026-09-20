@@ -15,7 +15,7 @@ struct AstroViewingConditionsWatchApp: App {
         WindowGroup {
             ContentView()
         }
-        .backgroundTask(.appRefresh) { _ in
+        .backgroundTask(.appRefresh(WatchBackgroundRefreshScheduler.appRefreshIdentifier)) {
             await WatchAppRuntime.handleAppRefresh()
         }
         .backgroundTask(.watchConnectivity) {

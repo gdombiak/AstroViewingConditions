@@ -13,6 +13,10 @@ enum WatchBackgroundRefreshScheduler {
     /// Aligns with ``WatchConditionsPushAcceptance/freshConditionsInterval``.
     static let preferredInterval: TimeInterval = WatchConditionsPushAcceptance.freshConditionsInterval
 
+    /// Must match the SwiftUI `.backgroundTask(.appRefresh(_:))` identifier.
+    /// WatchKit treats this string as `scheduleBackgroundRefresh` `userInfo`.
+    static let appRefreshIdentifier = "com.astroviewing.conditions.watch.appRefresh"
+
     /// Lock-backed so WatchKit's nonisolated `scheduledCompletion` can record
     /// success without a fire-and-forget MainActor hop.
     private static let seed = SeedBox()
@@ -33,7 +37,7 @@ enum WatchBackgroundRefreshScheduler {
     private static func submit(preferredDate: Date) {
         WKApplication.shared().scheduleBackgroundRefresh(
             withPreferredDate: preferredDate,
-            userInfo: nil
+            userInfo: appRefreshIdentifier as NSSecureCoding & NSObjectProtocol
         ) { error in
             if let error {
                 print("WatchBackgroundRefreshScheduler: schedule failed: \(error.localizedDescription)")
