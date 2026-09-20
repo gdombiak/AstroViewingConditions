@@ -34,16 +34,16 @@ final class WatchBackgroundRefreshPolicyTests: XCTestCase {
 
     func testFreshDisplayablePairSkips() {
         let id = UUID()
-        let now = Date()
+        let referenceDate = date(year: 2026, month: 6, day: 1, hour: 22)
         let selected = Phase4BFixtures.selectedSaved(id: id)
         let conditions = Phase4BFixtures.analyzableConditions(
             locationID: id,
-            referenceDate: now
+            referenceDate: referenceDate
         )
         let decision = WatchBackgroundRefreshPolicy.decide(
             selectedLocation: selected,
             conditions: conditions,
-            referenceDate: now
+            referenceDate: referenceDate
         )
         XCTAssertEqual(decision, .skip(.stillFreshAndDisplayable))
     }
@@ -210,10 +210,10 @@ final class WatchBackgroundRefreshPolicyTests: XCTestCase {
             store: store,
             reloader: reloader
         )
-        let now = Date()
+        let freshAt = staleAt
         let fresh = Phase4BFixtures.analyzableConditions(
             locationID: id,
-            referenceDate: now
+            referenceDate: freshAt
         )
         XCTAssertTrue(
             WatchBackgroundRefreshPolicy.inputsMatchSelectedLocation(
@@ -225,12 +225,20 @@ final class WatchBackgroundRefreshPolicyTests: XCTestCase {
         let token = coordinator.claimLiveUpdate()
         let result = await coordinator.accept(
             conditions: fresh,
-            transported: Phase4BFixtures.validPayload(id: id, conditions: fresh),
+            transported: Phase4BFixtures.validPayload(
+                id: id,
+                conditions: fresh,
+                nightOverride: WatchActiveObservingNightScoring.nightScore(
+                    conditions: fresh,
+                    referenceDate: freshAt,
+                    timeZone: TimeZone(identifier: Phase4BFixtures.timeZoneID)
+                )
+            ),
             selectedLocation: selected,
             locationTimeZone: TimeZone(identifier: Phase4BFixtures.timeZoneID),
             reloadComplications: true,
             token: token,
-            referenceDate: now
+            referenceDate: freshAt
         )
         guard case .applied = result else {
             return XCTFail("expected applied, got \(result)")
@@ -240,7 +248,7 @@ final class WatchBackgroundRefreshPolicyTests: XCTestCase {
         guard case .success = WatchComplicationCompanionDisplayPolicy.evaluate(
             selectedLocation: selected,
             conditions: store.conditions,
-            referenceDate: now
+            referenceDate: freshAt
         ) else {
             return XCTFail("accepted pair must recover complication display")
         }
