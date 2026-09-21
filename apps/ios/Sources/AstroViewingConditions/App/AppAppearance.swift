@@ -623,7 +623,11 @@ private struct AppToolbarButtonModifier: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if palette.appearance == .field {
-            content.buttonStyle(FieldToolbarButtonStyle())
+            if #available(iOS 27.0, *) {
+                content
+            } else {
+                content.buttonStyle(FieldToolbarButtonStyle())
+            }
         } else {
             content
         }
