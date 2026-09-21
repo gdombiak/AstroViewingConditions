@@ -125,7 +125,7 @@ final class TargetScoreColorProviderTests: XCTestCase {
     /// through repeated Off → On → Off → On → Off transitions. Dashboard and Settings both
     /// write the same UserDefaults key, so the root re-render is the seam they share.
     @MainActor
-    func testFieldModeRootViewFollowsRepeatedPreferenceChanges() throws {
+    func testFieldModeRootViewFollowsRepeatedPreferenceChanges() async throws {
         let defaults = UserDefaults.standard
         let originalValue = defaults.object(forKey: FieldModePreference.key)
         defaults.set(false, forKey: FieldModePreference.key)
@@ -163,13 +163,16 @@ final class TargetScoreColorProviderTests: XCTestCase {
         // UserDefaults → @AppStorage → environment propagation is asynchronous; allow
         // headroom for full-suite load.
         let propagationTimeout: TimeInterval = 5
-        wait(for: [try XCTUnwrap(updateExpectation)], timeout: propagationTimeout)
+        await fulfillment(of: [try XCTUnwrap(updateExpectation)], timeout: propagationTimeout)
 
         for (index, isEnabled) in [true, false, true, false].enumerated() {
+            // A MainActor `wait(for:)` can resume inside the previous `onChange`.
+            // Move the next persisted write to a later main-queue turn.
+            await finishSwiftUIUpdateCycle()
             let transition = expectation(description: "Transition \(index) to \(isEnabled)")
             updateExpectation = transition
             FieldModePreference.save(isEnabled, to: defaults)
-            wait(for: [transition], timeout: propagationTimeout)
+            await fulfillment(of: [transition], timeout: propagationTimeout)
         }
 
         XCTAssertEqual(observedAppearances, [.normal, .field, .normal, .field, .normal])
@@ -346,5 +349,16 @@ private struct PaletteAppearanceProbe: View {
             .onChange(of: palette.appearance, initial: true) { _, appearance in
                 reportAppearance(appearance)
             }
+    }
+}
+
+/// Resume on a later main-queue turn so the next persisted write does not
+/// occur inside the previous SwiftUI `onChange` update transaction.
+@MainActor
+private func finishSwiftUIUpdateCycle() async {
+    await withCheckedContinuation { continuation in
+        DispatchQueue.main.async {
+            continuation.resume()
+        }
     }
 }
