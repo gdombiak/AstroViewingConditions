@@ -167,6 +167,27 @@ private struct AppAppearanceModifier: ViewModifier {
     }
 }
 
+/// Owns the persisted Field Mode preference for a window and applies the app appearance
+/// to `content`.
+///
+/// This must be a `View`. On iOS 27, an `@AppStorage` declared on the `App` struct stops
+/// re-evaluating the scene body after its first change, so Field Mode could be entered once
+/// but never left from either the Dashboard or Settings (#77). Feature views keep their own
+/// `@AppStorage(FieldModePreference.key)`; UserDefaults keeps them in sync with this root.
+struct FieldModeRootView<Content: View>: View {
+    @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .appAppearance(fieldModeEnabled: fieldModeEnabled)
+    }
+}
+
 private struct AppScreenBackgroundModifier: ViewModifier {
     @Environment(\.appPalette) private var palette
 

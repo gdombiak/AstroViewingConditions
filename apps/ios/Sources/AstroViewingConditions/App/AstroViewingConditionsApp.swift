@@ -4,8 +4,6 @@ import SharedCode
 
 @main
 struct AstroViewingConditionsApp: App {
-    @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
-
     private static var isRunningUnitTests: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
@@ -17,8 +15,10 @@ struct AstroViewingConditionsApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .appAppearance(fieldModeEnabled: fieldModeEnabled)
+            // Field Mode ownership lives in a View, not on the App struct (see FieldModeRootView).
+            FieldModeRootView {
+                ContentView()
+            }
         }
         .modelContainer(for: [SavedLocation.self, EquipmentItem.self], inMemory: Self.isRunningUnitTests)
     }

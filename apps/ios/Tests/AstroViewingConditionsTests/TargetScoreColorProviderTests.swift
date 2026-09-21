@@ -121,6 +121,80 @@ final class TargetScoreColorProviderTests: XCTestCase {
         XCTAssertEqual(Set(observedLifetimeIDs).count, 1)
     }
 
+    /// Issue #77: the root Field Mode owner must keep following the persisted preference
+    /// through repeated Off → On → Off → On → Off transitions. Dashboard and Settings both
+    /// write the same UserDefaults key, so the root re-render is the seam they share.
+    @MainActor
+    func testFieldModeRootViewFollowsRepeatedPreferenceChanges() throws {
+        let defaults = UserDefaults.standard
+        let originalValue = defaults.object(forKey: FieldModePreference.key)
+        defaults.set(false, forKey: FieldModePreference.key)
+        defer {
+            if let originalValue {
+                defaults.set(originalValue, forKey: FieldModePreference.key)
+            } else {
+                defaults.removeObject(forKey: FieldModePreference.key)
+            }
+        }
+
+        var observedAppearances: [AppAppearance] = []
+        // Each expectation is consumed once; later reports (including the deferred
+        // UserDefaults restore above) must not fulfill it again.
+        var updateExpectation: XCTestExpectation? = expectation(description: "Initial appearance")
+
+        let host = UIHostingController(
+            rootView: FieldModeRootView {
+                PaletteAppearanceProbe { appearance in
+                    guard let pending = updateExpectation else { return }
+                    updateExpectation = nil
+                    observedAppearances.append(appearance)
+                    pending.fulfill()
+                }
+            }
+        )
+        let window = UIWindow(frame: UIScreen.main.bounds)
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+
+        // UserDefaults → @AppStorage → environment propagation is asynchronous; allow
+        // headroom for full-suite load.
+        let propagationTimeout: TimeInterval = 5
+        wait(for: [try XCTUnwrap(updateExpectation)], timeout: propagationTimeout)
+
+        for (index, isEnabled) in [true, false, true, false].enumerated() {
+            let transition = expectation(description: "Transition \(index) to \(isEnabled)")
+            updateExpectation = transition
+            FieldModePreference.save(isEnabled, to: defaults)
+            wait(for: [transition], timeout: propagationTimeout)
+        }
+
+        XCTAssertEqual(observedAppearances, [.normal, .field, .normal, .field, .normal])
+    }
+
+    /// Issue #77: on iOS 27 an `@AppStorage` on the `App` struct stops re-evaluating the
+    /// scene body after its first change. The persisted Field Mode owner has to stay in a
+    /// `View` (`FieldModeRootView`); this guards against moving it back.
+    func testFieldModePreferenceIsNotOwnedByTheAppStruct() throws {
+        let appSource = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("Sources/AstroViewingConditions/App/AstroViewingConditionsApp.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(
+            appSource.contains("@AppStorage"),
+            "Keep @AppStorage out of the App struct: iOS 27 only re-evaluates it once (#77)."
+        )
+        XCTAssertTrue(appSource.contains("FieldModeRootView"))
+    }
+
     func testFieldPaletteUsesDimRedDominantCoreColors() throws {
         for color in [AppPalette.field.appBackground, AppPalette.field.elevatedBackground, AppPalette.field.primaryText, AppPalette.field.accent] {
             let components = try XCTUnwrap(UIColor(color).cgColor.components)
@@ -259,6 +333,18 @@ private struct AppearanceLifetimeProbe: View {
         Color.clear
             .onChange(of: fieldModeEnabled, initial: true) { _, _ in
                 reportLifetimeID(lifetimeID)
+            }
+    }
+}
+
+private struct PaletteAppearanceProbe: View {
+    @Environment(\.appPalette) private var palette
+    let reportAppearance: (AppAppearance) -> Void
+
+    var body: some View {
+        Color.clear
+            .onChange(of: palette.appearance, initial: true) { _, appearance in
+                reportAppearance(appearance)
             }
     }
 }
