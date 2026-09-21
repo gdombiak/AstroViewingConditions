@@ -106,6 +106,13 @@ struct ContentView: View {
                 SettingsView(unitSystem: $unitSystem)
             }
         }
+        // Inactive tabs stay mounted, so only the selected Dashboard can qualify.
+        .background {
+            AppStoreReviewPromptAnchor(
+                isDashboardSelected: selectedTab == .dashboard,
+                viewModel: dashboardViewModel
+            )
+        }
         .environment(\.unitSystem, unitSystem)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             AppTabBar(

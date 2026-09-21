@@ -89,6 +89,7 @@
 		31449032E767A74A46B328CA /* WatchComplicationCompanionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D74E45AB86D776B9F7D222A /* WatchComplicationCompanionTests.swift */; };
 		33287FC009F3EB39E49AD521 /* ActiveObservingNightResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83CFB3AB1B12E95FF2A23784 /* ActiveObservingNightResolver.swift */; };
 		33B6044EB6984BEB204486FF /* WidgetTonightPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E9363CB0A23E9F0B32F9063 /* WidgetTonightPresentation.swift */; };
+		352899710F9C6B5904DC0F90 /* AppStoreReviewPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC7AC2153525BB96B3773B3 /* AppStoreReviewPrompt.swift */; };
 		3551F4113525B86B60F08C29 /* CrossSurfaceObservingQualityResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57A476EA7DE6879D3A42DFDC /* CrossSurfaceObservingQualityResolver.swift */; };
 		3665418894F879DA41B9B2C8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CD148A5A482057F88BE13AF7 /* Assets.xcassets */; };
 		366CD4DDBE3B4DDC4576BE53 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF6C1E348C4C442BF451190 /* ContentView.swift */; };
@@ -148,6 +149,7 @@
 		59FEF76E6C495227156FBE1C /* WatchSelectedLocationTransitionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6759820236EB65989B5DF1C8 /* WatchSelectedLocationTransitionCoordinator.swift */; };
 		5BC81BC7FBD302E26756BC33 /* WatchConditionsObservablePublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 779DC95E61AD8C1505B89134 /* WatchConditionsObservablePublisher.swift */; };
 		5C01838D39C30C97427877DF /* DeepSkyCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64F803294A626A887D3DAD9C /* DeepSkyCatalogService.swift */; };
+		5DAC1CFADF101AA45646DED8 /* AppStoreReviewPromptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93252BA48638EA04F68A3B85 /* AppStoreReviewPromptTests.swift */; };
 		5E2B7F1D5AC03EA48863FB97 /* WidgetTonightTargetsSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2D9AA9C0EB405FC180299D /* WidgetTonightTargetsSummary.swift */; };
 		5F194C9B2A33A2622A5D1612 /* SunMoonCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 082A7D1648D48B54E85F0EF3 /* SunMoonCard.swift */; };
 		611A0D0267849A4B26FEC0B8 /* TargetDetailContentBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F82A848A2135C682315B4A5B /* TargetDetailContentBuilderTests.swift */; };
@@ -566,6 +568,7 @@
 		491C285D34B2BA18160A24A4 /* WatchSelectedLocationTransitionApplier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSelectedLocationTransitionApplier.swift; sourceTree = "<group>"; };
 		494AB063C6C49916D6BD3D6D /* WatchSelectedLocationTransitionCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSelectedLocationTransitionCoordinatorTests.swift; sourceTree = "<group>"; };
 		4A4DB6ADB3475395B8E93A27 /* LocationScoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationScoreTests.swift; sourceTree = "<group>"; };
+		4AC7AC2153525BB96B3773B3 /* AppStoreReviewPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStoreReviewPrompt.swift; sourceTree = "<group>"; };
 		4B6977D183A216AC824C73A8 /* SavedLocationBrightnessPublication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocationBrightnessPublication.swift; sourceTree = "<group>"; };
 		4BE20FBA13683FA9BC910AF4 /* AppGroupStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupStorage.swift; sourceTree = "<group>"; };
 		4C922D3543983ED63916AE62 /* SavedLocationModeledBrightnessStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedLocationModeledBrightnessStore.swift; sourceTree = "<group>"; };
@@ -639,6 +642,7 @@
 		901DFAC19B414560149B327A /* WatchObservingQualityCanonicalizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchObservingQualityCanonicalizer.swift; sourceTree = "<group>"; };
 		9126BF5C73BD0B105B855DE6 /* NightQualityColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightQualityColor.swift; sourceTree = "<group>"; };
 		92226DE8BA3A8071EEDCB453 /* BestSpotObservingQualityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotObservingQualityTests.swift; sourceTree = "<group>"; };
+		93252BA48638EA04F68A3B85 /* AppStoreReviewPromptTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStoreReviewPromptTests.swift; sourceTree = "<group>"; };
 		99265B8958B03CCED578B749 /* BestSpotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotView.swift; sourceTree = "<group>"; };
 		9B1DA95CCE7AC3B2926F6F78 /* BestSpotSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSettings.swift; sourceTree = "<group>"; };
 		9BDEE6998588C3B988DD4C4C /* MigrationHelperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationHelperTests.swift; sourceTree = "<group>"; };
@@ -797,6 +801,7 @@
 			isa = PBXGroup;
 			children = (
 				B89A28951A5519A958F4F554 /* ActiveObservingNightMigrationTests.swift */,
+				93252BA48638EA04F68A3B85 /* AppStoreReviewPromptTests.swift */,
 				F302F40B584E071A2408D6CC /* AstronomyServiceTests.swift */,
 				6136FC143D2DB92965B2DB72 /* AstroUnitConverterTests.swift */,
 				8CBDCF16F4D14350927A1B9D /* AstroViewingConditionsTests.entitlements */,
@@ -923,6 +928,7 @@
 			isa = PBXGroup;
 			children = (
 				AEB0886A5EE6B126547325EA /* AppAppearance.swift */,
+				4AC7AC2153525BB96B3773B3 /* AppStoreReviewPrompt.swift */,
 				ECAE2FB1C99BE13E2DAC757D /* AstroViewingConditionsApp.swift */,
 				44B13AC1E745AF0480A32328 /* ContentView.swift */,
 				6CE4571EB6BC10FA9FC1DF1A /* UnitSystemEnvironment.swift */,
@@ -1796,6 +1802,7 @@
 			files = (
 				1EAB35011886AD28FDF5DE0A /* AdaptiveTargetSheet.swift in Sources */,
 				2925B2002B9DD16AD0B1239A /* AppAppearance.swift in Sources */,
+				352899710F9C6B5904DC0F90 /* AppStoreReviewPrompt.swift in Sources */,
 				B571244AE8EAF85642F04100 /* AstroViewingConditionsApp.swift in Sources */,
 				17266FA86858825588CA64C0 /* BestSpotResultCard.swift in Sources */,
 				143EBE16CD71B3766BE1DED2 /* BestSpotView.swift in Sources */,
@@ -1963,6 +1970,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				44C3333901A8709C6132C767 /* ActiveObservingNightMigrationTests.swift in Sources */,
+				5DAC1CFADF101AA45646DED8 /* AppStoreReviewPromptTests.swift in Sources */,
 				28A05A681E4DAD5964DE9B6A /* AstroUnitConverterTests.swift in Sources */,
 				939005FFFC1C2ADC4EEB6E11 /* AstronomyServiceTests.swift in Sources */,
 				C2D4D2900BED156FC28AFD59 /* BestSpotObservingQualityTests.swift in Sources */,
