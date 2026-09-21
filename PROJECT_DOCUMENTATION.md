@@ -461,7 +461,9 @@ cd /Users/gaston/repo/AstroViewingConditions
 xcodebuild -project apps/ios/AstroViewingConditions.xcodeproj -scheme AstroViewingConditions -destination 'platform=iOS Simulator,name=iPhone 17 Pro Max' test
 ```
 
-If `apps/ios/project.yml` changes, regenerate the Xcode project with `(cd apps/ios && xcodegen generate)` from the repository root before committing the project file changes.
+If `apps/ios/project.yml` changes, regenerate the Xcode project with `(cd apps/ios && xcodegen generate)` from the repository root before committing the project file changes. XcodeGen 2.46.0 or newer is required (`options.minimumXcodeGenVersion` in `project.yml`); older releases order targets differently and would rewrite the whole project file.
+
+Known Xcode 27 churn: opening the project in Xcode 27 rewrites `AstroViewingConditionsWatch.xcscheme` (it drops default attributes such as `runPostActionsOnFailure="NO"` and empty `CommandLineArguments`). Current XcodeGen/XcodeProj always emit those defaults, so `xcodegen generate` restores the checked-in form. Do not commit the Xcode-rewritten scheme; regenerate instead.
 
 ### Key Files to Understand
 - `apps/ios/Sources/AstroViewingConditions/Features/Dashboard/DashboardView.swift` - Main iOS conditions UI

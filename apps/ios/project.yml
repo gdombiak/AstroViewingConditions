@@ -4,7 +4,12 @@ options:
   deploymentTarget:
     iOS: "18.0"
     watchOS: "11.0"
-  xcodeVersion: "26.5"
+  # Sets LastUpgradeCheck / LastUpgradeVersion metadata in the generated project
+  # and schemes; it does not affect the project format or XcodeGen's scheme
+  # serialization shape.
+  xcodeVersion: "27.0"
+  # The checked-in project depends on 2.46.0 target declaration ordering.
+  minimumXcodeGenVersion: "2.46.0"
 
 settings:
   base:

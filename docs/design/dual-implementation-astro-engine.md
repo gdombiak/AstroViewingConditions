@@ -41,7 +41,7 @@ This is **not** “feature parity of the whole app,” not a second UI, not a 1:
 
 | Area | Reality |
 |---|---|
-| Product | Open-source AGPL-3.0 SwiftUI app, iOS 18 + watchOS 11, Swift 6, XcodeGen via root `project.yml` (`xcodeVersion: "26.5"`), checked-in `AstroViewingConditions.xcodeproj`. |
+| Product | Open-source AGPL-3.0 SwiftUI app, iOS 18 + watchOS 11, Swift 6, XcodeGen via `apps/ios/project.yml` (`xcodeVersion: "27.0"`), checked-in `AstroViewingConditions.xcodeproj`. |
 | Data | Open-Meteo weather + geocoding; SunCalc SPM (`nikolajjensen/SunCalc`); optional N2YO ISS; curated local catalog (**29** deep-sky objects in `CuratedDeepSkyCatalogProvider` plus Moon and four planets); offline LPATLAS1 binary ~10 MiB bundled only in the iOS app (`Sources/AstroViewingConditions/Resources/LightPollution/light_pollution_global_v1.bin`). |
 | Backend | None. Documented product principle in `PROJECT_DOCUMENTATION.md` and `FEATURES/FEATURE_ROADMAP.md`. |
 | Air quality | **Not present.** Out of 1.0. Schema placeholder only if needed later. |
@@ -2057,7 +2057,7 @@ Python live astronomy uses Skyfield for the Phase 16 sun/moon scope. Whether pla
 ## References
 
 - `/Users/gaston/repo/AstroViewingConditions/.github/workflows/ios-tests.yml`
-- `/Users/gaston/repo/AstroViewingConditions/project.yml` (`xcodeVersion: "26.5"`)
+- `/Users/gaston/repo/AstroViewingConditions/apps/ios/project.yml` (`xcodeVersion: "27.0"`)
 - `/Users/gaston/repo/AstroViewingConditions/open_in_xcode.sh`
 - `/Users/gaston/repo/AstroViewingConditions/Sources/SharedCode/Core/Utilities/ObservingQualityCalculator.swift`
 - `/Users/gaston/repo/AstroViewingConditions/Sources/SharedCode/Core/Utilities/NightQualityAnalyzer.swift`
