@@ -365,9 +365,17 @@ private struct NavigationBarTitleColorConfigurator: UIViewControllerRepresentabl
     }
 }
 
-private final class NavigationBarTitleColorViewController: UIViewController {
+final class NavigationBarTitleColorViewController: UIViewController {
     private var palette: AppPalette = .normal
-    private var isRetryScheduled = false
+
+    // SwiftUI calls `updateUIViewController` before the controller has a parent, so the
+    // first update finds no navigation controller. Attachment (`didMove(toParent:)`) is
+    // the point where `navigationController` becomes reachable; layout and appearance
+    // callbacks re-apply after SwiftUI reconfigures the bar (pushes, pops, title changes).
+    override func didMove(toParent parent: UIViewController?) {
+        super.didMove(toParent: parent)
+        applyCurrentPalette()
+    }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
@@ -385,17 +393,13 @@ private final class NavigationBarTitleColorViewController: UIViewController {
     }
 
     private func applyCurrentPalette() {
+        // Without a navigation controller there is nothing to configure. No deferred
+        // retry: the next attachment, appearance, or layout callback applies the stored
+        // palette, so a controller that never attaches never schedules work.
         guard let navigationBar = navigationController?.navigationBar else {
-            guard !isRetryScheduled else { return }
-            isRetryScheduled = true
-            DispatchQueue.main.async { [weak self] in
-                self?.isRetryScheduled = false
-                self?.applyCurrentPalette()
-            }
             return
         }
 
-        isRetryScheduled = false
         let navigationItem = navigationController?.topViewController?.navigationItem
 
         if palette.appearance == .field {

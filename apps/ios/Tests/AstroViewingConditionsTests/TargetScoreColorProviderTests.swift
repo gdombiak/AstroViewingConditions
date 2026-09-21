@@ -198,6 +198,99 @@ final class TargetScoreColorProviderTests: XCTestCase {
         XCTAssertTrue(appSource.contains("FieldModeRootView"))
     }
 
+    // MARK: - Navigation title colors (Issue #78)
+
+    /// SwiftUI updates the representable before it has a parent. The stored palette must be
+    /// applied once the controller is attached, without any deferred retry.
+    @MainActor
+    func testNavigationTitleColorControllerAppliesStoredPaletteOnAttachment() throws {
+        let controller = NavigationBarTitleColorViewController()
+        controller.update(palette: .field)
+
+        let root = UIViewController()
+        let navigation = UINavigationController(rootViewController: root)
+        assertNoTitleColorOverrides(in: navigation, topItem: root.navigationItem)
+
+        root.addChild(controller)
+        root.view.addSubview(controller.view)
+        controller.didMove(toParent: root)
+
+        try assertFieldTitleColors(in: navigation, topItem: root.navigationItem)
+    }
+
+    @MainActor
+    func testNavigationTitleColorControllerFollowsRepeatedPaletteChanges() throws {
+        let controller = NavigationBarTitleColorViewController()
+        let root = UIViewController()
+        let navigation = UINavigationController(rootViewController: root)
+        root.addChild(controller)
+        root.view.addSubview(controller.view)
+        controller.didMove(toParent: root)
+
+        for palette in [AppPalette.field, .normal, .field, .normal] {
+            controller.update(palette: palette)
+            if palette.appearance == .field {
+                try assertFieldTitleColors(in: navigation, topItem: root.navigationItem)
+            } else {
+                assertNoTitleColorOverrides(in: navigation, topItem: root.navigationItem)
+            }
+        }
+    }
+
+    private func assertFieldTitleColors(
+        in navigation: UINavigationController,
+        topItem: UINavigationItem,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        let bar = navigation.navigationBar
+        let appearances = [
+            bar.standardAppearance, bar.scrollEdgeAppearance,
+            bar.compactAppearance, bar.compactScrollEdgeAppearance,
+            topItem.standardAppearance, topItem.scrollEdgeAppearance,
+            topItem.compactAppearance, topItem.compactScrollEdgeAppearance
+        ]
+
+        for appearance in appearances {
+            let appearance = try XCTUnwrap(appearance, file: file, line: line)
+            let inlineColor = try XCTUnwrap(
+                appearance.titleTextAttributes[.foregroundColor] as? UIColor, file: file, line: line
+            )
+            let largeColor = try XCTUnwrap(
+                appearance.largeTitleTextAttributes[.foregroundColor] as? UIColor, file: file, line: line
+            )
+            XCTAssertTrue(inlineColor.matches(AppPalette.field.primaryText), file: file, line: line)
+            XCTAssertTrue(largeColor.matches(AppPalette.field.displayTitleText), file: file, line: line)
+        }
+    }
+
+    private func assertNoTitleColorOverrides(
+        in navigation: UINavigationController,
+        topItem: UINavigationItem,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        // A cleared appearance reports UIKit's default label color, so "no override" means
+        // "not the Field Mode colors" rather than a missing attribute.
+        let bar = navigation.navigationBar
+        let barAppearances = [
+            bar.standardAppearance, bar.scrollEdgeAppearance,
+            bar.compactAppearance, bar.compactScrollEdgeAppearance
+        ]
+        for appearance in barAppearances.compactMap({ $0 }) {
+            if let inlineColor = appearance.titleTextAttributes[.foregroundColor] as? UIColor {
+                XCTAssertFalse(inlineColor.matches(AppPalette.field.primaryText), file: file, line: line)
+            }
+            if let largeColor = appearance.largeTitleTextAttributes[.foregroundColor] as? UIColor {
+                XCTAssertFalse(largeColor.matches(AppPalette.field.displayTitleText), file: file, line: line)
+            }
+        }
+        XCTAssertNil(topItem.standardAppearance, file: file, line: line)
+        XCTAssertNil(topItem.scrollEdgeAppearance, file: file, line: line)
+        XCTAssertNil(topItem.compactAppearance, file: file, line: line)
+        XCTAssertNil(topItem.compactScrollEdgeAppearance, file: file, line: line)
+    }
+
     func testFieldPaletteUsesDimRedDominantCoreColors() throws {
         for color in [AppPalette.field.appBackground, AppPalette.field.elevatedBackground, AppPalette.field.primaryText, AppPalette.field.accent] {
             let components = try XCTUnwrap(UIColor(color).cgColor.components)
@@ -360,5 +453,18 @@ private func finishSwiftUIUpdateCycle() async {
         DispatchQueue.main.async {
             continuation.resume()
         }
+    }
+}
+
+private extension UIColor {
+    /// Compares resolved RGB components against a SwiftUI color (dark trait, as Field Mode runs).
+    func matches(_ color: SwiftUI.Color) -> Bool {
+        var lhs: (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)
+        var rhs: (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)
+        let traits = UITraitCollection(userInterfaceStyle: .dark)
+        guard resolvedColor(with: traits).getRed(&lhs.0, green: &lhs.1, blue: &lhs.2, alpha: &lhs.3),
+              UIColor(color).resolvedColor(with: traits).getRed(&rhs.0, green: &rhs.1, blue: &rhs.2, alpha: &rhs.3)
+        else { return false }
+        return abs(lhs.0 - rhs.0) < 0.000_1 && abs(lhs.1 - rhs.1) < 0.000_1 && abs(lhs.2 - rhs.2) < 0.000_1
     }
 }
