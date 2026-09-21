@@ -108,11 +108,16 @@ public struct SettingsView: View {
                             .font(.subheadline)
                         Text(
                             "Modeled zenith sky brightness from David Lorenz’s Light Pollution Atlas "
-                                + "(reduced LPATLAS1 packaging). Used with permission for offline lookup. "
-                                + "https://djlorenz.github.io/astronomy/lp/"
+                                + "(reduced LPATLAS1 packaging). Used with permission for offline lookup."
                         )
                         .font(.footnote)
                         .appSecondaryForeground()
+                        if let atlasURL = URL(string: "https://djlorenz.github.io/astronomy/lp/") {
+                            Link(destination: atlasURL) {
+                                Label("View Light Pollution Atlas", systemImage: "arrow.up.right.square")
+                                    .font(.footnote)
+                            }
+                        }
                     }
                 }
                 .appListRowSurface()
