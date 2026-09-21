@@ -18,8 +18,11 @@ public struct DashboardView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.appPalette) private var palette
     @Environment(\.unitSystem) private var unitSystem
+    @Environment(\.openURL) private var openURL
     @AppStorage("n2yoApiKey") private var n2yoApiKey: String = ""
     @AppStorage(FieldModePreference.key) private var fieldModeEnabled = FieldModePreference.defaultValue
+    @AppStorage(AstronomerLaunchAnnouncement.defaultsKey)
+    private var seenAstronomerAnnouncementIdentity = ""
     @SceneStorage("dashboardSelectedDay") private var storedSelectedDayRawValue: Int = DashboardViewModel.DaySelection.today.rawValue
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
     @Query(sort: \EquipmentItem.name) private var equipmentItems: [EquipmentItem]
@@ -298,6 +301,13 @@ public struct DashboardView: View {
                     staleDataBanner
                 }
 
+                if showsAstronomerAnnouncement {
+                    AstronomerLaunchAnnouncementCard(
+                        onOpen: openAstronomerAnnouncement,
+                        onDismiss: { recordAstronomerAnnouncement(.dismiss) }
+                    )
+                }
+
                 daySelector
                     .id(DashboardSection.top)
 
@@ -494,6 +504,22 @@ public struct DashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
     
+    private var showsAstronomerAnnouncement: Bool {
+        AstronomerLaunchAnnouncement.showsAnnouncement(
+            seenIdentity: seenAstronomerAnnouncementIdentity
+        )
+    }
+
+    private func openAstronomerAnnouncement() {
+        recordAstronomerAnnouncement(.open)
+        openURL(AstronomerDestination.canonicalURL)
+    }
+
+    private func recordAstronomerAnnouncement(_ action: AstronomerLaunchAnnouncement.Action) {
+        seenAstronomerAnnouncementIdentity = AstronomerLaunchAnnouncementStore(defaults: .standard)
+            .record(action)
+    }
+
     private var daySelector: some View {
         AppSegmentedPicker(
             selection: Binding(

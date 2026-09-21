@@ -75,6 +75,8 @@ public struct SettingsView: View {
                                 .appSecondaryForeground()
                         }
                     }
+
+                    astronomerEntry
                 }
                 .appListRowSurface()
                 
@@ -197,6 +199,34 @@ public struct SettingsView: View {
             }
             .appNavigationTitle("Settings")
         }
+    }
+
+    private var astronomerEntry: some View {
+        Link(destination: AstronomerSettingsEntry.url) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(AstronomerSettingsEntry.title, systemImage: AstronomerSettingsEntry.systemImage)
+                        .font(.subheadline)
+                    Text(AstronomerSettingsEntry.summary)
+                        .font(.footnote)
+                        .appSecondaryForeground()
+                    Text(AstronomerSettingsEntry.grokRequirement)
+                        .font(.footnote)
+                        .appSecondaryForeground()
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "arrow.up.right.square")
+                    .font(.footnote)
+                    .appSecondaryForeground()
+                    .accessibilityHidden(true)
+                    .padding(.top, 2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(AstronomerLaunchAnnouncement.openActionHint)
     }
 
     private var fieldModeBinding: Binding<Bool> {

@@ -127,6 +127,7 @@
 		48382C8CC194BC6C3E4B55EF /* WatchModeledBrightnessCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CCBB8E9574BE749C41A8B33 /* WatchModeledBrightnessCacheTests.swift */; };
 		48A4ACC2151FC683ECC3C4B6 /* TargetScoreColorProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C392F180FD7F88294D080E3C /* TargetScoreColorProviderTests.swift */; };
 		48BA2060FB18751F7846CE28 /* WatchObservingQualityPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA1317E566804F6BDAF3AD8D /* WatchObservingQualityPayload.swift */; };
+		49098AE179B35F0A16DD3DE8 /* AstronomerLaunchAnnouncementTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD959883CB5C94A1523C502 /* AstronomerLaunchAnnouncementTests.swift */; };
 		4A4E4D7A869511E7D5A5F840 /* CurrentLocationModeledBrightnessStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 254BB41D2CA1150E44300850 /* CurrentLocationModeledBrightnessStore.swift */; };
 		4B3CCE281D78ACA31B2CFBF3 /* TargetObservingGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D7E72522ADFCD93820D42B0 /* TargetObservingGuide.swift */; };
 		4B6F9AD6CCC0F86367B215B7 /* CrossSurfaceBrightnessSampleLoading.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC5D7B136A369409CE0B8AEC /* CrossSurfaceBrightnessSampleLoading.swift */; };
@@ -137,6 +138,7 @@
 		4D5028CB16AD14C052F71297 /* SavedLocationModeledBrightnessStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C922D3543983ED63916AE62 /* SavedLocationModeledBrightnessStore.swift */; };
 		4E9BAF05442E452EE828A41B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44B13AC1E745AF0480A32328 /* ContentView.swift */; };
 		4F6717AA7803A343D4016B19 /* NightQualityAnalyzerHostTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2682083B9852AAE4BF0A0E4D /* NightQualityAnalyzerHostTests.swift */; };
+		5126A865FABCB13AB955ACDA /* AstronomerLaunchAnnouncementCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EF78B11D0828F0019A06961 /* AstronomerLaunchAnnouncementCard.swift */; };
 		51AE20D8B860BBE5E1E6863D /* TargetImageManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C39499FB2B751C4EBFA997F /* TargetImageManifest.swift */; };
 		52661AABDBFD4EB689AF81D4 /* WatchAppRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D5BCD496D3BADE6AC67C023 /* WatchAppRuntime.swift */; };
 		526FCB440CE76A3F992DD28B /* AppGroupStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BE20FBA13683FA9BC910AF4 /* AppGroupStorage.swift */; };
@@ -306,6 +308,7 @@
 		D03CF29168E02EA04999E48C /* NightQualityAnalyzer+ViewingConditions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E35C9000065E1453B6C155F /* NightQualityAnalyzer+ViewingConditions.swift */; };
 		D089AB3FBA7EBFC33DC90137 /* TonightTargetsPersistencePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67444F25F43433D77A66DA37 /* TonightTargetsPersistencePolicy.swift */; };
 		D092EC9CE5F4AB708E3738CD /* CrossSurfaceObservingQualitySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BB0C9023956EB1EEB30929C /* CrossSurfaceObservingQualitySnapshot.swift */; };
+		D0F5FABFCBA92E210348F6E0 /* AstronomerAnnouncement.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEE7AF3FF57B7A4E091506A7 /* AstronomerAnnouncement.swift */; };
 		D142B98F8AF5D59165F3C91F /* ThreeNightOutlookWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = C78F63FFE8F15CB156C4C1AD /* ThreeNightOutlookWidget.swift */; };
 		D20FC86AB50741DEA538F333 /* SavedLocation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B3A2113D1BA6BBCE0A60966 /* SavedLocation.swift */; };
 		D23CF5150688EB9EF25B5403 /* WatchConditionsLocationChangeInvalidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABFA1FED547FF6305521AE08 /* WatchConditionsLocationChangeInvalidationTests.swift */; };
@@ -609,7 +612,9 @@
 		6CE4571EB6BC10FA9FC1DF1A /* UnitSystemEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnitSystemEnvironment.swift; sourceTree = "<group>"; };
 		6DA60976B07F06290A162396 /* AstroViewingConditionsWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AstroViewingConditionsWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6E28DF58ADA681CEFE8BFAC6 /* TargetImageManifestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetImageManifestTests.swift; sourceTree = "<group>"; };
+		6EF78B11D0828F0019A06961 /* AstronomerLaunchAnnouncementCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstronomerLaunchAnnouncementCard.swift; sourceTree = "<group>"; };
 		6FAB7C0B88DF3F6FFD1D106A /* WatchCompanionSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCompanionSnapshot.swift; sourceTree = "<group>"; };
+		6FD959883CB5C94A1523C502 /* AstronomerLaunchAnnouncementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstronomerLaunchAnnouncementTests.swift; sourceTree = "<group>"; };
 		70E23D725B4DDE7B7B6C2D0E /* BestSpotSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSettingsTests.swift; sourceTree = "<group>"; };
 		730DD3985DD7ED0570A51E24 /* WidgetNightSummaryPublisher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetNightSummaryPublisher.swift; sourceTree = "<group>"; };
 		7549069C120C6495548EE838 /* NightConditionsWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = NightConditionsWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -711,6 +716,7 @@
 		D8C00028D8863E7C8B65B901 /* MixedTargetCompositionMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MixedTargetCompositionMigrationTests.swift; sourceTree = "<group>"; };
 		DB656310560DB266848F6AF6 /* TargetEquipmentRequirements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TargetEquipmentRequirements.swift; sourceTree = "<group>"; };
 		DC42C82F0D86D73AFBEA9B96 /* LocationTimeZoneResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTimeZoneResolverTests.swift; sourceTree = "<group>"; };
+		DEE7AF3FF57B7A4E091506A7 /* AstronomerAnnouncement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AstronomerAnnouncement.swift; sourceTree = "<group>"; };
 		DF1ADDEE10299D675C007C41 /* BestSpotSearcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestSpotSearcherTests.swift; sourceTree = "<group>"; };
 		DF6DE0868BA6C1EF01EC141E /* CurrentLocationBrightnessPublishing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrentLocationBrightnessPublishing.swift; sourceTree = "<group>"; };
 		E04BCE32AE054FFBCC38C5F4 /* TonightTargetsWidgetPayloadBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TonightTargetsWidgetPayloadBuilder.swift; sourceTree = "<group>"; };
@@ -802,6 +808,7 @@
 			children = (
 				B89A28951A5519A958F4F554 /* ActiveObservingNightMigrationTests.swift */,
 				93252BA48638EA04F68A3B85 /* AppStoreReviewPromptTests.swift */,
+				6FD959883CB5C94A1523C502 /* AstronomerLaunchAnnouncementTests.swift */,
 				F302F40B584E071A2408D6CC /* AstronomyServiceTests.swift */,
 				6136FC143D2DB92965B2DB72 /* AstroUnitConverterTests.swift */,
 				8CBDCF16F4D14350927A1B9D /* AstroViewingConditionsTests.entitlements */,
@@ -1057,6 +1064,7 @@
 		9DDBAECF08288C55BB4BC5D0 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				DEE7AF3FF57B7A4E091506A7 /* AstronomerAnnouncement.swift */,
 				E4CE49D59CAF80BEC81FD417 /* BestSpot */,
 				B776EE3D4311802F674D557F /* Dashboard */,
 				94361E423AB0121A46450B67 /* Locations */,
@@ -1188,6 +1196,7 @@
 			isa = PBXGroup;
 			children = (
 				35C6F6DA634C8883E7D2FB18 /* AdaptiveTargetSheet.swift */,
+				6EF78B11D0828F0019A06961 /* AstronomerLaunchAnnouncementCard.swift */,
 				4F63A285A3DE963B6E6E8828 /* BestTargetsListView.swift */,
 				ED12614074F110C4C95D4AAA /* DashboardCardStyle.swift */,
 				1FFEAF115DA49831689C1CD2 /* DashboardView.swift */,
@@ -1804,6 +1813,8 @@
 				2925B2002B9DD16AD0B1239A /* AppAppearance.swift in Sources */,
 				352899710F9C6B5904DC0F90 /* AppStoreReviewPrompt.swift in Sources */,
 				B571244AE8EAF85642F04100 /* AstroViewingConditionsApp.swift in Sources */,
+				D0F5FABFCBA92E210348F6E0 /* AstronomerAnnouncement.swift in Sources */,
+				5126A865FABCB13AB955ACDA /* AstronomerLaunchAnnouncementCard.swift in Sources */,
 				17266FA86858825588CA64C0 /* BestSpotResultCard.swift in Sources */,
 				143EBE16CD71B3766BE1DED2 /* BestSpotView.swift in Sources */,
 				8A337713E46661E3CDA11B10 /* BestSpotViewModel.swift in Sources */,
@@ -1972,6 +1983,7 @@
 				44C3333901A8709C6132C767 /* ActiveObservingNightMigrationTests.swift in Sources */,
 				5DAC1CFADF101AA45646DED8 /* AppStoreReviewPromptTests.swift in Sources */,
 				28A05A681E4DAD5964DE9B6A /* AstroUnitConverterTests.swift in Sources */,
+				49098AE179B35F0A16DD3DE8 /* AstronomerLaunchAnnouncementTests.swift in Sources */,
 				939005FFFC1C2ADC4EEB6E11 /* AstronomyServiceTests.swift in Sources */,
 				C2D4D2900BED156FC28AFD59 /* BestSpotObservingQualityTests.swift in Sources */,
 				59EDAA60817AE9AA217A688C /* BestSpotSearcherTests.swift in Sources */,
