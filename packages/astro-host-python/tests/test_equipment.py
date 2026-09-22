@@ -242,6 +242,38 @@ def test_reserved_naked_eye_name_and_alias_rejected(store) -> None:
         store.save(s30(aliases=("naked eye",)))
 
 
+def test_focal_length_is_optional_and_absent_from_match_rows(store) -> None:
+    unknown = store.save(virtuoso(id=VIRTUOSO_ID)).item
+    assert unknown is not None
+    assert unknown.focal_length_mm is None
+    saved = store.save(virtuoso(id=VIRTUOSO_ID, focal_length_mm=750)).item
+    assert saved is not None
+    assert saved.focal_length_mm == 750
+    row = saved.to_capability_fact().as_engine_row()
+    assert set(row) == {"key", "type", "aperture_mm", "magnification"}
+    assert row["type"] == "visualTelescope"
+    assert row["aperture_mm"] == 150
+    assert row["magnification"] is None
+    assert "focal_length_mm" not in row
+    rows = compose_active(store.load()).engine_capabilities()
+    assert row in rows
+    assert all(
+        set(item) == {"key", "type", "aperture_mm", "magnification"} for item in rows
+    )
+
+
+def test_binoculars_reject_focal_length(store) -> None:
+    with pytest.raises(InvalidEquipmentError, match="not used for binoculars"):
+        store.save(binoculars(focal_length_mm=400))
+
+
+def test_non_positive_focal_length_is_rejected(store) -> None:
+    with pytest.raises(InvalidEquipmentError):
+        store.save(virtuoso(focal_length_mm=0))
+    with pytest.raises(InvalidEquipmentError):
+        store.save(s30(focal_length_mm=True))  # type: ignore[arg-type]
+
+
 def test_binoculars_require_magnification(store) -> None:
     with pytest.raises(InvalidEquipmentError):
         store.save(binoculars(magnification=None))

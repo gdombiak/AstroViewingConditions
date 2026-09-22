@@ -1,0 +1,6 @@
+capability: optics.calculate
+engine_semver: ">=1.0.0 <2.0.0"
+equality: optics_calculate
+hosts: [swift, python]
+origin: manual
+notes: 750 mm focal length, 150 mm aperture, 8 mm eyepiece, 72 degree apparent field.

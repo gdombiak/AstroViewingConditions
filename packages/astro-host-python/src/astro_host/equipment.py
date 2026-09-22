@@ -60,6 +60,7 @@ _KNOWN_ITEM_KEYS = frozenset(
         "aperture_mm",
         "aperture_unit",
         "magnification",
+        "focal_length_mm",
         "aliases",
     }
 )
@@ -419,6 +420,24 @@ def validate_optics(
     return aperture_mm, aperture_unit, None
 
 
+def validate_focal_length(
+    type: EquipmentType, focal_length_mm: object
+) -> float | None:
+    """Optional telescope focal length. Never inferred, and not for binoculars."""
+    if type is EquipmentType.BINOCULARS:
+        if focal_length_mm is not None:
+            raise InvalidEquipmentError(
+                "focal_length_mm is not used for binoculars"
+            )
+        return None
+    if focal_length_mm is None:
+        return None
+    number = _finite_number(focal_length_mm, "focal_length_mm")
+    if number <= 0:
+        raise InvalidEquipmentError("focal_length_mm must be greater than zero")
+    return number
+
+
 def _finite_number(value: object, name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise InvalidEquipmentError(f"{name} must be a number")
@@ -597,6 +616,7 @@ def _validated_from_draft(draft: SavedEquipmentDraft) -> SavedEquipment:
     aperture_mm, unit, magnification = validate_optics(
         draft.type, draft.aperture, draft.aperture_unit, draft.magnification
     )
+    focal_length_mm = validate_focal_length(draft.type, draft.focal_length_mm)
     return SavedEquipment(
         id=identity,
         name=name,
@@ -605,6 +625,7 @@ def _validated_from_draft(draft: SavedEquipmentDraft) -> SavedEquipment:
         aperture_unit=unit,
         aliases=aliases,
         magnification=magnification,
+        focal_length_mm=focal_length_mm,
     )
 
 
@@ -734,6 +755,10 @@ def _encode_item(
         row.pop("magnification", None)
     else:
         row["magnification"] = item.magnification
+    if item.focal_length_mm is None:
+        row.pop("focal_length_mm", None)
+    else:
+        row["focal_length_mm"] = item.focal_length_mm
     return row
 
 
@@ -847,6 +872,10 @@ def _decode_item(value: object) -> tuple[SavedEquipment, dict[str, object]]:
         if "magnification" in value and value["magnification"] is not None:
             raise InvalidEquipmentError("magnification is not used for telescopes")
         magnification = None
+    if "focal_length_mm" in value and value["focal_length_mm"] is not None:
+        focal_length_mm = validate_focal_length(kind, value["focal_length_mm"])
+    else:
+        focal_length_mm = None
     saved = SavedEquipment(
         id=identity,
         name=name,
@@ -855,6 +884,7 @@ def _decode_item(value: object) -> tuple[SavedEquipment, dict[str, object]]:
         aperture_unit=unit,
         aliases=aliases,
         magnification=magnification,
+        focal_length_mm=focal_length_mm,
     )
     extra = {
         key: extra_value

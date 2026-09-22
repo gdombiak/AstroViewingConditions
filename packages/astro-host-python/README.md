@@ -251,6 +251,8 @@ apps/cli/astro-host agent.conditions --input request.json --pretty
 apps/cli/astro-host agent.locations --input locations.json --pretty
 apps/cli/astro-host agent.places --input places.json --pretty
 apps/cli/astro-host agent.equipment --input equipment.json --pretty
+apps/cli/astro-host agent.eyepieces --input eyepieces.json --pretty
+apps/cli/astro-host agent.optics --input optics.json --pretty
 apps/cli/astro-host agent.recommendations --input request.json --pretty
 apps/cli/astro-host agent.outlook --input request.json --pretty
 apps/cli/astro-host agent.sky_facts --input request.json --pretty
@@ -269,9 +271,16 @@ weather JSON file; otherwise `$ASTRO_HOST_STATE_DIR/weather-cache.json` or
 saved-location file; otherwise `$ASTRO_HOST_STATE_DIR/locations.json` or
 `~/.astro-host/locations.json`. Optional `--equipment-path` selects the
 saved-equipment file; otherwise `$ASTRO_HOST_STATE_DIR/equipment.json` or
-`~/.astro-host/equipment.json`. The three files are independent: `agent.locations`
-does not open the weather cache or equipment store, `agent.equipment` does not
-open locations or weather, and `agent.places` does not open any of them.
+`~/.astro-host/equipment.json`. Optional `--eyepieces-path` selects the eyepiece
+inventory; otherwise `$ASTRO_HOST_STATE_DIR/eyepieces.json` or
+`~/.astro-host/eyepieces.json`. Saved telescopes may include an optional
+`focal_length_mm`. Eyepieces are a separate inventory, not an equipment type.
+`agent.optics` asks `optics.calculate` for magnification, exit pupil, and
+approximate true field. Saved combinations require a visual telescope. Explicit
+numbers stay generic. It does not rank eyepieces or change `equipment.match`.
+The state files are independent: `agent.locations` does not open the weather
+cache, equipment store, or eyepiece store, `agent.equipment` does not open
+locations, weather, or eyepieces, and `agent.places` does not open any of them.
 `agent.conditions` and `agent.sky_facts` open the location store only when
 `location` is omitted, to read the selected saved site. An explicit `location`
 object does not open the store. `agent.recommendations` uses the same location rule, always opens the

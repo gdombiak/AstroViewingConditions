@@ -146,5 +146,12 @@ statuses and the host's headline score: only an available row with a score is
 eligible, the highest score wins, and a tie keeps the earliest eligible row.
 Labels, verdicts, status text, tone, best windows, the scores themselves and
 every cache, persistence, freshness and timeline concern stay host-owned. See the
-[night-outlook procedure](procedures/night-outlook.md). Public capability count is
-34; version remains unreleased 1.0.0.
+[night-outlook procedure](procedures/night-outlook.md). That slice left the
+public capability count at 34; version remained unreleased 1.0.0.
+
+Visual optics: `optics.calculate` returns magnification, exit pupil, and
+approximate true field of view from explicit focal lengths, aperture, and
+apparent field. Missing inputs stay null. Approximate true field is apparent
+field divided by magnification. The capability does not rank eyepieces or read
+saved equipment. See the [optics procedure](procedures/optics-calculate.md).
+Public capability count is 39; version remains unreleased 1.0.0.

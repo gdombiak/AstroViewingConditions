@@ -50,6 +50,7 @@ Eval allow-list (not the public Python CLI):
   night_conditions.select_cloud_advisory
   observing_night.compose_outlook
   observing_night.select_best
+  optics.calculate
 """
 
 private let supportedCapabilities: Set<String> = [
@@ -90,6 +91,7 @@ private let supportedCapabilities: Set<String> = [
     "night_conditions.select_cloud_advisory",
     "observing_night.compose_outlook",
     "observing_night.select_best",
+    "optics.calculate",
 ]
 
 @main

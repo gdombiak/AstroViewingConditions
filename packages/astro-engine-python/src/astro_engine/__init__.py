@@ -21,6 +21,7 @@ from astro_engine.light_pollution import LightPollutionArtifact
 from astro_engine.night_conditions import analyze_night_conditions, public_night_score
 from astro_engine.night_forecast import derive_window as derive_night_forecast_window
 from astro_engine.observing_quality import assess_observing_quality
+from astro_engine.optics import calculate_optics
 from astro_engine.seeing import seeing_penalty
 from astro_engine.transparency import transparency_penalty
 from astro_engine.weather import decode_weather
@@ -41,6 +42,7 @@ __all__ = [
     "filter_recommendable",
     "generate_grid",
     "load_deep_sky_catalog",
+    "calculate_optics",
     "public_night_score",
     "score_fog",
     "seeing_penalty",

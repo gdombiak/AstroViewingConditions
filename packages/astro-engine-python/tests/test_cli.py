@@ -125,6 +125,11 @@ TRAILING_FIXTURES: tuple[tuple[str, str, str], ...] = (
         "fixtures/capabilities/night-outlook-select-best",
         "highest-score-wins-v1",
     ),
+    (
+        "optics.calculate",
+        "fixtures/capabilities/optics-calculate",
+        "virtuoso-delos-v1",
+    ),
 )
 
 UNIMPLEMENTED_IDS = (
@@ -192,8 +197,8 @@ def test_public_allow_list_matches_catalog_order() -> None:
          TRAILING_FIXTURES[1][0], TRAILING_FIXTURES[2][0], TRAILING_FIXTURES[3][0],
          TRAILING_FIXTURES[4][0], TRAILING_FIXTURES[5][0], TRAILING_FIXTURES[6][0],
          TRAILING_FIXTURES[7][0], TRAILING_FIXTURES[8][0],
-         TRAILING_FIXTURES[9][0])
-    assert len(set(PUBLIC_CAPABILITY_IDS)) == 38
+         TRAILING_FIXTURES[9][0], TRAILING_FIXTURES[10][0])
+    assert len(set(PUBLIC_CAPABILITY_IDS)) == 39
 
 
 def test_every_public_capability_is_accepted() -> None:

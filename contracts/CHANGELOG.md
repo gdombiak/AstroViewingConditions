@@ -2,6 +2,14 @@
 
 ## 1.0.0
 
+- Visual optics slice (unreleased): add public parity-governed
+  `optics.calculate`. Magnification is telescope focal length divided by
+  eyepiece focal length, exit pupil is aperture divided by magnification, and
+  approximate true field is apparent field divided by magnification. Missing
+  inputs stay null. The capability does not rank eyepieces or read saved
+  state. The public catalog now contains 39 capabilities; engine identity
+  remains unreleased 1.0.0.
+
 - Location distance slice (unreleased): add public parity-governed
   `location.distance` for deterministic great-circle straight-line miles between
   arbitrary coordinates. It uses the same Earth-radius and meters-per-mile

@@ -115,6 +115,37 @@ def test_public_exports_include_outlook() -> None:
     assert "class ForecastPreparation" not in source
 
 
+def test_optics_composition_calls_the_engine_and_does_not_own_the_formula() -> None:
+    host_root = Path(__file__).resolve().parents[1] / "src" / "astro_host"
+    optics = (host_root / "optics.py").read_text(encoding="utf-8")
+    eyepieces = (host_root / "eyepieces.py").read_text(encoding="utf-8")
+    equipment = (host_root / "equipment.py").read_text(encoding="utf-8")
+    assert "from astro_engine.optics import calculate_optics" in optics
+    assert "telescope_focal_length_mm /" not in optics
+    assert "afov_degrees /" not in optics
+    assert "astro_engine" not in eyepieces
+    assert "EquipmentType" not in eyepieces
+    assert "calculate_optics" not in equipment
+    assert "focal_length_mm" in equipment
+
+
+def test_public_exports_include_eyepiece_inventory() -> None:
+    import astro_host
+
+    for name in (
+        "FileEyepieceStore",
+        "MemoryEyepieceStore",
+        "SavedEyepiece",
+        "SavedEyepieceDraft",
+        "EyepieceState",
+        "default_eyepieces_path",
+        "optical_facts",
+        "saved_optics",
+    ):
+        assert name in astro_host.__all__
+        assert hasattr(astro_host, name)
+
+
 def test_public_exports_include_recommendations() -> None:
     import astro_host
 

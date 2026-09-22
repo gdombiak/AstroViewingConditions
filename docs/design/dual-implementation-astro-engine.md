@@ -493,7 +493,7 @@ operations are **host** concerns: they belong in `packages/astro-host-python` an
 must **not** be added to `PUBLIC_CAPABILITY_IDS`.
 
 **Current catalog state (verified 2026-09-13).** `contracts/capabilities.yaml`
-contains **no** `agent.*` rows and **no** `equality: n/a` rows. All 38 catalogued
+contains **no** `agent.*` rows and **no** `equality: n/a` rows. All 39 catalogued
 capabilities are `hosts: [ios, cli]` with a real equality class. The `agent.*`,
 `ui.field_mode` and `hosts: [ios]` rows shown in
 [§ 9](#9-feature-parity-without-forcing-ui-or-agent-features) are part of that
@@ -1772,7 +1772,7 @@ astro-engine <capability-id> --pretty --input -
 
 **Phase 11 historical allow-list (public Python CLI):** `observing_quality.assess`, `night_conditions.analyze`, `night_conditions.score`, `fog.score`, `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`, `weather.decode`, `iss.decode`, `location.grid`, `catalog.deep_sky`. This was the eleven-capability set exposed in Phase 11.
 
-**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 38 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
+**Phase 14 historical allow-list (twelve capabilities):** the Phase 11 set plus `location.compare`, added in Phase 14. That matched `contracts/capabilities.yaml` at the time; the current catalog holds 39 public capabilities. `light_pollution.validity` is **not** a catalogued capability and is not on the public CLI.
 
 **Bot-host composition** (not catalogued and not capability eval targets): `agent.conditions`, `agent.recommendations`, `agent.outlook`, and `agent.batch_compare` are **implemented in source**; `agent.forecast_horizon` is an optional future Bot product extension. They compose implemented engine capabilities or, only for a chosen longer-horizon product, fetch extra forecast days; they live in `packages/astro-host-python` and stay out of `parity.yml`. Being implemented does not catalogue any `agent.*` operation: none has a `contracts/capabilities.yaml` row or enters the engine CLI's public allow-list. `agent.outlook` is the canonical production three-night product, using a four-day Open-Meteo fetch (`SharedConditionsRepository.forecastDays`), rather than an arbitrary-N forecast.
 
@@ -3468,7 +3468,7 @@ paragraph above records the state at this slice.
 
 #### Current Bot readiness boundary
 
-With today’s 38 public capabilities plus correct host acquisition/composition,
+With today’s 39 public capabilities plus correct host acquisition/composition,
 the Bot can authoritatively provide represented hourly weather; cloud, fog,
 seeing, transparency and wind facts; scored hours and Night Conditions;
 Observing Quality; Sun/twilight events; catalog facts and solar candidate
@@ -3554,7 +3554,7 @@ Numbered engine phases are not the whole product. After Phase 16, complete the f
 **Pre-1.0 business-logic compatibility/release gate.** Before the first public
 Astro Engine / Astronomer Bot 1.0, the Bot must expose the objective/business-logic
 capabilities used by production Astro Conditions for astronomy advice, with the
-LLM layered on top. Availability of the current 38 engine capabilities alone
+LLM layered on top. Availability of the current 39 engine capabilities alone
 does not satisfy this gate. This is behavioral compatibility, not iOS UI parity.
 
 - **Audit closure:** reconcile every behavior named in the [production

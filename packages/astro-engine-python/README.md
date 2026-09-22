@@ -139,7 +139,13 @@ constants as `location.grid`. Swift and Python have parity; this is not a road
 or travel distance. See the
 [distance procedure](../../contracts/procedures/location-distance.md).
 
-The public catalog now contains 38 capabilities; engine/package identity remains
+`optics.calculate` returns magnification, exit pupil, and approximate true
+field of view from explicit telescope and eyepiece numbers. Missing inputs stay
+null. Approximate true field is apparent field divided by magnification, not a
+field-stop model. See the
+[optics procedure](../../contracts/procedures/optics-calculate.md).
+
+The public catalog now contains 39 capabilities; engine/package identity remains
 unreleased 1.0.0.
 
 Target metadata is available through `targets.requirements`,

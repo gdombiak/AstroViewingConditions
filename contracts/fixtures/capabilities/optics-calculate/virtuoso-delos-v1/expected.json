@@ -1,0 +1,9 @@
+{
+  "capability": "optics.calculate",
+  "ok": true,
+  "result": {
+    "magnification": 93.75,
+    "exit_pupil_mm": 1.6,
+    "approximate_true_field_of_view_degrees": 0.768
+  }
+}

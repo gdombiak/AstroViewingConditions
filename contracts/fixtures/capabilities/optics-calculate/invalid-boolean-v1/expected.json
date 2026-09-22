@@ -1,0 +1,8 @@
+{
+  "capability": "optics.calculate",
+  "ok": false,
+  "error": {
+    "code": "validation",
+    "message": "invalid optics.calculate input"
+  }
+}

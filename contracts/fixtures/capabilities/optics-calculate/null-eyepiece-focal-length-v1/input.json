@@ -1,0 +1,9 @@
+{
+  "capability": "optics.calculate",
+  "injected": {
+    "telescope_focal_length_mm": 750,
+    "eyepiece_focal_length_mm": null,
+    "telescope_aperture_mm": 150,
+    "afov_degrees": 72
+  }
+}

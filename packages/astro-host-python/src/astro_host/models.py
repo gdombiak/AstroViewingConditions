@@ -674,6 +674,7 @@ class SavedEquipment:
     aperture_unit: EquipmentApertureUnit
     aliases: tuple[str, ...] = ()
     magnification: float | None = None
+    focal_length_mm: float | None = None
 
     def to_capability_fact(self) -> EquipmentCapabilityFact:
         return EquipmentCapabilityFact(
@@ -700,6 +701,7 @@ class SavedEquipmentDraft:
     aliases: tuple[str, ...] = ()
     magnification: float | None = None
     id: str | None = None
+    focal_length_mm: float | None = None
 
 
 @dataclass(frozen=True)
@@ -728,6 +730,35 @@ class EquipmentState:
 class EquipmentWriteResult:
     state: EquipmentState
     item: SavedEquipment | None = None
+
+
+@dataclass(frozen=True)
+class SavedEyepiece:
+    id: str
+    name: str
+    focal_length_mm: float
+    afov_degrees: float | None = None
+    aliases: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SavedEyepieceDraft:
+    name: str
+    focal_length_mm: float
+    afov_degrees: float | None = None
+    aliases: tuple[str, ...] = ()
+    id: str | None = None
+
+
+@dataclass(frozen=True)
+class EyepieceState:
+    items: tuple[SavedEyepiece, ...]
+
+
+@dataclass(frozen=True)
+class EyepieceWriteResult:
+    state: EyepieceState
+    item: SavedEyepiece | None = None
 
 
 @dataclass(frozen=True)

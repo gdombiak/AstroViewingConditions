@@ -91,6 +91,7 @@ from astro_engine.night_conditions import (
     public_night_score,
 )
 from astro_engine.observing_quality import CAPABILITY_ID as OQ_ID, assess_observing_quality
+from astro_engine.optics import CAPABILITY_ID as OPTICS_ID, calculate_optics
 from astro_engine.seeing import CAPABILITY_ID as SEEING_ID, seeing_penalty
 from astro_engine.transparency import CAPABILITY_ID as TRANSPARENCY_ID, transparency_penalty
 from astro_engine.validate import require_finite_number
@@ -306,6 +307,8 @@ def evaluate_capability(
         return match_equipment(_injected(document))
     if capability == CATALOG_ID:
         return catalog_deep_sky(_injected(document))
+    if capability == OPTICS_ID:
+        return calculate_optics(_injected(document))
     if capability == LP_ID:
         return _light_pollution_lookup(_injected(document), host)
     raise ValidationError(f"unknown scoring capability: {capability}")

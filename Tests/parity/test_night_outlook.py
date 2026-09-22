@@ -51,7 +51,7 @@ def test_catalog_fixture_and_equality_contract():
         if line.startswith("  - id: ")
     ]
     assert tuple(catalog_ids) == PUBLIC_CAPABILITY_IDS
-    assert catalog_ids[-2:] == [COMPOSE, BEST]
+    assert catalog_ids[-3:-1] == [COMPOSE, BEST]
 
     compose_block = catalog.split(f"  - id: {COMPOSE}\n", 1)[1]
     assert 'since: "1.0.0"' in compose_block

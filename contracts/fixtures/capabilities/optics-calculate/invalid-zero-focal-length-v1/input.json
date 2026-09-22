@@ -1,0 +1,7 @@
+{
+  "capability": "optics.calculate",
+  "injected": {
+    "telescope_focal_length_mm": 0,
+    "eyepiece_focal_length_mm": 8
+  }
+}

@@ -490,3 +490,14 @@ policies:
       best_index: exact
       code: exact
       message: exact
+
+  optics_calculate:
+    description: >
+      Telescope/eyepiece ratios. Null is an unavailable fact, not zero.
+      Approximate true field is the simple AFOV/magnification ratio.
+    fields:
+      magnification: null_or_abs_1e9
+      exit_pupil_mm: null_or_abs_1e9
+      approximate_true_field_of_view_degrees: null_or_abs_1e9
+      code: exact
+      message: exact

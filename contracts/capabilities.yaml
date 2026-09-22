@@ -439,3 +439,16 @@ capabilities:
       eligible row. No eligible row means no best night. Caller order is
       semantics and is never sorted; scoring, statuses and presentation are the
       caller's. See contracts/procedures/night-outlook.md.
+
+  - id: optics.calculate
+    hosts: [ios, cli]
+    equality: optics_calculate
+    since: "1.0.0"
+    summary: >
+      Magnification, exit pupil, and approximate true field of view from
+      explicit telescope and eyepiece numbers. Magnification is telescope
+      focal length divided by eyepiece focal length. Exit pupil is aperture
+      divided by magnification. Approximate true field is apparent field
+      divided by magnification, not a field-stop model. Missing inputs stay
+      null. No eyepiece ranking, manufacturer lookup, or saved state. See
+      contracts/procedures/optics-calculate.md.

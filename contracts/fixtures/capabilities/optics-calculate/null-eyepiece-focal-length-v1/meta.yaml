@@ -1,0 +1,6 @@
+capability: optics.calculate
+engine_semver: ">=1.0.0 <2.0.0"
+equality: optics_calculate
+hosts: [swift, python]
+origin: manual
+notes: Explicit null eyepiece focal length is unavailable, not inferred.

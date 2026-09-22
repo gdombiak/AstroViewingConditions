@@ -1,0 +1,6 @@
+capability: optics.calculate
+engine_semver: ">=1.0.0 <2.0.0"
+equality: optics_calculate
+hosts: [swift, python]
+origin: manual
+notes: Apparent field above 180 degrees is nonsensical and rejected.

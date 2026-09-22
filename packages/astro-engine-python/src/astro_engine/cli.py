@@ -30,6 +30,7 @@ from astro_engine.errors import ValidationError
 from astro_engine.fog import CAPABILITY_ID as FOG_ID
 from astro_engine.grid import CAPABILITY_ID as GRID_ID
 from astro_engine.location_distance import CAPABILITY_ID as DISTANCE_ID
+from astro_engine.optics import CAPABILITY_ID as OPTICS_ID
 from astro_engine.observing_window import CAPABILITY_ID as WINDOW_ID
 from astro_engine.targets import CAPABILITY_ID as TARGETS_ID
 from astro_engine.equipment import CAPABILITY_ID as EQUIPMENT_ID
@@ -106,6 +107,7 @@ PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     CLOUD_ADVISORY_ID,
     NIGHT_OUTLOOK_ID,
     BEST_NIGHT_CAPABILITY_ID,
+    OPTICS_ID,
 )
 
 _PUBLIC_ALLOW_LIST = frozenset(PUBLIC_CAPABILITY_IDS)

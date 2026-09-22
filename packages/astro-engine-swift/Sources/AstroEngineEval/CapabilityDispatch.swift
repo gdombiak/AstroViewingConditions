@@ -35,6 +35,12 @@ enum CapabilityDispatch {
             } catch LocationDistanceError.invalidInput {
                 throw EvalValidationError(code: "validation", message: "invalid location.distance input")
             }
+        case "optics.calculate":
+            do {
+                return try VisualOptics.evaluate(injected(document))
+            } catch VisualOpticsError.invalidInput {
+                throw EvalValidationError(code: "validation", message: "invalid optics.calculate input")
+            }
         case "targets.requirements", "catalog.solar_system", "targets.moon_sensitivity":
             do {
                 return try TargetMetadataContract.evaluate(capability, input: injected(document))

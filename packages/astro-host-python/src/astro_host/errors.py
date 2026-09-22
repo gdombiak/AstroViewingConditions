@@ -147,6 +147,42 @@ class InvalidEquipmentError(EquipmentStoreError):
         super().__init__(message, code="invalid_request")
 
 
+class EyepieceStoreError(Exception):
+    """Base for eyepiece-store failures. ``code`` maps to the CLI error.code."""
+
+    def __init__(self, message: str, *, code: str = "host_failure") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class EyepieceStoreCorruptError(EyepieceStoreError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="corrupt")
+
+
+class EyepieceStoreUnsupportedSchemaError(EyepieceStoreError):
+    def __init__(self, message: str, *, schema_version: object) -> None:
+        super().__init__(message, code="unsupported_schema")
+        self.schema_version = schema_version
+
+
+class EyepieceConflictError(EyepieceStoreError):
+    def __init__(self, message: str, *, normalized: str) -> None:
+        super().__init__(message, code="conflict")
+        self.normalized = normalized
+
+
+class EyepieceNotFoundError(EyepieceStoreError):
+    def __init__(self, message: str, *, query: str) -> None:
+        super().__init__(message, code="not_found")
+        self.query = query
+
+
+class InvalidEyepieceError(EyepieceStoreError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message, code="invalid_request")
+
+
 class HostInvariantError(Exception):
     """A complete/degraded conditions result is missing facts ranking requires."""
 

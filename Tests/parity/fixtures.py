@@ -45,6 +45,7 @@ DETERMINISTIC_FIXTURE_DIRS = (
     "fixtures/capabilities/cloud-advisory",
     "fixtures/capabilities/night-outlook-compose",
     "fixtures/capabilities/night-outlook-select-best",
+    "fixtures/capabilities/optics-calculate",
 )
 
 

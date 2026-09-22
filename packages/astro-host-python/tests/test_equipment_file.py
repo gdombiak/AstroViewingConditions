@@ -248,6 +248,44 @@ def test_binoculars_missing_magnification_on_disk_is_corrupt(tmp_path: Path) -> 
         store_at(path).list()
 
 
+def test_equipment_without_focal_length_loads_and_rewrites_without_the_field(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "equipment.json"
+    original = {
+        "schema_version": 1,
+        "selection": {"mode": "all_saved"},
+        "items": [{
+            "id": VIRTUOSO_ID,
+            "name": "Virtuoso",
+            "type": "visualTelescope",
+            "aperture_mm": 150,
+            "aperture_unit": "millimeters",
+            "aliases": [],
+        }],
+    }
+    path.write_text(json.dumps(original) + "\n", encoding="utf-8")
+    loaded = store_at(path).get(VIRTUOSO_ID)
+    assert loaded.focal_length_mm is None
+    assert loaded.aperture_mm == 150
+    assert loaded.to_capability_fact().as_engine_row()["magnification"] is None
+    store_at(path).select_all()
+    rewritten = json.loads(path.read_text(encoding="utf-8"))
+    assert rewritten["schema_version"] == 1
+    assert "focal_length_mm" not in rewritten["items"][0]
+    assert store_at(path).get(VIRTUOSO_ID).name == "Virtuoso"
+
+
+def test_saved_focal_length_round_trips_without_changing_selection(tmp_path: Path) -> None:
+    path = tmp_path / "equipment.json"
+    store = store_at(path)
+    store.save(virtuoso(id=VIRTUOSO_ID, focal_length_mm=750))
+    document = json.loads(path.read_text(encoding="utf-8"))
+    assert document["items"][0]["focal_length_mm"] == 750
+    assert document["selection"] == {"mode": "all_saved"}
+    assert store_at(path).get(VIRTUOSO_ID).focal_length_mm == 750
+
+
 def test_extra_keys_preserved_on_rewrite(tmp_path: Path) -> None:
     path = tmp_path / "equipment.json"
     store = store_at(path)
@@ -304,6 +342,7 @@ def test_unknown_key_merge_cannot_clobber_known_fields() -> None:
                 "aperture_unit": "inches",
                 "aliases": ["nope"],
                 "magnification": 99,
+                "focal_length_mm": 999,
                 "future_note": "keep",
             }
         },
@@ -320,6 +359,7 @@ def test_unknown_key_merge_cannot_clobber_known_fields() -> None:
     assert row["type"] == "smartTelescope"
     assert row["aperture_mm"] == 30.0
     assert "magnification" not in row
+    assert "focal_length_mm" not in row
     assert row["future_note"] == "keep"
 
 

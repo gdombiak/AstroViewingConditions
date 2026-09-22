@@ -72,7 +72,7 @@ def test_contract_is_public_and_exact():
         if line.startswith("  - id: ")
     ]
     assert tuple(catalog_ids) == PUBLIC_CAPABILITY_IDS
-    assert catalog_ids[-3] == CAPABILITY
+    assert catalog_ids[-4] == CAPABILITY
     assert load_policy_fields("cloud_advisory") == {
         "cloud_advisory": "exact", "code": "exact", "message": "exact"
     }

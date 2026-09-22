@@ -110,6 +110,7 @@ def test_public_imports() -> None:
         "night_conditions.select_cloud_advisory",
         "observing_night.compose_outlook",
         "observing_night.select_best",
+        "optics.calculate",
     )
 
 
@@ -132,7 +133,7 @@ def test_catalog_current_release_matches_engine_version() -> None:
         ['    since: "0.1.0"'] * 10
         + ['    since: "1.0.0"'] * 4
         + ['    since: "0.1.0"']
-        + ['    since: "1.0.0"'] * 23
+        + ['    since: "1.0.0"'] * 24
     )
 
 

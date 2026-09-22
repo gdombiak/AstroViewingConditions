@@ -20,12 +20,19 @@ from astro_host.engine import RecommendationEngine
 from astro_host.errors import (
     EngineCallError,
     EquipmentStoreError,
+    EyepieceStoreError,
     HostInvariantError,
     InvalidProviderTimezoneError,
     InvalidRequestError,
     LocationStoreError,
     PlaceProviderError,
 )
+from astro_host.eyepieces import (
+    EyepieceStore,
+    FileEyepieceStore,
+    default_eyepieces_path,
+)
+from astro_host.optics import explicit_optics, saved_optics
 from astro_host.locations import FileLocationStore, LocationStore, default_locations_path
 from astro_host.models import (
     BatchCandidate,
@@ -52,6 +59,7 @@ from astro_host.models import (
     PlaceConfirmRequest,
     SavedEquipment,
     SavedEquipmentDraft,
+    SavedEyepieceDraft,
     SavedLocationDraft,
     SkyFactsRequest,
 )
@@ -81,6 +89,8 @@ AGENT_OPERATIONS = (
     "agent.recommendations",
     "agent.outlook",
     "agent.sky_facts",
+    "agent.eyepieces",
+    "agent.optics",
 )
 
 _LOCATION_ACTIONS = frozenset({
@@ -146,12 +156,32 @@ _EQUIPMENT_ACTIONS = frozenset({
 _EQUIPMENT_ID_OR_QUERY_ACTIONS = frozenset({"get", "select", "delete"})
 _EQUIPMENT_OBJECT_KEYS = frozenset({
     "name", "type", "aperture", "aperture_unit", "magnification", "aliases", "id",
+    "focal_length_mm",
+})
+_EYEPIECE_ACTIONS = frozenset({"list", "save", "get", "resolve", "delete"})
+_EYEPIECE_ID_OR_QUERY_ACTIONS = frozenset({"get", "delete"})
+_EYEPIECE_OBJECT_KEYS = frozenset({
+    "name", "focal_length_mm", "afov_degrees", "aliases", "id",
+})
+_EXPLICIT_OPTICS_KEYS = frozenset({
+    "telescope_focal_length_mm",
+    "eyepiece_focal_length_mm",
+    "telescope_aperture_mm",
+    "afov_degrees",
 })
 _INLINE_EQUIPMENT_KEYS = frozenset({
     "type", "aperture", "aperture_unit", "magnification",
 })
 _OVERRIDE_KEYS = frozenset({"id", "query", "mode", "inline"})
 _SAVE_EQUIPMENT_KEYS = frozenset({"action", "equipment", "select"})
+
+
+@dataclass(frozen=True)
+class EyepieceRequest:
+    action: str
+    eyepiece: SavedEyepieceDraft | None = None
+    id: str | None = None
+    query: str | None = None
 
 
 @dataclass(frozen=True)
@@ -179,6 +209,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--weather-cache-path")
     parser.add_argument("--locations-path")
     parser.add_argument("--equipment-path")
+    parser.add_argument("--eyepieces-path")
     return parser
 
 
@@ -213,6 +244,15 @@ def build_default_equipment_store(args: argparse.Namespace) -> FileEquipmentStor
     return FileEquipmentStore(path)
 
 
+def build_default_eyepiece_store(args: argparse.Namespace) -> FileEyepieceStore:
+    path = (
+        Path(args.eyepieces_path)
+        if args.eyepieces_path
+        else default_eyepieces_path()
+    )
+    return FileEyepieceStore(path)
+
+
 def _stale_age(args: argparse.Namespace) -> timedelta | None:
     if args.stale_on_error_seconds is None:
         return None
@@ -231,6 +271,7 @@ def main(
     store: LocationStore | None = None,
     resolver: PlaceResolver | None = None,
     equipment_store: EquipmentStore | None = None,
+    eyepiece_store: EyepieceStore | None = None,
     recommendation_engine: RecommendationEngine | None = None,
     stdout: TextIO = sys.stdout,
     stderr: TextIO = sys.stderr,
@@ -264,6 +305,18 @@ def main(
     if args.operation == "agent.equipment":
         return _main_equipment(
             args, store=equipment_store, stdout=stdout, stderr=stderr
+        )
+    if args.operation == "agent.eyepieces":
+        return _main_eyepieces(
+            args, store=eyepiece_store, stdout=stdout, stderr=stderr
+        )
+    if args.operation == "agent.optics":
+        return _main_optics(
+            args,
+            equipment_store=equipment_store,
+            eyepiece_store=eyepiece_store,
+            stdout=stdout,
+            stderr=stderr,
         )
     if args.operation == "agent.recommendations":
         return _main_recommendations(
@@ -771,6 +824,245 @@ def _main_equipment(
         return EXIT_FAILURE
 
 
+def _main_eyepieces(
+    args: argparse.Namespace,
+    *,
+    store: EyepieceStore | None,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> int:
+    try:
+        document = _read_json(args.input_path)
+        request = parse_eyepiece_request(document)
+        if store is None:
+            store = build_default_eyepiece_store(args)
+        result = _dispatch_eyepieces(store, request)
+        _write_json({
+            "ok": True,
+            "operation": "agent.eyepieces",
+            "result": _json_value(result),
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_OK
+    except (InvalidRequestError, json.JSONDecodeError, OSError) as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.eyepieces",
+            "error": {"code": "invalid_request", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST
+    except EyepieceStoreError as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.eyepieces",
+            "error": {"code": exc.code, "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST if exc.code == "invalid_request" else EXIT_FAILURE
+    except Exception as exc:
+        print(f"astro-host: {exc}", file=stderr)
+        _write_json({
+            "ok": False,
+            "operation": "agent.eyepieces",
+            "error": {"code": "host_failure", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+
+
+def _dispatch_eyepieces(
+    store: EyepieceStore, request: EyepieceRequest
+) -> dict[str, object]:
+    action = request.action
+    if action == "list":
+        return {"action": action, "items": store.list()}
+    if action == "save":
+        assert request.eyepiece is not None
+        written = store.save(request.eyepiece)
+        return {"action": action, "item": written.item}
+    if action == "get":
+        saved = (
+            store.resolve(request.query)
+            if request.query is not None
+            else store.get(request.id or "")
+        )
+        return {"action": action, "item": saved}
+    if action == "resolve":
+        return {"action": action, "item": store.resolve(request.query or "")}
+    deleted = (
+        store.delete_query(request.query)
+        if request.query is not None
+        else store.delete(request.id or "")
+    )
+    return {"action": action, "item": deleted.item}
+
+
+def parse_eyepiece_request(document: object) -> EyepieceRequest:
+    if not isinstance(document, Mapping):
+        raise InvalidRequestError("request must be an object with known fields")
+    action = document.get("action")
+    if not isinstance(action, str) or action not in _EYEPIECE_ACTIONS:
+        raise InvalidRequestError("action must be a supported agent.eyepieces action")
+    keys = set(document)
+    if action == "list":
+        if keys != {"action"}:
+            raise InvalidRequestError("request must be an object with known fields")
+        return EyepieceRequest(action=action)
+    if action == "save":
+        if keys != {"action", "eyepiece"}:
+            raise InvalidRequestError("request must be an object with known fields")
+        return EyepieceRequest(
+            action=action, eyepiece=_parse_eyepiece_draft(document.get("eyepiece"))
+        )
+    if action == "resolve":
+        if keys != {"action", "query"}:
+            raise InvalidRequestError("request must be an object with known fields")
+        return EyepieceRequest(action=action, query=_required_query(document.get("query")))
+    if action not in _EYEPIECE_ID_OR_QUERY_ACTIONS:
+        raise InvalidRequestError("action must be a supported agent.eyepieces action")
+    has_id = "id" in document
+    has_query = "query" in document
+    if has_id == has_query or keys - {"action", "id", "query"}:
+        raise InvalidRequestError("request must include exactly one of id or query")
+    if has_id:
+        return EyepieceRequest(action=action, id=_required_id(document.get("id")))
+    return EyepieceRequest(action=action, query=_required_query(document.get("query")))
+
+
+def _parse_eyepiece_draft(value: object) -> SavedEyepieceDraft:
+    if not isinstance(value, Mapping) or set(value) - _EYEPIECE_OBJECT_KEYS:
+        raise InvalidRequestError("eyepiece must be an object with known fields")
+    missing = {"name", "focal_length_mm"} - set(value)
+    if missing:
+        raise InvalidRequestError("eyepiece name and focal_length_mm are required")
+    name = value.get("name")
+    if not isinstance(name, str):
+        raise InvalidRequestError("eyepiece.name must be a string")
+    focal_length = value.get("focal_length_mm")
+    if focal_length is None:
+        raise InvalidRequestError("eyepiece focal_length_mm is required")
+    return SavedEyepieceDraft(
+        name=name,
+        focal_length_mm=_required_equipment_number(value, "focal_length_mm"),
+        afov_degrees=_optional_equipment_number(value, "afov_degrees"),
+        aliases=_parse_eyepiece_aliases(value),
+        id=_optional_string(value, "id"),
+    )
+
+
+def _parse_eyepiece_aliases(value: Mapping[str, object]) -> tuple[str, ...]:
+    if "aliases" not in value:
+        return ()
+    raw = value["aliases"]
+    if raw is None or not isinstance(raw, list) or any(not isinstance(item, str) for item in raw):
+        raise InvalidRequestError("eyepiece.aliases must be an array of strings")
+    return tuple(raw)
+
+
+def _main_optics(
+    args: argparse.Namespace,
+    *,
+    equipment_store: EquipmentStore | None,
+    eyepiece_store: EyepieceStore | None,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> int:
+    try:
+        document = _read_json(args.input_path)
+        if not isinstance(document, Mapping):
+            raise InvalidRequestError("request must be an object with known fields")
+        if "telescope" in document:
+            result = _saved_optics_request(
+                document,
+                equipment_store or build_default_equipment_store(args),
+                eyepiece_store or build_default_eyepiece_store(args),
+            )
+        else:
+            result = explicit_optics(**_parse_explicit_optics(document))
+        _write_json({
+            "ok": True,
+            "operation": "agent.optics",
+            "result": _json_value(result),
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_OK
+    except (InvalidRequestError, json.JSONDecodeError, OSError) as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.optics",
+            "error": {"code": "invalid_request", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST
+    except (EquipmentStoreError, EyepieceStoreError) as exc:
+        _write_json({
+            "ok": False,
+            "operation": "agent.optics",
+            "error": {"code": exc.code, "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_INVALID_REQUEST if exc.code == "invalid_request" else EXIT_FAILURE
+    except Exception as exc:
+        print(f"astro-host: {exc}", file=stderr)
+        _write_json({
+            "ok": False,
+            "operation": "agent.optics",
+            "error": {"code": "host_failure", "message": str(exc)},
+        }, pretty=args.pretty, stream=stdout)
+        return EXIT_FAILURE
+
+
+def _parse_explicit_optics(document: Mapping[str, object]) -> dict[str, float | None]:
+    if not set(document) or set(document) - _EXPLICIT_OPTICS_KEYS:
+        raise InvalidRequestError("request must be an object with known fields")
+    return {
+        "telescope_focal_length_mm": _optional_equipment_number(
+            document, "telescope_focal_length_mm"
+        ),
+        "eyepiece_focal_length_mm": _optional_equipment_number(
+            document, "eyepiece_focal_length_mm"
+        ),
+        "telescope_aperture_mm": _optional_equipment_number(
+            document, "telescope_aperture_mm"
+        ),
+        "afov_degrees": _optional_equipment_number(document, "afov_degrees"),
+    }
+
+
+def _saved_optics_request(
+    document: Mapping[str, object],
+    equipment: EquipmentStore,
+    eyepieces: EyepieceStore,
+) -> dict[str, object]:
+    keys = set(document)
+    if "eyepiece" in keys and "eyepieces" in keys:
+        raise InvalidRequestError("request must be an object with known fields")
+    if keys != {"telescope", "eyepiece"} and keys != {"telescope", "eyepieces"}:
+        raise InvalidRequestError("request must be an object with known fields")
+    telescope_id, telescope_query = _parse_saved_ref(document.get("telescope"), "telescope")
+    if "eyepieces" in keys:
+        if document.get("eyepieces") != "saved":
+            raise InvalidRequestError('eyepieces must be "saved"')
+        return saved_optics(
+            equipment,
+            eyepieces,
+            telescope_id=telescope_id,
+            telescope_query=telescope_query,
+            all_eyepieces=True,
+        )
+    eyepiece_id, eyepiece_query = _parse_saved_ref(document.get("eyepiece"), "eyepiece")
+    return saved_optics(
+        equipment,
+        eyepieces,
+        telescope_id=telescope_id,
+        telescope_query=telescope_query,
+        eyepiece_id=eyepiece_id,
+        eyepiece_query=eyepiece_query,
+    )
+
+
+def _parse_saved_ref(value: object, label: str) -> tuple[str | None, str | None]:
+    if not isinstance(value, Mapping) or set(value) not in ({"id"}, {"query"}):
+        raise InvalidRequestError(f"{label} must include exactly one of id or query")
+    if "id" in value:
+        return _required_id(value.get("id")), None
+    return None, _required_query(value.get("query"))
+
+
 def _compose_conditions_location(
     args: argparse.Namespace,
     explicit: Location | None,
@@ -1150,6 +1442,7 @@ def _parse_equipment_draft(value: object) -> SavedEquipmentDraft:
         aliases=aliases,
         magnification=magnification,
         id=_optional_string(value, "id"),
+        focal_length_mm=_optional_equipment_number(value, "focal_length_mm"),
     )
 
 

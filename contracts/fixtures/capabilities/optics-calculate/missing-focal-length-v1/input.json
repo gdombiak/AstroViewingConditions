@@ -1,0 +1,7 @@
+{
+  "capability": "optics.calculate",
+  "injected": {
+    "telescope_aperture_mm": 150,
+    "afov_degrees": 72
+  }
+}

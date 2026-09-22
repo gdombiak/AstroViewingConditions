@@ -1,0 +1,9 @@
+{
+  "capability": "optics.calculate",
+  "ok": true,
+  "result": {
+    "magnification": null,
+    "exit_pupil_mm": null,
+    "approximate_true_field_of_view_degrees": null
+  }
+}
