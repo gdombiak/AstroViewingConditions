@@ -1,7 +1,7 @@
 # astro-engine (Python)
 
-Astro Engine 1.0.0 Python library and JSON CLI. Public allow-list is the
-thirty-eight catalogued capabilities.
+Astro Engine 1.1.0 Python library and JSON CLI. Public allow-list is the
+thirty-nine catalogued capabilities.
 
 In a checkout, calibration and canonical data are loaded from the repository
 `contracts/` tree (`CONTRACTS_ROOT` or ancestor walk). The release-wheel build
@@ -23,12 +23,12 @@ Phase 15 adds `targets.recommend` for generic frozen target windows and
 `equipment.match` for resolved requirements and selected instrument facts.
 Both run through the shared library dispatcher, with canonical calibration and
 no network or live astronomy. See the corresponding `contracts/procedures/`
-documents. This remains unreleased 1.0.0 work.
+documents. Both capabilities shipped in 1.0.0.
 
 ## Phase 16 live astronomy and offline deployment
 
 `astronomy.sun_events`, `astronomy.moon_info`, and `astronomy.moon_series` are
-public under unreleased 1.0.0. Their [normative contract](../../contracts/procedures/astronomy.md)
+public since 1.0.0. Their [normative contract](../../contracts/procedures/astronomy.md)
 uses resolved coordinates and whole-second UTC instants. Live outputs are never
 substituted into frozen scoring parity. See
 [the semantic cases](../../contracts/fixtures/astronomy/cases.json) for requests.
@@ -145,8 +145,8 @@ null. Approximate true field is apparent field divided by magnification, not a
 field-stop model. See the
 [optics procedure](../../contracts/procedures/optics-calculate.md).
 
-The public catalog now contains 39 capabilities; engine/package identity remains
-unreleased 1.0.0.
+The public catalog now contains 39 capabilities; engine/package identity is
+1.1.0, and `optics.calculate` is introduced in this release.
 
 Target metadata is available through `targets.requirements`,
 `catalog.solar_system`, and `targets.moon_sensitivity`. For example, pass

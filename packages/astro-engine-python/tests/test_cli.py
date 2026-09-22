@@ -175,7 +175,7 @@ def _assert_cli_success(capability: str, fixture: dict) -> dict:
     envelope = json.loads(stdout)
     assert envelope["ok"] is True
     assert envelope["capability"] == capability
-    assert envelope["engine_semver"] == "1.0.0"
+    assert envelope["engine_semver"] == "1.1.0"
     assert "engine_semver" not in fixture["expected"]
     compare_envelope(envelope, fixture["expected"], policy_id=fixture["meta"]["equality"])
     return envelope
@@ -186,7 +186,7 @@ def test_engine_version() -> None:
     assert code == EXIT_OK
     assert stderr == ""
     payload = json.loads(stdout)
-    assert payload == {"engine_semver": "1.0.0"}
+    assert payload == {"engine_semver": "1.1.0"}
 
 
 def test_public_allow_list_matches_catalog_order() -> None:
@@ -219,7 +219,7 @@ def test_cli_all_observing_quality_contract_fixtures() -> None:
         envelope = json.loads(stdout)
         assert envelope["ok"] is True
         assert envelope["capability"] == CAPABILITY_ID
-        assert envelope["engine_semver"] == "1.0.0"
+        assert envelope["engine_semver"] == "1.1.0"
         assert "engine_semver" not in fixture["expected"]
         compare_observing_quality_result(
             envelope["result"],
@@ -275,7 +275,7 @@ def test_unknown_capability_is_usage() -> None:
     assert code == EXIT_USAGE
     assert stdout == ""
     assert "unknown capability" in stderr
-    assert "1.0 allow-list:" in stderr
+    assert "Public capability allow-list:" in stderr
     for capability in PUBLIC_CAPABILITY_IDS:
         assert capability in stderr
 
@@ -286,7 +286,7 @@ def test_one_one_capability_ids_remain_unknown_on_cli() -> None:
         assert code == EXIT_USAGE, capability
         assert stdout == ""
         assert "unknown capability" in stderr
-        assert "1.0 allow-list:" in stderr
+        assert "Public capability allow-list:" in stderr
 
 
 def test_known_capability_validation_error_is_json_exit_2() -> None:
@@ -297,7 +297,7 @@ def test_known_capability_validation_error_is_json_exit_2() -> None:
     envelope = json.loads(stdout)
     assert envelope["ok"] is False
     assert envelope["capability"] == "night_conditions.analyze"
-    assert envelope["engine_semver"] == "1.0.0"
+    assert envelope["engine_semver"] == "1.1.0"
     assert envelope["error"]["code"] == "validation"
     compare_envelope(envelope, fixture["expected"], policy_id="engine_error")
 
@@ -311,7 +311,7 @@ def test_malformed_json_is_validation() -> None:
     envelope = json.loads(stdout)
     assert envelope["ok"] is False
     assert envelope["error"]["code"] == "validation"
-    assert envelope["engine_semver"] == "1.0.0"
+    assert envelope["engine_semver"] == "1.1.0"
 
 
 def test_missing_injected_is_validation() -> None:
@@ -789,7 +789,7 @@ def test_engine_failure_emits_json_envelope(monkeypatch: pytest.MonkeyPatch) -> 
     envelope = json.loads(stdout.getvalue())
     assert envelope["ok"] is False
     assert envelope["capability"] == CAPABILITY_ID
-    assert envelope["engine_semver"] == "1.0.0"
+    assert envelope["engine_semver"] == "1.1.0"
     assert envelope["error"]["code"] == "engine_failure"
     assert "injected failure" in envelope["error"]["message"]
     assert "injected failure" in stderr.getvalue()

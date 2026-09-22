@@ -2,7 +2,8 @@
 
 Language-neutral product semantics for the dual Swift/Python engine.
 
-**Current identity (`ENGINE_VERSION` 1.0.0):** unreleased. The catalogued
+**Current identity (`ENGINE_VERSION` 1.1.0):** the next backward-compatible
+release after published Astro Engine 1.0.0. The catalogued
 capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `night_conditions.analyze`, `night_conditions.score`, `fog.score`,
 `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`,
@@ -16,19 +17,19 @@ capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `targets.planet_recommendation`, `targets.compose_recommendations`,
 `targets.filter_recommendations_by_equipment`, and
 `observing_night.resolve_active`, `night_forecast.derive_window`, `night_conditions.classify_cloud_timing`, `night_conditions.select_cloud_advisory`,
-`observing_night.compose_outlook`, and `observing_night.select_best`. `agent.conditions`,
+`observing_night.compose_outlook`, `observing_night.select_best`, and
+`optics.calculate`. `agent.conditions`,
 `agent.recommendations`, and `agent.outlook` have landed as host integration;
 `agent.*` operations remain outside the Engine parity capability catalog.
 Phase 15 procedures describe
 [generic frozen-window scoring](procedures/targets-recommend.md) and
 [resolved-requirement equipment matching](procedures/equipment-match.md).
 
-The public Python CLI allow-lists exactly those thirty-eight IDs. Capability
+The public Python CLI allow-lists exactly those thirty-nine IDs. Capability
 `since` records when that specification was introduced: existing 0.1.0-slice
 rows keep `since: "0.1.0"`; `location.distance`, the three `location.*` Best Nearby decision rows,
-`targets.recommend`, and `equipment.match` use `since: "1.0.0"` because
-they are introduced under the unreleased 1.0.0 identity. Do not invent a second
-semantic release.
+`targets.recommend`, and `equipment.match` retain `since: "1.0.0"` because
+they were first published in 1.0.0. `optics.calculate` uses `since: "1.1.0"`.
 
 [`location.distance`](procedures/location-distance.md) returns deterministic
 great-circle straight-line miles between arbitrary validated coordinates. It
@@ -54,10 +55,10 @@ ahead of the generic one, calibrated by
 
 ## Versioning
 
-- `ENGINE_VERSION` / `capabilities.yaml` `engine_semver` is the **current unreleased contract identity** (what a host reports in its runtime envelope). Current identity is `1.0.0`.
-- A capability's `since` is the contract identity under which the **specification** was introduced. It stays valid in later compatible releases. Do not backdate a new row to `0.1.0` merely because 1.0.0 is still unreleased.
+- `ENGINE_VERSION` / `capabilities.yaml` `engine_semver` is the **current contract identity** (what a host reports in its runtime envelope). Current identity is `1.1.0`.
+- A capability's `since` is the first published contract identity containing the **specification**. It stays valid in later compatible releases and must not be backdated to an already-published release.
 - `hosts` is who must implement the capability for that freeze (parity obligation).
-- Fixture `meta.yaml` `engine_semver` is an **applicability range** (`>=0.1.0 <2.0.0` for original fixtures; new Phase 14/15/16 fixtures use `>=1.0.0 <2.0.0`). Promoting the engine to 1.0.0 without changing scoring semantics did **not** rewrite goldens.
+- Fixture `meta.yaml` `engine_semver` is an **applicability range** (`>=0.1.0 <2.0.0` for original fixtures; Phase 14/15/16 fixtures use `>=1.0.0 <2.0.0`; optics fixtures use `>=1.1.0 <2.0.0`). Releasing a newer compatible engine does **not** rewrite older applicable goldens.
 - `expected.json` is the domain result (`ok` + `result` or `error`). It must not pin `engine_semver`.
 - Phase 12 set the unreleased 1.0.0 identity when both evals were green for the initial allow-list.
 
@@ -154,4 +155,4 @@ approximate true field of view from explicit focal lengths, aperture, and
 apparent field. Missing inputs stay null. Approximate true field is apparent
 field divided by magnification. The capability does not rank eyepieces or read
 saved equipment. See the [optics procedure](procedures/optics-calculate.md).
-Public capability count is 39; version remains unreleased 1.0.0.
+Public capability count is 39; `optics.calculate` is introduced in 1.1.0.

@@ -41,3 +41,16 @@ def test_optics_is_the_last_public_capability():
     ]
     assert catalog_ids[-1] == "optics.calculate"
     assert tuple(catalog_ids) == PUBLIC_CAPABILITY_IDS
+    block = catalog.split("  - id: optics.calculate\n", 1)[1]
+    assert 'since: "1.1.0"' in block
+    assert "hosts: [ios, cli]" in block
+    assert "equality: optics_calculate" in block
+    procedure = (contracts_root() / "procedures/optics-calculate.md").read_text(
+        encoding="utf-8"
+    )
+    assert 'since: "1.1.0"' in procedure
+    for fixture in CASES:
+        assert fixture["meta"]["engine_semver"] == ">=1.1.0 <2.0.0"
+        assert fixture["meta"]["origin"] == "manual"
+        assert fixture["meta"]["equality"] == "optics_calculate"
+        assert fixture["meta"]["hosts"] == ["swift", "python"]

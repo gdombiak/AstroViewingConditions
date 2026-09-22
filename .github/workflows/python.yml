@@ -126,8 +126,8 @@ jobs:
           )
           info = json.loads(completed.stdout)
           assert info["ok"] is True
-          assert info["astro_host_version"] == "0.1.1"
-          assert info["astro_engine_version"] == "1.0.0"
+          assert info["astro_host_version"] == "0.1.2"
+          assert info["astro_engine_version"] == "1.1.0"
           assert info["operations"] == [
               "agent.batch_compare",
               "agent.conditions",

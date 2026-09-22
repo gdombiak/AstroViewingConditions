@@ -37,7 +37,7 @@ def test_astronomy_public_cli(case, monkeypatch, capsys, tmp_path):
     captured = capsys.readouterr()
     assert captured.err == ''
     envelope = json.loads(captured.out)
-    assert envelope['engine_semver'] == '1.0.0' and envelope['ok'] is True
+    assert envelope['engine_semver'] == '1.1.0' and envelope['ok'] is True
     assert_semantics(case, envelope['result'])
 
 

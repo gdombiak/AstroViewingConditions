@@ -30,7 +30,7 @@ def test_legacy_skill_and_experiment_paths_are_absent() -> None:
 
 
 def test_product_version_is_committed_identity() -> None:
-    assert product_version() == "0.1.1"
+    assert product_version() == "0.1.2"
 
 
 def test_instructions_omit_mutable_release_metadata() -> None:

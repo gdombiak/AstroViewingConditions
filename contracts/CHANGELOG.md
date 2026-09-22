@@ -1,14 +1,17 @@
 # Contract changelog
 
-## 1.0.0
+## 1.1.0
 
-- Visual optics slice (unreleased): add public parity-governed
+- Add public parity-governed
   `optics.calculate`. Magnification is telescope focal length divided by
   eyepiece focal length, exit pupil is aperture divided by magnification, and
   approximate true field is apparent field divided by magnification. Missing
   inputs stay null. The capability does not rank eyepieces or read saved
-  state. The public catalog now contains 39 capabilities; engine identity
-  remains unreleased 1.0.0.
+  state. This capability is first published in Astro Engine 1.1.0 and its
+  fixtures apply to `>=1.1.0 <2.0.0`. The public catalog contains 39
+  capabilities.
+
+## 1.0.0
 
 - Location distance slice (unreleased): add public parity-governed
   `location.distance` for deterministic great-circle straight-line miles between

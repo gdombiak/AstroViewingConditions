@@ -222,7 +222,7 @@ def test_available_contracts_report_real_engine_semver() -> None:
     result = asyncio.run(service.conditions(request))
 
     assert result.status is ConditionsStatus.UNAVAILABLE
-    assert result.engine_semver == "1.0.0"
+    assert result.engine_semver == "1.1.0"
     assert issue_codes(result) == {"weather_provider_failure"}
 
 

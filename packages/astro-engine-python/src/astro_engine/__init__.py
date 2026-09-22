@@ -1,6 +1,6 @@
 """Astro Engine Python library.
 
-Public CLI 1.0 allow-list is the catalogued contract set in cli.py.
+The public CLI capability allow-list is the catalogued contract set in cli.py.
 Library surface includes scoring, LPATLAS1 lookup, weather/ISS decode,
 grid, location comparison, and the curated catalog. Capability execution
 is shared with the CLI through `_capability.evaluate_capability`.

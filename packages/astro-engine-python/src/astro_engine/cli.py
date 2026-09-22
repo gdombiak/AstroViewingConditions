@@ -1,4 +1,4 @@
-"""JSON CLI for the public 1.0 capability allow-list.
+"""JSON CLI for the public capability allow-list.
 
 Stdout is JSON:
 - successful capability invocation → ok:true envelope, exit 0
@@ -66,7 +66,7 @@ EXIT_ENGINE = 1
 EXIT_VALIDATION = 2
 EXIT_USAGE = 3
 
-# Explicit public 1.0 allow-list. Catalog order from capabilities.yaml.
+# Explicit public capability allow-list. Catalog order from capabilities.yaml.
 # Not every private `_capability` ID is automatically public.
 PUBLIC_CAPABILITY_IDS: tuple[str, ...] = (
     OQ_ID,
@@ -129,7 +129,7 @@ def _usage_text() -> str:
         "       astro-engine <capability-id> --input -|FILE [--pretty]",
         "       astro-engine light_pollution.lookup --input -|FILE [--pretty] [--atlas-path FILE]",
         "",
-        "1.0 allow-list:",
+        "Public capability allow-list:",
     ]
     lines.extend(f"  {capability}" for capability in PUBLIC_CAPABILITY_IDS)
     return "\n".join(lines) + "\n"

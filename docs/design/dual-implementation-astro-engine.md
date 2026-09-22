@@ -31,7 +31,10 @@ This is **not** “feature parity of the whole app,” not a second UI, not a 1:
 
 **Feasibility before breadth.** The main uncertainty is not whether Python can reproduce `ObservingQualityCalculator.assess`. It is whether a local CLI on the actual Grok Bot VM is installed, invoked unattended by a skill/routine, and consumed as JSON. A [vertical proof](#feasibility-gate-grok-bot-vm) of one real capability happens **before** SharedCode extraction and the rest of the 1.0 port. If that gate fails, abandon the feature branch.
 
-**Release status (after Phase 14):** Astro Engine 1.0.0 has not been publicly released. The scoring/decode slice and `location.compare` are unreleased work under that first 1.0.0 identity. Targets/equipment, live astronomy, and composed CLI/Bot-host operations are later unreleased slices toward the same first production release; roadmap sequencing does not authorize a second semantic release.
+**Release status:** Astro Engine 1.0.0 was published with Astronomer 0.1.0 and
+0.1.1. The current 1.1.0 candidate adds the backward-compatible public
+`optics.calculate` capability; existing 1.0.0 capability histories remain
+unchanged.
 
 ---
 
@@ -101,7 +104,8 @@ This is **not** “feature parity of the whole app,” not a second UI, not a 1:
 - Treating `tools/light-pollution` as the observing engine (the GDAL-free **decoder** may be extracted; the harness stays a tool).
 - Optical FOV, mounts, cameras, or a full Messier/NGC dump.
 - Implementing air quality; out of 1.0.
-- Treating live astronomy or `location.compare` as a later release. `location.compare` is already unreleased 1.0.0 work; live astronomy remains a later unreleased slice toward that first release.
+- Treating live astronomy or `location.compare` as 1.1.0 work. Both shipped in
+  Astro Engine 1.0.0.
 - Putting English summary strings or a longer-than-3-day forecast horizon into 1.0 parity.
 
 ---
@@ -150,7 +154,7 @@ Rejected as premature.
 
 ## Recommended Target Architecture
 
-**Capability-catalog / contract-first dual engine in a restructured monorepo**, with a **small initial unreleased-1.0 capability slice**.
+**Capability-catalog / contract-first dual engine in a restructured monorepo**, with an initial 1.0 capability slice.
 
 ```mermaid
 flowchart TB

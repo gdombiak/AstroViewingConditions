@@ -1,6 +1,6 @@
 # optics.calculate — telescope and eyepiece arithmetic
 
-Capability: `optics.calculate`
+Capability: `optics.calculate`, `since: "1.1.0"`, `hosts: [ios, cli]`
 
 `injected` may contain only these fields:
 

@@ -38,8 +38,8 @@ def test_runtime_info_is_machine_readable_and_checks_resources() -> None:
     assert status == EXIT_OK
     assert stderr.getvalue() == ""
     assert payload["ok"] is True
-    assert payload["astro_host_version"] == HOST_SEMVER == "0.1.1"
-    assert payload["astro_engine_version"] == "1.0.0"
+    assert payload["astro_host_version"] == HOST_SEMVER == "0.1.2"
+    assert payload["astro_engine_version"] == "1.1.0"
     assert payload["operations"] == list(AGENT_OPERATIONS)
     assert set(payload["resources"]) == {
         "contracts_data", "light_pollution_atlas", "skyfield_ephemeris",
