@@ -137,6 +137,8 @@ jobs:
               "agent.recommendations",
               "agent.outlook",
               "agent.sky_facts",
+              "agent.eyepieces",
+              "agent.optics",
           ]
           assert set(info["resources"]) == {
               "contracts_data",
