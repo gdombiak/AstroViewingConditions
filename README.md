@@ -23,7 +23,7 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 - **Offline Target Images**: Reference images with source and license credits are bundled for many targets and require no network connection
 - **ISS Pass Predictions**: With an optional N2YO API key, see rise and set times, peak time and elevation, compass directions, and passes already in progress
 - **Fog Score**: Calculated from humidity, temperature, dew point, visibility, and low cloud cover
-- **Location Management**: Use current location, save and rename observing locations, arrange them in your preferred order, search by city, enter coordinates, or pick from a map; saved locations show modeled light-pollution category and zenith sky brightness when available
+- **Location Management**: Use current location, save and rename observing locations, arrange them in your preferred order, search for places and addresses with Apple MapKit, enter coordinates, or pick from a map; saved locations show modeled light-pollution category and zenith sky brightness when available
 - **Unit Preferences**: Toggle between Metric and Imperial units
 - **Field Mode**: Persistent dim-red iOS appearance for telescope use, available from Settings and the Dashboard; widgets and watchOS retain their normal presentation
 - **Dynamic Type**: Layouts adapt at larger standard iOS text sizes, including the largest standard Text Size setting
@@ -34,7 +34,8 @@ An open-source iOS and watchOS app for astronomy enthusiasts to check nighttime 
 
 ## Data Sources
 
-- **Open-Meteo API**: Weather forecasts and geocoding (free, no API key required)
+- **Apple MapKit**: Native iOS Add Location place and address search
+- **Open-Meteo APIs**: Weather forecasts and best-effort terrain elevation from the Copernicus DEM for searched locations; the separate Python/Astronomer path still uses Open-Meteo geocoding
 - **SunCalc Swift Package**: Astronomical calculations (sun/moon positions and phases)
 - **N2YO API**: Optional ISS pass predictions (free API key required)
 - **David Lorenz Light Pollution Atlas**: Offline modeled zenith sky brightness from the 2025 `zenith_brightness_v22_2025` product; see [Light Pollution tooling and attribution](tools/light-pollution/README.md)

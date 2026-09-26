@@ -8,15 +8,19 @@ public struct LocationSearchView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var searchText = ""
-    @State private var searchResults: [GeocodingResult] = []
+    @State private var searchResults: [PlaceSearchResult] = []
     @State private var isSearching = false
+    @State private var isSavingSearchResult = false
     @State private var searchError: Error?
     @State private var showingMapPicker = false
     @State private var manualLocationName = ""
     @State private var manualCoordinates = ""
     @State private var searchTask: Task<Void, Never>?
+    @State private var searchGeneration = UUID()
+    @State private var saveTask: Task<Void, Never>?
     
-    private let weatherService = WeatherService()
+    private let placeSearch = PlaceSearchService()
+    private let elevationService = TerrainElevationService()
     
     public init() {}
     
@@ -25,8 +29,9 @@ public struct LocationSearchView: View {
             List {
                 // Search Section
                 Section {
-                    TextField("Search for a city...", text: $searchText)
+                    TextField("Search for a place or address...", text: $searchText)
                         .autocorrectionDisabled()
+                        .disabled(isSavingSearchResult)
                         .onChange(of: searchText) { _, _ in
                             scheduleSearch()
                         }
@@ -40,15 +45,19 @@ public struct LocationSearchView: View {
                             ProgressView()
                             Spacer()
                         }
+                    } else if isSavingSearchResult {
+                        ProgressView("Adding location...")
                     } else if !searchResults.isEmpty {
                         ForEach(searchResults) { result in
-                            Button(action: { saveLocation(from: result) }) {
+                            Button(action: { selectSearchResult(result) }) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(result.name)
                                         .font(.headline)
-                                    Text(result.displayName)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                    if !result.subtitle.isEmpty {
+                                        Text(result.subtitle)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                     Text("\(String(format: "%.4f", result.latitude)), \(String(format: "%.4f", result.longitude))")
                                         .font(.footnote)
                                         .foregroundStyle(.secondary)
@@ -62,7 +71,7 @@ public struct LocationSearchView: View {
                 } header: {
                     Text("Search")
                 } footer: {
-                    Text("Powered by Open-Meteo Geocoding API")
+                    Text("Place search by Apple Maps. Elevation data: Open-Meteo / Copernicus Programme.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -80,7 +89,7 @@ public struct LocationSearchView: View {
                     Button("Add Coordinates") {
                         addManualCoordinates()
                     }
-                    .disabled(manualLocationName.isEmpty || !isValidCoordinateFormat(manualCoordinates))
+                    .disabled(isSavingSearchResult || manualLocationName.isEmpty || !isValidCoordinateFormat(manualCoordinates))
                 } header: {
                     Text("Manual Entry")
                 }
@@ -93,6 +102,7 @@ public struct LocationSearchView: View {
                             Text("Select on Map")
                         }
                     }
+                    .disabled(isSavingSearchResult)
                 } header: {
                     Text("Map")
                 }
@@ -114,11 +124,14 @@ public struct LocationSearchView: View {
         }
         .onDisappear {
             searchTask?.cancel()
+            saveTask?.cancel()
         }
     }
     
     private func scheduleSearch(debounce: Bool = true) {
         searchTask?.cancel()
+        let generation = UUID()
+        searchGeneration = generation
         
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else {
@@ -137,9 +150,9 @@ public struct LocationSearchView: View {
                     try await Task.sleep(nanoseconds: 350_000_000)
                 }
                 
-                let results = try await weatherService.searchLocations(query: query)
+                let results = try await placeSearch.search(query: query)
                 
-                guard !Task.isCancelled,
+                guard !Task.isCancelled, generation == searchGeneration,
                       query == searchText.trimmingCharacters(in: .whitespacesAndNewlines) else {
                     return
                 }
@@ -147,11 +160,12 @@ public struct LocationSearchView: View {
                 searchResults = results
                 isSearching = false
             } catch is CancellationError {
-                if query == searchText.trimmingCharacters(in: .whitespacesAndNewlines) {
+                if generation == searchGeneration,
+                   query == searchText.trimmingCharacters(in: .whitespacesAndNewlines) {
                     isSearching = false
                 }
             } catch {
-                guard !Task.isCancelled,
+                guard !Task.isCancelled, generation == searchGeneration,
                       query == searchText.trimmingCharacters(in: .whitespacesAndNewlines) else {
                     return
                 }
@@ -163,22 +177,30 @@ public struct LocationSearchView: View {
         }
     }
     
-    private func saveLocation(from result: GeocodingResult) {
-        let location = SavedLocation(
-            name: result.name,
-            latitude: result.latitude,
-            longitude: result.longitude,
-            elevation: result.elevation
-        )
-        
-        modelContext.insert(location)
-        do {
-            try modelContext.save()
-            publishLocationsToWatch()
-            dismiss()
-        } catch {
-            print("Failed to save location: \(error)")
-            dismiss()
+    private func selectSearchResult(_ result: PlaceSearchResult) {
+        guard !isSavingSearchResult else { return }
+        searchTask?.cancel()
+        searchGeneration = UUID()
+        isSearching = false
+        isSavingSearchResult = true
+        saveTask = Task { @MainActor in
+            // Terrain elevation is optional; a failed lookup must not block saving.
+            let elevation = await elevationService.elevationIfAvailable(
+                latitude: result.latitude,
+                longitude: result.longitude
+            )
+            guard !Task.isCancelled else { return }
+            let location = result.savedLocation(elevation: elevation)
+            modelContext.insert(location)
+            do {
+                try modelContext.save()
+                publishLocationsToWatch()
+                dismiss()
+            } catch {
+                print("Failed to save location: \(error)")
+                dismiss()
+            }
+            isSavingSearchResult = false
         }
     }
     

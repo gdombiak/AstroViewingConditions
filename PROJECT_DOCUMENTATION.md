@@ -84,25 +84,29 @@ Build an open-source iOS and watchOS app for astronomy enthusiasts to assess nig
 ### Data Sources
 1. **Open-Meteo API** (https://open-meteo.com/)
    - Free weather forecasts
-   - Free geocoding
+   - Best-effort terrain elevation from the Copernicus DEM for iOS locations selected from search
+   - Geocoding for the separate Python/Astronomer path
    - No API key required
-   - Hourly resolution up to 3 days
+   - Weather forecasts have hourly resolution up to 3 days
 
-2. **SunCalc Swift Package** (https://github.com/nikolajjensen/SunCalc)
+2. **Apple MapKit**
+   - Native iOS Add Location place and address search
+
+3. **SunCalc Swift Package** (https://github.com/nikolajjensen/SunCalc)
    - Pure Swift astronomical calculations
    - Sun/moon positions and phases
    - Works offline
 
-3. **N2YO API** (https://www.n2yo.com/)
+4. **N2YO API** (https://www.n2yo.com/)
    - Optional ISS pass predictions
    - Free API key required
 
-4. **Curated Local Target Catalog**
+5. **Curated Local Target Catalog**
    - Moon, naked-eye planets, double stars, star clusters, nebulae, and galaxies
    - Local position and visibility calculations; no target API required at runtime
    - Bundled reference images work offline and retain source/license attribution
 
-5. **David Lorenz Light Pollution Atlas** (https://djlorenz.github.io/astronomy/lp/)
+6. **David Lorenz Light Pollution Atlas** (https://djlorenz.github.io/astronomy/lp/)
    - 2025 global zenith-brightness product `zenith_brightness_v22_2025`
    - Preprocessed into the LPATLAS1 v1 offline binary for the main iOS app only
    - Values are modeled zenith sky brightness in mag/arcsec², not Bortle classes
@@ -289,7 +293,7 @@ Important services:
 
 ### Phase 4: Locations Management - Complete
 - [x] Favorites list with SwiftData-backed app storage
-- [x] Location search using geocoding
+- [x] Location and address search using Apple MapKit, with best-effort Open-Meteo terrain elevation
 - [x] Map picker
 - [x] Manual coordinate entry
 - [x] Selected location snapshots for widgets and watchOS
@@ -417,7 +421,15 @@ Parameters:
   - forecast_days: 3
 ```
 
-### Open-Meteo Geocoding
+### Open-Meteo Elevation (native iOS Add Location enrichment)
+```
+GET https://api.open-meteo.com/v1/elevation
+Parameters:
+  - latitude: Double
+  - longitude: Double
+```
+
+### Open-Meteo Geocoding (separate Python/Astronomer path)
 ```
 GET https://geocoding-api.open-meteo.com/v1/search
 Parameters:

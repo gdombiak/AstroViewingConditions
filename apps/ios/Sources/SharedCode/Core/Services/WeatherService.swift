@@ -13,7 +13,6 @@ public protocol WeatherForecastProviding: Sendable {
 
 public actor WeatherService: WeatherForecastProviding {
     private let baseURL = "https://api.open-meteo.com/v1/forecast"
-    private let geocodingURL = "https://geocoding-api.open-meteo.com/v1/search"
     private static let hourlyParameters = [
         "cloudcover",
         "cloudcover_low",
@@ -31,19 +30,16 @@ public actor WeatherService: WeatherForecastProviding {
     
     private let dataLoader: @Sendable (URL) async throws -> (Data, URLResponse)
     private let forecastTimeout: TimeInterval
-    private let searchTimeout: TimeInterval
     private let batchTimeout: TimeInterval
 
     public init(
         forecastTimeout: TimeInterval = 15,
-        searchTimeout: TimeInterval = 10,
         batchTimeout: TimeInterval = 20,
         dataLoader: @escaping @Sendable (URL) async throws -> (Data, URLResponse) = { url in
             try await URLSession.shared.data(from: url)
         }
     ) {
         self.forecastTimeout = forecastTimeout
-        self.searchTimeout = searchTimeout
         self.batchTimeout = batchTimeout
         self.dataLoader = dataLoader
     }
@@ -82,36 +78,6 @@ public actor WeatherService: WeatherForecastProviding {
         let weatherResponse = try decoder.decode(OpenMeteoResponse.self, from: data)
         
         return parseHourlyForecasts(from: weatherResponse)
-    }
-    
-    public func searchLocations(query: String) async throws -> [GeocodingResult] {
-        guard var components = URLComponents(string: geocodingURL) else {
-            throw WeatherError.invalidURL
-        }
-        components.queryItems = [
-            URLQueryItem(name: "name", value: query),
-            URLQueryItem(name: "count", value: "10"),
-            URLQueryItem(name: "language", value: "en"),
-            URLQueryItem(name: "format", value: "json")
-        ]
-        
-        guard let url = components.url else {
-            throw WeatherError.invalidURL
-        }
-        
-        let (data, response) = try await weatherRequest(timeout: searchTimeout) { [dataLoader] in
-            try await dataLoader(url)
-        }
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw WeatherError.invalidResponse
-        }
-        
-        let decoder = JSONDecoder()
-        let searchResponse = try decoder.decode(GeocodingResponse.self, from: data)
-        
-        return searchResponse.results ?? []
     }
     
     /// Fetches forecasts for multiple locations in batches
@@ -244,30 +210,6 @@ public enum WeatherError: Error, Sendable, LocalizedError {
         case .invalidURL: return "The weather service URL could not be created."
         case .invalidResponse: return "The weather service returned an invalid response."
         case .decodingError: return "The weather response could not be read."
-        }
-    }
-}
-
-public struct GeocodingResponse: Codable {
-    public let results: [GeocodingResult]?
-}
-
-public struct GeocodingResult: Codable, Identifiable, Sendable {
-    public let id: Int
-    public let name: String
-    public let latitude: Double
-    public let longitude: Double
-    public let elevation: Double?
-    public let country: String?
-    public let admin1: String? // State/Province
-    
-    public var displayName: String {
-        if let admin1 = admin1, let country = country {
-            return "\(name), \(admin1), \(country)"
-        } else if let country = country {
-            return "\(name), \(country)"
-        } else {
-            return name
         }
     }
 }
