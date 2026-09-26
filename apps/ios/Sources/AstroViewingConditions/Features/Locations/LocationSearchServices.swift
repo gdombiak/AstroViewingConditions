@@ -1,6 +1,7 @@
 import Foundation
 import MapKit
 import SharedCode
+import SwiftData
 
 struct PlaceSearchResult: Identifiable {
     let id = UUID()
@@ -8,10 +9,6 @@ struct PlaceSearchResult: Identifiable {
     let subtitle: String
     let latitude: Double
     let longitude: Double
-
-    func savedLocation(elevation: Double?) -> SavedLocation {
-        SavedLocation(name: name, latitude: latitude, longitude: longitude, elevation: elevation)
-    }
 
     static func subtitle(name: String, title: String?, locality: String?, administrativeArea: String?, country: String?) -> String {
         let title = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -22,6 +19,35 @@ struct PlaceSearchResult: Identifiable {
         return [locality, administrativeArea, country]
             .compactMap { $0?.isEmpty == false ? $0 : nil }
             .joined(separator: ", ")
+    }
+}
+
+@MainActor
+struct SavedLocationCreator {
+    private let elevationService: TerrainElevationService
+
+    init(elevationService: TerrainElevationService = TerrainElevationService()) {
+        self.elevationService = elevationService
+    }
+
+    func create(name: String, latitude: Double, longitude: Double, in context: ModelContext) async throws {
+        // A lookup failure is best effort, but cancellation must stop the save.
+        let elevation = await elevationService.elevationIfAvailable(latitude: latitude, longitude: longitude)
+        try Task.checkCancellation()
+
+        let location = SavedLocation(
+            name: name,
+            latitude: latitude,
+            longitude: longitude,
+            elevation: elevation
+        )
+        context.insert(location)
+        do {
+            try context.save()
+        } catch {
+            context.delete(location)
+            throw error
+        }
     }
 }
 

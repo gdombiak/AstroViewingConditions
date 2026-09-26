@@ -10,7 +10,7 @@ public struct LocationSearchView: View {
     @State private var searchText = ""
     @State private var searchResults: [PlaceSearchResult] = []
     @State private var isSearching = false
-    @State private var isSavingSearchResult = false
+    @State private var isSavingLocation = false
     @State private var searchError: Error?
     @State private var showingMapPicker = false
     @State private var manualLocationName = ""
@@ -20,7 +20,7 @@ public struct LocationSearchView: View {
     @State private var saveTask: Task<Void, Never>?
     
     private let placeSearch = PlaceSearchService()
-    private let elevationService = TerrainElevationService()
+    private let locationCreator = SavedLocationCreator()
     
     public init() {}
     
@@ -31,7 +31,7 @@ public struct LocationSearchView: View {
                 Section {
                     TextField("Search for a place or address...", text: $searchText)
                         .autocorrectionDisabled()
-                        .disabled(isSavingSearchResult)
+                        .disabled(isSavingLocation)
                         .onChange(of: searchText) { _, _ in
                             scheduleSearch()
                         }
@@ -45,7 +45,7 @@ public struct LocationSearchView: View {
                             ProgressView()
                             Spacer()
                         }
-                    } else if isSavingSearchResult {
+                    } else if isSavingLocation {
                         ProgressView("Adding location...")
                     } else if !searchResults.isEmpty {
                         ForEach(searchResults) { result in
@@ -89,7 +89,7 @@ public struct LocationSearchView: View {
                     Button("Add Coordinates") {
                         addManualCoordinates()
                     }
-                    .disabled(isSavingSearchResult || manualLocationName.isEmpty || !isValidCoordinateFormat(manualCoordinates))
+                    .disabled(isSavingLocation || manualLocationName.isEmpty || !isValidCoordinateFormat(manualCoordinates))
                 } header: {
                     Text("Manual Entry")
                 }
@@ -102,7 +102,7 @@ public struct LocationSearchView: View {
                             Text("Select on Map")
                         }
                     }
-                    .disabled(isSavingSearchResult)
+                    .disabled(isSavingLocation)
                 } header: {
                     Text("Map")
                 }
@@ -112,19 +112,22 @@ public struct LocationSearchView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") {
+                        cancelPendingTasks()
                         dismiss()
                     }
                 }
             }
             .sheet(isPresented: $showingMapPicker) {
                 MapPickerView { name, coordinate in
-                    saveLocation(name: name, from: coordinate)
+                    startSaving(name: name, latitude: coordinate.latitude, longitude: coordinate.longitude)
                 }
             }
         }
         .onDisappear {
-            searchTask?.cancel()
-            saveTask?.cancel()
+            // Presenting the map sheet must not cancel a save it starts.
+            if !showingMapPicker {
+                cancelPendingTasks()
+            }
         }
     }
     
@@ -178,46 +181,31 @@ public struct LocationSearchView: View {
     }
     
     private func selectSearchResult(_ result: PlaceSearchResult) {
-        guard !isSavingSearchResult else { return }
+        startSaving(name: result.name, latitude: result.latitude, longitude: result.longitude)
+    }
+
+    private func startSaving(name: String, latitude: Double, longitude: Double) {
+        guard !isSavingLocation else { return }
         searchTask?.cancel()
         searchGeneration = UUID()
         isSearching = false
-        isSavingSearchResult = true
+        isSavingLocation = true
         saveTask = Task { @MainActor in
-            // Terrain elevation is optional; a failed lookup must not block saving.
-            let elevation = await elevationService.elevationIfAvailable(
-                latitude: result.latitude,
-                longitude: result.longitude
-            )
-            guard !Task.isCancelled else { return }
-            let location = result.savedLocation(elevation: elevation)
-            modelContext.insert(location)
             do {
-                try modelContext.save()
+                try await locationCreator.create(
+                    name: name,
+                    latitude: latitude,
+                    longitude: longitude,
+                    in: modelContext
+                )
                 publishLocationsToWatch()
-                dismiss()
+            } catch is CancellationError {
+                saveTask = nil
+                return
             } catch {
                 print("Failed to save location: \(error)")
-                dismiss()
             }
-            isSavingSearchResult = false
-        }
-    }
-    
-    private func saveLocation(name: String, from coordinate: CLLocationCoordinate2D) {
-        let location = SavedLocation(
-            name: name,
-            latitude: coordinate.latitude,
-            longitude: coordinate.longitude
-        )
-        
-        modelContext.insert(location)
-        do {
-            try modelContext.save()
-            publishLocationsToWatch()
-            dismiss()
-        } catch {
-            print("Failed to save location: \(error)")
+            saveTask = nil
             dismiss()
         }
     }
@@ -235,21 +223,16 @@ public struct LocationSearchView: View {
             return
         }
         
-        let location = SavedLocation(
+        startSaving(
             name: manualLocationName.trimmingCharacters(in: .whitespacesAndNewlines),
             latitude: lat,
             longitude: lon
         )
-        
-        modelContext.insert(location)
-        do {
-            try modelContext.save()
-            publishLocationsToWatch()
-            dismiss()
-        } catch {
-            print("Failed to save location: \(error)")
-            dismiss()
-        }
+    }
+
+    private func cancelPendingTasks() {
+        searchTask?.cancel()
+        saveTask?.cancel()
     }
     
     private func publishLocationsToWatch() {

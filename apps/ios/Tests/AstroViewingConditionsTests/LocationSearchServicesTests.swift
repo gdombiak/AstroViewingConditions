@@ -98,44 +98,71 @@ final class LocationSearchServicesTests: XCTestCase {
     }
 
     @MainActor
-    func testSelectedPlacePersistsElevationOrNilFallback() async throws {
+    func testSavedLocationCreatorPersistsElevation() async throws {
         let container = try ModelContainer(
             for: SavedLocation.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let context = container.mainContext
-        let place = PlaceSearchResult(
-            name: "Stub Stewart State Park",
-            subtitle: "Buxton, OR",
-            latitude: 45.0,
-            longitude: -123.0
-        )
-        let successfulLookup = TerrainElevationService { request in
+        let creator = SavedLocationCreator(elevationService: TerrainElevationService { request in
             (
                 Data(#"{"elevation":[312.0]}"#.utf8),
                 HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
             )
-        }
-        let failedLookup = TerrainElevationService(timeout: 0.02) { _ in
-            try await Task.sleep(for: .seconds(2))
-            throw CancellationError()
-        }
+        })
 
-        let withElevation = place.savedLocation(elevation: await successfulLookup.elevationIfAvailable(
-            latitude: place.latitude,
-            longitude: place.longitude
-        ))
-        let withoutElevation = place.savedLocation(elevation: await failedLookup.elevationIfAvailable(
-            latitude: place.latitude,
-            longitude: place.longitude
-        ))
-        context.insert(withElevation)
-        context.insert(withoutElevation)
-        try context.save()
+        try await creator.create(name: "Test location", latitude: 45, longitude: -123, in: context)
 
         let saved = try context.fetch(FetchDescriptor<SavedLocation>())
-        XCTAssertEqual(saved.count, 2)
-        XCTAssertEqual(saved.first(where: { $0.id == withElevation.id })?.elevation, 312)
-        XCTAssertNil(saved.first(where: { $0.id == withoutElevation.id })?.elevation)
+        XCTAssertEqual(saved.count, 1)
+        XCTAssertEqual(saved.first?.name, "Test location")
+        XCTAssertEqual(saved.first?.elevation, 312)
+    }
+
+    @MainActor
+    func testSavedLocationCreatorPersistsNilWhenElevationFails() async throws {
+        let container = try ModelContainer(
+            for: SavedLocation.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let creator = SavedLocationCreator(elevationService: TerrainElevationService { _ in
+            throw TerrainElevationService.LookupError.invalidResponse
+        })
+
+        try await creator.create(name: "Test location", latitude: 45, longitude: -123, in: context)
+
+        let saved = try context.fetch(FetchDescriptor<SavedLocation>())
+        XCTAssertEqual(saved.count, 1)
+        XCTAssertEqual(saved.first?.name, "Test location")
+        XCTAssertNil(saved.first?.elevation)
+    }
+
+    @MainActor
+    func testSavedLocationCreatorDoesNotPersistWhenCancelled() async throws {
+        let container = try ModelContainer(
+            for: SavedLocation.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = container.mainContext
+        let lookupStarted = expectation(description: "Elevation lookup started")
+        let creator = SavedLocationCreator(elevationService: TerrainElevationService { _ in
+            lookupStarted.fulfill()
+            try await Task.sleep(for: .seconds(2))
+            throw CancellationError()
+        })
+
+        let task = Task {
+            try await creator.create(name: "Cancelled location", latitude: 45, longitude: -123, in: context)
+        }
+        await fulfillment(of: [lookupStarted], timeout: 1)
+        task.cancel()
+
+        do {
+            try await task.value
+            XCTFail("Cancelled creation should not save")
+        } catch is CancellationError {
+            XCTAssertTrue(try context.fetch(FetchDescriptor<SavedLocation>()).isEmpty)
+        }
     }
 }
