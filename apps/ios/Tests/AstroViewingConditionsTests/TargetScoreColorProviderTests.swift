@@ -126,31 +126,25 @@ final class TargetScoreColorProviderTests: XCTestCase {
     /// write the same UserDefaults key, so the root re-render is the seam they share.
     @MainActor
     func testFieldModeRootViewFollowsRepeatedPreferenceChanges() async throws {
-        let defaults = UserDefaults.standard
-        let originalValue = defaults.object(forKey: FieldModePreference.key)
+        let suiteName = "FieldModeRootViewTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defaults.set(false, forKey: FieldModePreference.key)
-        defer {
-            if let originalValue {
-                defaults.set(originalValue, forKey: FieldModePreference.key)
-            } else {
-                defaults.removeObject(forKey: FieldModePreference.key)
-            }
-        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
 
         var observedAppearances: [AppAppearance] = []
-        // Each expectation is consumed once; later reports (including the deferred
-        // UserDefaults restore above) must not fulfill it again.
-        var updateExpectation: XCTestExpectation? = expectation(description: "Initial appearance")
+        var expectedAppearance: AppAppearance = .normal
+        // Each expectation is consumed only by its expected appearance.
+        var updateExpectation: XCTestExpectation? = expectation(description: "Initial .normal appearance")
 
         let host = UIHostingController(
             rootView: FieldModeRootView {
                 PaletteAppearanceProbe { appearance in
-                    guard let pending = updateExpectation else { return }
-                    updateExpectation = nil
                     observedAppearances.append(appearance)
+                    guard appearance == expectedAppearance, let pending = updateExpectation else { return }
+                    updateExpectation = nil
                     pending.fulfill()
                 }
-            }
+            }.defaultAppStorage(defaults)
         )
         let window = UIWindow(frame: UIScreen.main.bounds)
         window.rootViewController = host
@@ -169,7 +163,8 @@ final class TargetScoreColorProviderTests: XCTestCase {
             // A MainActor `wait(for:)` can resume inside the previous `onChange`.
             // Move the next persisted write to a later main-queue turn.
             await finishSwiftUIUpdateCycle()
-            let transition = expectation(description: "Transition \(index) to \(isEnabled)")
+            expectedAppearance = isEnabled ? .field : .normal
+            let transition = expectation(description: "Transition \(index) to \(expectedAppearance)")
             updateExpectation = transition
             FieldModePreference.save(isEnabled, to: defaults)
             await fulfillment(of: [transition], timeout: propagationTimeout)

@@ -495,12 +495,19 @@ private final class BoundRefreshHarness: @unchecked Sendable {
         }
     }
 
-    func waitUntilLoading(_ value: Bool) async {
-        for _ in 0..<5_000 {
+    func waitUntilLoading(
+        _ value: Bool,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < deadline {
             let loading = await MainActor.run { isLoading }
             if loading == value { return }
             await Task.yield()
         }
+        let loading = await MainActor.run { isLoading }
+        XCTAssertEqual(loading, value, "Timed out waiting for isLoading == \(value)", file: file, line: line)
     }
 }
 
@@ -756,6 +763,7 @@ final class WatchConditionsLocationChangeInvalidationTests: XCTestCase {
         await harness.releasePhone(for: tokenB)
         await harness.waitForPublished(count: 1)
         XCTAssertEqual(harness.store.conditions?.location.id, idB)
+        await harness.waitUntilLoading(false)
         let _ui744 = await MainActor.run { harness.isLoading }
         XCTAssertFalse(_ui744)
     }
