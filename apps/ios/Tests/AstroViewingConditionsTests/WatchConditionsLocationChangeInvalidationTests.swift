@@ -486,13 +486,20 @@ private final class BoundRefreshHarness: @unchecked Sendable {
         }
     }
 
-    /// Wait until publishedCount reaches n or timeout via yields.
-    func waitForPublished(count: Int) async {
-        for _ in 0..<5_000 {
+    /// Publication and terminal loading state are separate MainActor hops.
+    func waitForPublished(
+        count: Int,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while ContinuousClock.now < deadline {
             let n = await MainActor.run { publishedCount }
             if n >= count { return }
             await Task.yield()
         }
+        let n = await MainActor.run { publishedCount }
+        XCTAssertGreaterThanOrEqual(n, count, "Timed out waiting for publication", file: file, line: line)
     }
 
     func waitUntilLoading(
@@ -560,6 +567,7 @@ final class WatchConditionsLocationChangeInvalidationTests: XCTestCase {
 
         // B completes.
         await harness.waitForPublished(count: 1)
+        await harness.waitUntilLoading(false)
         XCTAssertEqual(harness.store.persistCount, 1)
         XCTAssertEqual(harness.store.conditions?.location.id, idB)
         XCTAssertEqual(harness.reloader.count, 1)
@@ -999,6 +1007,8 @@ final class WatchConditionsLocationChangeInvalidationTests: XCTestCase {
         await harness.releasePhone(for: tokenA)
         await harness.releasePhone(for: tokenB)
         await harness.waitForPublished(count: 1)
+        // Publication precedes terminal UI cleanup; wait for both before asserting completion.
+        await harness.waitUntilLoading(false)
 
         XCTAssertEqual(harness.store.conditions?.location.id, idC)
         XCTAssertEqual(harness.store.persistCount, 1)

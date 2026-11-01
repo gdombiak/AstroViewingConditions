@@ -5,6 +5,20 @@ import Foundation
 @testable import AstroViewingConditions
 
 final class BestSpotSearcherTests: XCTestCase {
+    // Match the New York location used by the search fixtures, independently of the runner zone.
+    private static var fixtureCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        return calendar
+    }
+
+    private static var regressionSearchDates: [Date] {
+        // Ordinary day plus both DST transition days; these failures must be testable year-round.
+        [(3, 8), (6, 15), (11, 1)].map { month, day in
+            fixtureCalendar.date(from: DateComponents(year: 2026, month: month, day: day, hour: 12))!
+        }
+    }
+
     private struct MockWeatherProvider: WeatherForecastProviding {
         let forecasts: @Sendable (Coordinate) -> [HourlyForecast]
 
@@ -18,17 +32,19 @@ final class BestSpotSearcherTests: XCTestCase {
 
     private actor MockAstronomyProvider: AstronomyProviding {
         func calculateSunEvents(latitude: Double, longitude: Double, on date: Date) async -> SunEvents {
-            let calendar = Calendar(identifier: .gregorian)
-            let start = calendar.startOfDay(for: date)
+            let calendar = BestSpotSearcherTests.fixtureCalendar
+            func time(_ hour: Int, minute: Int = 0) -> Date {
+                calendar.date(bySettingHour: hour, minute: minute, second: 0, of: date)!
+            }
             return SunEvents(
-                sunrise: start.addingTimeInterval(6 * 3600),
-                sunset: start.addingTimeInterval(18 * 3600),
-                civilTwilightBegin: start.addingTimeInterval(5 * 3600),
-                civilTwilightEnd: start.addingTimeInterval(19 * 3600),
-                nauticalTwilightBegin: start.addingTimeInterval(4.5 * 3600),
-                nauticalTwilightEnd: start.addingTimeInterval(19.5 * 3600),
-                astronomicalTwilightBegin: start.addingTimeInterval(4 * 3600),
-                astronomicalTwilightEnd: start.addingTimeInterval(20 * 3600)
+                sunrise: time(6),
+                sunset: time(18),
+                civilTwilightBegin: time(5),
+                civilTwilightEnd: time(19),
+                nauticalTwilightBegin: time(4, minute: 30),
+                nauticalTwilightEnd: time(19, minute: 30),
+                astronomicalTwilightBegin: time(4),
+                astronomicalTwilightEnd: time(20)
             )
         }
 
@@ -249,7 +265,7 @@ final class BestSpotSearcherTests: XCTestCase {
     }
 
     private func currentSearchDate() -> Date {
-        Calendar(identifier: .gregorian).startOfDay(for: Date())
+        Self.fixtureCalendar.startOfDay(for: Date())
     }
 
     private static func nightForecasts(
@@ -261,7 +277,7 @@ final class BestSpotSearcherTests: XCTestCase {
         // Preserved evening-only window used by existing Best Spot fixtures.
         nightForecasts(
             for: date,
-            calendar: Calendar(identifier: .gregorian),
+            calendar: fixtureCalendar,
             hourOffsets: [20, 21, 22, 23],
             cloudCover: cloudCover,
             humidity: humidity,
@@ -280,8 +296,11 @@ final class BestSpotSearcherTests: XCTestCase {
     ) -> [HourlyForecast] {
         let start = calendar.startOfDay(for: date)
         return hourOffsets.map { hourOffset in
-            HourlyForecast(
-                time: start.addingTimeInterval(Double(hourOffset) * 3600),
+            // Offsets describe local clock hours (24 = next midnight), not elapsed hours.
+            let day = calendar.date(byAdding: .day, value: hourOffset / 24, to: start)!
+            let time = calendar.date(bySettingHour: hourOffset % 24, minute: 0, second: 0, of: day)!
+            return HourlyForecast(
+                time: time,
                 cloudCover: cloudCover,
                 humidity: humidity,
                 windSpeed: windSpeed,
@@ -400,7 +419,7 @@ final class BestSpotSearcherTests: XCTestCase {
 
     func testWeatherDataWithoutNightForecastsThrowsNoScorableLocations() async throws {
         let date = currentSearchDate()
-        let start = Calendar(identifier: .gregorian).startOfDay(for: date)
+        let start = Self.fixtureCalendar.startOfDay(for: date)
         let daytimeForecasts = [
             HourlyForecast(
                 time: start.addingTimeInterval(12 * 3600),
@@ -431,27 +450,28 @@ final class BestSpotSearcherTests: XCTestCase {
     }
 
     func testAverageFogIsComputedAcrossNightWindow() async throws {
-        let date = currentSearchDate()
-        let forecasts = Self.nightForecasts(for: date, cloudCover: 5)
-        let searcher = searcher(
-            weather: MockWeatherProvider { _ in forecasts },
-            fogScoreCalculator: { forecast in
-                Calendar(identifier: .gregorian).component(.hour, from: forecast.time) == 20
-                    ? FogScore(score: 80, factors: [.highHumidity])
-                    : FogScore(score: 20, factors: [.lowWind])
-            }
-        )
+        for date in Self.regressionSearchDates {
+            let forecasts = Self.nightForecasts(for: date, cloudCover: 5)
+            let searcher = searcher(
+                weather: MockWeatherProvider { _ in forecasts },
+                fogScoreCalculator: { forecast in
+                    Self.fixtureCalendar.component(.hour, from: forecast.time) == 20
+                        ? FogScore(score: 80, factors: [.highHumidity])
+                        : FogScore(score: 20, factors: [.lowWind])
+                }
+            )
 
-        let result = try await searcher.findBestSpots(
-            around: CachedLocation(from: createSavedLocation()),
-            radiusMiles: 10,
-            spacingMiles: 10,
-            for: date,
-            topN: 5
-        )
+            let result = try await searcher.findBestSpots(
+                around: CachedLocation(from: createSavedLocation()),
+                radiusMiles: 10,
+                spacingMiles: 10,
+                for: date,
+                topN: 5
+            )
 
-        XCTAssertEqual(result.bestSpot?.fogScore.score, 35)
-        XCTAssertEqual(Set(result.bestSpot?.fogScore.factors ?? []), Set([.highHumidity, .lowWind]))
+            XCTAssertEqual(result.bestSpot?.fogScore.score, 35)
+            XCTAssertEqual(Set(result.bestSpot?.fogScore.factors ?? []), Set([.highHumidity, .lowWind]))
+        }
     }
 
     func testWaterCoordinateExcludedFromTopRecommendations() async throws {
@@ -1168,31 +1188,32 @@ final class BestSpotSearcherTests: XCTestCase {
     }
 
     func testOneAndGappedNighttimeRowsRemainScorable() async throws {
-        let date = currentSearchDate()
-        let calendar = Calendar(identifier: .gregorian)
+        for date in Self.regressionSearchDates {
+            let calendar = Self.fixtureCalendar
 
-        for offsets in [[20], [20, 23]] {
-            let forecasts = Self.nightForecasts(
-                for: date,
-                calendar: calendar,
-                hourOffsets: offsets,
-                cloudCover: 5
-            )
-            let result = try await searcher(
-                weather: MockWeatherProvider { _ in forecasts },
-                suitability: MockSuitabilityProvider { _ in .suitable }
-            ).findBestSpots(
-                around: CachedLocation(from: createSavedLocation()),
-                radiusMiles: 10,
-                spacingMiles: 10,
-                for: date,
-                topN: 5
-            )
+            for offsets in [[20], [20, 23]] {
+                let forecasts = Self.nightForecasts(
+                    for: date,
+                    calendar: calendar,
+                    hourOffsets: offsets,
+                    cloudCover: 5
+                )
+                let result = try await searcher(
+                    weather: MockWeatherProvider { _ in forecasts },
+                    suitability: MockSuitabilityProvider { _ in .suitable }
+                ).findBestSpots(
+                    around: CachedLocation(from: createSavedLocation()),
+                    radiusMiles: 10,
+                    spacingMiles: 10,
+                    for: date,
+                    topN: 5
+                )
 
-            XCTAssertFalse(result.allScoredLocations.isEmpty, "offsets=\(offsets)")
-            XCTAssertTrue(result.allScoredLocations.allSatisfy {
-                $0.nightQuality.hourlyRatings.count == offsets.count
-            }, "offsets=\(offsets)")
+                XCTAssertFalse(result.allScoredLocations.isEmpty, "offsets=\(offsets)")
+                XCTAssertTrue(result.allScoredLocations.allSatisfy {
+                    $0.nightQuality.hourlyRatings.count == offsets.count
+                }, "offsets=\(offsets)")
+            }
         }
     }
 
