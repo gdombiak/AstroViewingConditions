@@ -425,10 +425,10 @@ def test_real_engine_inverted_window_is_no_astronomical_night() -> None:
 
 
 def test_havana_dst_repeat_midnight_keeps_three_civil_slots() -> None:
-    # 2026-11-01 Havana falls back; 01:30 local is after the repeated midnight.
-    reference = datetime(2026, 11, 1, 6, 30, tzinfo=timezone.utc)
+    # At 01:30 local on November 2, 2025, both occurrences of midnight had passed.
+    reference = datetime(2025, 11, 2, 6, 30, tzinfo=timezone.utc)
     local_zone = ZoneInfo("America/Havana")
-    transport = LocalCalendarTransport(date(2026, 11, 1), local_zone)
+    transport = LocalCalendarTransport(date(2025, 11, 2), local_zone)
     provider = OpenMeteoWeatherProvider(
         transport,
         policy=OpenMeteoPolicy(max_attempts=1),

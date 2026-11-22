@@ -3,4 +3,4 @@ engine_semver: ">=1.0.0 <2.0.0"
 equality: night_outlook
 origin: manual
 hosts: [swift, python]
-notes: A repeated local midnight: the day shift keeps the source offset, unlike startOfDay.
+notes: Local midnight repeated on 2025-11-02. The first outlook day starts at the earlier occurrence (04:00Z), and the following days start at 05:00Z.

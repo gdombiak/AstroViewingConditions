@@ -187,16 +187,15 @@ def test_missing_following_row_falls_back_to_the_same_day_morning_twilight():
 def test_repeated_local_midnight_add_keeps_the_source_offset():
     """`date(byAdding:)` is not `startOfDay`: it takes the LATER occurrence.
 
-    Foundation ground truth from the differential scan; `America/Havana` repeats
-    local midnight on 2026-11-01.
+    `America/Havana` repeated local midnight on November 2, 2025.
     """
     zone = ZoneInfo("America/Havana")
-    reference_day = _start_of_day(instant("2026-11-02T07:00:00Z"), zone)
-    assert reference_day == instant("2026-11-02T05:00:00Z")
-    assert _add_days(reference_day, -1, zone) == instant("2026-11-01T05:00:00Z")
+    reference_day = _start_of_day(instant("2025-11-03T07:00:00Z"), zone)
+    assert reference_day == instant("2025-11-03T05:00:00Z")
+    assert _add_days(reference_day, -1, zone) == instant("2025-11-02T05:00:00Z")
     # startOfDay of the same civil date is the EARLIER occurrence, one hour before.
-    assert _start_of_day(instant("2026-11-01T12:00:00Z"), zone) == instant(
-        "2026-11-01T04:00:00Z"
+    assert _start_of_day(instant("2025-11-02T12:00:00Z"), zone) == instant(
+        "2025-11-02T04:00:00Z"
     )
 
 

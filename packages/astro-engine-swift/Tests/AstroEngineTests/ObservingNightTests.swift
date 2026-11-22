@@ -210,34 +210,34 @@ final class ObservingNightTests: XCTestCase {
 
     /// `date(byAdding:)` is not `startOfDay`: on a repeated local midnight it
     /// keeps the source instant's offset and lands on the LATER occurrence.
-    /// `America/Havana` repeats local midnight on 2026-11-01.
+    /// `America/Havana` repeated local midnight on November 2, 2025.
     func testRepeatedLocalMidnightKeepsTheSourceOffset() {
         let havana = TimeZone(identifier: "America/Havana")!
         let calendar = ObservingCalendar.gregorian(for: havana)
-        let referenceDay = calendar.startOfDay(for: Self.instant("2026-11-02T07:00:00Z"))
-        XCTAssertEqual(referenceDay, Self.instant("2026-11-02T05:00:00Z"))
+        let referenceDay = calendar.startOfDay(for: Self.instant("2025-11-03T07:00:00Z"))
+        XCTAssertEqual(referenceDay, Self.instant("2025-11-03T05:00:00Z"))
         XCTAssertEqual(
             calendar.date(byAdding: .day, value: -1, to: referenceDay),
-            Self.instant("2026-11-01T05:00:00Z")
+            Self.instant("2025-11-02T05:00:00Z")
         )
         // startOfDay of that same civil date is the earlier occurrence.
         XCTAssertEqual(
-            calendar.startOfDay(for: Self.instant("2026-11-01T12:00:00Z")),
-            Self.instant("2026-11-01T04:00:00Z")
+            calendar.startOfDay(for: Self.instant("2025-11-02T12:00:00Z")),
+            Self.instant("2025-11-02T04:00:00Z")
         )
 
         let days = [
-            Self.day("2026-10-31T10:30:00Z", "2026-10-31T23:10:00Z"),
-            Self.day("2026-11-01T11:31:00Z", "2026-11-02T00:11:00Z"),
-            Self.day("2026-11-02T11:32:00Z", "2026-11-03T00:12:00Z"),
+            Self.day("2025-11-01T10:30:00Z", "2025-11-01T23:10:00Z"),
+            Self.day("2025-11-02T11:31:00Z", "2025-11-03T00:11:00Z"),
+            Self.day("2025-11-03T11:32:00Z", "2025-11-04T00:12:00Z"),
         ]
         let resolved = night(select(
-            "2026-11-02T07:00:00Z", zone: havana,
-            forecastStart: Self.instant("2026-10-31T04:00:00Z"), days: days, moonCount: 3
+            "2025-11-03T07:00:00Z", zone: havana,
+            forecastStart: Self.instant("2025-11-01T04:00:00Z"), days: days, moonCount: 3
         ))
         XCTAssertEqual(resolved?.dayOffset, -1)
-        XCTAssertEqual(resolved?.observingLocalDate, "2026-11-01")
-        XCTAssertEqual(resolved?.observingDayStart, Self.instant("2026-11-01T05:00:00Z"))
+        XCTAssertEqual(resolved?.observingLocalDate, "2025-11-02")
+        XCTAssertEqual(resolved?.observingDayStart, Self.instant("2025-11-02T05:00:00Z"))
     }
 
     func testRepeatedLocalMidnightInASecondCurrentZone() {

@@ -106,8 +106,8 @@ offset transition from 2000 to 2041 (130,558 `startOfDay`, 50,634
    reproduces the requested wall time, Foundation keeps that offset. On a
    repeated local midnight that selects the **later** occurrence — so
    `startOfDay(D) + (−1 day)` can be one hour *after* `startOfDay(D − 1)`.
-   `America/Havana` on 2026-11-01 and `Atlantic/Azores` on 2026-10-25 are current
-   examples. Only when the source offset cannot express the requested wall time
+   Examples include `America/Havana` on 2025-11-02 and `Atlantic/Azores` on
+   2026-10-25. Only when the source offset cannot express the requested wall time
    does it fall back to the earliest-instant resolution, which is what produces
    the transition instant on a skipped local midnight.
 

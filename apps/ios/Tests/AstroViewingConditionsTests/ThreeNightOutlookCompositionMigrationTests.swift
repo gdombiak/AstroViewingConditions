@@ -513,7 +513,7 @@ final class ThreeNightOutlookCompositionMigrationTests: XCTestCase {
         static let zones: [(String, DateComponents)] = [
             ("America/Los_Angeles", DateComponents(year: 2026, month: 7, day: 26)),
             ("America/Santiago", DateComponents(year: 2026, month: 9, day: 6)),
-            ("America/Havana", DateComponents(year: 2026, month: 11, day: 1))
+            ("America/Havana", DateComponents(year: 2025, month: 11, day: 2))
         ]
 
         static let sweep: [Shape] = {

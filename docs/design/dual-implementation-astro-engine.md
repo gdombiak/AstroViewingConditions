@@ -3154,7 +3154,7 @@ the local date. `date(byAdding: .day, value:)` instead keeps the source
 instant's own UTC offset wherever that offset still expresses the requested wall
 time, so on a repeated local midnight it selects the **later** occurrence —
 `startOfDay(D) + (−1 day)` can therefore be an hour after `startOfDay(D − 1)`,
-as in `America/Havana` 2026-11-01 and `Atlantic/Azores` 2026-10-25. Only when
+as in `America/Havana` 2025-11-02 and `Atlantic/Azores` 2026-10-25. Only when
 the source offset cannot express the wall time does it fall back to the earliest
 resolution, which is what yields the transition instant on a skipped midnight.
 Two behaviours are frozen rather than cleaned up: on a zone whose transition is
