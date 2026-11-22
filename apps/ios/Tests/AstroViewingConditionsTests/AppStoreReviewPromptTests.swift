@@ -228,19 +228,13 @@ final class AppStoreReviewPromptTests: XCTestCase {
         let seed = try Harness.eligibleFirstAttemptSeed(on: day)
         let harness = Harness(now: day, seed: seed)
         let viewModel = DashboardViewModel()
-        viewModel.viewingConditions = ViewingConditions(
-            fetchedAt: day,
-            location: SavedLocation(name: "Test", latitude: 45, longitude: -122),
-            hourlyForecasts: [],
-            dailySunEvents: [],
-            dailyMoonInfo: [],
-            issPasses: [],
-            fogScore: FogScore(score: 0, factors: [])
-        )
+        let location = CachedLocation(id: UUID(), name: "Test", latitude: 45, longitude: -122)
+        viewModel.viewingConditions = makeReviewConditions(for: location, on: day)
 
         func context() -> AppStoreReviewPromptContext {
             AppStoreReviewPromptContext(
                 isDashboardTabSelected: true,
+                activeLocation: location,
                 viewModel: viewModel,
                 scenePhase: .active
             )
@@ -299,23 +293,7 @@ final class AppStoreReviewPromptTests: XCTestCase {
         let seed = try Harness.eligibleFirstAttemptSeed(on: day)
         let harness = Harness(now: day, seed: seed)
         let location = CachedLocation(id: UUID(), name: "Test", latitude: 45, longitude: -122)
-        let forecast = HourlyForecast(
-            time: day, cloudCover: 25, humidity: 50, windSpeed: 3,
-            windDirection: 180, temperature: 12
-        )
-        let sun = SunEvents(
-            sunrise: day, sunset: day, civilTwilightBegin: day, civilTwilightEnd: day,
-            nauticalTwilightBegin: day, nauticalTwilightEnd: day,
-            astronomicalTwilightBegin: day, astronomicalTwilightEnd: day
-        )
-        let moon = MoonInfo(phase: 0.5, phaseName: "Full", altitude: 45, illumination: 50, emoji: "🌕")
-        let forecastDays = SharedConditionsRepository.forecastDays
-        let refreshed = ViewingConditions(
-            fetchedAt: day, location: location, hourlyForecasts: [forecast],
-            dailySunEvents: Array(repeating: sun, count: forecastDays),
-            dailyMoonInfo: Array(repeating: moon, count: forecastDays), issPasses: [],
-            fogScore: FogScore(score: 0, factors: []), timeZoneIdentifier: "America/Los_Angeles"
-        )
+        let refreshed = makeReviewConditions(for: location, on: day)
         let firstRefreshStarted = expectation(description: "First refresh is fetching conditions")
         let (holdFirstRefresh, releaseFirstRefresh) = AsyncStream<Void>.makeStream()
         defer { releaseFirstRefresh.finish() }
@@ -336,6 +314,7 @@ final class AppStoreReviewPromptTests: XCTestCase {
         func context() -> AppStoreReviewPromptContext {
             AppStoreReviewPromptContext(
                 isDashboardTabSelected: true,
+                activeLocation: location,
                 viewModel: viewModel,
                 scenePhase: .active
             )
@@ -360,6 +339,85 @@ final class AppStoreReviewPromptTests: XCTestCase {
         await harness.openDashboard(context(), on: day)
         XCTAssertEqual(harness.requestCount, 1)
         XCTAssertEqual(harness.store.state.attemptInstants, [day])
+    }
+
+    func testLocationSwitchStaysIneligibleUntilItsConditionsAreReady() async throws {
+        let day = Harness.referenceAttempt
+        let seed = try Harness.eligibleFirstAttemptSeed(on: day)
+        let harness = Harness(now: day, seed: seed)
+        let previous = CachedLocation(id: UUID(), name: "Previous", latitude: 45, longitude: -122)
+        let destination = CachedLocation(id: UUID(), name: "Destination", latitude: 39, longitude: -105)
+        let destinationConditions = makeReviewConditions(for: destination, on: day)
+        let repository = SharedConditionsRepository(
+            load: { nil }, save: { _ in }, now: { day },
+            fetch: { _ in destinationConditions }
+        )
+        let timeZoneStarted = expectation(description: "Destination time-zone lookup is pending")
+        let (holdTimeZone, releaseTimeZone) = AsyncStream<Void>.makeStream()
+        defer { releaseTimeZone.finish() }
+        let viewModel = DashboardViewModel(
+            conditionsRepository: repository,
+            timeZoneResolver: { _ in
+                timeZoneStarted.fulfill()
+                var wait = holdTimeZone.makeAsyncIterator()
+                _ = await wait.next()
+                return TimeZone(identifier: "America/Denver")!
+            },
+            now: { day }
+        )
+        viewModel.viewingConditions = makeReviewConditions(for: previous, on: day)
+
+        func context(for location: CachedLocation?) -> AppStoreReviewPromptContext {
+            AppStoreReviewPromptContext(
+                isDashboardTabSelected: true,
+                activeLocation: location,
+                viewModel: viewModel,
+                scenePhase: .active
+            )
+        }
+
+        let beforeSwitch = context(for: previous)
+        XCTAssertTrue(beforeSwitch.isQualifyingDisplay)
+        XCTAssertFalse(context(for: nil).isQualifyingDisplay)
+        XCTAssertFalse(context(for: destination).isQualifyingDisplay)
+
+        let switchLocation = Task { await viewModel.loadConditionsIfNeeded(for: destination) }
+        await fulfillment(of: [timeZoneStarted], timeout: 5)
+        XCTAssertFalse(viewModel.isLoading)
+        XCTAssertEqual(viewModel.viewingConditions?.location.id, previous.id)
+        XCTAssertFalse(context(for: previous).isQualifyingDisplay)
+        await harness.coordinator.evaluateAfterNaturalPause(beforeSwitch) {
+            context(for: destination) == beforeSwitch
+        }
+        XCTAssertEqual(harness.requestCount, 0)
+        XCTAssertEqual(harness.store.saveCount, 0)
+
+        releaseTimeZone.finish()
+        await switchLocation.value
+        XCTAssertEqual(viewModel.viewingConditions?.location.id, destination.id)
+        XCTAssertTrue(context(for: destination).isQualifyingDisplay)
+        await harness.openDashboard(context(for: destination), on: day)
+        XCTAssertEqual(harness.store.state.attemptInstants, [day])
+    }
+
+    private func makeReviewConditions(for location: CachedLocation, on day: Date) -> ViewingConditions {
+        let forecast = HourlyForecast(
+            time: day, cloudCover: 25, humidity: 50, windSpeed: 3,
+            windDirection: 180, temperature: 12
+        )
+        let sun = SunEvents(
+            sunrise: day, sunset: day, civilTwilightBegin: day, civilTwilightEnd: day,
+            nauticalTwilightBegin: day, nauticalTwilightEnd: day,
+            astronomicalTwilightBegin: day, astronomicalTwilightEnd: day
+        )
+        let moon = MoonInfo(phase: 0.5, phaseName: "Full", altitude: 45, illumination: 50, emoji: "🌕")
+        let forecastDays = SharedConditionsRepository.forecastDays
+        return ViewingConditions(
+            fetchedAt: day, location: location, hourlyForecasts: [forecast],
+            dailySunEvents: Array(repeating: sun, count: forecastDays),
+            dailyMoonInfo: Array(repeating: moon, count: forecastDays), issPasses: [],
+            fogScore: FogScore(score: 0, factors: []), timeZoneIdentifier: "America/Los_Angeles"
+        )
     }
 
     func testOpenWindowsShareReviewCooldownAndQualifyingDays() async throws {

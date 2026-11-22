@@ -394,6 +394,7 @@ public class DashboardViewModel {
     private let conditionsRepository: SharedConditionsRepository
     private let targetRecommendationService: any TargetRecommendationProviding
     private let observingQualityEnvironment: any ObservingQualityEnvironment
+    private let timeZoneResolver: @Sendable (CachedLocation) async -> TimeZone
     private let now: @Sendable () -> Date
     
     // State
@@ -401,7 +402,7 @@ public class DashboardViewModel {
     public var isLoading = false
     public var error: (any Error)?
     /// A newer load can finish while an earlier fetch is still in flight.
-    private(set) var activeConditionsLoadCount = 0
+    private var activeConditionsLoadCount = 0
     /// Identifies a load even when SwiftUI renders its start and completion together.
     private(set) var conditionsLoadGeneration: UInt = 0
     public private(set) var issError: ISSError?
@@ -424,6 +425,11 @@ public class DashboardViewModel {
     private var apiKey: String
     public private(set) var locationTimeZone: TimeZone?
     private var conditionsLoadOperations: [ConditionsLoadKey: ConditionsLoadOperation] = [:]
+
+    /// Location loads are registered before resolving a time zone.
+    var hasActiveConditionsLoad: Bool {
+        activeConditionsLoadCount > 0 || !conditionsLoadOperations.isEmpty
+    }
     
     public var hasISSConfigured: Bool {
         !apiKey.isEmpty
@@ -624,12 +630,16 @@ public class DashboardViewModel {
         conditionsRepository: SharedConditionsRepository? = nil,
         targetRecommendationService: any TargetRecommendationProviding = DefaultTargetRecommendationService(),
         observingQualityEnvironment: (any ObservingQualityEnvironment)? = nil,
+        timeZoneResolver: @escaping @Sendable (CachedLocation) async -> TimeZone = { location in
+            await LocationTimeZoneResolver.resolve(latitude: location.latitude, longitude: location.longitude)
+        },
         now: @escaping @Sendable () -> Date = Date.init
     ) {
         self.apiKey = apiKey
         self.conditionsRepository = conditionsRepository
             ?? SharedConditionsRepository(provider: conditionsProvider, now: now)
         self.targetRecommendationService = targetRecommendationService
+        self.timeZoneResolver = timeZoneResolver
         // Safe default: exact night-score fallback. Never an unbootstrapped `.loading` session.
         // ContentView injects the process-owned ObservingQualitySession that it bootstraps.
         let environment = observingQualityEnvironment ?? UnavailableObservingQualityEnvironment.shared
@@ -1013,10 +1023,7 @@ public class DashboardViewModel {
     }
     
     private func resolveTimeZone(for location: CachedLocation) async {
-        locationTimeZone = await LocationTimeZoneResolver.resolve(
-            latitude: location.latitude,
-            longitude: location.longitude
-        )
+        locationTimeZone = await timeZoneResolver(location)
     }
     
     public func loadConditionsIfNeeded(for location: SavedLocation) async {

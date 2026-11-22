@@ -27,6 +27,7 @@ public struct DashboardView: View {
     @Query(sort: \SavedLocation.dateAdded, order: .reverse) private var savedLocations: [SavedLocation]
     @Query(sort: \EquipmentItem.name) private var equipmentItems: [EquipmentItem]
     private let viewModel: DashboardViewModel
+    private let isDashboardSelected: Bool
     /// Process-owned OQ session for Best Nearby assessor preparation (optional in previews).
     private let observingQualitySession: ObservingQualitySession?
     @State private var locationLoader: DashboardLocationLoader
@@ -48,9 +49,11 @@ public struct DashboardView: View {
             apiKey: UserDefaults.standard.string(forKey: "n2yoApiKey") ?? ""
         ),
         locationSession: DashboardLocationSession = DashboardLocationSession(),
-        observingQualitySession: ObservingQualitySession? = nil
+        observingQualitySession: ObservingQualitySession? = nil,
+        isDashboardSelected: Bool = false
     ) {
         self.viewModel = viewModel
+        self.isDashboardSelected = isDashboardSelected
         self.locationSession = locationSession
         self.observingQualitySession = observingQualitySession
         _locationLoader = State(initialValue: DashboardLocationLoader(
@@ -211,6 +214,14 @@ public struct DashboardView: View {
             }
         }
         .appScreenBackground()
+        // Inactive tabs stay mounted, so only the selected Dashboard can qualify.
+        .background {
+            AppStoreReviewPromptAnchor(
+                isDashboardSelected: isDashboardSelected,
+                viewModel: viewModel,
+                locationLoader: locationLoader
+            )
+        }
         .task {
             restoreSelectedDay()
             hasRestoredSelectedDay = true

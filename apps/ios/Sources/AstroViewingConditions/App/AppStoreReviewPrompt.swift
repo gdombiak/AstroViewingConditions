@@ -1,4 +1,5 @@
 import Foundation
+import SharedCode
 import StoreKit
 import SwiftUI
 
@@ -6,8 +7,8 @@ import SwiftUI
 ///
 /// Dashboard, Locations, and Settings stay mounted together. A qualifying display
 /// is the selected Dashboard tab in an active scene with successfully loaded
-/// conditions. The Dashboard can keep cached conditions visible during a refresh
-/// or after it fails.
+/// conditions for the active location. Cached conditions may remain visible
+/// during a location change, refresh, or failure.
 struct AppStoreReviewPromptContext: Equatable, Sendable {
     let isDashboardSelected: Bool
     let isShowingSuccessfulConditions: Bool
@@ -33,14 +34,25 @@ struct AppStoreReviewPromptContext: Equatable, Sendable {
     @MainActor
     init(
         isDashboardTabSelected: Bool,
+        activeLocation: CachedLocation?,
         viewModel: DashboardViewModel,
         scenePhase: ScenePhase
     ) {
+        let hasMatchingConditions: Bool
+        if let activeLocation, let conditions = viewModel.viewingConditions {
+            hasMatchingConditions = SharedConditionsRepository.locationMatches(
+                conditions.location,
+                activeLocation
+            )
+        } else {
+            hasMatchingConditions = false
+        }
+
         self.init(
             isDashboardTabSelected: isDashboardTabSelected,
-            isShowingSuccessfulConditions: viewModel.viewingConditions != nil
+            isShowingSuccessfulConditions: hasMatchingConditions
                 && !viewModel.isLoading
-                && viewModel.activeConditionsLoadCount == 0
+                && !viewModel.hasActiveConditionsLoad
                 && viewModel.error == nil,
             scenePhase: scenePhase,
             conditionsLoadGeneration: viewModel.conditionsLoadGeneration
@@ -222,6 +234,7 @@ enum AppStoreReviewPromptIntegration {
 struct AppStoreReviewPromptAnchor: View {
     var isDashboardSelected: Bool
     var viewModel: DashboardViewModel
+    var locationLoader: DashboardLocationLoader
 
     @Environment(\.requestReview) private var requestReview
     @Environment(\.scenePhase) private var scenePhase
@@ -245,6 +258,7 @@ struct AppStoreReviewPromptAnchor: View {
     private var promptContext: AppStoreReviewPromptContext {
         AppStoreReviewPromptContext(
             isDashboardTabSelected: isDashboardSelected,
+            activeLocation: locationLoader.activeLocation,
             viewModel: viewModel,
             scenePhase: scenePhase
         )

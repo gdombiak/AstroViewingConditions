@@ -95,7 +95,8 @@ struct ContentView: View {
                 DashboardView(
                     viewModel: dashboardViewModel,
                     locationSession: dashboardLocationSession,
-                    observingQualitySession: observingQualitySession
+                    observingQualitySession: observingQualitySession,
+                    isDashboardSelected: selectedTab == .dashboard
                 )
             }
 
@@ -106,13 +107,6 @@ struct ContentView: View {
             tabContent(.settings) {
                 SettingsView(unitSystem: $unitSystemPreference.selection)
             }
-        }
-        // Inactive tabs stay mounted, so only the selected Dashboard can qualify.
-        .background {
-            AppStoreReviewPromptAnchor(
-                isDashboardSelected: selectedTab == .dashboard,
-                viewModel: dashboardViewModel
-            )
         }
         .environment(\.unitSystem, unitSystemPreference.selection)
         .safeAreaInset(edge: .bottom, spacing: 0) {
