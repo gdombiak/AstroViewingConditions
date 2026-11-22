@@ -13,8 +13,8 @@ struct TonightsBestTargetsCard: View {
     @Binding var minimumFit: EquipmentFitThreshold
     let hasUnfilteredVisibleTargets: Bool
     let onViewAll: (() -> Void)?
-    @State private var selectedRecommendation: TargetRecommendation?
-    @State private var showingEquipmentSelector = false
+    @Binding var selectedRecommendation: TargetRecommendation?
+    @Binding var showingEquipmentSelector: Bool
 
     init(
         recommendations: [TargetRecommendation],
@@ -25,6 +25,8 @@ struct TonightsBestTargetsCard: View {
         sessionSelection: Binding<EquipmentSessionSelection>,
         minimumFit: Binding<EquipmentFitThreshold>,
         hasUnfilteredVisibleTargets: Bool,
+        selectedRecommendation: Binding<TargetRecommendation?>,
+        showingEquipmentSelector: Binding<Bool>,
         onViewAll: (() -> Void)? = nil
     ) {
         self.recommendations = recommendations
@@ -35,6 +37,8 @@ struct TonightsBestTargetsCard: View {
         _sessionSelection = sessionSelection
         _minimumFit = minimumFit
         self.hasUnfilteredVisibleTargets = hasUnfilteredVisibleTargets
+        _selectedRecommendation = selectedRecommendation
+        _showingEquipmentSelector = showingEquipmentSelector
         self.onViewAll = onViewAll
     }
 
@@ -221,6 +225,9 @@ struct TonightsBestTargetsCard: View {
 }
 
 #Preview {
+    @Previewable @State var selectedRecommendation: TargetRecommendation?
+    @Previewable @State var showingEquipmentSelector = false
+
     TonightsBestTargetsCard(
         recommendations: [
             TargetRecommendation(
@@ -250,6 +257,8 @@ struct TonightsBestTargetsCard: View {
         sessionSelection: .constant(EquipmentSessionSelection()),
         minimumFit: .constant(.any),
         hasUnfilteredVisibleTargets: false,
+        selectedRecommendation: $selectedRecommendation,
+        showingEquipmentSelector: $showingEquipmentSelector,
         onViewAll: {}
     )
     .padding()

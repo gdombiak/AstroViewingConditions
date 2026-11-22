@@ -223,6 +223,45 @@ final class AppStoreReviewPromptTests: XCTestCase {
         XCTAssertEqual(visible.store.state.attemptInstants, [day])
     }
 
+    func testDashboardSheetPreventsReviewUntilDismissed() async throws {
+        let day = Harness.referenceAttempt
+        let seed = try Harness.eligibleFirstAttemptSeed(on: day)
+        let harness = Harness(now: day, seed: seed)
+        let viewModel = DashboardViewModel()
+        let location = CachedLocation(id: UUID(), name: "Test", latitude: 45, longitude: -122)
+        viewModel.viewingConditions = makeReviewConditions(for: location, on: day)
+        var isPresentingSheet = false
+
+        func context() -> AppStoreReviewPromptContext {
+            AppStoreReviewPromptContext(
+                isDashboardTabSelected: true,
+                activeLocation: location,
+                viewModel: viewModel,
+                scenePhase: .active,
+                isPresentingDashboardSheet: isPresentingSheet
+            )
+        }
+
+        let beforePresentation = context()
+        XCTAssertTrue(beforePresentation.isQualifyingDisplay)
+
+        isPresentingSheet = true
+        let whilePresented = context()
+        XCTAssertFalse(whilePresented.isQualifyingDisplay)
+        await harness.coordinator.evaluateAfterNaturalPause(beforePresentation) {
+            context() == beforePresentation
+        }
+        await harness.openDashboard(whilePresented, on: day)
+        XCTAssertEqual(harness.requestCount, 0)
+        XCTAssertEqual(harness.store.state, seed)
+        XCTAssertEqual(harness.store.saveCount, 0)
+
+        isPresentingSheet = false
+        await harness.openDashboard(context(), on: day)
+        XCTAssertEqual(harness.requestCount, 1)
+        XCTAssertEqual(harness.store.state.attemptInstants, [day])
+    }
+
     func testCachedConditionsDoNotQualifyDuringOrAfterAFailedRefresh() async throws {
         let day = Harness.referenceAttempt
         let seed = try Harness.eligibleFirstAttemptSeed(on: day)

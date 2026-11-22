@@ -34,6 +34,8 @@ public struct DashboardView: View {
     @State private var showingLocationPicker = false
     @State private var showingBestSpotSearch = false
     @State private var showingAllBestTargets = false
+    @State private var selectedDashboardTarget: TargetRecommendation?
+    @State private var showingDashboardEquipmentSelector = false
     @State private var equipmentSessionSelection = EquipmentSessionSelection()
     @State private var minimumEquipmentFit: EquipmentFitThreshold = .any
     @State private var hasRestoredSelectedDay = false
@@ -66,6 +68,16 @@ public struct DashboardView: View {
     
     private var unitConverter: AstroUnitConverter {
         AstroUnitConverter(unitSystem: unitSystem)
+    }
+
+    private var isPresentingDashboardSheet: Bool {
+        showingLocationPicker || showingBestSpotSearch || showingAllBestTargets
+            || selectedDashboardTarget != nil || showingDashboardEquipmentSelector
+    }
+
+    private func dismissDashboardTargetSheets() {
+        selectedDashboardTarget = nil
+        showingDashboardEquipmentSelector = false
     }
     
     private var selectedLocation: SelectedLocation {
@@ -218,6 +230,7 @@ public struct DashboardView: View {
         .background {
             AppStoreReviewPromptAnchor(
                 isDashboardSelected: isDashboardSelected,
+                isPresentingDashboardSheet: { isPresentingDashboardSheet },
                 viewModel: viewModel,
                 locationLoader: locationLoader
             )
@@ -250,9 +263,16 @@ public struct DashboardView: View {
             guard hasRestoredSelectedDay else { return }
             storedSelectedDayRawValue = newDay.rawValue
         }
+        .onChange(of: viewModel.viewingConditions != nil) { _, hasConditions in
+            // These bindings outlive the card that presents the sheets.
+            if !hasConditions {
+                dismissDashboardTargetSheets()
+            }
+        }
         .onChange(of: selectedLocation) { _, newValue in
             locationLoader.repairSelectionIfNeeded(using: savedLocations.map(CachedLocation.init))
             guard locationLoader.selectedLocation == newValue else { return }
+            dismissDashboardTargetSheets()
 
             let internallyResolved = locationLoader.consumeInternallyResolvedSelectionUpdate(
                 matching: newValue
@@ -345,6 +365,8 @@ public struct DashboardView: View {
                     sessionSelection: $equipmentSessionSelection,
                     minimumFit: $minimumEquipmentFit,
                     hasUnfilteredVisibleTargets: !viewModel.currentBestTargetsPresentation.sections(for: .all).isEmpty,
+                    selectedRecommendation: $selectedDashboardTarget,
+                    showingEquipmentSelector: $showingDashboardEquipmentSelector,
                     onViewAll: { showingAllBestTargets = true }
                 )
                 .id(DashboardSection.bestTargets)

@@ -7,27 +7,30 @@ import SwiftUI
 ///
 /// Dashboard, Locations, and Settings stay mounted together. A qualifying display
 /// is the selected Dashboard tab in an active scene with successfully loaded
-/// conditions for the active location. Cached conditions may remain visible
-/// during a location change, refresh, or failure.
+/// conditions for the active location and no Dashboard sheet presented. Cached
+/// conditions may remain visible during a location change, refresh, or failure.
 struct AppStoreReviewPromptContext: Equatable, Sendable {
     let isDashboardSelected: Bool
     let isShowingSuccessfulConditions: Bool
     let isSceneActive: Bool
+    private let isPresentingDashboardSheet: Bool
     private let conditionsLoadGeneration: UInt
 
     var isQualifyingDisplay: Bool {
-        isDashboardSelected && isShowingSuccessfulConditions && isSceneActive
+        isDashboardSelected && isShowingSuccessfulConditions && isSceneActive && !isPresentingDashboardSheet
     }
 
     init(
         isDashboardTabSelected: Bool,
         isShowingSuccessfulConditions: Bool,
         scenePhase: ScenePhase,
+        isPresentingDashboardSheet: Bool = false,
         conditionsLoadGeneration: UInt = 0
     ) {
         self.isDashboardSelected = isDashboardTabSelected
         self.isShowingSuccessfulConditions = isShowingSuccessfulConditions
         self.isSceneActive = scenePhase == .active
+        self.isPresentingDashboardSheet = isPresentingDashboardSheet
         self.conditionsLoadGeneration = conditionsLoadGeneration
     }
 
@@ -36,7 +39,8 @@ struct AppStoreReviewPromptContext: Equatable, Sendable {
         isDashboardTabSelected: Bool,
         activeLocation: CachedLocation?,
         viewModel: DashboardViewModel,
-        scenePhase: ScenePhase
+        scenePhase: ScenePhase,
+        isPresentingDashboardSheet: Bool = false
     ) {
         let hasMatchingConditions: Bool
         if let activeLocation, let conditions = viewModel.viewingConditions {
@@ -55,6 +59,7 @@ struct AppStoreReviewPromptContext: Equatable, Sendable {
                 && !viewModel.hasActiveConditionsLoad
                 && viewModel.error == nil,
             scenePhase: scenePhase,
+            isPresentingDashboardSheet: isPresentingDashboardSheet,
             conditionsLoadGeneration: viewModel.conditionsLoadGeneration
         )
     }
@@ -233,6 +238,7 @@ enum AppStoreReviewPromptIntegration {
 /// Observes Dashboard visibility without putting review policy inside `DashboardView`.
 struct AppStoreReviewPromptAnchor: View {
     var isDashboardSelected: Bool
+    var isPresentingDashboardSheet: () -> Bool
     var viewModel: DashboardViewModel
     var locationLoader: DashboardLocationLoader
 
@@ -249,7 +255,7 @@ struct AppStoreReviewPromptAnchor: View {
             .task(id: context) {
                 guard AppStoreReviewPromptIntegration.isEnabled else { return }
                 await resolveCoordinator().evaluateAfterNaturalPause(context) {
-                    // The model can change before SwiftUI cancels this task.
+                    // Conditions or sheet state can change before SwiftUI cancels this task.
                     promptContext == context
                 }
             }
@@ -260,7 +266,8 @@ struct AppStoreReviewPromptAnchor: View {
             isDashboardTabSelected: isDashboardSelected,
             activeLocation: locationLoader.activeLocation,
             viewModel: viewModel,
-            scenePhase: scenePhase
+            scenePhase: scenePhase,
+            isPresentingDashboardSheet: isPresentingDashboardSheet()
         )
     }
 
