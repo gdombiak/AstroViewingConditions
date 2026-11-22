@@ -1685,10 +1685,15 @@ def parse_batch_compare_request(
         if not isinstance(name, str) or not name.strip():
             raise InvalidRequestError("candidate name must be nonempty")
         latitude, longitude = row.get("latitude"), row.get("longitude")
-        if (isinstance(latitude, bool) or not isinstance(latitude, (int, float)) or
-            isinstance(longitude, bool) or not isinstance(longitude, (int, float)) or
-            not math.isfinite(latitude) or not math.isfinite(longitude) or
-            not -90 <= latitude <= 90 or not -180 <= longitude <= 180):
+        # Bounds reject non-finite values without converting large integers to floats.
+        if (
+            isinstance(latitude, bool)
+            or not isinstance(latitude, (int, float))
+            or not -90 <= latitude <= 90
+            or isinstance(longitude, bool)
+            or not isinstance(longitude, (int, float))
+            or not -180 <= longitude <= 180
+        ):
             raise InvalidRequestError("candidate coordinates are invalid")
         for field in ("source_url", "map_url"):
             if row.get(field) is not None and not isinstance(row[field], str):

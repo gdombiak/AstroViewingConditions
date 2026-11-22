@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from astro_host.cache import MemoryWeatherCache
-from astro_host.cli import EXIT_OK, main, parse_batch_compare_request
+from astro_host.cli import EXIT_INVALID_REQUEST, EXIT_OK, main, parse_batch_compare_request
 from astro_host.conditions import ConditionsService
 from astro_host.engine import ConditionsEngine
 from astro_host.errors import EngineCallError, InvalidRequestError, WeatherProviderError
@@ -561,6 +561,26 @@ def test_transport_accepts_optional_center_and_preserves_metadata():
             "candidates": [{"key": "a", "name": "Place", "latitude": True,
                             "longitude": 0}],
         })
+
+
+@pytest.mark.parametrize("field", ["latitude", "longitude"])
+@pytest.mark.parametrize("coordinate", [10**400, -(10**400)], ids=["positive", "negative"])
+def test_cli_rejects_oversized_candidate_coordinates(monkeypatch, field, coordinate):
+    candidate = {"key": "a", "name": "Place", "latitude": 34.35, "longitude": -118.24}
+    candidate[field] = coordinate
+    document = {"reference_time": NOW.isoformat(), "candidates": [candidate]}
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(document)))
+    stdout, stderr = io.StringIO(), io.StringIO()
+
+    status = main(["agent.batch_compare", "--input", "-"], stdout=stdout, stderr=stderr)
+
+    assert status == EXIT_INVALID_REQUEST
+    assert json.loads(stdout.getvalue()) == {
+        "ok": False,
+        "operation": "agent.batch_compare",
+        "error": {"code": "invalid_request", "message": "candidate coordinates are invalid"},
+    }
+    assert stderr.getvalue() == ""
 
 
 def test_cli_selected_default_and_explicit_center_is_one_time(tmp_path):
