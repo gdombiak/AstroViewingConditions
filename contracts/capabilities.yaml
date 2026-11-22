@@ -1,6 +1,5 @@
 # Astro Engine capability catalog.
-# Current contract release 1.1.0. Astro Engine 1.0.0 is published; existing
-# capabilities from that release retain their historical `since` values.
+# Current contract release 1.1.1.
 #
 # `since` is the contract release in which this specification was introduced,
 # not the current engine release and not "already implemented on every host".
@@ -17,7 +16,7 @@
 # lives under contracts/data. Target scoring and equipment matching are
 # deterministic Phase 15 capabilities. Catalog JSON is the catalog.deep_sky source.
 
-engine_semver: "1.1.0"
+engine_semver: "1.1.1"
 
 capabilities:
   - id: observing_quality.assess

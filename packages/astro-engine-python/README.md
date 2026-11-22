@@ -1,6 +1,6 @@
 # astro-engine (Python)
 
-Astro Engine 1.1.0 Python library and JSON CLI. Public allow-list is the
+Astro Engine 1.1.1 Python library and JSON CLI. Public allow-list is the
 thirty-nine catalogued capabilities.
 
 In a checkout, calibration and canonical data are loaded from the repository
@@ -145,8 +145,9 @@ null. Approximate true field is apparent field divided by magnification, not a
 field-stop model. See the
 [optics procedure](../../contracts/procedures/optics-calculate.md).
 
-The public catalog now contains 39 capabilities; engine/package identity is
-1.1.0, and `optics.calculate` is introduced in this release.
+The public catalog contains 39 capabilities. Astro Engine 1.1.0 introduced
+`optics.calculate`. Version 1.1.1 validates that each computed ratio is
+positive and finite in double precision.
 
 Target metadata is available through `targets.requirements`,
 `catalog.solar_system`, and `targets.moon_sensitivity`. For example, pass

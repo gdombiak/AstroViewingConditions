@@ -2,8 +2,8 @@
 
 Language-neutral product semantics for the dual Swift/Python engine.
 
-**Current identity (`ENGINE_VERSION` 1.1.0):** the next backward-compatible
-release after published Astro Engine 1.0.0. The catalogued
+**Current identity (`ENGINE_VERSION` 1.1.1):** a patch release for
+`optics.calculate` ratio validation. The catalogued
 capabilities in `capabilities.yaml` are `observing_quality.assess`,
 `night_conditions.analyze`, `night_conditions.score`, `fog.score`,
 `seeing.penalty`, `transparency.penalty`, `light_pollution.lookup`,
@@ -55,7 +55,7 @@ ahead of the generic one, calibrated by
 
 ## Versioning
 
-- `ENGINE_VERSION` / `capabilities.yaml` `engine_semver` is the **current contract identity** (what a host reports in its runtime envelope). Current identity is `1.1.0`.
+- `ENGINE_VERSION` / `capabilities.yaml` `engine_semver` is the **current contract identity** (what a host reports in its runtime envelope). Current identity is `1.1.1`.
 - A capability's `since` is the first published contract identity containing the **specification**. It stays valid in later compatible releases and must not be backdated to an already-published release.
 - `hosts` is who must implement the capability for that freeze (parity obligation).
 - Fixture `meta.yaml` `engine_semver` is an **applicability range** (`>=0.1.0 <2.0.0` for original fixtures; Phase 14/15/16 fixtures use `>=1.0.0 <2.0.0`; optics fixtures use `>=1.1.0 <2.0.0`). Releasing a newer compatible engine does **not** rewrite older applicable goldens.

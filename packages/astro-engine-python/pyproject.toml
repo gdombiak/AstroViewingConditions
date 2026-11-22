@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "astro-engine"
-version = "1.1.0"
+version = "1.1.1"
 description = "Astro Engine Python library and JSON CLI (public capability allow-list)"
 requires-python = ">=3.11"
 dependencies = ["skyfield==1.55", "skyfield-data==7.0.0"]

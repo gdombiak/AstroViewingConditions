@@ -1,5 +1,11 @@
 # Contract changelog
 
+## 1.1.1
+
+- Return a validation error when magnification, exit pupil, or approximate
+  true field of view underflows to zero or overflows. Positive subnormal ratios
+  remain valid in both Swift and Python.
+
 ## 1.1.0
 
 - Add public parity-governed

@@ -174,7 +174,7 @@ final class Phase1ContractDataTests: XCTestCase {
     }
 
     func testEngineVersionIs110() throws {
-        XCTAssertEqual(try F3ObservingQualityContractSupport.engineSemver(), "1.1.0")
+        XCTAssertEqual(try F3ObservingQualityContractSupport.engineSemver(), "1.1.1")
     }
 
     private func loadJSON(_ relative: String) throws -> [String: Any] {

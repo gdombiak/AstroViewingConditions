@@ -9,7 +9,7 @@
 | **Branch strategy** | One dedicated feature branch; many reviewable commits; **one eventual PR into `main`**. Do not land dual-engine work on `main` before the [feasibility gate](#feasibility-gate-grok-bot-vm). The branch may be abandoned wholesale. |
 | **Resolved open questions** | 2026-08-30 — CLI is a local AGPL tool (no network wrap); production CLI **bundles** `light_pollution_global_v1.bin`; English copy out of parity; longer forecast horizon is CLI-only / out of contract |
 | **Product** | Astro Viewing Conditions (iOS 18 / watchOS 11, Swift 6, AGPL-3.0) |
-| **Current app version** | MARKETING_VERSION `2.3.1` (`apps/ios/project.yml`) |
+| **Current app version** | MARKETING_VERSION `2.3.2` (`apps/ios/project.yml`) |
 | **Scope** | Architecture and implementation roadmap. This file **is** the roadmap: update it when implementation disproves an assumption or changes an architectural decision. Do not let the branch and this document diverge. |
 
 ---
@@ -32,9 +32,9 @@ This is **not** “feature parity of the whole app,” not a second UI, not a 1:
 **Feasibility before breadth.** The main uncertainty is not whether Python can reproduce `ObservingQualityCalculator.assess`. It is whether a local CLI on the actual Grok Bot VM is installed, invoked unattended by a skill/routine, and consumed as JSON. A [vertical proof](#feasibility-gate-grok-bot-vm) of one real capability happens **before** SharedCode extraction and the rest of the 1.0 port. If that gate fails, abandon the feature branch.
 
 **Release status:** Astro Engine 1.0.0 was published with Astronomer 0.1.0 and
-0.1.1. The current 1.1.0 candidate adds the backward-compatible public
-`optics.calculate` capability; existing 1.0.0 capability histories remain
-unchanged.
+0.1.1. Astro Engine 1.1.0 introduced `optics.calculate` in Astronomer 0.1.2.
+The 1.1.1 candidate adds validation for computed ratios that round to zero
+or overflow.
 
 ---
 
@@ -1255,7 +1255,7 @@ If a branch stays in code, it is **not** claimed as “single source of product 
 
 ### 8. Versioning
 
-Three independent versions: iOS `MARKETING_VERSION` (2.3.1), CLI PEP 621, `contracts/ENGINE_VERSION`.
+Three independent versions: iOS `MARKETING_VERSION` (2.3.2), CLI PEP 621, `contracts/ENGINE_VERSION`.
 
 Both hosts report `engine_semver` in the **runtime** JSON envelope. That field is identity, not a domain golden.
 

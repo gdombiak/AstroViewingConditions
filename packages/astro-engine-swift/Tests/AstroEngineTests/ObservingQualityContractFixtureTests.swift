@@ -9,7 +9,7 @@ final class ObservingQualityContractFixtureTests: XCTestCase {
     private let capabilityID = F3ObservingQualityContractSupport.capabilityID
 
     func testEngineSemverIs110() throws {
-        XCTAssertEqual(try F3ObservingQualityContractSupport.engineSemver(), "1.1.0")
+        XCTAssertEqual(try F3ObservingQualityContractSupport.engineSemver(), "1.1.1")
     }
 
     func testContractsRootAncestorWalkAndEnvOverride() throws {
@@ -20,7 +20,7 @@ final class ObservingQualityContractFixtureTests: XCTestCase {
         XCTAssertEqual(
             try String(contentsOf: walked.appendingPathComponent("ENGINE_VERSION"), encoding: .utf8)
                 .trimmingCharacters(in: .whitespacesAndNewlines),
-            "1.1.0"
+            "1.1.1"
         )
 
         let viaEnv = try F3ObservingQualityContractSupport.contractsDirectory(
@@ -159,7 +159,7 @@ final class ObservingQualityContractFixtureTests: XCTestCase {
         XCTAssertEqual(fixtures.count, 14, "expected 14 OQ contract fixtures")
 
         let version = try F3ObservingQualityContractSupport.engineSemver()
-        XCTAssertEqual(version, "1.1.0")
+        XCTAssertEqual(version, "1.1.1")
         let contractsRoot = try F3ObservingQualityContractSupport.contractsDirectory()
 
         var failures: [String] = []

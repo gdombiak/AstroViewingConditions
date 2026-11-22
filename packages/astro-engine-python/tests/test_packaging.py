@@ -53,7 +53,7 @@ def test_public_imports() -> None:
     assert callable(filter_recommendable)
     assert callable(load_deep_sky_catalog)
     assert LightPollutionArtifact.from_bytes is not None
-    assert engine_semver() == "1.1.0"
+    assert engine_semver() == "1.1.1"
     assert CAPABILITY_ID == "observing_quality.assess"
     assert LP_CAPABILITY_ID == "light_pollution.lookup"
     assert WEATHER_CAPABILITY_ID == "weather.decode"
@@ -119,13 +119,13 @@ def test_pyproject_pins_offline_astronomy_dependencies() -> None:
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     assert data["project"]["dependencies"] == ["skyfield==1.55", "skyfield-data==7.0.0"]
     assert data["project"]["requires-python"] == ">=3.11"
-    assert data["project"]["version"] == "1.1.0"
+    assert data["project"]["version"] == "1.1.1"
     assert data["project"]["version"] == engine_semver()
 
 
 def test_catalog_current_release_matches_engine_version() -> None:
     catalog = (contracts_root() / "capabilities.yaml").read_text(encoding="utf-8")
-    assert 'engine_semver: "1.1.0"' in catalog
+    assert 'engine_semver: "1.1.1"' in catalog
     since_lines = [
         line for line in catalog.splitlines() if line.startswith("    since: ")
     ]
