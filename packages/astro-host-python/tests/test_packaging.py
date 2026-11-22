@@ -10,4 +10,4 @@ def test_package_version_matches_runtime_identity() -> None:
     path = Path(__file__).resolve().parents[1] / "pyproject.toml"
     document = tomllib.loads(path.read_text(encoding="utf-8"))
     assert document["project"]["version"] == HOST_SEMVER == "0.1.3"
-    assert document["project"]["dependencies"] == ["astro-engine>=1.1,<2.0"]
+    assert document["project"]["dependencies"] == ["astro-engine>=1.1.1,<2.0"]
