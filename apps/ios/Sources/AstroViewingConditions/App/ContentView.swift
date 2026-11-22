@@ -33,9 +33,10 @@ struct ContentView: View {
     @State private var observingQualitySession: ObservingQualitySession
     @State private var dashboardViewModel: DashboardViewModel
     @State private var didStartObservingQualityBootstrap = false
-    @State private var unitSystem = UnitSystemStorage.loadSelectedUnitSystem()
+    @Bindable private var unitSystemPreference: UnitSystemPreference
 
-    init() {
+    init(unitSystemPreference: UnitSystemPreference) {
+        self.unitSystemPreference = unitSystemPreference
         let session = ObservingQualitySession()
         _observingQualitySession = State(initialValue: session)
         _dashboardViewModel = State(
@@ -103,7 +104,7 @@ struct ContentView: View {
             }
 
             tabContent(.settings) {
-                SettingsView(unitSystem: $unitSystem)
+                SettingsView(unitSystem: $unitSystemPreference.selection)
             }
         }
         // Inactive tabs stay mounted, so only the selected Dashboard can qualify.
@@ -113,7 +114,7 @@ struct ContentView: View {
                 viewModel: dashboardViewModel
             )
         }
-        .environment(\.unitSystem, unitSystem)
+        .environment(\.unitSystem, unitSystemPreference.selection)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             AppTabBar(
                 tabs: AppTab.allCases,
@@ -307,6 +308,6 @@ extension DynamicTypeSize {
 }
 
 #Preview {
-    ContentView()
+    ContentView(unitSystemPreference: UnitSystemPreference(selection: .metric, onChange: { _ in }))
         .modelContainer(for: SavedLocation.self, inMemory: true)
 }

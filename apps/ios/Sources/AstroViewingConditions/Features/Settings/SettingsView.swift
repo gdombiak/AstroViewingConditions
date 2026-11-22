@@ -193,10 +193,6 @@ public struct SettingsView: View {
                 .appListRowSurface()
             }
             .appListBackground()
-            .onChange(of: unitSystem) { _, newValue in
-                UnitSystemStorage.saveSelectedUnitSystem(newValue)
-                WatchConnectivityService.shared.sendUnitSystemToWatch(newValue)
-            }
             .appNavigationTitle("Settings")
         }
     }
