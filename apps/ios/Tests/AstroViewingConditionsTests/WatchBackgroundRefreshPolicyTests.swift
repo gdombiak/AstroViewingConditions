@@ -366,6 +366,16 @@ final class WatchBackgroundRefreshPolicyTests: XCTestCase {
         )
     }
 
+    func testWatchAppHandlesRefreshesQueuedWithoutAnIdentifier() throws {
+        let app = try sourceText("Sources/WatchApp/AstroViewingConditionsWatchApp.swift")
+        XCTAssertTrue(app.contains("""
+                .backgroundTask(.appRefresh) { identifier in
+                    guard identifier == nil else { return }
+                    await WatchAppRuntime.handleAppRefresh()
+                }
+        """))
+    }
+
     func testWatchWidgetRemainsReadOnlyAndWatchAppWiresBackgroundRefresh() throws {
         let widget = try sourceText("Sources/WatchWidget/NightConditionsWatchWidget.swift")
         XCTAssertFalse(widget.contains("ConditionsProvider()"))
