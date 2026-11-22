@@ -1925,9 +1925,14 @@ def _optional_float(value: Mapping[str, object], key: str) -> float | None:
 
 
 def _read_json(path: str) -> object:
-    if path == "-":
-        return json.load(sys.stdin)
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    text = sys.stdin.read() if path == "-" else Path(path).read_text(encoding="utf-8")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        raise
+    except ValueError as exc:
+        # Python raises ValueError when a JSON integer exceeds its digit limit.
+        raise InvalidRequestError("JSON integer exceeds the digit limit") from exc
 
 
 def _json_value(value: Any) -> Any:

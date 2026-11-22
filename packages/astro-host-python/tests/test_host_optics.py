@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 from pathlib import Path
+from subprocess import run
 
 import pytest
 
@@ -13,6 +16,9 @@ from astro_host.optics import explicit_optics, optical_facts, saved_optics
 
 from test_equipment import S30_ID, VIRTUOSO_ID, binoculars, s30, virtuoso
 from test_eyepieces import DELOS_ID, PANOPTIC_ID, delos, panoptic
+
+
+HOST_PACKAGE = Path(__file__).resolve().parents[1]
 
 
 def test_saved_combination_uses_the_engine_result(monkeypatch) -> None:
@@ -208,6 +214,41 @@ def test_cli_explicit_optics_and_invalid_request(tmp_path: Path) -> None:
     })
     assert status == EXIT_INVALID_REQUEST
     assert rejected["error"]["code"] == "invalid_request"
+
+
+@pytest.mark.parametrize("input_mode", ["stdin", "file"])
+def test_cli_optics_reports_integer_digit_limit_as_invalid_request(
+    tmp_path: Path, input_mode: str
+) -> None:
+    request = '{"telescope_focal_length_mm":' + "1" * 4301 + ',"eyepiece_focal_length_mm":8}'
+    input_path = "-"
+    if input_mode == "file":
+        path = tmp_path / "request.json"
+        path.write_text(request, encoding="utf-8")
+        input_path = str(path)
+
+    completed = run(
+        [sys.executable, "-m", "astro_host.cli", "agent.optics", "--input", input_path],
+        env={
+            **os.environ,
+            "PYTHONINTMAXSTRDIGITS": "4300",
+            "PYTHONPATH": os.pathsep.join((
+                str(HOST_PACKAGE / "src"),
+                str(HOST_PACKAGE.with_name("astro-engine-python") / "src"),
+            )),
+        },
+        input=request if input_mode == "stdin" else None,
+        text=True,
+        capture_output=True,
+    )
+
+    assert completed.returncode == EXIT_INVALID_REQUEST, (completed.stdout, completed.stderr)
+    assert json.loads(completed.stdout) == {
+        "ok": False,
+        "operation": "agent.optics",
+        "error": {"code": "invalid_request", "message": "JSON integer exceeds the digit limit"},
+    }
+    assert completed.stderr == ""
 
 
 def test_cli_explicit_optics_reports_underflow_as_invalid_request(tmp_path: Path) -> None:
