@@ -43,6 +43,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # The shared timezone catalogue includes IANA aliases Ubuntu packages separately.
+      - name: Install legacy IANA timezone aliases
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tzdata-legacy
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -72,6 +78,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Install legacy IANA timezone aliases
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends tzdata-legacy
 
       - name: Set up Python
         uses: actions/setup-python@v6
