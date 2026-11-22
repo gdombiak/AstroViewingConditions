@@ -16,7 +16,10 @@ UTC_Z_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 def require_finite_number(value: Any, name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValidationError(f"{name} must be a finite JSON number")
-    number = float(value)
+    try:
+        number = float(value)
+    except OverflowError as exc:
+        raise ValidationError(f"{name} must be a finite JSON number") from exc
     if not math.isfinite(number):
         raise ValidationError(f"{name} must be a finite JSON number")
     return number

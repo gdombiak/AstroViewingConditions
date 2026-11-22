@@ -39,6 +39,9 @@ def load_json_bytes(data: bytes) -> Any:
         raise
     except json.JSONDecodeError as exc:
         raise JSONCodecError(f"malformed JSON: {exc.msg}") from exc
+    except ValueError as exc:
+        # Python's integer digit limit is enforced during JSON decoding.
+        raise JSONCodecError("JSON integer exceeds the digit limit") from exc
     _assert_finite(value)
     return value
 

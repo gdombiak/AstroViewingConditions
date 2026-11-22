@@ -302,6 +302,35 @@ def test_known_capability_validation_error_is_json_exit_2() -> None:
     compare_envelope(envelope, fixture["expected"], policy_id="engine_error")
 
 
+@pytest.mark.parametrize("focal_length", [10**309, -(10**309)], ids=["positive", "negative"])
+def test_optics_rejects_integers_outside_finite_double_range(focal_length: int) -> None:
+    request = {
+        "injected": {"telescope_focal_length_mm": focal_length, "eyepiece_focal_length_mm": 8}
+    }
+    code, stdout, stderr = _run(
+        ["optics.calculate", "--input", "-"], stdin=json.dumps(request).encode(),
+    )
+
+    assert code == EXIT_VALIDATION, (stdout, stderr)
+    assert stderr == ""
+    envelope = json.loads(stdout)
+    assert envelope["ok"] is False
+    assert envelope["error"] == {"code": "validation", "message": "invalid optics.calculate input"}
+
+
+def test_optics_reports_integer_digit_limit_as_validation() -> None:
+    request = b'{"injected":{"telescope_focal_length_mm":' + b"1" * 4301 + b"}}"
+    code, stdout, stderr = _run(
+        ["optics.calculate", "--input", "-"], stdin=request, env=_env(PYTHONINTMAXSTRDIGITS="4300"),
+    )
+
+    assert code == EXIT_VALIDATION, (stdout, stderr)
+    assert stderr == ""
+    envelope = json.loads(stdout)
+    assert envelope["ok"] is False
+    assert envelope["error"] == {"code": "validation", "message": "JSON integer exceeds the digit limit"}
+
+
 def test_malformed_json_is_validation() -> None:
     code, stdout, stderr = _run(
         [CAPABILITY_ID, "--input", "-"],
