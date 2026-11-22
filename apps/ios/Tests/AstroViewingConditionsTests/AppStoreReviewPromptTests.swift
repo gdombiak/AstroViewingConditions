@@ -1,3 +1,4 @@
+import SharedCode
 import SwiftUI
 import XCTest
 @testable import AstroViewingConditions
@@ -187,22 +188,22 @@ final class AppStoreReviewPromptTests: XCTestCase {
         let contexts = [
             AppStoreReviewPromptContext(
                 isDashboardTabSelected: false,
-                hasViewingConditions: true,
+                isShowingSuccessfulConditions: true,
                 scenePhase: .active
             ),
             AppStoreReviewPromptContext(
                 isDashboardTabSelected: true,
-                hasViewingConditions: false,
+                isShowingSuccessfulConditions: false,
                 scenePhase: .active
             ),
             AppStoreReviewPromptContext(
                 isDashboardTabSelected: true,
-                hasViewingConditions: true,
+                isShowingSuccessfulConditions: true,
                 scenePhase: .inactive
             ),
             AppStoreReviewPromptContext(
                 isDashboardTabSelected: true,
-                hasViewingConditions: true,
+                isShowingSuccessfulConditions: true,
                 scenePhase: .background
             )
         ]
@@ -220,6 +221,77 @@ final class AppStoreReviewPromptTests: XCTestCase {
         await visible.openDashboard(on: day)
         XCTAssertEqual(visible.requestCount, 1)
         XCTAssertEqual(visible.store.state.attemptInstants, [day])
+    }
+
+    func testCachedConditionsDoNotQualifyDuringOrAfterAFailedRefresh() async throws {
+        let day = Harness.referenceAttempt
+        let seed = try Harness.eligibleFirstAttemptSeed(on: day)
+        let harness = Harness(now: day, seed: seed)
+        let viewModel = DashboardViewModel()
+        viewModel.viewingConditions = ViewingConditions(
+            fetchedAt: day,
+            location: SavedLocation(name: "Test", latitude: 45, longitude: -122),
+            hourlyForecasts: [],
+            dailySunEvents: [],
+            dailyMoonInfo: [],
+            issPasses: [],
+            fogScore: FogScore(score: 0, factors: [])
+        )
+
+        func context() -> AppStoreReviewPromptContext {
+            AppStoreReviewPromptContext(
+                isDashboardTabSelected: true,
+                viewModel: viewModel,
+                scenePhase: .active
+            )
+        }
+
+        let beforeRefresh = context()
+        XCTAssertTrue(beforeRefresh.isQualifyingDisplay)
+
+        viewModel.isLoading = true
+        XCTAssertFalse(context().isQualifyingDisplay)
+        await harness.coordinator.evaluateAfterNaturalPause(beforeRefresh) {
+            context() == beforeRefresh
+        }
+        XCTAssertEqual(harness.requestCount, 0)
+        XCTAssertEqual(harness.store.saveCount, 0)
+
+        viewModel.error = URLError(.timedOut)
+        viewModel.isLoading = false
+        XCTAssertFalse(context().isQualifyingDisplay)
+        await harness.openDashboard(context(), on: day)
+        XCTAssertEqual(harness.requestCount, 0)
+        XCTAssertEqual(harness.store.state, seed)
+        XCTAssertEqual(harness.store.saveCount, 0)
+
+        viewModel.error = nil
+        await harness.openDashboard(context(), on: day)
+        XCTAssertEqual(harness.requestCount, 1)
+        XCTAssertEqual(harness.store.state.attemptInstants, [day])
+    }
+
+    func testCompletedRefreshInvalidatesThePauseForPreviousConditions() async throws {
+        let day = Harness.referenceAttempt
+        let seed = try Harness.eligibleFirstAttemptSeed(on: day)
+        let harness = Harness(now: day, seed: seed)
+        let beforeRefresh = AppStoreReviewPromptContext.qualifying
+        let afterRefresh = AppStoreReviewPromptContext(
+            isDashboardTabSelected: true,
+            isShowingSuccessfulConditions: true,
+            scenePhase: .active,
+            conditionsLoadGeneration: 1
+        )
+        XCTAssertTrue(afterRefresh.isQualifyingDisplay)
+
+        await harness.coordinator.evaluateAfterNaturalPause(beforeRefresh) {
+            afterRefresh == beforeRefresh
+        }
+        XCTAssertEqual(harness.requestCount, 0)
+        XCTAssertEqual(harness.store.saveCount, 0)
+
+        await harness.openDashboard(afterRefresh, on: day)
+        XCTAssertEqual(harness.requestCount, 1)
     }
 
     func testOpenWindowsShareReviewCooldownAndQualifyingDays() async throws {
@@ -306,7 +378,7 @@ final class AppStoreReviewPromptTests: XCTestCase {
         await reloaded.evaluateAfterNaturalPause(
             AppStoreReviewPromptContext(
                 isDashboardTabSelected: false,
-                hasViewingConditions: true,
+                isShowingSuccessfulConditions: true,
                 scenePhase: .active
             )
         )
@@ -358,7 +430,7 @@ final class AppStoreReviewPromptTests: XCTestCase {
         let harness = Harness(pause: .seconds(30))
         let context = AppStoreReviewPromptContext(
             isDashboardTabSelected: false,
-            hasViewingConditions: true,
+            isShowingSuccessfulConditions: true,
             scenePhase: .active
         )
         let task = Task { await harness.coordinator.evaluateAfterNaturalPause(context) }
@@ -393,7 +465,7 @@ final class AppStoreReviewPromptTests: XCTestCase {
 private extension AppStoreReviewPromptContext {
     static let qualifying = AppStoreReviewPromptContext(
         isDashboardTabSelected: true,
-        hasViewingConditions: true,
+        isShowingSuccessfulConditions: true,
         scenePhase: .active
     )
 }

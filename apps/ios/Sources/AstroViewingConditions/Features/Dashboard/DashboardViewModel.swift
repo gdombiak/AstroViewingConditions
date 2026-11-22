@@ -400,6 +400,8 @@ public class DashboardViewModel {
     public var viewingConditions: ViewingConditions?
     public var isLoading = false
     public var error: (any Error)?
+    /// Identifies a load even when SwiftUI renders its start and completion together.
+    private(set) var conditionsLoadGeneration: UInt = 0
     public private(set) var issError: ISSError?
     public var selectedDay: DaySelection = .today
     /// Mirror of process light-pollution readiness (set by composition root, not views).
@@ -777,6 +779,7 @@ public class DashboardViewModel {
     
     @discardableResult
     private func loadConditions(for location: CachedLocation, forceRefresh: Bool = false) async -> Bool {
+        conditionsLoadGeneration &+= 1
         isLoading = true
         error = nil
         defer { isLoading = false }

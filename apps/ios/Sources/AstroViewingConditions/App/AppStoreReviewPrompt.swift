@@ -5,37 +5,43 @@ import SwiftUI
 /// Inputs for one review-policy evaluation.
 ///
 /// Dashboard, Locations, and Settings stay mounted together. A qualifying display
-/// is only the selected Dashboard tab, with real conditions on screen, while the
-/// scene is active. `hasViewingConditions` matches `DashboardView`'s branch:
-/// loading, error, and empty states render only when `viewingConditions` is nil.
+/// is the selected Dashboard tab in an active scene with successfully loaded
+/// conditions. The Dashboard can keep cached conditions visible during a refresh
+/// or after it fails.
 struct AppStoreReviewPromptContext: Equatable, Sendable {
-    var isDashboardSelected: Bool
-    var isShowingSuccessfulConditions: Bool
-    var isSceneActive: Bool
+    let isDashboardSelected: Bool
+    let isShowingSuccessfulConditions: Bool
+    let isSceneActive: Bool
+    private let conditionsLoadGeneration: UInt
 
     var isQualifyingDisplay: Bool {
         isDashboardSelected && isShowingSuccessfulConditions && isSceneActive
     }
 
     init(
-        isDashboardSelected: Bool,
+        isDashboardTabSelected: Bool,
         isShowingSuccessfulConditions: Bool,
-        isSceneActive: Bool
+        scenePhase: ScenePhase,
+        conditionsLoadGeneration: UInt = 0
     ) {
-        self.isDashboardSelected = isDashboardSelected
+        self.isDashboardSelected = isDashboardTabSelected
         self.isShowingSuccessfulConditions = isShowingSuccessfulConditions
-        self.isSceneActive = isSceneActive
+        self.isSceneActive = scenePhase == .active
+        self.conditionsLoadGeneration = conditionsLoadGeneration
     }
 
+    @MainActor
     init(
         isDashboardTabSelected: Bool,
-        hasViewingConditions: Bool,
+        viewModel: DashboardViewModel,
         scenePhase: ScenePhase
     ) {
         self.init(
-            isDashboardSelected: isDashboardTabSelected,
-            isShowingSuccessfulConditions: hasViewingConditions,
-            isSceneActive: scenePhase == .active
+            isDashboardTabSelected: isDashboardTabSelected,
+            isShowingSuccessfulConditions: viewModel.viewingConditions != nil
+                && !viewModel.isLoading && viewModel.error == nil,
+            scenePhase: scenePhase,
+            conditionsLoadGeneration: viewModel.conditionsLoadGeneration
         )
     }
 }
@@ -170,8 +176,11 @@ final class AppStoreReviewPromptCoordinator {
         self.requestReview = requestReview
     }
 
-    func evaluateAfterNaturalPause(_ context: AppStoreReviewPromptContext) async {
-        guard context.isQualifyingDisplay else { return }
+    func evaluateAfterNaturalPause(
+        _ context: AppStoreReviewPromptContext,
+        isStillQualifying: () -> Bool = { true }
+    ) async {
+        guard context.isQualifyingDisplay, !Task.isCancelled else { return }
 
         evaluationGeneration &+= 1
         let generation = evaluationGeneration
@@ -182,7 +191,7 @@ final class AppStoreReviewPromptCoordinator {
                 return
             }
         }
-        guard generation == evaluationGeneration, !Task.isCancelled else { return }
+        guard generation == evaluationGeneration, !Task.isCancelled, isStillQualifying() else { return }
 
         let timestamp = now()
         // Each window has its own coordinator. Read and update the shared cadence
@@ -217,20 +226,24 @@ struct AppStoreReviewPromptAnchor: View {
     @State private var coordinator: AppStoreReviewPromptCoordinator?
 
     var body: some View {
+        let context = promptContext
         Color.clear
             .frame(width: 0, height: 0)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
-            .task(id: promptContext) {
+            .task(id: context) {
                 guard AppStoreReviewPromptIntegration.isEnabled else { return }
-                await resolveCoordinator().evaluateAfterNaturalPause(promptContext)
+                await resolveCoordinator().evaluateAfterNaturalPause(context) {
+                    // The model can change before SwiftUI cancels this task.
+                    promptContext == context
+                }
             }
     }
 
     private var promptContext: AppStoreReviewPromptContext {
         AppStoreReviewPromptContext(
             isDashboardTabSelected: isDashboardSelected,
-            hasViewingConditions: viewModel.viewingConditions != nil,
+            viewModel: viewModel,
             scenePhase: scenePhase
         )
     }
