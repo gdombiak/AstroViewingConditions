@@ -25,7 +25,8 @@ VERSION_PATH = ASTRONOMER_ROOT / "VERSION"
 DEPENDENCIES_PATH = ASTRONOMER_ROOT / "runtime-dependencies.txt"
 INSTRUCTIONS_PATH = ASTRONOMER_ROOT / INSTRUCTIONS_NAME
 
-PYTHON_REQUIRES = {"minimum": [3, 11]}
+# The Astronomer runtime pins NumPy 2.5, which requires Python 3.12.
+PYTHON_REQUIRES = {"minimum": [3, 12]}
 
 
 class ReleaseManifestError(ValueError):

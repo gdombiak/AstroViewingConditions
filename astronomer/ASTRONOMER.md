@@ -306,7 +306,7 @@ version names. Reuse an existing runtime only by resolving
 `product/current/runtime` to its final directory after the installed and new
 manifests match on Engine hash, Host hash, and dependency pins.
 
-Honor `python_requires.minimum` from the manifest; it is never below 3.11.
+Use a Python version that meets `python_requires.minimum` from the manifest.
 Install the exact `dependencies` pins from the manifest; do not substitute
 other versions.
 

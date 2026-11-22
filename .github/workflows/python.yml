@@ -99,7 +99,23 @@ jobs:
         run: python -m pytest
 
       - name: Build local wheelhouse
-        run: python -m pip wheel --wheel-dir "${RUNNER_TEMP}/astro-wheels" ../astro-engine-python .
+        run: python -m pip wheel --no-deps --wheel-dir "${RUNNER_TEMP}/astro-wheels" ../astro-engine-python .
+
+      - name: Read Astronomer minimum Python version
+        id: astronomer-python
+        working-directory: ${{ github.workspace }}
+        run: |
+          PYTHONPATH=tools/astronomer python - <<'PY' >> "$GITHUB_OUTPUT"
+          from release_manifest import PYTHON_REQUIRES
+
+          major, minor = PYTHON_REQUIRES["minimum"]
+          print(f"version={major}.{minor}")
+          PY
+
+      - name: Set up Astronomer's minimum Python version
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ steps.astronomer-python.outputs.version }}
 
       - name: Smoke test installed wheels outside checkout
         env:
@@ -107,9 +123,13 @@ jobs:
           PYTHONNOUSERSITE: "1"
         run: |
           python -m venv "${RUNNER_TEMP}/astro-smoke"
-          "${RUNNER_TEMP}/astro-smoke/bin/python" -m pip install --no-index --find-links "${RUNNER_TEMP}/astro-wheels" astro-host
+          smoke_python="${RUNNER_TEMP}/astro-smoke/bin/python"
+          "$smoke_python" -m pip --isolated --no-input install --only-binary=:all: --no-deps \
+            -r "${GITHUB_WORKSPACE}/astronomer/runtime-dependencies.txt"
+          "$smoke_python" -m pip --isolated --no-input install --no-deps "${RUNNER_TEMP}"/astro-wheels/*.whl
+          "$smoke_python" -m pip check
           cd "${RUNNER_TEMP}"
-          "${RUNNER_TEMP}/astro-smoke/bin/python" - <<'PY'
+          "$smoke_python" - <<'PY'
           import json
           import os
           from pathlib import Path

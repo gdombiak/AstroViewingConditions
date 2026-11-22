@@ -40,7 +40,7 @@ def _manifest(**overrides: object) -> dict[str, object]:
         "version": version,
         "tag": product_tag(version),
         "source_commit": COMMIT,
-        "python_requires": {"minimum": [3, 11]},
+        "python_requires": {"minimum": [3, 12]},
         "dependencies": runtime_dependencies(),
         "artifacts": {
             "instructions": {
@@ -65,8 +65,9 @@ def _manifest(**overrides: object) -> dict[str, object]:
     return payload
 
 
-def test_valid_manifest_round_trip(tmp_path: Path) -> None:
-    document = validate_manifest(_manifest())
+@pytest.mark.parametrize("minimum", [[3, 11], [3, 12]])
+def test_valid_manifest_round_trip(tmp_path: Path, minimum: list[int]) -> None:
+    document = validate_manifest(_manifest(python_requires={"minimum": minimum}))
     path = tmp_path / "astronomer-release.json"
     path.write_text(json.dumps(document), encoding="utf-8")
     loaded = load_manifest(path)
@@ -74,7 +75,7 @@ def test_valid_manifest_round_trip(tmp_path: Path) -> None:
     assert loaded["tag"] == f"astronomer-v{product_version()}"
     assert loaded["artifacts"]["engine"]["version"] == "1.0.0"
     assert loaded["artifacts"]["host"]["version"] == "0.1.0"
-    assert loaded["python_requires"] == {"minimum": [3, 11]}
+    assert loaded["python_requires"] == {"minimum": minimum}
     assert all("==" in item for item in loaded["dependencies"])
 
 
