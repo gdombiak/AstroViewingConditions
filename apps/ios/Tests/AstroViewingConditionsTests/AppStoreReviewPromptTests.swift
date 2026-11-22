@@ -222,6 +222,52 @@ final class AppStoreReviewPromptTests: XCTestCase {
         XCTAssertEqual(visible.store.state.attemptInstants, [day])
     }
 
+    func testOpenWindowsShareReviewCooldownAndQualifyingDays() async throws {
+        let suiteName = "AppStoreReviewPromptTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let calendar = Harness.makeCalendar()
+        let attempt = Harness.referenceAttempt
+        let nextDay = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: attempt))
+        let store = UserDefaultsAppStoreReviewPromptStore(defaults: defaults)
+        let eligible = try Harness.eligibleFirstAttemptSeed(on: attempt)
+        store.save(eligible)
+
+        var now = attempt
+        var firstWindowRequests = 0
+        var secondWindowRequests = 0
+        let firstWindow = AppStoreReviewPromptCoordinator(
+            store: store,
+            calendar: calendar,
+            now: { now },
+            pause: .zero,
+            requestReview: { firstWindowRequests += 1 }
+        )
+        let secondWindow = AppStoreReviewPromptCoordinator(
+            store: UserDefaultsAppStoreReviewPromptStore(defaults: defaults),
+            calendar: calendar,
+            now: { now },
+            pause: .zero,
+            requestReview: { secondWindowRequests += 1 }
+        )
+
+        await firstWindow.evaluateAfterNaturalPause(.qualifying)
+        await secondWindow.evaluateAfterNaturalPause(.qualifying)
+        XCTAssertEqual(firstWindowRequests, 1)
+        XCTAssertEqual(secondWindowRequests, 0)
+        XCTAssertEqual(store.load().attemptInstants, [attempt])
+
+        now = nextDay
+        await secondWindow.evaluateAfterNaturalPause(.qualifying)
+        XCTAssertEqual(secondWindowRequests, 0)
+        XCTAssertEqual(store.load().attemptInstants, [attempt])
+        XCTAssertEqual(
+            store.load().qualifyingDayStarts,
+            eligible.qualifyingDayStarts + [calendar.startOfDay(for: nextDay)]
+        )
+    }
+
     func testPersistedCadenceSurvivesRelaunchWithoutAnAppVersion() async throws {
         let suiteName = "AppStoreReviewPromptTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

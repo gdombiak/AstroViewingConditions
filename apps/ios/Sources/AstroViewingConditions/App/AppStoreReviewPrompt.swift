@@ -154,7 +154,6 @@ final class AppStoreReviewPromptCoordinator {
     private let now: () -> Date
     private let pause: Duration
     private let requestReview: () -> Void
-    private var state: AppStoreReviewPromptState
     private var evaluationGeneration = 0
 
     init(
@@ -169,7 +168,6 @@ final class AppStoreReviewPromptCoordinator {
         self.now = now
         self.pause = pause
         self.requestReview = requestReview
-        self.state = store.load()
     }
 
     func evaluateAfterNaturalPause(_ context: AppStoreReviewPromptContext) async {
@@ -187,10 +185,14 @@ final class AppStoreReviewPromptCoordinator {
         guard generation == evaluationGeneration, !Task.isCancelled else { return }
 
         let timestamp = now()
-        if state.recordQualifyingDay(timestamp, calendar: calendar) {
-            store.save(state)
+        // Each window has its own coordinator. Read and update the shared cadence
+        // in one main-actor turn so another window sees the latest attempt.
+        var state = store.load()
+        let recordedDay = state.recordQualifyingDay(timestamp, calendar: calendar)
+        guard state.isEligibleForAttempt(at: timestamp, calendar: calendar) else {
+            if recordedDay { store.save(state) }
+            return
         }
-        guard state.isEligibleForAttempt(at: timestamp, calendar: calendar) else { return }
 
         state.recordAttempt(timestamp)
         store.save(state)
