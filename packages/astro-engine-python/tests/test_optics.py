@@ -68,6 +68,16 @@ def test_empty_input_is_unavailable_rather_than_guessed() -> None:
     }
 
 
+def test_positive_subnormal_magnification_is_accepted() -> None:
+    result = calculate_optics({
+        "telescope_focal_length_mm": 1e-300,
+        "eyepiece_focal_length_mm": 1e10,
+    })
+    assert result["magnification"] == 1e-310
+    assert result["exit_pupil_mm"] is None
+    assert result["approximate_true_field_of_view_degrees"] is None
+
+
 @pytest.mark.parametrize("payload", [
     {"telescope_focal_length_mm": 0, "eyepiece_focal_length_mm": 8},
     {"telescope_focal_length_mm": -750, "eyepiece_focal_length_mm": 8},

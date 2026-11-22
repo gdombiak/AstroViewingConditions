@@ -14,6 +14,7 @@ from astro_engine.errors import ValidationError
 from astro_engine.validate import optional_finite_number
 
 CAPABILITY_ID = "optics.calculate"
+_INVALID_INPUT = "invalid optics.calculate input"
 _FIELDS = frozenset({
     "telescope_focal_length_mm",
     "eyepiece_focal_length_mm",
@@ -26,7 +27,7 @@ _MAX_AFOV_DEGREES = 180.0
 def calculate_optics(inputs: Mapping[str, Any] | Any) -> dict[str, float | None]:
     """Return magnification, exit pupil, and approximate true field."""
     if not isinstance(inputs, Mapping) or set(inputs) - _FIELDS:
-        raise ValidationError("invalid optics.calculate input")
+        raise ValidationError(_INVALID_INPUT)
     try:
         telescope_focal_length = _positive(
             inputs.get("telescope_focal_length_mm"), "telescope_focal_length_mm"
@@ -37,16 +38,16 @@ def calculate_optics(inputs: Mapping[str, Any] | Any) -> dict[str, float | None]
         aperture = _positive(inputs.get("telescope_aperture_mm"), "telescope_aperture_mm")
         afov = _afov(inputs.get("afov_degrees"))
     except ValidationError as exc:
-        raise ValidationError("invalid optics.calculate input") from exc
+        raise ValidationError(_INVALID_INPUT) from exc
     magnification = None
     if telescope_focal_length is not None and eyepiece_focal_length is not None:
-        magnification = telescope_focal_length / eyepiece_focal_length
+        magnification = _ratio(telescope_focal_length, eyepiece_focal_length)
     exit_pupil = None
     if magnification is not None and aperture is not None:
-        exit_pupil = aperture / magnification
+        exit_pupil = _ratio(aperture, magnification)
     true_field = None
     if magnification is not None and afov is not None:
-        true_field = afov / magnification
+        true_field = _ratio(afov, magnification)
     return {
         "magnification": magnification,
         "exit_pupil_mm": exit_pupil,
@@ -54,11 +55,18 @@ def calculate_optics(inputs: Mapping[str, Any] | Any) -> dict[str, float | None]
     }
 
 
+def _ratio(numerator: float, denominator: float) -> float:
+    result = numerator / denominator
+    if not math.isfinite(result) or result <= 0:
+        raise ValidationError(_INVALID_INPUT)
+    return result
+
+
 def _positive(value: Any, name: str) -> float | None:
     number = optional_finite_number(value, name)
     if number is None:
         return None
-    if number <= 0 or math.isnan(number):
+    if number <= 0:
         raise ValidationError(f"{name} must be greater than zero")
     return number
 

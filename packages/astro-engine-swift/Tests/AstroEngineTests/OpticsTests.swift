@@ -44,6 +44,16 @@ final class OpticsTests: XCTestCase {
         XCTAssertTrue(result["approximate_true_field_of_view_degrees"] is NSNull)
     }
 
+    func testPositiveSubnormalMagnificationIsAccepted() throws {
+        let result = try VisualOptics.evaluate([
+            "telescope_focal_length_mm": 1e-300,
+            "eyepiece_focal_length_mm": 1e10,
+        ])
+        XCTAssertEqual(try number(result, "magnification"), 1e-310)
+        XCTAssertTrue(result["exit_pupil_mm"] is NSNull)
+        XCTAssertTrue(result["approximate_true_field_of_view_degrees"] is NSNull)
+    }
+
     func testInvalidInputsAreRejected() {
         XCTAssertThrowsError(try VisualOptics.evaluate([
             "telescope_focal_length_mm": 0,

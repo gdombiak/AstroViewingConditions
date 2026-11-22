@@ -23,19 +23,19 @@ public enum VisualOptics {
         let apparentField = try afov(input["afov_degrees"])
         let magnification: Double?
         if let telescopeFocalLength, let eyepieceFocalLength {
-            magnification = telescopeFocalLength / eyepieceFocalLength
+            magnification = try ratio(telescopeFocalLength, eyepieceFocalLength)
         } else {
             magnification = nil
         }
         let exitPupil: Double?
         if let magnification, let aperture {
-            exitPupil = aperture / magnification
+            exitPupil = try ratio(aperture, magnification)
         } else {
             exitPupil = nil
         }
         let trueField: Double?
         if let magnification, let apparentField {
-            trueField = apparentField / magnification
+            trueField = try ratio(apparentField, magnification)
         } else {
             trueField = nil
         }
@@ -44,6 +44,14 @@ public enum VisualOptics {
             "exit_pupil_mm": exitPupil as Any? ?? NSNull(),
             "approximate_true_field_of_view_degrees": trueField as Any? ?? NSNull(),
         ]
+    }
+
+    private static func ratio(_ numerator: Double, _ denominator: Double) throws -> Double {
+        let result = numerator / denominator
+        guard result.isFinite, result > 0 else {
+            throw VisualOpticsError.invalidInput
+        }
+        return result
     }
 
     private static func positive(_ value: Any?) throws -> Double? {

@@ -210,6 +210,40 @@ def test_cli_explicit_optics_and_invalid_request(tmp_path: Path) -> None:
     assert rejected["error"]["code"] == "invalid_request"
 
 
+def test_cli_explicit_optics_reports_underflow_as_invalid_request(tmp_path: Path) -> None:
+    status, payload, stderr = _invoke(tmp_path, "agent.optics", {
+        "telescope_focal_length_mm": 1e-300,
+        "eyepiece_focal_length_mm": 1e300,
+        "telescope_aperture_mm": 150,
+    })
+    assert status == EXIT_INVALID_REQUEST
+    assert payload == {
+        "ok": False,
+        "operation": "agent.optics",
+        "error": {"code": "invalid_request", "message": "invalid optics.calculate input"},
+    }
+    assert stderr == ""
+
+
+def test_cli_saved_optics_reports_overflow_as_invalid_request(tmp_path: Path) -> None:
+    equipment = MemoryEquipmentStore()
+    eyepieces = MemoryEyepieceStore()
+    equipment.save(virtuoso(id=VIRTUOSO_ID, focal_length_mm=750))
+    eyepieces.save(delos(id=DELOS_ID, focal_length_mm=1e-310))
+
+    status, payload, stderr = _invoke(tmp_path, "agent.optics", {
+        "telescope": {"id": VIRTUOSO_ID},
+        "eyepiece": {"id": DELOS_ID},
+    }, equipment_store=equipment, eyepiece_store=eyepieces)
+    assert status == EXIT_INVALID_REQUEST
+    assert payload == {
+        "ok": False,
+        "operation": "agent.optics",
+        "error": {"code": "invalid_request", "message": "invalid optics.calculate input"},
+    }
+    assert stderr == ""
+
+
 def test_cli_saved_optics_rejects_smart_telescope_and_binoculars(tmp_path: Path) -> None:
     equipment = MemoryEquipmentStore()
     eyepieces = MemoryEyepieceStore()

@@ -26,7 +26,7 @@ def test_optics_swift_python_parity(fixture):
 
 
 def test_optics_fixture_count():
-    assert len(CASES) == 8
+    assert len(CASES) == 14
 
 
 def test_optics_is_the_last_public_capability():

@@ -36,5 +36,11 @@ When magnification and `afov_degrees` are both available:
 Otherwise that field is `null`. This is the simple apparent-field divided by
 magnification relationship. It is not a field-stop or eyepiece-geometry model.
 
-The result always contains exactly these three keys. The capability does not
+Each computed ratio must be positive and finite in double precision. If any
+ratio rounds to zero or overflows, return the whole request as a validation
+error with message `invalid optics.calculate input`. A positive subnormal
+result is valid. Null results indicate missing inputs. The Host CLI reports
+the same invalid calculation with `error.code = invalid_request`.
+
+A successful result contains exactly these three keys. The capability does not
 rank eyepieces, prefer a target, look up a manufacturer, or read saved state.

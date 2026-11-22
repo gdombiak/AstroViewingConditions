@@ -1,0 +1,6 @@
+capability: optics.calculate
+engine_semver: ">=1.1.0 <2.0.0"
+equality: optics_calculate
+hosts: [swift, python]
+origin: manual
+notes: Approximate true field overflows with a positive subnormal magnification.
