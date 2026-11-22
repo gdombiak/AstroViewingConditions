@@ -400,6 +400,8 @@ public class DashboardViewModel {
     public var viewingConditions: ViewingConditions?
     public var isLoading = false
     public var error: (any Error)?
+    /// A newer load can finish while an earlier fetch is still in flight.
+    private(set) var activeConditionsLoadCount = 0
     /// Identifies a load even when SwiftUI renders its start and completion together.
     private(set) var conditionsLoadGeneration: UInt = 0
     public private(set) var issError: ISSError?
@@ -780,9 +782,13 @@ public class DashboardViewModel {
     @discardableResult
     private func loadConditions(for location: CachedLocation, forceRefresh: Bool = false) async -> Bool {
         conditionsLoadGeneration &+= 1
+        activeConditionsLoadCount += 1
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer {
+            activeConditionsLoadCount -= 1
+            isLoading = false
+        }
         
         do {
             let result = try await conditionsRepository.conditions(

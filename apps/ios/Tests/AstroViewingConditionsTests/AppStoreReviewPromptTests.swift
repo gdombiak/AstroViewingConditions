@@ -294,6 +294,74 @@ final class AppStoreReviewPromptTests: XCTestCase {
         XCTAssertEqual(harness.requestCount, 1)
     }
 
+    func testOverlappingRefreshesStayIneligibleUntilBothComplete() async throws {
+        let day = Harness.referenceAttempt
+        let seed = try Harness.eligibleFirstAttemptSeed(on: day)
+        let harness = Harness(now: day, seed: seed)
+        let location = CachedLocation(id: UUID(), name: "Test", latitude: 45, longitude: -122)
+        let forecast = HourlyForecast(
+            time: day, cloudCover: 25, humidity: 50, windSpeed: 3,
+            windDirection: 180, temperature: 12
+        )
+        let sun = SunEvents(
+            sunrise: day, sunset: day, civilTwilightBegin: day, civilTwilightEnd: day,
+            nauticalTwilightBegin: day, nauticalTwilightEnd: day,
+            astronomicalTwilightBegin: day, astronomicalTwilightEnd: day
+        )
+        let moon = MoonInfo(phase: 0.5, phaseName: "Full", altitude: 45, illumination: 50, emoji: "🌕")
+        let forecastDays = SharedConditionsRepository.forecastDays
+        let refreshed = ViewingConditions(
+            fetchedAt: day, location: location, hourlyForecasts: [forecast],
+            dailySunEvents: Array(repeating: sun, count: forecastDays),
+            dailyMoonInfo: Array(repeating: moon, count: forecastDays), issPasses: [],
+            fogScore: FogScore(score: 0, factors: []), timeZoneIdentifier: "America/Los_Angeles"
+        )
+        let firstRefreshStarted = expectation(description: "First refresh is fetching conditions")
+        let (holdFirstRefresh, releaseFirstRefresh) = AsyncStream<Void>.makeStream()
+        defer { releaseFirstRefresh.finish() }
+        let repository = SharedConditionsRepository(
+            load: { nil }, save: { _ in }, now: { day },
+            fetch: { _, apiKey in
+                if apiKey != "updated-key" {
+                    firstRefreshStarted.fulfill()
+                    var wait = holdFirstRefresh.makeAsyncIterator()
+                    _ = await wait.next()
+                }
+                return ConditionsFetchResult(conditions: refreshed, issError: nil)
+            }
+        )
+        let viewModel = DashboardViewModel(conditionsRepository: repository, now: { day })
+        viewModel.viewingConditions = refreshed
+
+        func context() -> AppStoreReviewPromptContext {
+            AppStoreReviewPromptContext(
+                isDashboardTabSelected: true,
+                viewModel: viewModel,
+                scenePhase: .active
+            )
+        }
+
+        let first = Task { await viewModel.refresh(for: location) }
+        await fulfillment(of: [firstRefreshStarted], timeout: 5)
+
+        // Editing the API key can trigger a refresh while the first fetch is in flight.
+        viewModel.updateAPIKey("updated-key")
+        let secondSucceeded = await viewModel.refresh(for: location)
+        XCTAssertTrue(secondSucceeded)
+        XCTAssertFalse(context().isQualifyingDisplay)
+        await harness.openDashboard(context(), on: day)
+        XCTAssertEqual(harness.requestCount, 0)
+        XCTAssertEqual(harness.store.saveCount, 0)
+
+        releaseFirstRefresh.finish()
+        let firstSucceeded = await first.value
+        XCTAssertTrue(firstSucceeded)
+        XCTAssertTrue(context().isQualifyingDisplay)
+        await harness.openDashboard(context(), on: day)
+        XCTAssertEqual(harness.requestCount, 1)
+        XCTAssertEqual(harness.store.state.attemptInstants, [day])
+    }
+
     func testOpenWindowsShareReviewCooldownAndQualifyingDays() async throws {
         let suiteName = "AppStoreReviewPromptTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))

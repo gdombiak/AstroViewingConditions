@@ -39,7 +39,9 @@ struct AppStoreReviewPromptContext: Equatable, Sendable {
         self.init(
             isDashboardTabSelected: isDashboardTabSelected,
             isShowingSuccessfulConditions: viewModel.viewingConditions != nil
-                && !viewModel.isLoading && viewModel.error == nil,
+                && !viewModel.isLoading
+                && viewModel.activeConditionsLoadCount == 0
+                && viewModel.error == nil,
             scenePhase: scenePhase,
             conditionsLoadGeneration: viewModel.conditionsLoadGeneration
         )
